@@ -1,0 +1,52 @@
+site_name: ambi-alert
+repo_url: https://github.com/prassanna-ravishankar/ambi-alert
+site_url: https://prassanna-ravishankar.github.io/ambi-alert
+site_description: This is a reverse search tool. Agentic Alerting
+site_author: Prass, The Nomadic Coder
+edit_uri: edit/main/docs/
+repo_name: prassanna-ravishankar/ambi-alert
+copyright: Maintained by <a href="https://prassanna-ravishankar.com">prassanna-ravishankar</a>.
+
+nav:
+  - Home: index.md
+  - Modules: modules.md
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["ambi_alert"]
+theme:
+  name: material
+  feature:
+    tabs: true
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: deep orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/prassanna-ravishankar/ambi-alert
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/ambi-alert
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
