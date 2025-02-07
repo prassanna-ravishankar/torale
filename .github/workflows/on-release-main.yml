@@ -56,6 +56,12 @@ jobs:
   deploy-docs:
     needs: publish
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -63,5 +69,14 @@ jobs:
       - name: Set up the environment
         uses: ./.github/actions/setup-python-env
 
-      - name: Deploy documentation
-        run: uv run mkdocs gh-deploy --force
+      - name: Build documentation
+        run: uv run mkdocs build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
