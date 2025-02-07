@@ -47,19 +47,20 @@ def test_find_relevant_urls():
     """Test finding relevant URLs."""
     ambi = AmbiAlert()
 
-    # Mock the search agent
+    # Mock the search agent to return URLs line by line
     ambi.search_agent.run = MagicMock(
-        return_value="""
-    https://example.com/1
-    https://example.com/2
-    not a url
-    https://example.com/3
-    """
+        return_value="""https://example.com/1
+https://example.com/2
+not a url
+https://example.com/3"""
     )
 
     urls = ambi.find_relevant_urls("test query")
     assert len(urls) == 3  # Should only include valid URLs
     assert all(url.startswith("https://") for url in urls)
+    assert "https://example.com/1" in urls
+    assert "https://example.com/2" in urls
+    assert "https://example.com/3" in urls
 
 
 def test_check_content_relevance():
@@ -68,11 +69,7 @@ def test_check_content_relevance():
 
     # Mock the relevance agent
     ambi.relevance_agent.run = MagicMock(
-        return_value="""
-    YES
-    This content is relevant because it contains key information.
-    Summary of the changes: ...
-    """
+        return_value="YES\nThis content is relevant because it contains key information.\nSummary of the changes: ..."
     )
 
     is_relevant, explanation = ambi.check_content_relevance(
@@ -81,10 +78,7 @@ def test_check_content_relevance():
     )
 
     assert is_relevant is True
-    assert (
-        explanation.strip()
-        == "This content is relevant because it contains key information.\nSummary of the changes: ..."
-    )
+    assert explanation == "This content is relevant because it contains key information.\nSummary of the changes: ..."
 
 
 @pytest.mark.asyncio

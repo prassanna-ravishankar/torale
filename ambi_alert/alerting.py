@@ -6,8 +6,6 @@ from typing import Optional, Protocol
 
 import aiosmtplib
 
-from .rate_limiter import RateLimiter
-
 
 class AlertBackend(Protocol):
     """Protocol for alert backends."""
@@ -36,7 +34,6 @@ class EmailAlertBackend:
         password: str,
         from_email: str,
         to_email: str,
-        emails_per_minute: int = 30,
     ):
         """Initialize the email alert backend.
 
@@ -47,7 +44,6 @@ class EmailAlertBackend:
             password: SMTP authentication password
             from_email: Sender email address
             to_email: Recipient email address
-            emails_per_minute: Maximum number of emails per minute
         """
         self.smtp_server = smtp_server
         self.smtp_port = smtp_port
@@ -56,7 +52,6 @@ class EmailAlertBackend:
         self.from_email = from_email
         self.to_email = to_email
         self._client: Optional[aiosmtplib.SMTP] = None
-        self._rate_limiter = RateLimiter(rate=emails_per_minute)
 
     async def _get_client(self) -> aiosmtplib.SMTP:
         """Get or create an SMTP client.
@@ -91,7 +86,6 @@ class EmailAlertBackend:
             True if the email was sent successfully
         """
         try:
-            await self._rate_limiter.acquire()  # Rate limit emails
             msg = MIMEMultipart()
             msg["From"] = self.from_email
             msg["To"] = self.to_email

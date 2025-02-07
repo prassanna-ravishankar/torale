@@ -128,7 +128,7 @@ class AmbiAlert:
 
         # Clean and validate URLs
         urls = []
-        for line in response.strip().split("\\n"):  # Split on escaped newlines
+        for line in response.strip().split("\n"):
             url = line.strip().strip('"').strip("'")
             if self.is_valid_url(url):
                 urls.append(url)

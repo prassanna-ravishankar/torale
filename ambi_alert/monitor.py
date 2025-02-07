@@ -7,23 +7,19 @@ import aiohttp
 from bs4 import BeautifulSoup
 from smolagents import HfApiModel, VisitWebpageTool
 
-from .rate_limiter import RateLimiter
-
 
 class WebsiteMonitor:
     """Monitors websites for changes and determines relevance."""
 
-    def __init__(self, model: Optional[HfApiModel] = None, requests_per_minute: int = 30):
+    def __init__(self, model: Optional[HfApiModel] = None):
         """Initialize the website monitor.
 
         Args:
             model: Optional HfApiModel instance for relevance checking
-            requests_per_minute: Maximum number of requests per minute
         """
         self.model = model or HfApiModel()
         self.webpage_tool = VisitWebpageTool()
         self._session: Optional[aiohttp.ClientSession] = None
-        self._rate_limiter = RateLimiter(rate=requests_per_minute)
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """Get or create an aiohttp session."""
@@ -46,6 +42,9 @@ class WebsiteMonitor:
         Returns:
             A hash of the page's main content
         """
+        if not content:
+            return ""
+
         try:
             # Parse with BeautifulSoup to get main content
             soup = BeautifulSoup(content, "html.parser")
@@ -71,7 +70,6 @@ class WebsiteMonitor:
             A hash of the page's main content
         """
         try:
-            await self._rate_limiter.acquire()  # Rate limit requests
             session = await self._get_session()
             async with session.get(url) as response:
                 if response.status == 200:
@@ -100,8 +98,10 @@ class WebsiteMonitor:
 
         # Note: Using synchronous model.generate for now as smolagents doesn't support async yet
         response = self.model.generate(prompt)
-        is_relevant = response.strip().upper().startswith("YES")
-        return is_relevant, response.strip()
+        lines = response.strip().split("\n")
+        is_relevant = lines[0].strip().upper().startswith("YES")
+        explanation = "\n".join(lines[1:]).strip()
+        return is_relevant, explanation
 
     async def get_content_summary(self, content: str) -> str:
         """Generate a summary of the changed content.
@@ -126,7 +126,6 @@ class WebsiteMonitor:
             The page content if successful, None otherwise
         """
         try:
-            await self._rate_limiter.acquire()  # Rate limit requests
             session = await self._get_session()
             async with session.get(url) as response:
                 if response.status == 200:
