@@ -35,9 +35,9 @@ dependencies = [
 ambi-alert = "ambi_alert.cli:main"
 
 [project.urls]
-Homepage = "https://prassanna-ravishankar.github.io/ambi-alert/"
+Homepage = "https://prassanna.io/ambi-alert/"
 Repository = "https://github.com/prassanna-ravishankar/ambi-alert"
-Documentation = "https://prassanna-ravishankar.github.io/ambi-alert/"
+Documentation = "https://prassanna.io/ambi-alert/"
 
 [dependency-groups]
 dev = [
@@ -61,6 +61,8 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 py-modules = ["ambi_alert"]
 
+[tool.setuptools.package-data]
+ambi = ["assets/*.png"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
