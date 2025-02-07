@@ -22,7 +22,9 @@ You have this file now [called@ambi-backend.py](mailto:called@ambi-backend.py) (
 
 #### Updated tasks
 
-- Design this
+- Use asynchronous code wherever possible
+- In the example, have an option to disable the monitor
+- Identify whether the query expander should be run by the monitor or the alerter
 
 ### REFERENCES
 

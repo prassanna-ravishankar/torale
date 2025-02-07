@@ -1,6 +1,6 @@
 """Main module for AmbiAlert."""
 
-import time
+import asyncio
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -12,7 +12,7 @@ from smolagents import (
     VisitWebpageTool,
 )
 
-from .alerting import AlertBackend, AlertManager
+from .alerting import AlertBackend, AlertManager, EmailAlertBackend
 from .database import DatabaseManager
 from .monitor import WebsiteMonitor
 from .query_expander import QueryExpanderAgent
@@ -71,6 +71,20 @@ class AmbiAlert:
             description="This agent coordinates the search, query expansion, and relevance checking process.",
         )
 
+    async def __aenter__(self) -> "AmbiAlert":
+        """Async context manager entry.
+
+        Returns:
+            Self for use in async with statements
+        """
+        await self.db._init_db()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Async context manager exit."""
+        await self.monitor.close()
+        await self.db.close()
+
     def is_valid_url(self, url: str) -> bool:
         """Check if a URL is valid.
 
@@ -114,7 +128,7 @@ class AmbiAlert:
 
         # Clean and validate URLs
         urls = []
-        for line in response.strip().split("\n"):
+        for line in response.strip().split("\\n"):  # Split on escaped newlines
             url = line.strip().strip('"').strip("'")
             if self.is_valid_url(url):
                 urls.append(url)
@@ -143,7 +157,7 @@ class AmbiAlert:
         explanation = "\n".join(lines[1:]).strip()
         return is_relevant, explanation
 
-    def add_monitoring_query(self, query: str) -> None:
+    async def add_monitoring_query(self, query: str) -> None:
         """Add a new query to monitor.
 
         Args:
@@ -163,27 +177,27 @@ class AmbiAlert:
             for url in urls:
                 try:
                     print(f"Checking URL: {url}")
-                    content = self.webpage_tool.visit(url)  # Use visit instead of run
+                    content = await self.monitor.fetch_content(url)
                     if not content:
                         print(f"No content retrieved from {url}")
                         continue
 
                     content_hash = self.monitor.get_content_hash_from_content(content)
                     if content_hash:
-                        self.db.add_url(url, query, content_hash)
+                        await self.db.add_url(url, query, content_hash)
                         print(f"Added URL to monitoring: {url}")
                 except Exception as e:
                     print(f"Error processing URL {url}: {e}")
 
-    def check_for_updates(self) -> None:
+    async def check_for_updates(self) -> None:
         """Check all monitored URLs for updates."""
-        urls = self.db.get_urls_to_check()
+        urls = await self.db.get_urls_to_check()
         print(f"\nChecking {len(urls)} URLs for updates...")
 
         for url_data in urls:
             try:
                 print(f"\nChecking: {url_data.url}")
-                content = self.webpage_tool.visit(url_data.url)  # Use visit instead of run
+                content = await self.monitor.fetch_content(url_data.url)
                 if not content:
                     print(f"No content retrieved from {url_data.url}")
                     continue
@@ -197,32 +211,41 @@ class AmbiAlert:
                     print("Content changed, checking relevance...")
 
                     # Check if changes are relevant
-                    is_relevant, summary = self.check_content_relevance(content, url_data.query)
+                    is_relevant, summary = await self.monitor.check_relevance(content, url_data.query)
 
                     if is_relevant:
                         print("Relevant changes found, sending alert...")
                         # Send alert
-                        self.alert_manager.send_change_alert(url_data.url, url_data.query, summary)
+                        alert_sent = await self.alert_manager.send_change_alert(url_data.url, url_data.query, summary)
+                        if alert_sent:
+                            print("Alert sent successfully")
+                        else:
+                            print("Failed to send alert")
 
                 # Update the database
-                self.db.update_url_check(url_data.id, new_hash)
+                await self.db.update_url_check(url_data.id, new_hash)
             except Exception as e:
                 print(f"Error checking {url_data.url}: {e}")
 
-    def run_monitor(self) -> None:
+    async def run_monitor(self) -> None:
         """Run the monitoring loop indefinitely."""
         print("\nStarting AmbiAlert monitor...")
         print("Press Ctrl+C to stop monitoring.\n")
 
         while True:
             try:
-                self.check_for_updates()
+                await self.check_for_updates()
                 print(f"\nSleeping for {self.check_interval} seconds...")
-                time.sleep(self.check_interval)
+                await asyncio.sleep(self.check_interval)
             except KeyboardInterrupt:
                 print("\nStopping AmbiAlert monitor...")
+                # Clean up all resources
+                await self.monitor.close()
+                await self.db.close()
+                if isinstance(self.alert_manager.backend, EmailAlertBackend):
+                    await self.alert_manager.backend.close()
                 break
             except Exception as e:
                 print(f"Error in monitoring loop: {e}")
                 # Sleep for a bit before retrying
-                time.sleep(60)
+                await asyncio.sleep(60)
