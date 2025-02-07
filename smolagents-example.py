@@ -6,7 +6,6 @@ from smolagents import (
     VisitWebpageTool,
 )
 
-
 # Let's setup the instrumentation first
 
 # Then we run the agentic part!
