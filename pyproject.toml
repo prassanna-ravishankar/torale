@@ -5,7 +5,7 @@ description = "This is a reverse search tool. Agentic Alerting"
 authors = [{ name = "Prass, The Nomadic Coder", email = "me@prassanna.io" }]
 readme = "README.md"
 keywords = ['python']
-requires-python = ">=3.9,<4.0"
+requires-python = ">=3.10,<4.0"
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python",
@@ -16,6 +16,11 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "duckduckgo_search",
+    "markdownify",
+    "smolagents"
 ]
 
 [project.urls]
