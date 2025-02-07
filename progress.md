@@ -91,7 +91,7 @@
 
 1. Add more alert backends (e.g., Slack, Discord)
 2. Implement diff-based change detection
-3. Add rate limiting and respect for robots.txt
+3. Add support for robots.txt
 4. Add tests
 5. Add more documentation
 6. Add support for custom content extractors
@@ -130,7 +130,7 @@
 
 1. Add more alert backends (e.g., Slack, Discord)
 2. Implement diff-based change detection
-3. Add rate limiting and respect for robots.txt
+3. Add support for robots.txt
 4. Add tests
 5. Add more documentation
 6. Add support for custom content extractors
@@ -163,10 +163,9 @@
    - Website monitoring
    - Content fetching
    - Database operations
-2. Add rate limiting for async operations
-3. Add proper error handling for async code
-4. Add async support to alert backends
-5. Update documentation for async features
+2. Add proper error handling for async code
+3. Add async support to alert backends
+4. Update documentation for async features
 
 ## 2024-03-20: Async Implementation - Phase 1 🚀
 
@@ -199,10 +198,9 @@
 1. Update database operations to use aiosqlite
 2. Implement async alert backends
 3. Update main AmbiAlert class for async operation
-4. Add rate limiting for async requests
-5. Update CLI for async support
-6. Add async tests
-7. Update documentation with async examples
+4. Update CLI for async support
+5. Add async tests
+6. Update documentation with async examples
 
 ## 2024-03-20: Async Implementation - Phase 2 🔄
 
@@ -233,12 +231,11 @@
 ### Next Steps
 
 1. Implement async alert backends
-2. Add rate limiting for async requests
-3. Add proper connection pooling
-4. Add retry mechanisms for failed operations
-5. Add async tests
-6. Update documentation with async examples
-7. Consider adding async caching
+2. Add proper connection pooling
+3. Add retry mechanisms for failed operations
+4. Add async tests
+5. Update documentation with async examples
+6. Consider adding async caching
 
 ## 2024-03-20: Async Implementation - Phase 3 📨
 
@@ -271,38 +268,32 @@
 
 ### Next Steps
 
-1. Add rate limiting for async requests
-2. Add retry mechanisms for failed alerts
-3. Add more alert backends (Slack, Discord)
-4. Add connection pooling for HTTP requests
-5. Add async tests for alert system
-6. Add alert queuing system
-7. Add alert delivery confirmation
+1. Add retry mechanisms for failed alerts
+2. Add more alert backends (Slack, Discord)
+3. Add connection pooling for HTTP requests
+4. Add async tests for alert system
+5. Add alert queuing system
+6. Add alert delivery confirmation
 
-## 2024-03-20: Rate Limiting Implementation 🚦
+## 2024-03-20: Rate Limiter Removal 🗑️
 
 ### Changes Made
 
-- 🔄 Added simple token bucket rate limiter:
-  - Basic but effective rate limiting algorithm
-  - Thread-safe with asyncio locks
-  - Configurable rates and time periods
-- 🌐 Added HTTP request rate limiting:
-  - Default 30 requests per minute
-  - Applied to all content fetching
-  - Prevents overwhelming target servers
-- 📧 Added email rate limiting:
-  - Default 30 emails per minute
-  - Configurable per SMTP server requirements
-  - Prevents email server throttling
+- 🗑️ Removed rate limiter module and all its references:
+  - Deleted rate_limiter.py
+  - Deleted test_rate_limiter.py
+  - Removed rate limiter from WebsiteMonitor
+  - Removed rate limiter from EmailAlertBackend
+  - Cleaned up related tests and documentation
+- 🔄 Simplified request handling in monitor and alerting modules
+- 📝 Updated documentation to reflect changes
 
 ### Benefits
 
-- ✅ Prevents server overload
-- ✅ Respects server rate limits
-- ✅ More reliable operation
-- ✅ Simple, maintainable implementation
-- ✅ Easy to configure limits
+- ✅ Simpler codebase
+- ✅ Less complexity in request handling
+- ✅ More straightforward monitoring and alerting logic
+- ✅ Reduced maintenance overhead
 
 ### Next Steps
 

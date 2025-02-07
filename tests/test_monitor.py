@@ -1,6 +1,5 @@
 """Tests for the website monitor module."""
 
-import asyncio
 from unittest.mock import MagicMock
 
 import pytest
@@ -132,17 +131,6 @@ async def test_fetch_content(website_monitor, mock_web_server):
     # Test with invalid URL
     content = await website_monitor.fetch_content("http://invalid.url")
     assert content is None
-
-
-@pytest.mark.asyncio
-async def test_rate_limiting(website_monitor, mock_web_server):
-    """Test rate limiting functionality."""
-    # Test multiple rapid requests
-    results = await asyncio.gather(*[website_monitor.get_content_hash(mock_web_server) for _ in range(5)])
-
-    # All requests should complete successfully
-    assert all(results)
-    assert len(set(results)) == 1  # All hashes should be identical
 
 
 @pytest.mark.asyncio
