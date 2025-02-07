@@ -11,8 +11,10 @@ name = "ambi-alert"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
+    { name = "beautifulsoup4" },
     { name = "duckduckgo-search" },
     { name = "markdownify" },
+    { name = "requests" },
     { name = "smolagents" },
 ]
 
@@ -30,8 +32,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "beautifulsoup4", specifier = ">=4.12.0" },
     { name = "duckduckgo-search" },
     { name = "markdownify" },
+    { name = "requests", specifier = ">=2.31.0" },
     { name = "smolagents" },
 ]
 

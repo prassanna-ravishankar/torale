@@ -4,7 +4,7 @@ version = "0.0.1"
 description = "This is a reverse search tool. Agentic Alerting"
 authors = [{ name = "Prass, The Nomadic Coder", email = "me@prassanna.io" }]
 readme = "README.md"
-keywords = ['python']
+keywords = ['python', 'web-monitoring', 'alerts', 'search', 'web-scraping']
 requires-python = ">=3.10,<4.0"
 classifiers = [
     "Intended Audience :: Developers",
@@ -16,12 +16,19 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content :: News/Diary",
+    "Topic :: System :: Monitoring",
 ]
 dependencies = [
     "duckduckgo_search",
     "markdownify",
-    "smolagents"
+    "smolagents",
+    "beautifulsoup4>=4.12.0",
+    "requests>=2.31.0",
 ]
+
+[project.scripts]
+ambi-alert = "ambi_alert.cli:main"
 
 [project.urls]
 Homepage = "https://prassanna-ravishankar.github.io/ambi-alert/"
@@ -33,9 +40,9 @@ dev = [
     "pytest>=7.2.0",
     "pre-commit>=2.20.0",
     "tox-uv>=1.11.3",
-    
+
     "mypy>=0.991",
-    
+
     "ruff>=0.9.2",
     "mkdocs>=1.4.2",
     "mkdocs-material>=8.5.10",
@@ -112,5 +119,3 @@ ignore = [
 
 [tool.ruff.format]
 preview = true
-
-

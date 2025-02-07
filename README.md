@@ -1,74 +1,117 @@
-# ambi-alert
+# AmbiAlert
 
-[![Release](https://img.shields.io/github/v/release/prassanna-ravishankar/ambi-alert)](https://img.shields.io/github/v/release/prassanna-ravishankar/ambi-alert)
-[![Build status](https://img.shields.io/github/actions/workflow/status/prassanna-ravishankar/ambi-alert/main.yml?branch=main)](https://github.com/prassanna-ravishankar/ambi-alert/actions/workflows/main.yml?query=branch%3Amain)
-[![codecov](https://codecov.io/gh/prassanna-ravishankar/ambi-alert/branch/main/graph/badge.svg)](https://codecov.io/gh/prassanna-ravishankar/ambi-alert)
-[![Commit activity](https://img.shields.io/github/commit-activity/m/prassanna-ravishankar/ambi-alert)](https://img.shields.io/github/commit-activity/m/prassanna-ravishankar/ambi-alert)
-[![License](https://img.shields.io/github/license/prassanna-ravishankar/ambi-alert)](https://img.shields.io/github/license/prassanna-ravishankar/ambi-alert)
+AmbiAlert is a powerful web monitoring tool that helps you stay informed about topics that matter to you. Instead of constantly checking websites for updates, AmbiAlert does the work for you by monitoring relevant web pages and alerting you when meaningful changes occur.
 
-This is a reverse search tool. Agentic Alerting
+## Features
 
-- **Github repository**: <https://github.com/prassanna-ravishankar/ambi-alert/>
-- **Documentation** <https://prassanna-ravishankar.github.io/ambi-alert/>
+- 🔍 Smart query expansion: Automatically expands your search queries to cover different aspects of your topic
+- 🌐 Intelligent web monitoring: Tracks relevant websites and detects meaningful changes
+- 🤖 AI-powered relevance checking: Uses advanced language models to ensure changes are actually relevant to your interests
+- 📧 Flexible alerting system: Supports email notifications (with more backends coming soon)
+- 💾 Persistent monitoring: Uses SQLite to track monitored URLs and their states
+- 🔄 Automatic retries: Handles temporary failures gracefully
 
-## Getting started with your project
-
-### 1. Create a New Repository
-
-First, create a repository on GitHub with the same name as this project, and then run the following commands:
+## Installation
 
 ```bash
-git init -b main
-git add .
-git commit -m "init commit"
-git remote add origin git@github.com:prassanna-ravishankar/ambi-alert.git
-git push -u origin main
+pip install ambi-alert
 ```
 
-### 2. Set Up Your Development Environment
+## Quick Start
 
-Then, install the environment and the pre-commit hooks with
+The simplest way to use AmbiAlert is through its command-line interface:
 
 ```bash
-make install
+# Monitor news about the next iPhone (prints alerts to console)
+ambi-alert "next iPhone release"
+
+# Monitor with email alerts
+ambi-alert "next iPhone release" \
+    --smtp-server smtp.gmail.com \
+    --smtp-port 587 \
+    --smtp-username your.email@gmail.com \
+    --smtp-password "your-app-password" \
+    --from-email your.email@gmail.com \
+    --to-email target.email@example.com
+
+# Check more frequently (every 15 minutes)
+ambi-alert "next iPhone release" --check-interval 900
 ```
 
-This will also generate your `uv.lock` file
+## Python API
 
-### 3. Run the pre-commit hooks
+You can also use AmbiAlert programmatically:
 
-Initially, the CI/CD pipeline might be failing due to formatting issues. To resolve those run:
+```python
+from ambi_alert import AmbiAlert
+from ambi_alert.alerting import EmailAlertBackend
+
+# Create an alert backend (optional)
+alert_backend = EmailAlertBackend(
+    smtp_server="smtp.gmail.com",
+    smtp_port=587,
+    username="your.email@gmail.com",
+    password="your-app-password",
+    from_email="your.email@gmail.com",
+    to_email="target.email@example.com"
+)
+
+# Create AmbiAlert instance
+ambi = AmbiAlert(alert_backend=alert_backend)
+
+# Add queries to monitor
+ambi.add_monitoring_query("next iPhone release")
+ambi.add_monitoring_query("AI breakthrough")
+
+# Start monitoring
+ambi.run_monitor()
+```
+
+## How It Works
+
+1. When you add a query, AmbiAlert:
+
+   - Expands your query to cover different aspects of the topic
+   - Searches the web using DuckDuckGo to find relevant pages
+   - Stores the URLs and their current content state in a database
+
+2. While monitoring, AmbiAlert:
+   - Periodically checks each monitored URL for changes
+   - Uses AI to determine if changes are relevant to your query
+   - Generates a human-readable summary of relevant changes
+   - Sends alerts through configured backends
+
+## Development
+
+This project uses `uv` for dependency management. To set up a development environment:
 
 ```bash
-uv run pre-commit run -a
+# Clone the repository
+git clone https://github.com/yourusername/ambi-alert.git
+cd ambi-alert
+
+# Install dependencies
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Build documentation
+mkdocs serve
 ```
 
-### 4. Commit the changes
+## Contributing
 
-Lastly, commit the changes made by the two steps above to your repository.
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
-```bash
-git add .
-git commit -m 'Fix formatting issues'
-git push origin main
-```
+## License
 
-You are now ready to start development on your project!
-The CI/CD pipeline will be triggered when you open a pull request, merge to main, or when you create a new release.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-To finalize the set-up for publishing to PyPI, see [here](https://fpgmaas.github.io/cookiecutter-uv/features/publishing/#set-up-for-pypi).
-For activating the automatic documentation with MkDocs, see [here](https://fpgmaas.github.io/cookiecutter-uv/features/mkdocs/#enabling-the-documentation-on-github).
-To enable the code coverage reports, see [here](https://fpgmaas.github.io/cookiecutter-uv/features/codecov/).
+## Acknowledgments
 
-## Releasing a new version
-
-- Create an API Token on [PyPI](https://pypi.org/).
-- Add the API Token to your projects secrets with the name `PYPI_TOKEN` by visiting [this page](https://github.com/prassanna-ravishankar/ambi-alert/settings/secrets/actions/new).
-- Create a [new release](https://github.com/prassanna-ravishankar/ambi-alert/releases/new) on Github.
-- Create a new tag in the form `*.*.*`.
-
-For more details, see [here](https://fpgmaas.github.io/cookiecutter-uv/features/cicd/#how-to-trigger-a-release).
-
----
-
-Repository initiated with [fpgmaas/cookiecutter-uv](https://github.com/fpgmaas/cookiecutter-uv).
+- Built with [smolagents](https://huggingface.co/docs/smolagents/index) for intelligent web search
+- Uses DuckDuckGo for web search functionality
+- Inspired by the need for proactive information monitoring
