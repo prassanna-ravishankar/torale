@@ -9,15 +9,33 @@ copyright: Maintained by <a href="https://prassanna-ravishankar.com">prassanna-r
 
 nav:
   - Home: index.md
-  - Modules: modules.md
+  - Getting Started:
+      - Overview: index.md
+      - Configuration: configuration.md
+      - Advanced Usage: advanced.md
+  - API Reference:
+      - Overview: modules.md
+  - Contributing: contributing.md
+
 plugins:
   - search
   - mkdocstrings:
       handlers:
         python:
           paths: ["ambi_alert"]
+          options:
+            show_source: true
+            show_root_heading: true
+            show_root_toc_entry: true
+            show_object_full_path: false
+            show_category_heading: true
+            show_if_no_docstring: false
+            heading_level: 2
+
 theme:
   name: material
+  logo: logo.png
+  favicon: logo.png
   feature:
     tabs: true
   palette:
@@ -37,6 +55,16 @@ theme:
         name: Switch to light mode
   icon:
     repo: fontawesome/brands/github
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
 
 extra:
   social:
@@ -50,3 +78,14 @@ markdown_extensions:
       permalink: true
   - pymdownx.arithmatex:
       generic: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html

@@ -1,23 +1,56 @@
 # AmbiAlert
 
+<div align="center">
+    <img src="docs/logo.png" alt="AmbiAlert Logo" width="200"/>
+</div>
+
+[![Release](https://img.shields.io/github/v/release/prassanna-ravishankar/ambi-alert)](https://img.shields.io/github/v/release/prassanna-ravishankar/ambi-alert)
+[![Build status](https://img.shields.io/github/actions/workflow/status/prassanna-ravishankar/ambi-alert/main.yml?branch=main)](https://github.com/prassanna-ravishankar/ambi-alert/actions/workflows/main.yml?query=branch%3Amain)
+[![Documentation](https://img.shields.io/badge/docs-mkdocs-blue)](https://prassanna-ravishankar.github.io/ambi-alert/)
+[![License](https://img.shields.io/github/license/prassanna-ravishankar/ambi-alert)](https://img.shields.io/github/license/prassanna-ravishankar/ambi-alert)
+
 AmbiAlert is a powerful web monitoring tool that helps you stay informed about topics that matter to you. Instead of constantly checking websites for updates, AmbiAlert does the work for you by monitoring relevant web pages and alerting you when meaningful changes occur.
 
 ## Features
 
-- 🔍 Smart query expansion: Automatically expands your search queries to cover different aspects of your topic
-- 🌐 Intelligent web monitoring: Tracks relevant websites and detects meaningful changes
-- 🤖 AI-powered relevance checking: Uses advanced language models to ensure changes are actually relevant to your interests
-- 📧 Flexible alerting system: Supports email notifications (with more backends coming soon)
-- 💾 Persistent monitoring: Uses SQLite to track monitored URLs and their states
-- 🔄 Automatic retries: Handles temporary failures gracefully
+- 🔍 **Smart Query Expansion**: Automatically expands your search queries to cover different aspects of your topic
+- 🌐 **Intelligent Web Monitoring**: Tracks relevant websites and detects meaningful changes
+- 🤖 **AI-Powered Relevance Checking**: Uses advanced language models to ensure changes are actually relevant to your interests
+- 📧 **Flexible Alerting System**: Supports email notifications with more backends coming soon
+- 💾 **Persistent Monitoring**: Uses SQLite to track monitored URLs and their states
+- 🔄 **Automatic Retries**: Handles temporary failures gracefully
 
 ## Installation
+
+### Using pip
 
 ```bash
 pip install ambi-alert
 ```
 
+### From Source
+
+```bash
+# Clone the repository
+git clone https://github.com/prassanna-ravishankar/ambi-alert.git
+cd ambi-alert
+
+# Install dependencies and set up development environment
+make install
+
+# Run tests
+make test
+
+# Check code quality
+make check
+
+# Build documentation
+make docs
+```
+
 ## Quick Start
+
+### Command Line
 
 The simplest way to use AmbiAlert is through its command-line interface:
 
@@ -38,7 +71,7 @@ ambi-alert "next iPhone release" \
 ambi-alert "next iPhone release" --check-interval 900
 ```
 
-## Python API
+### Python API
 
 You can also use AmbiAlert programmatically:
 
@@ -56,59 +89,78 @@ alert_backend = EmailAlertBackend(
     to_email="target.email@example.com"
 )
 
-# Create AmbiAlert instance
-ambi = AmbiAlert(alert_backend=alert_backend)
+# Create and run AmbiAlert
+async with AmbiAlert(alert_backend=alert_backend) as ambi:
+    # Add queries to monitor
+    await ambi.add_monitoring_query("next iPhone release")
+    await ambi.add_monitoring_query("AI breakthrough")
 
-# Add queries to monitor
-ambi.add_monitoring_query("next iPhone release")
-ambi.add_monitoring_query("AI breakthrough")
-
-# Start monitoring
-ambi.run_monitor()
+    # Start monitoring
+    await ambi.run_monitor()
 ```
-
-## How It Works
-
-1. When you add a query, AmbiAlert:
-
-   - Expands your query to cover different aspects of the topic
-   - Searches the web using DuckDuckGo to find relevant pages
-   - Stores the URLs and their current content state in a database
-
-2. While monitoring, AmbiAlert:
-   - Periodically checks each monitored URL for changes
-   - Uses AI to determine if changes are relevant to your query
-   - Generates a human-readable summary of relevant changes
-   - Sends alerts through configured backends
 
 ## Development
 
-This project uses `uv` for dependency management. To set up a development environment:
+### Setup Development Environment
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/ambi-alert.git
-cd ambi-alert
-
-# Install dependencies
-uv venv
-source .venv/bin/activate
-uv pip install -e ".[dev]"
+# Install dependencies and pre-commit hooks
+make install
 
 # Run tests
-pytest
+make test
 
-# Build documentation
-mkdocs serve
+# Check code quality
+make check
+
+# Build and serve documentation
+make docs
+
+# Build package
+make build
+
+# Build and publish to PyPI
+make build-and-publish
 ```
+
+### Running Tests
+
+```bash
+# Run all tests
+make test
+
+# Test documentation
+make docs-test
+```
+
+## Documentation
+
+Full documentation is available at [https://prassanna-ravishankar.github.io/ambi-alert/](https://prassanna-ravishankar.github.io/ambi-alert/).
+
+To build and view documentation locally:
+
+```bash
+make docs
+```
+
+Then open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Set up development environment (`make install`)
+4. Make your changes
+5. Run tests and checks (`make test && make check`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
+
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
