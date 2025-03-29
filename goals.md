@@ -1,85 +1,120 @@
-### PROJECT DESCRIPTION
+# 🛰️ Project: Ambient Alert System (Codename: AmbiAlert)
 
-This is a project called ambi alert. The end goal of this project is to do a "reverse search". When something happens on the internet, ping me.
+## 🌟 Overview
 
-- something happens → My query
-- Internet → Going to search
-- ping me → Alert me and this could through email
+**AmbiAlert** is a natural language-powered alerting service that monitors websites and content sources for meaningful changes. Users define alerts in plain English, and the system watches for changes using LLM-based query parsing and embedding-based change detection.
 
-### TASKS
+---
 
-We're not going to build everything in one go.
+## 🎯 Core Features
 
-You have this file now [called@ambi-backend.py](mailto:called@ambi-backend.py) (also look [at@smolagents-example.py](mailto:at@smolagents-example.py) for reference). This currently is able to search the web and return a bunch of relevant websites. I want to extend this tool into a bigger project. These are the goals of the project
+- Accept user queries like “Tell me when OpenAI updates their research page”
+- Parse intent into structured metadata using an LLM
+- Monitor the target (webpage, RSS feed, YouTube) for updates
+- Use **semantic embeddings** to detect meaningful changes
+- Notify users via email when relevant updates are detected
 
-- User gives a query like "next Iphone" or "geopolitcs in south indian ocean" or "new dominos pizza in the UK"
-- Translate the query (or expand it) based on user intent to be a searchable query on duck duck go
-- Using existing search functionality, Identify websites to watch.
-- Store this in a database of sorts (start with sqlite), but decouple so I can upgrade later
-- Implement a monitor to watch the websites everyday (or every N minutes) for changes
-- If there is a change, identify whether it is relevant to the query and trigger an alerting system
-- Mock an alerting system to send an email.
+---
 
-#### Updated tasks
+## 🧩 System Components
 
-- Use asynchronous code wherever possible
-- In the example, have an option to disable the monitor
-- Identify whether the query expander should be run by the monitor or the alerter
+### 1. Frontend (v0.dev or React)
 
-### REFERENCES
+- User input for alert text and email
+- Dashboard to view/manage active alerts
 
-- Smolagents: https://huggingface.co/docs/smolagents/index
--
+### 2. Backend (FastAPI or Flask on Replit)
 
-### PROJECT STRUCTURE
+- POST /alert — Create a new alert
+- GET /alerts — Retrieve active alerts
+- DELETE /alert/{id} — Remove an alert
+- POST /check-updates — Trigger all alert checks
 
-This project has been scaffolded using [uv](https://docs.astral.sh/uv/getting-started/installation/), using the following [cookiecutter template](https://github.com/fpgmaas/cookiecutter-uv)
+### 3. NLP Parsing
 
-#### IMPORTANT STUFF
+- Powered by OpenAI or open-source LLMs
+- Converts natural language into structured JSON, e.g.:
 
-- [plan.md](plan.md): This file. This has all your goals
-- [progress.md](progress.md): This file. Update progress as you go along
+  {
+  "type": "website_monitor",
+  "target": "https://openai.com/research/",
+  "keywords": ["GPT", "model"],
+  "check_frequency_minutes": 30,
+  "user_email": "user@example.com"
+  }
 
-#### GENERAL STUFF
+### 4. Monitoring Engine
 
-- This project uses uv for dependency management.
-- This project is a python package called ambi-alert.
-- The package is located in the ambi-alert directory.
-- There is a foo.py file, which boilerplate code for the package (delete this and the corresponding test).
-- There is aplan.md file (this file), which is the plan for the project. Cursor AI / Sonnet / GPT use this
-- README.md is the readme for the package, _use it to understand the project build structure_ (using the makefile)
-- Tests are in the tests directory and use pytest
-- Documentation is in the docs directory and uses mkdocs. Docstrings are Google style.
-- You're already cd-ed into the ambi-alert directory. This is the directory structure
+- Supports:
+  - ✅ Static webpages (Playwright or BeautifulSoup)
+  - ✅ YouTube channels (YouTube API)
+  - ✅ RSS feeds
+- Extracts readable text content
+- Embeds using OpenAI or sentence-transformers
+- Compares new embedding with previous using cosine similarity
 
-```
-ambi-alert
-├── CONTRIBUTING.md
-├── Dockerfile
-├── docs
-│   ├── index.md
-│   └── modules.md
-├── ambi_alert.egg-info
-│   ├── dependency_links.txt
-│   ├── PKG-INFO
-│   ├── SOURCES.txt
-│   └── top_level.txt
-├── ambi_alert
-│   ├── foo.py
-│   ├── __init__.py
-├── Makefile
-├── mkdocs.yml
-├── plan.md
-├── pyproject.toml
-├── README.md
-├── tests
-│   └── test_foo.py
-├── tox.ini
-└── uv.lock
-```
+### 5. Change Detection
 
-### PRINCIPLES
+- Uses vector-based semantic diffing
+- Alerts user if similarity drops below threshold (e.g., 0.9)
+- Optionally include keyword filter to improve precision
 
-- Build things modularly
-- Start lean always
-- Keep things "swappable"
+### 6. Notification Service
+
+- Sends email alerts with detected changes
+- Future: Slack, Discord, Webhooks, mobile push
+
+---
+
+## 💾 Data Storage
+
+### Tables
+
+- `alerts`: stores alert metadata
+- `state`: stores last embedding and timestamp
+
+### Embedding Storage Options
+
+- pgvector (PostgreSQL extension)
+- Pinecone, Weaviate, or Qdrant for scalable vector search
+
+---
+
+## 🛠️ Stack Summary
+
+| Component     | Tool                                 |
+| ------------- | ------------------------------------ |
+| Frontend      | v0.dev, Next.js                      |
+| Backend       | FastAPI, Replit                      |
+| NLP Parsing   | OpenAI GPT, LangChain                |
+| Web Scraping  | Playwright, requests + BeautifulSoup |
+| Embedding     | OpenAI, sentence-transformers        |
+| Vector DB     | pgvector, Pinecone, Qdrant           |
+| Notifications | SendGrid, Mailgun, SMTP              |
+| Scheduler     | cron, Celery, Modal.com              |
+
+---
+
+## ✅ MVP Goals
+
+- [ ] Basic UI for entering alerts
+- [ ] Store alert metadata
+- [ ] Periodic website polling
+- [ ] Embedding-based change detection
+- [ ] Email notification on update
+
+---
+
+## 🧪 Future Ideas
+
+- GPT-based diff summarization
+- User authentication with magic link
+- Change severity scoring
+- Multi-source aggregation (track topics across sites)
+- OpenAPI spec for third-party devs
+
+---
+
+## 📜 License
+
+MIT or equivalent — TBD
