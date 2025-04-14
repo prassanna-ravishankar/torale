@@ -202,3 +202,7 @@ ENV/
 
 # Supabase
 supabase/.temp/
+supabase/.branches/
+
+# Database file (if used locally and not intended for commit)
+ambi_alert.db
