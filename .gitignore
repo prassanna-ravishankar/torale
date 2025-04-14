@@ -199,3 +199,6 @@ wheels/
 env/
 venv/
 ENV/
+
+# Supabase
+supabase/.temp/
