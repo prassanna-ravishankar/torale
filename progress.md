@@ -514,3 +514,40 @@ Based on the new project goals, we're undertaking a major refactoring to:
 5. Add virtualenv cleanup instructions
 6. Add virtualenv activation scripts
 7. Add `uv run` examples to documentation
+
+## 2024-04-14: Authentication Migration & Debugging 🔒
+
+### Changes Made
+
+- **Implemented User Authentication:**
+  - Set up Supabase Auth for the frontend.
+  - Created Sign In, Sign Up, and user profile components.
+  - Added email/password and magic link authentication methods.
+- **Migrated Auth Helpers:**
+  - Encountered persistent cookie issues with `@supabase/auth-helpers-nextjs` in the Next.js App Router context (Middleware/Route Handlers).
+  - Migrated from `@supabase/auth-helpers-nextjs` to the recommended `@supabase/ssr` library.
+  - Updated client creation (`createBrowserClient`, `createServerClient`) and middleware/route handler logic according to `@supabase/ssr` patterns.
+- **Extensive Debugging:**
+  - Iteratively debugged cookie setting/reading issues between Route Handlers and Middleware.
+  - Added and removed detailed logging across multiple components.
+  - Explored various cookie setting strategies (automatic, manual, header append).
+- **Dependency Management:**
+  - Resolved installation issues with `@supabase/ssr` via clean installs (`npm install`).
+  - Generated Supabase types using the CLI (`supabase gen types`).
+- **Cleanup:**
+  - Removed excessive debugging logs.
+  - Uninstalled unused dependencies (`@types/cookie`).
+  - Added documentation comments to relevant auth files.
+
+### Benefits
+
+- ✅ Functional user authentication flow (Sign Up, Sign In, Sign Out).
+- ✅ Robust session management using modern `@supabase/ssr` library.
+- ✅ Correct cookie handling across Next.js server/client contexts.
+- ✅ Cleaner codebase after debugging and cleanup.
+
+### Next Steps
+
+1. Implement user profile management (displaying/editing profile data).
+2. Configure Supabase Row Level Security (RLS) policies.
+3. Secure backend API endpoints based on user authentication.

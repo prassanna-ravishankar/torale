@@ -6,10 +6,11 @@ A natural language-powered alerting service that monitors websites and content s
 
 - Natural language query parsing
 - Website content monitoring
-- YouTube channel monitoring
-- RSS feed monitoring
+- YouTube channel monitoring (Planned)
+- RSS feed monitoring (Planned)
 - Semantic change detection
 - Email notifications
+- User Authentication (Supabase)
 - Modern web interface
 - RESTful API
 
@@ -34,18 +35,19 @@ ambi-alert/
 
 - Python 3.9+
 - Node.js 18+
-- SendGrid API key
+- SendGrid API key (for backend email alerts, if used)
+- Supabase Project URL & Anon Key (for frontend auth)
 - uv (installed system-wide)
 
 ### Development Setup
 
-1. Backend Setup: See [backend/README.md](backend/README.md)
-2. Frontend Setup: See [frontend/README.md](frontend/README.md)
+1.  **Backend Setup:** See [backend/README.md](backend/README.md)
+2.  **Frontend Setup:** See [frontend/README.md](frontend/README.md) (Ensure Supabase environment variables are set)
 
 ## 📚 Documentation
 
-- Backend API documentation: http://localhost:8000/docs
-- Frontend application: http://localhost:3000
+- Backend API documentation: http://localhost:8000/docs (when backend is running)
+- Frontend application: http://localhost:3000 (when frontend is running)
 
 ## 🤝 Contributing
 
@@ -55,13 +57,20 @@ ambi-alert/
 4. Push to the branch
 5. Create a Pull Request
 
+## ✅ Implemented (Formerly "Coming Up")
+
+### Frontend
+
+- User authentication flow (using Supabase Auth with `@supabase/ssr`)
+- Email verification system (via Supabase Auth)
+
 ## 🚀 Coming Up
 
 ### Backend
 
 - YouTube API integration for channel monitoring
 - RSS feed support with feed parsing
-- User authentication with JWT
+- Secure API endpoints (e.g., requiring authentication)
 - Rate limiting for API endpoints
 - Monitoring dashboard with metrics
 - Comprehensive test coverage
@@ -69,11 +78,10 @@ ambi-alert/
 
 ### Frontend
 
-- User authentication flow
-- Real-time updates using WebSocket
+- User profile management (display/edit)
+- Real-time updates using WebSocket (potentially via Supabase Realtime)
 - Alert history view
 - Alert statistics and analytics
-- Email verification system
 - Enhanced mobile responsiveness
 - Loading states and error boundaries
 - Dark mode support
@@ -99,3 +107,4 @@ MIT License - see LICENSE file for details
 - FastAPI for the backend framework
 - Next.js for the frontend framework
 - Tailwind CSS for styling
+- Supabase for Authentication and potentially database/realtime features
