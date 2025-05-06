@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import SignInForm from "@/components/auth/SignInForm";
 import SignUpForm from "@/components/auth/SignUpForm";
 import toast from "react-hot-toast";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function AuthPage() {
   const [isSignIn, setIsSignIn] = useState(true);
@@ -60,7 +60,7 @@ export default function AuthPage() {
           .then(() => {
             console.log("[AuthPage] Auth state cleared");
           })
-          .catch((err) => {
+          .catch((err: Error) => {
             console.error("[AuthPage] Error clearing auth state:", err);
           });
       }
