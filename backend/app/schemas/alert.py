@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, HttpUrl
+from pydantic import BaseModel, EmailStr, HttpUrl, ConfigDict
 
 
 class AlertBase(BaseModel):
@@ -30,5 +30,6 @@ class Alert(AlertBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True  # For SQLAlchemy model compatibility
+    model_config = ConfigDict(
+        from_attributes=True,  # For SQLAlchemy model compatibility
+    )
