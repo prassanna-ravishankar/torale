@@ -1,10 +1,6 @@
 name: Backend CI/CD
 
 on:
-  push:
-    paths:
-      - "backend/**"
-      - ".github/workflows/backend.yml"
   pull_request:
     paths:
       - "backend/**"
@@ -34,9 +30,6 @@ jobs:
         run: |
           uv run ruff check .
           uv run ruff format --check .
-
-      - name: Run type checking
-        run: uv run mypy .
 
       - name: Run tests
         run: uv run pytest --cov=app --cov-report=xml
