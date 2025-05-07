@@ -1,5 +1,8 @@
 from typing import List
-from backend.app.services.ai_integrations.interface import AIModelInterface
+import logging
+from app.services.ai_integrations.interface import AIModelInterface
+
+logger = logging.getLogger(__name__)
 
 class SourceDiscoveryService:
     def __init__(self, ai_model: AIModelInterface):

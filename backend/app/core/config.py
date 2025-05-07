@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     AI_PROVIDER_FOR_GENERATE_EMBEDDINGS: Optional[str] = "openai" # Default to openai as per plan
     AI_PROVIDER_FOR_ANALYZE_DIFF: Optional[str] = "openai" # Default to openai
 
+    # Network/Scraping Settings
+    DEFAULT_REQUEST_TIMEOUT_SECONDS: int = 15
+    # SCRAPE_DELAY_SECONDS: float = 0.1 # Example if you want to add a delay
+
+    # Logging Settings
+    LOG_LEVEL: str = "INFO"
+
     # Monitoring Settings
     DEFAULT_CHECK_FREQUENCY_MINUTES: int = 30
     DEFAULT_SIMILARITY_THRESHOLD: float = 0.9

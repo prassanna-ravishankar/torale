@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from backend.app.core.db import Base # Assuming Base is defined in core.db
+from app.core.db import Base # Corrected import
 
 class MonitoredSource(Base):
     __tablename__ = "monitored_sources"

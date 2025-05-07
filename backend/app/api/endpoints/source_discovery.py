@@ -1,54 +1,22 @@
 from typing import List, Any, Dict
 from fastapi import APIRouter, Depends, HTTPException
+import logging # Import logging
 
-from backend.app.services.ai_integrations.interface import AIModelInterface
-from backend.app.services.source_discovery_service import SourceDiscoveryService
-from backend.app.schemas.source_discovery_schemas import RawQueryInput, MonitoredURLOutput
-# Placeholder for actual AI client implementations
-from backend.app.services.ai_integrations.perplexity_client import PerplexityClient # Assuming this will be created
-from backend.app.core.config import get_settings
+from app.services.ai_integrations.interface import AIModelInterface
+from app.services.source_discovery_service import SourceDiscoveryService
+from app.schemas.source_discovery_schemas import RawQueryInput, MonitoredURLOutput
+from app.core.config import get_settings, Settings
+from app.api.dependencies import get_source_discovery_ai_model
 
 router = APIRouter()
-settings = get_settings()
+logger = logging.getLogger(__name__) # Get logger instance
+# settings = get_settings() # Settings instance available via Depends(get_settings)
 
-# --- Dependency Injection Placeholders ---
-# In a real setup, this would be more sophisticated, likely involving
-# initialization of clients with API keys from settings during app startup
-# and a DI system that can provide configured instances.
+# --- Dependency Injection for AI Models (Now largely handled by common dependencies.py) ---
 
-# Placeholder: get_ai_model_interface dependency
-async def get_ai_model_interface() -> AIModelInterface:
-    # For SourceDiscovery, the plan specifies Perplexity as the initial provider.
-    # This would be configured via settings.AI_PROVIDER_FOR_SOURCE_DISCOVERY or similar.
-    # Here, we instantiate PerplexityClient directly as a placeholder.
-    # Actual PerplexityClient would need API key from settings.
-    # return PerplexityClient(api_key=settings.PERPLEXITY_API_KEY) # Assuming API key is in settings
-    
-    # Since PerplexityClient is not implemented, we'll raise a NotImplementedError
-    # to indicate that this part needs to be filled in.
-    # This also helps satisfy the AIModelInterface type hint for now.
-    class PlaceholderPerplexityClient(AIModelInterface):
-        async def refine_query(self, raw_query: str, **kwargs) -> str:
-            # Simulate refinement: e.g., append " best sources"
-            print(f"[Placeholder] Refining query: {raw_query}")
-            return f"{raw_query} best sources"
-
-        async def identify_sources(self, refined_query: str, **kwargs) -> List[str]:
-            # Simulate source identification
-            print(f"[Placeholder] Identifying sources for: {refined_query}")
-            return [f"https://example.com/search?q={refined_query.replace(' ', '+')}"]
-        
-        async def generate_embeddings(self, texts: List[str], **kwargs) -> List[List[float]]:
-            raise NotImplementedError("generate_embeddings not supported by PlaceholderPerplexityClient")
-
-        async def analyze_diff(self, old_representation: Any, new_representation: Any, **kwargs) -> Dict:
-            raise NotImplementedError("analyze_diff not supported by PlaceholderPerplexityClient")
-
-    return PlaceholderPerplexityClient()
-
-# Dependency to get SourceDiscoveryService
+# Dependency to get SourceDiscoveryService, using the common AI model provider
 def get_source_discovery_service(
-    ai_model: AIModelInterface = Depends(get_ai_model_interface)
+    ai_model: AIModelInterface = Depends(get_source_discovery_ai_model) # Use the centralized DI
 ) -> SourceDiscoveryService:
     return SourceDiscoveryService(ai_model=ai_model)
 
@@ -56,30 +24,42 @@ def get_source_discovery_service(
 @router.post("/discover-sources/", response_model=MonitoredURLOutput)
 async def discover_sources_endpoint(
     query_input: RawQueryInput,
-    service: SourceDiscoveryService = Depends(get_source_discovery_service)
+    service: SourceDiscoveryService = Depends(get_source_discovery_service),
+    # s: Settings = Depends(get_settings) # Can still inject settings if directly needed for other logic
 ):
+    logger.info(f"Received request to discover sources for query: '{query_input.raw_query[:50]}...'")
     """
     Accepts a raw user query, refines it, and identifies monitorable source URLs.
     """
     try:
-        # Provider-specific kwargs can be passed if needed, e.g., from config or advanced request params
-        # refine_kwargs = {"model": "perplexity-online-experimental"}
-        # identify_kwargs = {"num_results": 5}
+        refine_api_params = {}
+        identify_api_params = {}
+        # Example of how you might use settings to pass model choices to the client, if desired:
+        # settings_val = get_settings() # or inject s: Settings = Depends(get_settings)
+        # if settings_val.PERPLEXITY_REFINE_QUERY_MODEL: 
+        #     refine_api_params["model"] = settings_val.PERPLEXITY_REFINE_QUERY_MODEL
+        # if settings_val.PERPLEXITY_IDENTIFY_SOURCES_MODEL:
+        #     identify_api_params["model"] = settings_val.PERPLEXITY_IDENTIFY_SOURCES_MODEL
+
         monitorable_urls = await service.discover_sources(
-            raw_query=query_input.raw_query
-            # refine_kwargs=refine_kwargs, 
-            # identify_kwargs=identify_kwargs
+            raw_query=query_input.raw_query,
+            refine_kwargs={"api_params": refine_api_params},
+            identify_kwargs={"api_params": identify_api_params}
         )
-        if not monitorable_urls:
-            # Handle case where no URLs are found, could be empty list or raise specific error
-            # For now, returning empty list is fine as per MonitoredURLOutput schema
-            pass
+        logger.info(f"Successfully discovered {len(monitorable_urls)} sources for query '{query_input.raw_query[:50]}...'")
         return MonitoredURLOutput(monitorable_urls=monitorable_urls)
+    except ConnectionError as e:
+        logger.error(f"Connection error during source discovery API call: {e}", exc_info=True)
+        raise HTTPException(status_code=503, detail=f"Could not connect to AI provider: {e}")
+    except ValueError as e:
+        logger.error(f"Value error during source discovery API call: {e}", exc_info=True)
+        if "API key" in str(e) or "Invalid response structure" in str(e) or "service is not configured" in str(e):
+             raise HTTPException(status_code=500, detail=f"AI provider error: {e}")
+        else:
+             raise HTTPException(status_code=400, detail=f"Invalid input or parameters: {e}")
     except NotImplementedError as e:
-        # This might be raised by the AIModelInterface if a method is not supported
+        logger.error(f"AI functionality not implemented during source discovery API call: {e}", exc_info=True)
         raise HTTPException(status_code=501, detail=f"AI functionality not implemented: {e}")
     except Exception as e:
-        # Generic error handling
-        # In production, log this error properly
-        print(f"Error in discover_sources_endpoint: {e}")
+        logger.exception(f"Unexpected error in discover_sources_endpoint for query '{query_input.raw_query[:50]}...'") # Use logger.exception to include stack trace
         raise HTTPException(status_code=500, detail="Internal server error during source discovery.") 

@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON # Or other type for vector
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from backend.app.core.db import Base # Assuming Base is defined in core.db
+from app.core.db import Base # Corrected import
 
 # If using a vector DB extension like pgvector, the column type would be different.
 # For now, using JSON to store a list of floats.
