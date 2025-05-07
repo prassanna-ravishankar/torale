@@ -44,6 +44,31 @@ ambi-alert/
 1.  **Backend Setup:** See [backend/README.md](backend/README.md)
 2.  **Frontend Setup:** See [frontend/README.md](frontend/README.md) (Ensure Supabase environment variables are set)
 
+### 🚀 Launch Instructions
+
+The easiest way to launch AmbiAlert for development is by using the provided `start.sh` script from the root of the project. This script handles starting both the backend and frontend services.
+
+1.  **Ensure Prerequisites are Met:**
+    *   Complete the **Backend Setup** and **Frontend Setup** as detailed in their respective `README.md` files ([backend/README.md](backend/README.md) and [frontend/README.md](frontend/README.md)). This includes installing dependencies and setting up environment variables.
+
+2.  **Make the script executable (one-time setup):**
+    ```bash
+    chmod +x start.sh
+    ```
+3.  **Run the script from the project root:**
+    ```bash
+    ./start.sh
+    ```
+    *   The backend API will start in the background (typically at `http://localhost:8000`).
+    *   The frontend application will start in the foreground (typically at `http://localhost:3000`).
+    *   Open your web browser and navigate to `http://localhost:3000` to use AmbiAlert.
+    *   To stop the frontend server (and the script), press `Ctrl+C` in the terminal where `start.sh` is running. 
+    *   The script will remind you to manually stop the backgrounded backend server (its PID will be displayed when it starts).
+
+For more detailed information on running each service independently, or for troubleshooting, please refer to:
+- [Backend README](backend/README.md)
+- [Frontend README](frontend/README.md)
+
 ## 📚 Documentation
 
 - Backend API documentation: http://localhost:8000/docs (when backend is running)
