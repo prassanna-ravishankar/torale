@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Optional
 
 from pydantic_settings import BaseSettings
 
@@ -14,6 +15,19 @@ class Settings(BaseSettings):
     # Email Settings
     SENDGRID_API_KEY: str
     ALERT_FROM_EMAIL: str = "alerts@ambialert.com"
+
+    # AI Provider API Keys - these should be loaded from .env
+    OPENAI_API_KEY: Optional[str] = None
+    PERPLEXITY_API_KEY: Optional[str] = None
+    # Add other AI provider keys as needed
+
+    # AI Model Selection (examples)
+    # Specifies which AI client to use for specific tasks defined in AIModelInterface
+    # Values could be e.g., "openai", "perplexity", "claude" etc.
+    AI_PROVIDER_FOR_REFINE_QUERY: Optional[str] = "perplexity" # Default to perplexity as per plan for source discovery
+    AI_PROVIDER_FOR_IDENTIFY_SOURCES: Optional[str] = "perplexity" # Default to perplexity
+    AI_PROVIDER_FOR_GENERATE_EMBEDDINGS: Optional[str] = "openai" # Default to openai as per plan
+    AI_PROVIDER_FOR_ANALYZE_DIFF: Optional[str] = "openai" # Default to openai
 
     # Monitoring Settings
     DEFAULT_CHECK_FREQUENCY_MINUTES: int = 30

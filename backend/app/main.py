@@ -1,38 +1,45 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import alerts
-from app.core.database import init_db
+# from app.api import alerts # Old router, to be replaced
+# from app.core.database import init_db # Old DB init, to be replaced
+
+from backend.app.core.config import settings # Corrected import path
+from backend.app.core.db import Base, engine # For table creation
+from backend.app.api.endpoints import source_discovery, monitoring # New routers
 
 app = FastAPI(
-    title="AmbiAlert API",
-    description="Natural language-powered alerting service API",
-    version="0.1.0",
+    title=settings.PROJECT_NAME,
+    version="0.2.0", # Updated version for next-gen
+    description="Next-generation alerting service API with AI-powered source discovery and change detection."
 )
 
 # Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if settings.CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[str(origin) for origin in settings.CORS_ORIGINS],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-# Include routers
-app.include_router(alerts.router, prefix="/api/v1", tags=["alerts"])
-
-
+# Create database tables on startup (for development; use Alembic for production)
 @app.on_event("startup")
-async def startup_event():
-    """Initialize database on startup."""
-    await init_db()
+def on_startup():
+    # This creates tables if they don't exist. 
+    # For production, Alembic migrations are preferred.
+    Base.metadata.create_all(bind=engine)
+    # await init_db() # Replaced old init_db
 
+# Include new routers
+app.include_router(source_discovery.router, prefix=settings.API_V1_STR, tags=["Source Discovery"])
+app.include_router(monitoring.router, prefix=settings.API_V1_STR, tags=["Monitoring & Alerts"])
+# app.include_router(alerts.router, prefix="/api/v1", tags=["alerts"]) # Removed old alerts router
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to AmbiAlert API"}
-
+    return {"message": f"Welcome to {settings.PROJECT_NAME} API v0.2.0"}
 
 @app.get("/health")
 async def health_check():

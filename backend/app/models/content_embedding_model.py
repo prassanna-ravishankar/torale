@@ -1,0 +1,23 @@
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON # Or other type for vector
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from backend.app.core.db import Base # Assuming Base is defined in core.db
+
+# If using a vector DB extension like pgvector, the column type would be different.
+# For now, using JSON to store a list of floats.
+from sqlalchemy.dialects.postgresql import ARRAY, FLOAT # Example for PostgreSQL
+
+class ContentEmbedding(Base):
+    __tablename__ = "content_embeddings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    scraped_content_id = Column(Integer, ForeignKey("scraped_contents.id"), nullable=False, unique=True)
+    # Storing embeddings as JSON array of floats. 
+    # For dedicated vector dbs or extensions like pgvector, use appropriate types e.g. Vector(dim)
+    embedding_vector = Column(JSON, nullable=False) 
+    # Alternatively, for PostgreSQL specifically:
+    # embedding_vector_pg = Column(ARRAY(FLOAT), nullable=False)
+    model_name = Column(String, nullable=False) # e.g., "text-embedding-ada-002", "all-MiniLM-L6-v2"
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    scraped_content = relationship("ScrapedContent", back_populates="embedding") 
