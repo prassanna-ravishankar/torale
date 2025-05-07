@@ -616,50 +616,29 @@ Based on the new project goals, we're undertaking a major refactoring to:
 - Address frontend linting warnings (e.g., `img` tags).
 - Proceed with core feature development.
 
-## 2025-05-07: Next-Gen Backend - Initial Scaffolding & Core Logic 🏗️
+## 2025-05-07: Iteration 1 Backend Stabilization & Testing Success 🟢
 
-### Changes Made
+### Changes Made & Outcomes
 
-*   **Adherence to `next-gen-plan.md`**: Implemented the initial phase of the backend redesign.
-*   **Directory Structure & Placeholders**: Created the new directory layout and placeholder files for services, schemas, models, and API endpoints as specified in `backend/next-gen-plan.md`.
-*   **AI Model Abstraction**: 
-    *   Defined `AIModelInterface` (`app/services/ai_integrations/interface.py`) with abstract methods for `refine_query`, `identify_sources`, `generate_embeddings`, and `analyze_diff`.
-*   **Pydantic Schemas**: 
-    *   Implemented schemas for source discovery (`source_discovery_schemas.py`), content & embeddings (`content_schemas.py`), alerts (`alert_schemas.py`), and monitored source CRUD (`monitoring_schemas.py`).
-*   **SQLAlchemy Models**:
-    *   Defined database models: `UserQuery`, `MonitoredSource`, `ScrapedContent`, `ContentEmbedding`, and `ChangeAlert` in `app/models/`.
-*   **Core Database Setup**:
-    *   Created `app/core/db.py` with SQLAlchemy `Base`, `engine`, `SessionLocal`, and `get_db` dependency.
-*   **Legacy Service Removal**:
-    *   Deleted `backend/app/services/monitor_service.py` and `backend/app/services/embedding_service.py`.
-*   **Core Service Implementation (Initial Versions)**:
-    *   `SourceDiscoveryService` (`app/services/source_discovery_service.py`): Takes raw query, uses (placeholder) AI for refinement and source identification.
-    *   `ContentIngestionService` (`app/services/content_ingestion_service.py`): Basic web scraping, uses AI for embedding generation (via interface), and stores content/embeddings in DB.
-    *   `ChangeDetectionService` (`app/services/change_detection_service.py`): Compares embeddings, uses (optional placeholder) AI for diff analysis, and stores `ChangeAlert` in DB.
-*   **API Endpoint Implementation**:
-    *   `app/api/endpoints/source_discovery.py`: Added `/discover-sources/` endpoint using `SourceDiscoveryService` with placeholder AI model DI.
-    *   `app/api/endpoints/monitoring.py`: Implemented CRUD endpoints for `MonitoredSource` and `ChangeAlert` management.
-*   **Configuration Update**:
-    *   Updated `app/core/config.py` to include placeholder settings for AI provider API keys and model selection strategy.
-*   **FastAPI Application Update**:
-    *   Modified `app/main.py` to include new API routers (`source_discovery`, `monitoring`), configure CORS from settings, and initialize database tables on startup via `Base.metadata.create_all()`.
-*   **Plan Update**:
-    *   Updated `backend/next-gen-plan.md` to reflect completed work and defer background task management to a future iteration.
+*   **Successful Test Execution**: All previously implemented tests for the core monitoring API (`test_monitoring_api.py`), Pydantic schemas (`test_monitoring_schemas.py`), and the Perplexity AI client (`test_perplexity_client.py`) are now **passing**.
+*   **Async & Database Corrections**:
+    *   Ensured asynchronous operations are correctly handled throughout the FastAPI application lifecycle (startup events in `app/main.py`) and in database interactions (`app/core/db.py` and API endpoints in `app/api/endpoints/monitoring.py`).
+    *   Resolved SQLAlchemy compatibility issues, including `MissingGreenlet` errors and type mismatches (e.g., `HttpUrl` to `str` for database storage).
+*   **Pydantic V2 Compatibility**: Updated schemas and relevant tests to align with Pydantic V2 (e.g., `from_attributes` instead of `orm_mode`).
+*   **Refined AI Client Mocking**: Improved the mocking strategy for `aiohttp.ClientSession` in `test_perplexity_client.py` for more reliable and accurate testing of the AI client.
+*   **Dependency Verification**: Ensured necessary dependencies like `greenlet` are correctly installed and utilized.
 
 ### Benefits
 
-*   ✅ Foundational structure for the next-generation backend is in place.
-*   ✅ Clear separation of concerns with services, models, schemas, and API layers.
-*   ✅ AI interactions are routed through an abstraction layer (`AIModelInterface`).
-*   ✅ Core data models and storage mechanisms (SQLAlchemy with SQLite) established.
-*   ✅ Basic API endpoints for core functionalities are available.
-*   ✅ Plan document updated to reflect current status and next steps.
+*   ✅ **Stable Core Functionality**: The foundational CRUD operations for monitored sources and the Perplexity AI client integration are now stable and verified by a full suite of passing tests.
+*   ✅ **Robust Asynchronous Architecture**: The backend's asynchronous architecture for database and API operations has been validated.
+*   ✅ **Foundation for Further Development**: With these core components stabilized, development can proceed on subsequent Iteration 1 tasks (like `OpenAIClient` implementation, further service refinements, and expanded test coverage) with greater confidence.
 
-### Next Steps (as per updated `next-gen-plan.md` - Iteration 1)
+### Next Steps (Continuing Iteration 1 from `next-gen-plan.md`)
 
-1.  **Full AI Client Implementation**: `OpenAIClient`, `PerplexityClient`.
-2.  **Refine Dependency Injection for AI Models** in API endpoints.
+1.  **Full AI Client Implementation**: Finalize `OpenAIClient`.
+2.  **Refine Dependency Injection for AI Models** in API endpoints (ensure all services use DI for AI models).
 3.  **Robust Scraping Enhancements** in `ContentIngestionService`.
 4.  **Refine Preprocessing Logic** in `ContentIngestionService`.
-5.  **Comprehensive Testing (Phase 1)**: Unit and integration tests.
-6.  **Logging Implementation**: Replace `print()` with a proper logging framework.
+5.  **Comprehensive Testing (Phase 2)**: Expand unit and integration tests, especially for `OpenAIClient` and the core services.
+6.  **Logging Implementation**: Continue replacing `print()` with a proper logging framework across all new components.

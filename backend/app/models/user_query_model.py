@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
-from backend.app.core.db import Base # Assuming Base is defined in core.db
+from app.core.db import Base # Corrected import
 
 class UserQuery(Base):
     __tablename__ = "user_queries"
