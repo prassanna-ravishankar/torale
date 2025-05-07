@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.alert import AlertBase
+from app.schemas.alert import AlertBase, AlertCreate, AlertUpdate
 
 
 def test_alert_base_valid():
@@ -18,7 +18,7 @@ def test_alert_base_valid():
     alert = AlertBase(**data)
     assert alert.user_email == data["user_email"]
     assert alert.query == data["query"]
-    assert str(alert.target_url) == data["target_url"] + '/' # Added trailing slash for comparison
+    assert str(alert.target_url) == data["target_url"] + "/"
     assert alert.target_type == data["target_type"]
     assert alert.keywords == data["keywords"]
     assert alert.check_frequency_minutes == data["check_frequency_minutes"]
@@ -35,8 +35,8 @@ def test_alert_base_defaults():
     }
     alert = AlertBase(**data)
     assert alert.keywords is None
-    assert alert.check_frequency_minutes == 30
-    assert alert.similarity_threshold == 0.9
+    assert alert.check_frequency_minutes == 30  # noqa: PLR2004
+    assert alert.similarity_threshold == 0.9  # noqa: PLR2004
 
 
 def test_alert_base_invalid_email():
@@ -77,7 +77,6 @@ def test_alert_base_missing_required_field():
 
 # --- Tests for AlertCreate ---
 
-from app.schemas.alert import AlertCreate # Import AlertCreate
 
 def test_alert_create_valid():
     """Test creating AlertCreate with valid data."""
@@ -90,17 +89,16 @@ def test_alert_create_valid():
     alert_create = AlertCreate(**data)
     assert alert_create.user_email == data["user_email"]
     assert alert_create.query == data["query"]
-    assert str(alert_create.target_url) == data["target_url"] + '/'
+    assert str(alert_create.target_url) == data["target_url"] + "/"
     assert alert_create.target_type == data["target_type"]
     # Check defaults inherited from AlertBase
     assert alert_create.keywords is None
-    assert alert_create.check_frequency_minutes == 30
-    assert alert_create.similarity_threshold == 0.9
+    assert alert_create.check_frequency_minutes == 30  # noqa: PLR2004
+    assert alert_create.similarity_threshold == 0.9  # noqa: PLR2004
 
 
 # --- Tests for AlertUpdate ---
 
-from app.schemas.alert import AlertUpdate # Import AlertUpdate
 
 def test_alert_update_with_is_active():
     """Test creating AlertUpdate with is_active set."""
@@ -109,11 +107,12 @@ def test_alert_update_with_is_active():
         "query": "update query",
         "target_url": "https://update.example.com",
         "target_type": "rss",
-        "is_active": False
+        "is_active": False,
     }
     alert_update = AlertUpdate(**data)
     assert alert_update.user_email == data["user_email"]
-    assert alert_update.is_active == False
+    assert not alert_update.is_active
+
 
 def test_alert_update_without_is_active():
     """Test creating AlertUpdate without is_active (should default to None)."""
@@ -125,7 +124,8 @@ def test_alert_update_without_is_active():
     }
     alert_update = AlertUpdate(**data)
     assert alert_update.user_email == data["user_email"]
-    assert alert_update.is_active is None # Check that it's None when not provided
+    assert alert_update.is_active is None  # Check that it's None when not provided
+
 
 def test_alert_update_invalid_type():
     """Test AlertUpdate fails if is_active has wrong type."""
@@ -134,7 +134,7 @@ def test_alert_update_invalid_type():
         "query": "update query",
         "target_url": "https://update.example.com",
         "target_type": "rss",
-        "is_active": "not-a-boolean" 
+        "is_active": "not-a-boolean",
     }
     with pytest.raises(ValidationError):
-        AlertUpdate(**data) 
+        AlertUpdate(**data)
