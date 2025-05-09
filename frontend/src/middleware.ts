@@ -80,7 +80,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getSession();
 
   // Define protected routes
-  const protectedPaths = ["/dashboard", "/profile", "/settings", "/alerts"];
+  const protectedPaths = ["/dashboard", "/profile", "/settings", "/alerts", "/discover", "/sources"];
   const isProtectedPath = protectedPaths.some(
     (path) =>
       request.nextUrl.pathname === path ||
