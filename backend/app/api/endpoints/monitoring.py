@@ -6,6 +6,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 import logging # Import logging
+import json # Import json for keywords and config
 
 from app.core.db import get_db
 from app.models.monitored_source_model import MonitoredSource
@@ -26,22 +27,26 @@ async def create_monitored_source(
     source_in: MonitoredSourceCreate,
     db: AsyncSession = Depends(get_db)
 ):
-    logger.info(f"Received request to create monitored source for URL: {source_in.url}")
+    logger.info(f"Received request to create monitored source: {source_in.model_dump(exclude_none=True)}")
     result = await db.execute(
         select(MonitoredSource).filter(MonitoredSource.url == str(source_in.url))
     )
     existing_source = result.scalars().first()
-    if existing_source:
-        logger.warning(f"Attempted to create monitored source for existing URL: {source_in.url}")
+    if existing_source and not existing_source.is_deleted:
+        logger.warning(f"Attempted to create monitored source for existing active URL: {source_in.url}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
-            detail=f"URL '{source_in.url}' is already being monitored."
+            detail=f"URL '{source_in.url}' is already being actively monitored."
         )
     
     db_source = MonitoredSource(
         url=str(source_in.url), # Ensure URL is a string for the DB model
-        check_interval_seconds=source_in.check_interval_seconds
-        # status will default in the model or be None if not in source_in
+        name=source_in.name,
+        check_interval_seconds=source_in.check_interval_seconds if source_in.check_interval_seconds is not None else 3600,
+        source_type=source_in.source_type,
+        keywords_json=json.dumps(source_in.keywords) if source_in.keywords is not None else None,
+        config_json=json.dumps(source_in.config) if source_in.config is not None else None,
+        status="active" # Default status for new sources
     )
     try:
         db.add(db_source)
