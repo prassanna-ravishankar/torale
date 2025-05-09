@@ -36,6 +36,14 @@
         *   ✅ 3.2. Create Form (`/sources/new/page.tsx`) implemented with `react-hook-form`, `zod`, TanStack Query `useMutation`, and pre-fills from `/discover`.
         *   ✅ 3.3. Edit Form (`/sources/[id]/edit/page.tsx`) implemented, fetches data, allows updates for URL, interval, and status using `useMutation`.
         *   ✅ 3.4. Delete Functionality implemented in list view with confirmation and `useMutation`.
+    *   ✅ **Task 4 (Change Alert Display UI & Logic)** - **COMPLETED**
+        *   ✅ 4.1. List View (`/alerts/page.tsx`) implemented:
+            *   Fetches and displays `ChangeAlertSchema` records using `useQuery`.
+            *   Includes basic filtering for `is_acknowledged`.
+            *   Displays key alert info (source, summary, timestamp, details, screenshot).
+            *   Placeholders for advanced filtering/sorting.
+        *   ✅ 4.2. Detail View (`/alerts/[id]/page.tsx`) implemented: Fetches and displays comprehensive alert details.
+        *   ✅ 4.3. Acknowledge Functionality: Implemented on both list and detail views with `useMutation`.
 
 ## 2025-05-07: Iteration 1 Backend Stabilization & Testing Success 🟢
 
