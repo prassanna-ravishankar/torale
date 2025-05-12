@@ -1,5 +1,37 @@
 # Progress Log
 
+## 2025-05-12: Backend Iteration 1 Completed & Tested ✅
+
+### Changes Made & Outcomes
+
+*   **Completed Backend Iteration 1**: Successfully implemented and tested all core features defined for Iteration 1 in `backend/next-gen-plan.md`.
+    *   ✅ Completed `UserQuery` model, schemas, and API endpoint (`POST /user-queries/`).
+    *   ✅ Integrated the new `UserQuery` flow with `SourceDiscoveryService` via background tasks.
+    *   ✅ Reviewed and tested AI client implementations (`PerplexityClient`, `OpenAIClient`).
+    *   ✅ Refined and tested dependency injection for AI models.
+    *   ✅ Updated `backend/next-gen-plan.md` to reflect task completion.
+*   **Comprehensive Testing**: Addressed numerous issues identified during extensive testing:
+    *   Resolved test environment setup problems (DB creation, settings loading).
+    *   Fixed async transaction handling in endpoints and test fixtures.
+    *   Corrected mocking strategies for async database operations.
+    *   Refined service logic to handle awaitables correctly.
+    *   Adjusted brittle timestamp tests for reliability.
+*   **Successful Test Execution**: All 48 backend tests are now passing.
+
+### Benefits
+
+*   ✅ **Functional User Query Flow**: Users can now submit queries, have them processed to discover sources, and have corresponding `MonitoredSource` records created.
+*   ✅ **Stable and Tested Foundation**: Iteration 1 components are verified, providing a solid base for subsequent features.
+*   ✅ **Robust Async Architecture**: Further validation of the async nature of the backend.
+
+### Next Steps (Backend - Iteration 2 from `next-gen-plan.md`)
+
+1.  **Background Task Management**: Implement a robust system (e.g., Celery) for periodic tasks (triggering discovery, content ingestion, change detection).
+2.  **Scalability & Error Handling**: Design for scalability and implement advanced error handling/retries.
+3.  **Monitoring & Observability**: Integrate application monitoring.
+4.  **Storage Evolution**: Evaluate dedicated vector databases.
+5.  Continue development based on `backend/next-gen-plan.md` Iteration 2 goals.
+
 ## 2025-05-09: Frontend Iteration 1 Plan Adopted 📄
 
 ### Plan Overview

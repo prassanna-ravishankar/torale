@@ -83,96 +83,131 @@ The backend will be composed of the following core services:
     *   The `**kwargs` in interface methods allow for passing provider-specific parameters. Consider explicitly naming common, high-level parameters if they exist across providers for a given method, reserving `**kwargs` for truly optional, provider-specific tuning.
     *   This approach centralizes all AI operations into one interface. When an external AI provider's API changes, modifications are primarily contained within the specific client class for that provider.
 
-## Data Flow
+## Data Flow (Conceptual - Requires New Query Handling)
 
-*   **Status:** Components for this flow have been scaffolded. Actual execution requires full AI client implementation and background task scheduling (deferred).
-1.  User submits an initial query.
-2.  **Source Discovery Service** processes the raw query, refines it internally, and identifies monitorable URLs.
-3.  Monitorable URLs are passed to **Content Ingestion Service**:
-    *   Scrapes content from URLs.
+*   **Status:** Components for URL-based flow exist. Query-based flow needs new components.
+1.  **User submits a monitoring query** via the new `/alerts/new` page.
+2.  **New API Endpoint** (`POST /user-queries/`) receives the query and configuration hints, saving a `UserQuery` record (status: `pending_discovery`).
+3.  **Background Task/Trigger (Iteration 2):** Detects new `UserQuery` records.
+4.  For each new `UserQuery`, invoke **Source Discovery Service**:
+    *   Takes the user query text.
+    *   Refines it and identifies monitorable URLs.
+5.  For each discovered URL:
+    *   Create a `MonitoredSource` record, linking it to the original `UserQuery` and applying configuration hints.
+6.  **Content Ingestion Service** (triggered by background task scheduler):
+    *   Finds `MonitoredSource` records needing checks.
+    *   Scrapes content from the associated URL.
     *   Generates embeddings.
     *   Stores content and embeddings with timestamps.
-    *   This step is repeated at scheduled intervals.
-4.  **Change Detection Service** (triggered at intervals or after new scrapes):
-    *   Retrieves current and previous embeddings for a URL.
+7.  **Change Detection Service** (triggered at intervals or after new scrapes):
+    *   Retrieves current and previous embeddings for a `MonitoredSource` URL.
     *   Compares embeddings to detect changes.
-    *   If a significant change is detected, an alert/notification is generated (implemented as `ChangeAlert` DB record).
+    *   If a significant change is detected, creates a `ChangeAlert` record linked to the `MonitoredSource`.
 
 ## Integration with Existing `backend/app` Structure
 
-*   **Status:** Largely Implemented.
+*   **Status:** Largely Implemented, requires additions for User Query flow.
 *   **`app/api/`**:
-    *   New API endpoint modules will be created here:
-        *   `app/api/endpoints/source_discovery.py`: Endpoints for submitting raw queries and getting monitorable sources (handled by the `SourceDiscoveryService`). **[Implemented - Initial Version]**
-        *   `app/api/endpoints/monitoring.py`: Endpoints for managing monitored sources (if manual management is needed) and retrieving change notifications/alerts. **[Implemented - Initial Version]**
+    *   New API endpoint modules will be created/updated:
+        *   `app/api/endpoints/user_queries.py`: **[NEW]** Endpoints for submitting and managing monitoring tasks/queries (e.g., `POST /user-queries/`).
+        *   `app/api/endpoints/source_discovery.py`: Endpoints for *direct* source discovery (if needed), potentially refactored to be primarily used internally by the User Query flow. **[Exists - Review Use Case]**
+        *   `app/api/endpoints/monitoring.py`: Endpoints for managing individual `MonitoredSource` records and retrieving `ChangeAlert` records. **[Exists - Primarily for internal/admin use or viewing results]**
 *   **`app/services/`**:
-    *   This will be the primary location for the business logic of the new services:
-        *   `app/services/source_discovery_service.py` **[Implemented - Initial Version]**
-        *   `app/services/content_ingestion_service.py` **[Implemented - Initial Version]**
-        *   `app/services/change_detection_service.py` **[Implemented - Initial Version]**
-    *   The **AI Model Abstraction Layer** will also reside here:
-        *   `app/services/ai_integrations/interface.py`: Defines the `AIModelInterface(ABC)`. **[Implemented]**
-        *   `app/services/ai_integrations/perplexity_client.py`: Implements `AIModelInterface` using the Perplexity API. **[Skeleton Created]**
-        *   `app/services/ai_integrations/openai_client.py`: Implements `AIModelInterface` using the OpenAI API. **[Skeleton Created]**
+    *   Existing services remain crucial:
+        *   `app/services/source_discovery_service.py` **[Exists - Used by User Query Flow]**
+        *   `app/services/content_ingestion_service.py` **[Exists - Monitors sources created by User Query Flow]**
+        *   `app/services/change_detection_service.py` **[Exists - Detects changes for sources created by User Query Flow]**
+    *   AI Model Abstraction Layer: **[Exists - Used by Services]**
+        *   `app/services/ai_integrations/interface.py`
+        *   `app/services/ai_integrations/perplexity_client.py`
+        *   `app/services/ai_integrations/openai_client.py`
 *   **`app/schemas/`**:
-    *   New Pydantic schemas will be added for requests and responses: **[Implemented]**
-        *   Schemas for raw queries and lists of URLs (`source_discovery_schemas.py`).
-        *   Schemas for scraped content, embeddings, and associated metadata (`content_schemas.py`).
-        *   Schemas for change detection results and alerts (`alert_schemas.py`).
-        *   Schemas for monitored source CRUD (`monitoring_schemas.py`).
+    *   New/Updated Pydantic schemas:
+        *   `app/schemas/user_query_schemas.py`: **[NEW]** Schemas for the user query/task itself (`UserQueryCreate`, `UserQueryInDB`).
+        *   `source_discovery_schemas.py`. **[Exists]**
+        *   `content_schemas.py`. **[Exists]**
+        *   `alert_schemas.py`. **[Exists]**
+        *   `monitoring_schemas.py`. **[Exists - Primarily for `MonitoredSource`]**
 *   **`app/models/`**:
-    *   If using a relational database, new models: `UserQuery`, `MonitoredSource`, `ScrapedContent`, `ContentEmbedding`, `ChangeAlert`. **[Implemented using SQLAlchemy]**
-    *   Vector database interaction logic, if used, might be encapsulated or linked from here/services. **[Deferred - Current uses JSON in SQL]**
-*   **`app/core/`**:
-    *   `app/core/config.py`: Updated for AI API keys, model selection for different tasks (which concrete AI client to inject for services). **[Implemented - Initial Version with placeholders]**
-    *   `app/core/db.py`: Implemented for SQLAlchemy `Base`, `engine`, `SessionLocal`, `get_db`. **[Implemented]**
-    *   Client initialization for AI services or a shared HTTP client. **[Placeholder DI in API endpoints; full initialization pending]**
-*   **`app/main.py`**:
-    *   Updated to include new API routers from `app/api/endpoints/`. **[Implemented]**
-    *   May include initialization for background tasks (e.g., `ContentIngestionService` scheduler). **[Deferred to Iteration 2]**
+    *   New/Updated models:
+        *   `app/models/user_query_model.py`: **[NEW]** SQLAlchemy model for `UserQuery`.
+        *   `MonitoredSource`, `ScrapedContent`, `ContentEmbedding`, `ChangeAlert`. **[Exist]**
+*   **`app/core/`**: **[Exists - Updates likely minimal]**
+    *   `app/core/config.py`
+    *   `app/core/db.py`
+*   **`app/main.py`**: **[Exists - Needs new router]**
+    *   Update to include the new `user_queries` API router.
 
-## Iteration 1: Next Steps (Immediate Focus)
+## Consolidated Iteration 1: Query-Based Monitoring & Core Service Refinement
 
-*   **Full AI Client Implementation:**
-    *   Implement `PerplexityClient` in `app/services/ai_integrations/perplexity_client.py` to interact with the Perplexity API using API key from settings.
-    *   Implement `OpenAIClient` in `app/services/ai_integrations/openai_client.py` to interact with OpenAI APIs (embeddings, chat completion for diff analysis) using API key from settings.
-*   **Refine Dependency Injection for AI Models:**
-    *   Update API endpoint dependencies (e.g., in `source_discovery.py`, `monitoring.py` if ChangeDetectionService uses AI for diff) to correctly instantiate and provide the configured `AIModelInterface` (e.g., `OpenAIClient` or `PerplexityClient`) based on `settings` from `config.py`.
-*   **Robust Scraping Enhancements:**
-    *   Improve `ContentIngestionService` scraping capabilities (e.g., handling different content types, better error handling, respecting `robots.txt`).
-*   **Refine Preprocessing Logic:**
-    *   Implement text cleaning and preprocessing in `ContentIngestionService` before embedding generation.
-*   **Comprehensive Testing (Phase 1):**
-    *   Unit tests for individual services, AI client interaction points (with mocking), and utility functions.
-    *   Integration tests for API endpoints.
-*   **Logging Implementation:**
-    *   Replace all `print()` statements with a structured logging framework (e.g., Python's `logging` module).
+*   **Define User Query Model (`app/models/user_query_model.py`):** ✅
+    *   Status: **Completed**. All fields added and model tested.
+    *   *Task: Complete the SQLAlchemy model `UserQuery` with all necessary fields.*
+*   **Define User Query Schemas (`app/schemas/user_query_schemas.py`):** ✅
+    *   Status: **Completed**. Schemas created and tested.
+    *   *Task: Create Pydantic schemas (`UserQueryCreate`, `UserQueryInDB`, etc.) for `UserQuery` data.*
+*   **Implement User Query API Endpoint (`app/api/endpoints/user_queries.py`):** ✅
+    *   Status: **Completed**. Endpoint implemented, tested, and router added to `main.py`.
+    *   *Task: Create a `POST /user-queries/` endpoint to save a new `UserQuery` (status: `pending_discovery`). Add router to `main.py`.*
+*   **Update Frontend API Call:** ✅
+    *   Status: **Done**. Frontend prepares payload for the new endpoint (call is placeholder).
+*   **Database Migration/Creation for `user_queries` table:** ✅
+    *   Status: **Done**. Model complete; schema managed via test setup/SQLAlchemy create_all.
+    *   *Task: Ensure DB schema matches the complete `UserQuery` model.*
+*   **Connect User Query to Discovery:** ✅
+    *   Status: **Completed**. Implemented via `UserQueryProcessingService` and background task in API; tested.
+    *   *Task: Implement logic to trigger `SourceDiscoveryService` for new `UserQuery` records and create corresponding `MonitoredSource` records.*
+*   **Full AI Client Implementation (`perplexity_client.py`, `openai_client.py`):** ✅
+    *   Status: **Completed**. Reviewed, tested, and appear functional for the current scope.
+    *   *Task: Review and complete AI client implementations.*
+*   **Refine Dependency Injection for AI Models:** ✅
+    *   Status: **Completed**. Reviewed and tested via endpoint dependencies.
+    *   *Task: Ensure correct AI client injection via DI based on config.*
+*   **Robust Scraping Enhancements (`ContentIngestionService`):** 🟡
+    *   Status: **Ongoing/Planned**.
+    *   *Task: Iteratively improve scraping capabilities.*
+*   **Refine Preprocessing Logic (`ContentIngestionService`):** 🟡
+    *   Status: **Ongoing/Planned**.
+    *   *Task: Implement/enhance text cleaning and preprocessing.*
+*   **Comprehensive Testing (Phase 1):** ✅
+    *   Status: **Completed**. Tests written and debugged for Iteration 1 components.
+    *   *Task: Write/expand unit and integration tests for new/modified components.*
+*   **Logging Implementation:** ✅
+    *   Status: **Largely Done**.
+    *   *Task: Ensure consistent logging and remove any remaining `print` statements.*
 
-## Iteration 2: Enhancements & Production Readiness (Future Work)
+
+## Iteration 2: Production Readiness & Scaling (Formerly Iteration 3)
 
 *   **Background Task Management:**
-    *   Implement a robust mechanism for scheduling and running background tasks, especially for:
-        *   Periodic content ingestion by `ContentIngestionService` for all monitored sources.
-        *   Triggering `ChangeDetectionService` after new content is ingested.
-    *   Consider tools like Celery, FastAPI's `BackgroundTasks`, or a dedicated scheduler service.
+    *   Implement a robust mechanism (e.g., Celery) for:
+        *   Triggering the "Connect User Query to Discovery" logic periodically.
+        *   Periodic content ingestion by `ContentIngestionService`.
+        *   Triggering `ChangeDetectionService` after ingestion.
 *   **Scalability Enhancements:** Design services to be scalable independently.
-*   **Advanced Error Handling & Resilience:** Implement robust error handling, retries for external API calls and DB operations, and consider dead-letter queues.
+*   **Advanced Error Handling & Resilience:** Implement robust error handling, retries, dead-letter queues.
 *   **Monitoring & Observability:** Integrate comprehensive application monitoring and logging dashboards.
 *   **Storage Solutions Evolution:**
-    *   Evaluate and potentially migrate to a dedicated vector database for embeddings if performance with JSON in SQL becomes a bottleneck.
-*   **Configuration Management Refinement:** Centralize and manage configurations more robustly, potentially using a dedicated service for dynamic configurations if needed.
-*   **User Interface/API for Notifications:** Develop or integrate with a system for how users interact with and receive notifications beyond basic alert storage.
+    *   Evaluate and potentially migrate to a dedicated vector database.
+*   **Configuration Management Refinement:** Centralize and manage configurations robustly.
+*   **User Interface/API for Notifications:** Develop or integrate a system for user notifications.
 *   **Comprehensive Testing (Phase 2):**
     *   End-to-end tests.
     *   Performance and load tests.
-*   **Security Hardening:** Conduct security reviews and implement necessary hardening measures.
+*   **Security Hardening:** Conduct security reviews.
 *   **Deployment & CI/CD:** Mature deployment scripts and CI/CD pipelines.
 
 
 ## Original Future Considerations (Review and merge into Iterations above)
-*   **Scalability:** Design services to be scalable independently. **[Moved to Iteration 2]**
-*   **Error Handling & Resilience:** Robust error handling, retries, and dead-letter queues (beyond AI client specifics). **[Moved to Iteration 2]**
-*   **Monitoring & Logging:** Comprehensive logging and monitoring. **[Logging to Iteration 1, Monitoring to Iteration 2]**
-*   **Storage Solutions:** Phased approach to storage, starting simple. **[Partially addressed, vector DB to Iteration 2]**
-*   **Configuration Management:** Centralized configuration. **[Refinement to Iteration 2]**
-*   **User Interface/API:** How users interact and receive notifications. **[Moved to Iteration 2]**
+*   **Scalability:** [Merged into Iteration 2]
+*   **Error Handling & Resilience:** [Merged into Iteration 2]
+*   **Monitoring & Logging:** [Merged into Iteration 1 & 2]
+*   **Storage Solutions:** [Merged into Iteration 2]
+*   **Configuration Management:** [Merged into Iteration 2]
+*   **User Interface/API:** [Merged into Iteration 2]
+
+**Key:**
+*   ✅ Done
+*   ⚠️ Partially Done / Needs Review / Incomplete
+*   ❌ Not Started
+*   🟡 Ongoing/Planned (iterative task)

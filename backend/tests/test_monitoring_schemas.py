@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
 from datetime import datetime
+from unittest.mock import Mock
 
 from app.schemas.monitoring_schemas import (
     MonitoredSourceBase,
@@ -93,7 +94,7 @@ def test_monitored_source_in_db_valid():
     assert schema.user_query_id == 5
 
 def test_monitored_source_in_db_orm_mode(mocker): # Example for orm_mode if needed
-    mock_orm_obj = mocker.Mock()
+    mock_orm_obj = Mock()
     mock_orm_obj.id = 2
     mock_orm_obj.url = "https://orm.example.com"
     mock_orm_obj.check_interval_seconds = 900
@@ -102,9 +103,16 @@ def test_monitored_source_in_db_orm_mode(mocker): # Example for orm_mode if need
     mock_orm_obj.created_at = datetime.now()
     mock_orm_obj.updated_at = datetime.now()
     mock_orm_obj.user_query_id = None
+    mock_orm_obj.name = "Test ORM Source"
+    mock_orm_obj.source_type = "website"
+    mock_orm_obj.keywords = ["test", "orm"]
+    mock_orm_obj.config = {"threshold": 0.95}
 
     schema = MonitoredSourceInDB.model_validate(mock_orm_obj)
     assert schema.id == 2
-    assert str(schema.url) == "https://orm.example.com/" # Pydantic converts string to HttpUrl
+    assert str(schema.url) == "https://orm.example.com/"
     assert schema.status == "error"
-    assert schema.last_checked_at is None 
+    assert schema.name == "Test ORM Source"
+    assert schema.source_type == "website"
+    assert schema.keywords == ["test", "orm"]
+    assert schema.config == {"threshold": 0.95} 

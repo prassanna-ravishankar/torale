@@ -93,26 +93,20 @@ class OpenAIClient(AIModelInterface):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            # Ensure JSON mode if available and desired for the model
-            # "response_format": {"type": "json_object"}, # For newer models that support it
             **kwargs.get("api_params", {})
         }
-        api_params = payload.get("api_params", {})
-        if "response_format" not in api_params and "json" in system_prompt.lower():
-            api_params.update({"response_format": {"type": "json_object"}})
-            payload["api_params"] = api_params
 
         logger.info(f"Analyzing diff with OpenAI model: {model_to_use}.")
         response_data = await self._make_openai_request(OPENAI_API_URL_CHAT_COMPLETIONS, payload)
-        
+
         try:
             assistant_response_content = response_data["choices"][0]["message"]["content"].strip()
-            # Attempt to parse the content as JSON if we requested JSON output
-            if api_params.get("response_format") == {"type": "json_object"}:
+            # Check if JSON was requested in the actual payload sent
+            if payload.get("response_format") == {"type": "json_object"}:
                 try:
                     analysis_dict = json.loads(assistant_response_content)
                     if not isinstance(analysis_dict, dict) or "summary" not in analysis_dict:
-                        logger.error(f"OpenAI diff analysis JSON missing 'summary' key or not a dict. Content: {assistant_response_content}")
+                        logger.warning(f"OpenAI diff analysis JSON missing 'summary' key or not a dict. Content: {assistant_response_content}")
                         return {"summary": "Failed to parse structured JSON from AI.", "raw_response": assistant_response_content, "details": {}}
                     logger.info("Successfully parsed JSON diff analysis from OpenAI.")
                     return analysis_dict
@@ -120,8 +114,8 @@ class OpenAIClient(AIModelInterface):
                     logger.error(f"Failed to parse analyze_diff response as JSON from OpenAI. Raw: {assistant_response_content}", exc_info=True)
                     return {"summary": "AI response was not valid JSON.", "raw_response": assistant_response_content, "details": {}}
             else:
-                 # If not expecting JSON, return the raw text as summary
-                logger.info("OpenAI diff analysis returned raw text (JSON not requested/supported for this call).")
+                 # If JSON not requested, return the raw text as summary
+                logger.info("OpenAI diff analysis returned raw text (JSON not explicitly requested)." )
                 return {"summary": assistant_response_content, "details": {}}
 
         except (KeyError, IndexError, TypeError) as e:
