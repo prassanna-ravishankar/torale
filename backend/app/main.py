@@ -7,7 +7,7 @@ import logging
 
 from app.core.config import get_settings # Import get_settings instead of settings
 from app.core.db import Base, engine # Corrected import
-from app.api.endpoints import source_discovery, monitoring # Corrected import
+from app.api.endpoints import source_discovery, monitoring, user_queries # Corrected import
 from app.core.logging_config import setup_logging # Corrected import
 
 app = FastAPI(
@@ -32,19 +32,20 @@ if sys_settings.CORS_ORIGINS: # Use the instance
     )
 
 # Create database tables on startup (for development; use Alembic for production)
-@app.on_event("startup")
-async def on_startup(): # Make the function asynchronous
-    # This creates tables if they don't exist. 
-    # For production, Alembic migrations are preferred.
-    logging.info("Creating database tables if they don't exist...")
-    async with engine.begin() as conn: # Use async context manager for engine
-        await conn.run_sync(Base.metadata.create_all) # Use run_sync for create_all
-    logging.info("Database tables checked/created.")
+# @app.on_event("startup")
+# async def on_startup(): # Make the function asynchronous
+#     # This creates tables if they don\'t exist. 
+#     # For production, Alembic migrations are preferred.
+#     logging.info("Creating database tables if they don\'t exist...")
+#     async with engine.begin() as conn: # Use async context manager for engine
+#         await conn.run_sync(Base.metadata.create_all) # Use run_sync for create_all
+#     logging.info("Database tables checked/created.")
     # await init_db() # Replaced old init_db
 
 # Include new routers
 app.include_router(source_discovery.router, prefix=sys_settings.API_V1_STR, tags=["Source Discovery"]) # Use the instance
 app.include_router(monitoring.router, prefix=sys_settings.API_V1_STR, tags=["Monitoring & Alerts"]) # Use the instance
+app.include_router(user_queries.router, prefix=f"{sys_settings.API_V1_STR}/user-queries", tags=["User Queries"]) # Add new router
 # app.include_router(alerts.router, prefix="/api/v1", tags=["alerts"]) # Removed old alerts router
 
 @app.get("/")
