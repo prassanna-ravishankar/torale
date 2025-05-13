@@ -82,44 +82,78 @@ For more detailed information on running each service independently, or for trou
 4. Push to the branch
 5. Create a Pull Request
 
-## ✅ Implemented (Formerly "Coming Up")
+## ✅ Implemented
 
-### Frontend
+### Core Functionality
+- Natural language query parsing for source discovery.
+- Website content monitoring (initial version).
+- Semantic change detection (initial version based on embeddings).
+- Email notifications (basic setup).
+- User Authentication (Supabase with `@supabase/ssr`).
+- RESTful API for core operations.
 
-- User authentication flow (using Supabase Auth with `@supabase/ssr`)
-- Email verification system (via Supabase Auth)
+### Backend (Iteration 1 Completed)
+- `UserQuery` model, schemas, and API endpoint (`POST /user-queries/`).
+- Integration of `UserQuery` flow with `SourceDiscoveryService` via background tasks.
+- `SourceDiscoveryService` for identifying monitorable URLs from raw queries.
+- `ContentIngestionService` for scraping content and generating embeddings.
+- `ChangeDetectionService` for comparing embeddings and flagging changes.
+- AI Model Abstraction Layer (`AIModelInterface`) with Perplexity and OpenAI client implementations.
+- Dependency Injection for AI models.
+- Core database models (`UserQuery`, `MonitoredSource`, `ScrapedContent`, `ContentEmbedding`, `ChangeAlert`).
+- Pydantic schemas for all models and API interactions.
+- FastAPI application structure with routers for user queries, source discovery, monitored sources, and alerts.
+- Comprehensive testing for Iteration 1 components.
+
+### Frontend (Iteration 1 Completed)
+- User authentication flow (Sign In, Sign Up, Profile) using Supabase Auth, Next.js Middleware, and `@supabase/ssr`.
+- Dedicated Axios instance (`src/lib/axiosInstance.ts`) with Supabase JWT interceptor for API calls.
+- TanStack Query (`QueryClientProvider`, `useQuery`, `useMutation`) for server state management.
+- Source Discovery UI (`/discover`):
+    - Form to submit raw queries (`POST /api/v1/discover-sources/`).
+    - Display of `monitorable_urls`.
+    - Navigation to `/sources/new` with pre-filled URL.
+- Monitored Source Management UI (`/sources`):
+    - List view (`/sources/page.tsx`) displaying sources via TanStack Query.
+    - Create form (`/sources/new/page.tsx`) with `react-hook-form`, `zod`, and TanStack Query `useMutation`.
+    - Edit form (`/sources/[id]/edit/page.tsx`) for URL, interval, and status updates.
+    - Delete functionality with confirmation and `useMutation`.
+- Change Alert Display UI (`/alerts`):
+    - List view (`/alerts/page.tsx`) displaying `ChangeAlertSchema` records with basic filtering.
+    - Detail view (`/alerts/[id]/page.tsx`) for comprehensive alert details.
+    - Acknowledge functionality on list and detail views using `useMutation`.
+- Toast notifications for user feedback (`react-hot-toast`).
+- Basic responsive design and type-safe components.
 
 ## 🚀 Coming Up
 
-### Backend
-
-- YouTube API integration for channel monitoring
-- RSS feed support with feed parsing
-- Secure API endpoints (e.g., requiring authentication)
-- Rate limiting for API endpoints
-- Monitoring dashboard with metrics
-- Comprehensive test coverage
-- Deployment configuration
+### Backend (Iteration 2 & Beyond)
+- **Background Task Management:** Implement a robust system (e.g., Celery) for periodic tasks (triggering discovery, content ingestion, change detection).
+- **Scalability & Error Handling:** Design for scalability and implement advanced error handling/retries for services.
+- **Monitoring & Observability:** Integrate comprehensive application monitoring and logging dashboards.
+- **Storage Evolution:** Evaluate and potentially migrate to a dedicated vector database for embeddings and scraped content.
+- **Robust Scraping Enhancements:** Continue to improve scraping capabilities in `ContentIngestionService` (e.g., handling dynamic content, different content types).
+- **Refine Preprocessing Logic:** Enhance text cleaning and preprocessing in `ContentIngestionService`.
+- YouTube API integration for channel monitoring.
+- RSS feed support with feed parsing.
+- Secure API endpoints further (e.g., advanced permissions beyond basic auth).
+- Rate limiting for API endpoints.
+- Deployment configuration and CI/CD maturation.
 
 ### Frontend
-
-- User profile management (display/edit)
-- Real-time updates using WebSocket (potentially via Supabase Realtime)
-- Alert history view
-- Alert statistics and analytics
-- Enhanced mobile responsiveness
-- Loading states and error boundaries
-- Dark mode support
+- User profile management (displaying/editing more detailed profile data beyond basic auth info).
+- Real-time updates using WebSocket (potentially via Supabase Realtime) for alerts.
+- Advanced filtering and sorting options for alerts and monitored sources.
+- Alert statistics and analytics dashboard.
+- Enhanced mobile responsiveness and accessibility improvements.
+- Comprehensive loading states and error boundaries across the application.
+- Dark mode support.
+- UI for managing `UserQuery` configurations directly (if needed beyond initial discovery).
 
 ### General
-
-- Slack and Discord notification support
-- Advanced content filtering
-- Custom alert templates
-- API key management
-- Usage analytics
-- Performance optimizations
-- Documentation improvements
+- Slack and Discord notification support (extending the alert notification system).
+- Advanced content filtering options for monitoring.
+- Custom alert templates.
 
 ## 📄 License
 
