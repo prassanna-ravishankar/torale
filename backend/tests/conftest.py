@@ -1,6 +1,7 @@
-import pytest
-import os  # Keep os import
 import logging
+import os  # Keep os import
+
+import pytest
 
 # --- Set Environment Variables for Tests BEFORE any app imports ---
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{os.path.abspath('./test.db')}"
@@ -13,31 +14,19 @@ os.environ["API_V1_STR"] = "/api/v1"
 os.environ["CORS_ORIGINS"] = '["http://localhost:3000"]'  # No comma here!
 os.environ["SELECTED_AI_PROVIDER"] = "openai"
 
-# --- Remove the patch fixture, rely on environment variables ---
-# @pytest.fixture(scope='session', autouse=True)
-# def mock_settings_for_session():
-#     with patch('app.core.config.get_settings', return_value=DummySettings()) as mocked_settings:
-#         yield mocked_settings
-
 # --- Now import application modules ---
-from unittest.mock import patch  # Keep patch import if needed elsewhere
-from sqlalchemy import create_engine, inspect
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 import asyncio
 
-# Explicitly import all models
-from app.models.user_query_model import UserQuery
-from app.models.monitored_source_model import MonitoredSource
-from app.models.scraped_content_model import ScrapedContent
-from app.models.content_embedding_model import ContentEmbedding
-from app.models.change_alert_model import ChangeAlert
-from app.core.db import Base, get_db, engine as app_engine  # Import app engine directly
-from app.core.config import get_settings  # Import get_settings
+from fastapi.testclient import TestClient
+from sqlalchemy import inspect
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
+
+from app.core.db import Base, get_db  # Import app engine directly
+from app.core.db import engine as app_engine
 from app.main import app as main_app
+
+# Explicitly import all models
 
 # --- Use a file-based SQLite DB for tests --- #
 TEST_DB_FILE = "./test.db"  # Keep definition if needed for cleanup
@@ -64,7 +53,7 @@ def test_async_engine():
 # New fixture to handle async table creation and cleanup
 @pytest.fixture(scope="session", autouse=True)
 async def setup_database_async(test_async_engine):
-    """Deletes old test DB, creates tables using the async engine, inspects, yields, then deletes DB."""
+    """Deletes old DB, creates tables, inspects, yields, then deletes."""
     logger = logging.getLogger(__name__)
     # Use the DB file path derived from the env var if possible
     # settings = get_settings() # Get settings instance
@@ -109,18 +98,24 @@ async def setup_database_async(test_async_engine):
     if os.path.exists(db_file_path):
         logger.info(f"Deleting test database after tests: {db_file_path}")
         try:
-            # Ensure engine is disposed before deleting? Maybe not necessary for SQLite file.
-            # await test_async_engine.dispose() # This might fail if using the shared app_engine
+            # Ensure engine is disposed before deleting?
+            # Maybe not necessary for SQLite file.
+            # await test_async_engine.dispose() # Might fail if using shared app_engine
             os.remove(db_file_path)
             logger.info("Test database deleted.")
         except Exception as e:
             logger.error(f"Could not delete test database {db_file_path}: {e}")
 
 
-# ... rest of the fixtures (TestingSessionLocal, db_session, override_get_db_for_testing, client) ...
-# Make sure TestingSessionLocal uses the test_async_engine
+# ...
+# rest of the fixtures
+# (TestingSessionLocal, db_session, override_get_db_for_testing, client)
+# ...
+
+
+# Make sure testing_session_local uses the test_async_engine
 @pytest.fixture(scope="session")
-def TestingSessionLocal(test_async_engine):
+def testing_session_local(test_async_engine):
     """Creates an async session factory bound to the async test engine."""
     return sessionmaker(
         autocommit=False,
@@ -132,9 +127,9 @@ def TestingSessionLocal(test_async_engine):
 
 
 @pytest.fixture(scope="function")
-async def db_session(TestingSessionLocal: sessionmaker):
-    """Provides a clean async database session. Test manages transactions, fixture ensures rollback."""
-    async with TestingSessionLocal() as session:
+async def db_session(testing_session_local: sessionmaker):
+    """Clean async DB session. Test manages transactions, fixture ensures rollback."""
+    async with testing_session_local() as session:
         try:
             yield session  # Provide the session, test must manage begin/commit/rollback
         finally:
@@ -149,24 +144,24 @@ async def db_session(TestingSessionLocal: sessionmaker):
 
 
 @pytest.fixture(scope="function")
-def override_get_db_for_testing(TestingSessionLocal: sessionmaker):
-    """Overrides get_db. Provides session within a savepoint, allows endpoint to manage commit/rollback within savepoint."""
+def override_get_db_for_testing(testing_session_local: sessionmaker):
+    """Overrides get_db. Session in savepoint, endpoint manages commit/rollback."""
 
     async def _override_get_db():
-        async with TestingSessionLocal() as session:
-            # Start savepoint, yield session, let endpoint manage actions within it.
-            # The outer test fixture (db_session) will eventually roll back the main transaction.
+        async with testing_session_local() as session:
+            # Start savepoint, yield session, let endpoint manage actions.
+            # Outer test fixture (db_session) will roll back main transaction.
             async with session.begin_nested():
                 yield session
-            # No explicit commit/rollback here; savepoint context manager handles it based on exceptions
-            # or endpoint's actions (like session.commit() inside endpoint).
+            # No explicit commit/rollback; savepoint context manager handles it.
+            # (based on exceptions or endpoint actions like session.commit()).
 
     return _override_get_db
 
 
 @pytest.fixture(scope="function")
 def client(override_get_db_for_testing) -> TestClient:
-    """Creates a TestClient instance with transactional DB override for each function."""
+    """Creates TestClient w/ transactional DB override for each function."""
     main_app.dependency_overrides[get_db] = override_get_db_for_testing
     # Use context manager for TestClient
     with TestClient(main_app) as c:

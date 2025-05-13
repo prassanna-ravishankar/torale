@@ -1,10 +1,11 @@
 import logging
+
 from fastapi import Depends, HTTPException
 
+from app.core.config import Settings, get_settings
 from app.services.ai_integrations.interface import AIModelInterface
 from app.services.ai_integrations.openai_client import OpenAIClient
 from app.services.ai_integrations.perplexity_client import PerplexityClient
-from app.core.config import get_settings, Settings
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ async def get_embedding_ai_model(
             )
             raise HTTPException(
                 status_code=503,
-                detail="Embeddings service not configured (AI provider API key missing).",
+                detail="Embeddings service not configured (API key missing).",
             )
         logger.info("Using OpenAIClient for embedding generation.")
         return OpenAIClient(api_key=s.OPENAI_API_KEY)
@@ -36,7 +37,8 @@ async def get_embedding_ai_model(
     #     # ... return SomeOtherProviderClient(...)
 
     logger.critical(
-        f"No suitable AI provider configured for embedding generation. Config: {s.AI_PROVIDER_FOR_GENERATE_EMBEDDINGS}"
+        f"No suitable AI provider configured for embedding generation. "
+        f"Config: {s.AI_PROVIDER_FOR_GENERATE_EMBEDDINGS}"
     )
     raise HTTPException(
         status_code=503,
@@ -67,7 +69,8 @@ async def get_analysis_ai_model(
     # Add other providers here if they support analysis and are configured
 
     logger.critical(
-        f"No suitable AI provider configured for diff analysis. Config: {s.AI_PROVIDER_FOR_ANALYZE_DIFF}"
+        f"No suitable AI provider configured for diff analysis. "
+        f"Config: {s.AI_PROVIDER_FOR_ANALYZE_DIFF}"
     )
     raise HTTPException(
         status_code=503,
@@ -78,7 +81,7 @@ async def get_analysis_ai_model(
 async def get_source_discovery_ai_model(
     s: Settings = Depends(get_settings),
 ) -> AIModelInterface:
-    """Provides an AIModelInterface for source discovery (refine_query, identify_sources)."""
+    """Provides an AIModelInterface for source discovery (refine & identify)."""
     # Plan: Perplexity for source discovery
     # This function is similar to the one in source_discovery.py, centralized here.
     if (
@@ -89,21 +92,26 @@ async def get_source_discovery_ai_model(
     ):
         if not s.PERPLEXITY_API_KEY:
             logger.critical(
-                "Perplexity API key not configured, but Perplexity is set for source discovery."
+                "Perplexity API key not configured, "
+                "but Perplexity is set for source discovery."
             )
             raise HTTPException(
                 status_code=503,
-                detail="Source discovery service not configured (AI provider API key missing).",
+                detail="Source discovery service not configured "
+                "(AI provider API key missing).",
             )
         logger.info("Using PerplexityClient for source discovery.")
-        # One could also pass the specific model from settings to the client constructor here
-        # e.g., PerplexityClient(api_key=s.PERPLEXITY_API_KEY, model=s.PERPLEXITY_SOURCE_DISCOVERY_MODEL)
+        # One could also pass the specific model from settings
+        # to the client constructor here e.g., PerplexityClient(
+        # api_key=s.PERPLEXITY_API_KEY, model=s.PERPLEXITY_SOURCE_DISCOVERY_MODEL)
         return PerplexityClient(api_key=s.PERPLEXITY_API_KEY)
 
     # Add other provider logic if, for example, OpenAI was configured for these tasks.
 
     logger.critical(
-        f"No suitable AI provider configured for source discovery. Config refine: {s.AI_PROVIDER_FOR_REFINE_QUERY}, identify: {s.AI_PROVIDER_FOR_IDENTIFY_SOURCES}"
+        f"No suitable AI provider configured for source discovery. "
+        f"Config refine: {s.AI_PROVIDER_FOR_REFINE_QUERY}, "
+        f"identify: {s.AI_PROVIDER_FOR_IDENTIFY_SOURCES}"
     )
     raise HTTPException(
         status_code=503,

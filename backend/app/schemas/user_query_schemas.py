@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, Dict, Any
 from datetime import datetime
+from typing import Any, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # Base schema with common fields
@@ -8,7 +9,7 @@ class UserQueryBase(BaseModel):
     raw_query: str = Field(
         ..., min_length=1, description="The raw query submitted by the user"
     )
-    config_hints_json: Optional[Dict[str, Any]] = Field(
+    config_hints_json: Optional[dict[str, Any]] = Field(
         None, description="Optional configuration hints for the query processing"
     )
 

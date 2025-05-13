@@ -1,20 +1,12 @@
-import pytest
-from sqlalchemy import (
-    create_engine,
-)  # Keep for engine definition if needed locally, but maybe not
-from sqlalchemy.orm import (
-    sessionmaker,
-)  # Keep for TestingSessionLocal if needed locally
-from datetime import datetime, timedelta  # Import timedelta
-import json
-import time  # Import time for sleep
-from unittest.mock import patch, MagicMock  # Import patch and MagicMock
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy import select  # Removed func
 import asyncio  # Import asyncio for sleep
 
-from app.models.user_query_model import UserQuery, Base
+import pytest
+from sqlalchemy import (
+    select,  # Removed func
+)  # Keep for engine definition if needed locally, but maybe not
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.user_query_model import UserQuery
 
 # Remove engine and session setup if fully handled by conftest.py
 # TEST_DATABASE_URL = "sqlite:///:memory:"
@@ -44,12 +36,14 @@ async def test_user_query_creation(
 
     # Manage transaction within the test
     async with db_session.begin():
+        # Pass dict directly, SQLAlchemy handles JSON conversion
         query = UserQuery(
             raw_query=raw_query,
-            config_hints_json=hints,  # Pass dict directly, SQLAlchemy handles JSON conversion
+            config_hints_json=hints,
         )
         db_session.add(query)
-        # Commit is handled by the context manager `db_session.begin()` on successful exit
+        # Commit is handled by the context manager
+        # `db_session.begin()` on successful exit
 
     # Refresh needs to happen after commit, potentially outside the transaction block
     # or within a new one, depending on session state.
@@ -122,7 +116,6 @@ async def test_user_query_update_timestamp(db_session: AsyncSession):  # Mark as
             updated_query.created_at == initial_created_at
         )  # Created_at should not change
         assert updated_query.updated_at is not None
-        # Check that updated_at is at least the same as created_at (covers initial creation and update)
+        # Check that updated_at is at least the same as created_at
+        # (covers initial creation and update)
         assert updated_query.updated_at >= initial_created_at
-        # Check that updated_at is likely different if the transaction resolution worked, but don't fail if equal
-        # assert updated_query.updated_at > initial_updated_at # This is too brittle for tests

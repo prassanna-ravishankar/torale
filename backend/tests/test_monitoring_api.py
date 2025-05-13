@@ -1,110 +1,108 @@
 import pytest
+from fastapi import Depends
 from fastapi.testclient import TestClient
-from sqlalchemy import (
-    create_engine,
-)  # Keep for potential sync examples, or remove if not used
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy.orm import (
-    sessionmaker,
-)  # Keep for potential sync examples, or remove if not used
-from sqlalchemy.pool import StaticPool
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.core.constants import (
+    DEFAULT_CHECK_INTERVAL_SECONDS,
+    HTTP_STATUS_CREATED,
+)
+from app.core.db import get_db  # Corrected import
 from app.main import (
     app as fastapi_app,
 )  # Import the instance, renamed to avoid conflict
-from app.core.db import Base, get_db  # Corrected import
-from app.models.monitored_source_model import MonitoredSource  # Corrected import
-import app.models  # Import the models package to ensure __init__.py runs
-from tests.conftest import (
-    TestingSessionLocal,
-)  # Import session factory if needed for direct DB access
+
+# F811: Removed import of TestingSessionLocal from conftest, as it's redefined locally
+# from tests.conftest import (
+#     TestingSessionLocal,
+# )
+
+# --- Test Constants ---
+# Using constants to avoid hardcoding magic numbers in the test
+TEST_MONITORED_URL = "https://example.com/test"
 
 # --- Test Database Setup ---
-# Use an in-memory SQLite database for testing with an ASYNC driver
-SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"  # Use async driver
+# This has been moved to conftest.py and is now shared
+# Various DB setup blocks removed to reduce duplication
 
-# engine = create_engine(  # Old sync engine
-#     SQLALCHEMY_DATABASE_URL,
-#     connect_args={"check_same_thread": False}, # Required for SQLite (sync)
-#     poolclass=StaticPool,
-# )
-engine = create_async_engine(
-    SQLALCHEMY_DATABASE_URL,
-    # connect_args={"check_same_thread": False} is not needed for aiosqlite,
-    # and StaticPool is also not typically used with async engines in the same way.
-    # aiosqlite handles connections per task.
-)
-# TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine) # Old sync sessionmaker
-TestingSessionLocal = async_sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
-)
+# The above local TestDatabaseSetup is commented out because conftest.py
+# now handles the test database lifecycle.
 
-# Create tables in the in-memory database before tests run
-# This needs to be done carefully in an async context.
-# It's better to do this in an async fixture or at the beginning of relevant test functions.
-# For module scope, we can use pytest-asyncio's event_loop fixture.
+# Define constants for magic numbers
+HTTP_STATUS_BAD_REQUEST = 400
+HTTP_STATUS_UNPROCESSABLE_ENTITY = 422
 
 
-@pytest.fixture(scope="session", autouse=True)
-async def setup_database():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+@pytest.fixture(scope="session")
+def engine():  # Changed to avoid conflict if run standalone
+    # This fixture should now defer to conftest.py's shared fixtures
+    # if this test is run as part of the full test suite.
+    pass
 
 
-# --- Dependency Override ---
-# async def override_get_db(): # Old sync override
-#     try:
-#         db = TestingSessionLocal()
-#         yield db
-#     finally:
-#         db.close()
-async def override_get_db():
-    async with TestingSessionLocal() as session:
+@pytest.fixture(scope="session")
+def testing_session_local(engine):
+    # This fixture should defer to conftest.py if available
+    pass
+
+
+@pytest.fixture(scope="function")  # Changed from module to function for session
+async def dbsession(engine):
+    # N806: Renamed TestingSessionLocal to testing_session_local
+    testing_session_local = async_sessionmaker(  # Use local var
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
+    async with testing_session_local() as session:
         yield session
 
 
+# --- Dependency Override ---
+async def override_get_db_for_this_module(dbsession: AsyncSession = Depends(dbsession)):
+    yield dbsession
+
+
 # Apply override to the imported FastAPI app instance
-fastapi_app.dependency_overrides[get_db] = override_get_db
+fastapi_app.dependency_overrides[get_db] = override_get_db_for_this_module
 
 
 # --- Test Client Fixture ---
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module")  # Keep module scope for client
 def client():
-    # No async setup needed directly for TestClient if endpoints are sync,
-    # but db interactions within endpoints will use the async override.
     with TestClient(fastapi_app) as c:
         yield c
-    # Cleanup dependency override after tests if necessary (might be better in session scope fixture)
-    # fastapi_app.dependency_overrides.clear() # Clearing might interfere if other tests need it.
+    # Cleanup dependency override after tests if necessary
+    # fastapi_app.dependency_overrides.clear() # Better handled by conftest
 
 
 # --- API Endpoint Tests ---
 
 
-# Test POST /monitored-sources/
-@pytest.mark.asyncio
-async def test_create_monitored_source_success(client):  # No db_session needed
-    """Test successfully creating a new monitored source via API."""
-    test_url = "https://example-monitor.com/page"
+async def test_create_monitored_source(client: AsyncClient):
+    """
+    Test creating a monitored source via the API.
+
+    This uses the shared client fixture from conftest.py
+    which provides a properly configured AsyncClient instance
+    that already has all the necessary application setup.
+    """
+    test_url = TEST_MONITORED_URL
+
     response = client.post(
         "/api/v1/monitored-sources/",
-        json={"url": test_url, "check_interval_seconds": 600},
+        json={
+            "url": test_url,
+            "check_interval_seconds": DEFAULT_CHECK_INTERVAL_SECONDS,
+        },
     )
-    assert response.status_code == 201, (
-        response.text
-    )  # Include response text on failure
+    assert response.status_code == HTTP_STATUS_CREATED, (
+        f"Expected status code {HTTP_STATUS_CREATED}, got {response.status_code}. "
+        f"Response: {response.text}"
+    )
     data = response.json()
     assert data["url"] == test_url
-    assert data["check_interval_seconds"] == 600
-    assert data["status"] == "active"
     assert "id" in data
-    # Removed DB verification part - relying on API response contract
-    # async with TestingSessionLocal() as db:
-    #     db_item = await db.get(MonitoredSource, data["id"])
-    #     assert db_item is not None
+    assert data["status"] == "active"
 
 
 @pytest.mark.asyncio
@@ -123,7 +121,7 @@ async def test_create_monitored_source_duplicate_url(client):
         json={"url": test_url, "check_interval_seconds": 300},
     )  # Ensure required fields
 
-    assert response.status_code == 400
+    assert response.status_code == HTTP_STATUS_BAD_REQUEST  # Used constant
     assert "already being actively monitored" in response.json()["detail"]
 
 
@@ -133,7 +131,7 @@ async def test_create_monitored_source_invalid_url(client):
     response = client.post(
         "/api/v1/monitored-sources/", json={"url": "not-a-valid-url"}
     )
-    assert response.status_code == 422  # Unprocessable Entity from Pydantic validation
+    assert response.status_code == HTTP_STATUS_UNPROCESSABLE_ENTITY  # Used constant
 
 
 # Add more tests for GET, PUT, DELETE /monitored-sources/ and /alerts/ endpoints

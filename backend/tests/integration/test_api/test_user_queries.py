@@ -1,22 +1,20 @@
+from unittest.mock import AsyncMock, MagicMock, patch  # Import patch and AsyncMock
+
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import (
-    Session,
-)  # Keep Session for type hint if needed, but we use AsyncSession
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select  # Import select
-from unittest.mock import patch, AsyncMock, MagicMock  # Import patch and AsyncMock
-from fastapi import BackgroundTasks  # Import BackgroundTasks
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.main import app  # Import your FastAPI app instance
 from app.core.config import get_settings
-from app.schemas.user_query_schemas import UserQueryCreate
+from app.core.constants import (
+    HTTP_STATUS_CREATED,
+    HTTP_STATUS_UNPROCESSABLE_ENTITY,
+)
 from app.models.user_query_model import UserQuery
+from app.services.source_discovery_service import SourceDiscoveryService
 
 # Import services and AI interface
 from app.services.user_query_processing_service import UserQueryProcessingService
-from app.services.source_discovery_service import SourceDiscoveryService
-from app.services.ai_integrations.interface import AIModelInterface
 
 # Remove the client fixture - provided by conftest.py
 # @pytest.fixture(scope="module")
@@ -58,7 +56,7 @@ async def test_create_user_query_success(
     response = client.post(endpoint_url, json=query_data)
 
     # --- Assert --- Phase 1: Check API response and initial DB state
-    assert response.status_code == 201
+    assert response.status_code == HTTP_STATUS_CREATED
     data = response.json()
     assert data["raw_query"] == query_data["raw_query"]
     assert data["status"] == "pending_discovery"  # Status should be pending initially
@@ -71,10 +69,9 @@ async def test_create_user_query_success(
     args, kwargs = mock_add_task.call_args
     task_func = args[0]
     task_query_id = kwargs.get("query_id")
-    task_db = kwargs.get("db")  # This db session is from the endpoint's scope
+    kwargs.get("db")  # This db session is from the endpoint's scope
     task_discovery_service = kwargs.get("discovery_service")
 
-    # assert task_func == UserQueryProcessingService().process_query # Check correct function was scheduled - This can fail due to instance comparison
     # Instead, check the function's name or qualified name
     assert task_func.__name__ == "process_query"
     assert task_func.__qualname__.startswith(
@@ -107,13 +104,15 @@ async def test_create_user_query_success(
         db_obj_after_processing.status == "processed"
     )  # Status should be processed now
 
-    # Optional: Check if MonitoredSource entries were created (if that's part of process_query)
+    # Optional: Check if MonitoredSource entries were created
     # from app.models.monitored_source_model import MonitoredSource
-    # source_stmt = select(MonitoredSource).where(MonitoredSource.user_query_id == query_id)
+    # source_stmt = select(MonitoredSource).where(
+    #     MonitoredSource.user_query_id == query_id)
     # source_result = await db_session.execute(source_stmt)
     # created_sources = source_result.scalars().all()
     # assert len(created_sources) == 2
-    # assert {src.url for src in created_sources} == set(mock_discover_sources.return_value)
+    # assert {src.url for src in created_sources} == set(
+    #     mock_discover_sources.return_value)
 
 
 def test_create_user_query_missing_query(client: TestClient):
@@ -124,7 +123,7 @@ def test_create_user_query_missing_query(client: TestClient):
 
     response = client.post(endpoint_url, json=query_data)
 
-    assert response.status_code == 422  # Unprocessable Entity
+    assert response.status_code == HTTP_STATUS_UNPROCESSABLE_ENTITY
 
 
 def test_create_user_query_empty_query(client: TestClient):
@@ -136,4 +135,4 @@ def test_create_user_query_empty_query(client: TestClient):
     response = client.post(endpoint_url, json=query_data)
 
     # Expecting 422 because UserQueryBase has min_length=1 for raw_query
-    assert response.status_code == 422
+    assert response.status_code == HTTP_STATUS_UNPROCESSABLE_ENTITY

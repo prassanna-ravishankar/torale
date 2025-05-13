@@ -1,11 +1,12 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.user_query_processing_service import UserQueryProcessingService
-from app.services.source_discovery_service import SourceDiscoveryService
-from app.models.user_query_model import UserQuery
 from app.models.monitored_source_model import MonitoredSource
+from app.models.user_query_model import UserQuery
+from app.services.source_discovery_service import SourceDiscoveryService
+from app.services.user_query_processing_service import UserQueryProcessingService
 
 
 @pytest.fixture

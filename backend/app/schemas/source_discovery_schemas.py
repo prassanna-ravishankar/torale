@@ -1,4 +1,3 @@
-from typing import List
 from pydantic import BaseModel, HttpUrl
 
 
@@ -7,4 +6,4 @@ class RawQueryInput(BaseModel):
 
 
 class MonitoredURLOutput(BaseModel):
-    monitorable_urls: List[HttpUrl]
+    monitorable_urls: list[HttpUrl]

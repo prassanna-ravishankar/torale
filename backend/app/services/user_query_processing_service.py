@@ -1,13 +1,11 @@
 import logging
-from sqlalchemy.orm import Session
-from sqlalchemy.future import select
-from fastapi import Depends  # Need Depends for dependencies in methods
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user_query_model import UserQuery
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+
 from app.models.monitored_source_model import MonitoredSource
+from app.models.user_query_model import UserQuery
 from app.services.source_discovery_service import SourceDiscoveryService
-from app.core.db import get_db  # Assuming async session needed, adjust if sync
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +14,7 @@ class UserQueryProcessingService:
     # Note: Dependencies like db session and other services might need to be
     # passed to the method if the service instance itself is created elsewhere,
     # or injected into __init__ if the service is managed by FastAPI DI.
-    # Since this will be called by a BackgroundTask, passing deps to the method is safer.
+    # Since this will be called by a BackgroundTask, passing deps is safer.
 
     async def process_query(
         self, query_id: int, db: AsyncSession, discovery_service: SourceDiscoveryService
@@ -40,18 +38,21 @@ class UserQueryProcessingService:
                 # Ensure status is correct before processing
                 if query.status != "pending_discovery":
                     logger.warning(
-                        f"UserQuery ID {query_id} is not in 'pending_discovery' state (state: {query.status}), skipping discovery."
+                        f"UserQuery ID {query_id} is not in 'pending_discovery' state "
+                        f"(state: {query.status}), skipping discovery."
                     )
                     return
 
                 logger.info(
-                    f"Performing source discovery for UserQuery ID: {query_id}, Query: '{query.raw_query}'"
+                    f"Performing source discovery for UserQuery ID: {query_id}, "
+                    f"Query: '{query.raw_query}'"
                 )
                 discovered_urls = await discovery_service.discover_sources(
                     query.raw_query
                 )
                 logger.info(
-                    f"Discovered {len(discovered_urls)} potential sources for UserQuery ID: {query_id}"
+                    f"Discovered {len(discovered_urls)} potential sources for "
+                    f"UserQuery ID: {query_id}"
                 )
 
                 # Create MonitoredSource records
@@ -76,16 +77,18 @@ class UserQueryProcessingService:
                         created_sources += 1
                     else:
                         logger.debug(
-                            f"Source URL '{url}' already exists for UserQuery ID {query_id}, skipping."
+                            f"Source URL '{url}' already exists for UserQuery ID "
+                            f"{query_id}, skipping."
                         )
 
                 # Update query status to 'processed'
                 query.status = "processed"
                 db.add(query)  # Add updated query back to session
                 logger.info(
-                    f"Created {created_sources} new MonitoredSource records for UserQuery ID: {query_id}. Status set to 'processed'."
+                    f"Created {created_sources} new MonitoredSource records for "
+                    f"UserQuery ID: {query_id}. Status set to 'processed'."
                 )
-                # Commit happens automatically when `async with db.begin():` exits without error
+                # Commit happens automatically when the context exits without error
 
         except Exception as e:
             logger.error(
@@ -112,14 +115,16 @@ class UserQueryProcessingService:
                             query_err.status = "error"
                             db.add(query_err)
                             logger.info(
-                                f"Set status to 'error' for UserQuery ID: {query_id} (fetched after error)"
+                                f"Set status to 'error' for UserQuery ID: {query_id} "
+                                f"(fetched after error)"
                             )
             # Commit nested transaction if possible
             except Exception as inner_e:
                 # Log if updating status fails
                 logger.error(
-                    f"Failed to rollback and set error status for UserQuery {query_id}: {inner_e}"
+                    f"Failed to rollback and set error status for UserQuery "
+                    f"{query_id}: {inner_e}"
                 )
         finally:
-            # Ensure session is closed if manually managed, though Depends(get_db) usually handles this.
-            pass  # db session scope is managed by FastAPI for the request that spawned the task
+            # Session is managed by FastAPI for the spawned task
+            pass

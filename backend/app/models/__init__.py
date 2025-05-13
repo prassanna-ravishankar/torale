@@ -5,20 +5,20 @@
 
 from app.core.db import (
     Base,
-)  # Import Base correctly if needed elsewhere, though usually not needed in models/__init__ itself
+)  # Import Base correctly if needed elsewhere, though usually not needed here
 
-from .user_query_model import UserQuery
+from .change_alert_model import ChangeAlert
+from .content_embedding_model import ContentEmbedding
 from .monitored_source_model import MonitoredSource
 from .scraped_content_model import ScrapedContent
-from .content_embedding_model import ContentEmbedding
-from .change_alert_model import ChangeAlert
+from .user_query_model import UserQuery
 
 __all__ = [
     "Base",  # Export Base if imported
-    "UserQuery",
+    "ChangeAlert",
+    "ContentEmbedding",
     "MonitoredSource",
     "ScrapedContent",
-    "ContentEmbedding",
-    "ChangeAlert",
+    "UserQuery",
     # Add other models here if created
 ]

@@ -1,7 +1,7 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from sqlalchemy.dialects.postgresql import JSONB
+
 from app.core.db import Base  # Corrected import
 
 
@@ -18,7 +18,7 @@ class MonitoredSource(Base):
     )  # User-defined name or query description
     # status: e.g., active, paused, error
     status = Column(String, default="active", index=True)
-    # How often to check, in seconds or a cron string. For simplicity, let's assume seconds for now.
+    # How often to check, in seconds or a cron string. For simplicity, use seconds.
     check_interval_seconds = Column(Integer, default=3600, nullable=False)
     last_checked_at = Column(DateTime(timezone=True), nullable=True)
     last_content_hash = Column(String, nullable=True)  # Hash of the last seen content
@@ -40,7 +40,10 @@ class MonitoredSource(Base):
     alerts = relationship("ChangeAlert", back_populates="monitored_source")
 
     def __repr__(self):
-        return f"<MonitoredSource(id={self.id}, name='{self.name}', url='{self.url}', status='{self.status}')>"
+        return (
+            f"<MonitoredSource(id={self.id}, name='{self.name}', "
+            f"url='{self.url}', status='{self.status}')>"
+        )
 
     # New fields based on schema changes
     source_type = Column(String, nullable=True)  # E.g., 'website', 'rss', 'youtube'
