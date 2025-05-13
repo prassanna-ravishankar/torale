@@ -1,13 +1,10 @@
+from unittest.mock import patch
+
 import pytest
-import aiohttp
-from unittest.mock import AsyncMock, patch, MagicMock
-import os
 
 from app.services.ai_integrations.perplexity_client import (
     PerplexityClient,
-    PERPLEXITY_API_URL,
 )
-from app.core.config import Settings
 
 
 @pytest.fixture

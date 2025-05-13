@@ -1,6 +1,10 @@
-import requests
-import os
+# ruff: noqa
+
 import json
+import os
+import sys
+
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -55,18 +59,26 @@ if response_step1_data.get("choices") and len(response_step1_data["choices"]) > 
 else:
     print("Error: Could not generate intermediate query from Step 1.")
     print(f"Step 1 Response: {json.dumps(response_step1_data, indent=2)}")
-    exit()
+    sys.exit()
 
 if not intermediate_query:
     print("Error: Intermediate query is empty.")
-    exit()
+    sys.exit()
 
 # --- Step 2: Find Monitorable Website using Intermediate Query ---
 system_prompt_step2 = """Based on the user's search query, which expresses an interest in monitoring a topic for updates:
-1. Identify one or more primary, stable URLs that are central to the user's interest and likely to be updated when relevant new information, products, services, news, or offers appear.
-2. Prioritize official pages (e.g., news sections, main product/service category homepages, primary blog URLs, official offer/announcement channels) or highly reputable and comprehensive community hubs/forums if appropriate for the topic (e.g., for discussions, rumors, or community-driven updates).
-3. The goal is to find pages that serve as ongoing, canonical sources of information or updates for the given query, suitable for long-term monitoring.
-4. Avoid linking to specific, transient articles or individual forum posts unless they are explicitly designed as continuously updated 'live blogs' or master threads.
+1. Identify one or more primary, stable URLs that are central to the user's interest 
+    and likely to be updated when relevant new information, products, services, news, 
+    or offers appear.
+2. Prioritize official pages (e.g., news sections, main product/service 
+    category homepages, primary blog URLs, official offer/announcement channels) 
+    or highly reputable and comprehensive community hubs/forums if appropriate 
+    for the topic (e.g., for discussions, rumors, or community-driven updates).
+3. The goal is to find pages that serve as ongoing, canonical sources 
+    of information or updates for the given query, suitable for long-term monitoring.
+4. Avoid linking to specific, transient articles or individual forum posts 
+    unless they are explicitly designed as continuously updated 'live blogs' 
+    or master threads.
 5. Output a list of these relevant URLs, each on a new line.
 6. Output *only* the list of URLs. No extra text, explanations, or numbering.
 
@@ -104,7 +116,7 @@ if response_step2_data.get("choices") and len(response_step2_data["choices"]) > 
         monitorable_urls = [url.strip() for url in content.split("\n") if url.strip()]
 
     if monitorable_urls:
-        print(f"Identified Monitorable URL(s):\n")
+        print("Identified Monitorable URL(s):\n")
         for url_item in monitorable_urls:
             print(url_item)
         print("")

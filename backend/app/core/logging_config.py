@@ -12,7 +12,7 @@ def setup_logging(log_level: str = "INFO"):
     """Sets up basic stream logging.
 
     Args:
-        log_level (str): The minimum log level to output (e.g., "DEBUG", "INFO", "WARNING").
+        log_level (str): The minimum log level to output (e.g., "INFO", "WARNING").
     """
     # Ensure valid log level
     numeric_level = getattr(logging, log_level.upper(), None)
@@ -23,8 +23,8 @@ def setup_logging(log_level: str = "INFO"):
     root_logger = logging.getLogger()
     root_logger.setLevel(numeric_level)
 
-    # Remove any existing handlers to avoid duplicate logs if this is called multiple times
-    # (though ideally it's called once at startup)
+    # Remove any existing handlers to avoid duplicate logs
+    # if this is called multiple times (though ideally it's called once at startup)
     if root_logger.hasHandlers():
         root_logger.handlers.clear()
 

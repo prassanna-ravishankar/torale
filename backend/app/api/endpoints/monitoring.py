@@ -1,24 +1,31 @@
 # Placeholder for monitoring.py in API endpoints
 
-from typing import List, Optional
+import json  # Import json for keywords and config
+import logging  # Import logging
+from datetime import datetime
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
-import logging  # Import logging
-import json  # Import json for keywords and config
 
-from app.core.db import get_db
-from app.models.monitored_source_model import MonitoredSource
-from app.models.change_alert_model import ChangeAlert
-from app.schemas.monitoring_schemas import (
-    MonitoredSourceCreate,
-    MonitoredSourceUpdate,
-    MonitoredSourceInDB,
+from app.core.constants import (
+    HTTP_STATUS_BAD_REQUEST,
+    HTTP_STATUS_INTERNAL_SERVER_ERROR,
+    HTTP_STATUS_NOT_FOUND,
 )
+from app.core.db import get_db
+from app.models.change_alert_model import ChangeAlert
+from app.models.monitored_source_model import MonitoredSource
 from app.schemas.alert_schemas import (
     ChangeAlertSchema,
 )  # Assuming this is the main schema for response
+from app.schemas.monitoring_schemas import (
+    MonitoredSourceCreate,
+    MonitoredSourceInDB,
+    MonitoredSourceUpdate,
+)
+
 # Import alert schemas and models later when adding alert endpoints
 
 router = APIRouter()
@@ -36,7 +43,8 @@ async def create_monitored_source(
     source_in: MonitoredSourceCreate, db: AsyncSession = Depends(get_db)
 ):
     logger.info(
-        f"Received request to create monitored source: {source_in.model_dump(exclude_none=True)}"
+        f"Received request to create monitored source: "
+        f"{source_in.model_dump(exclude_none=True)}"
     )
     result = await db.execute(
         select(MonitoredSource).filter(MonitoredSource.url == str(source_in.url))
@@ -44,10 +52,11 @@ async def create_monitored_source(
     existing_source = result.scalars().first()
     if existing_source and not existing_source.is_deleted:
         logger.warning(
-            f"Attempted to create monitored source for existing active URL: {source_in.url}"
+            f"Attempted to create monitored source for existing active URL: "
+            f"{source_in.url}"
         )
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=HTTP_STATUS_BAD_REQUEST,
             detail=f"URL '{source_in.url}' is already being actively monitored.",
         )
 
@@ -71,7 +80,8 @@ async def create_monitored_source(
         await db.commit()
         await db.refresh(db_source)
         logger.info(
-            f"Successfully created monitored source ID {db_source.id} for URL: {db_source.url}"
+            f"Successfully created monitored source ID {db_source.id} for URL: "
+            f"{db_source.url}"
         )
         return db_source
     except Exception as e:
@@ -80,12 +90,12 @@ async def create_monitored_source(
             f"Database error creating monitored source for URL {source_in.url}: {e}"
         )
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
             detail="Failed to create monitored source.",
-        )
+        ) from e
 
 
-@router.get("/monitored-sources/", response_model=List[MonitoredSourceInDB])
+@router.get("/monitored-sources/", response_model=list[MonitoredSourceInDB])
 async def list_monitored_sources(
     skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)
 ):
@@ -95,7 +105,7 @@ async def list_monitored_sources(
     try:
         result = await db.execute(
             select(MonitoredSource)
-            .filter(MonitoredSource.is_deleted == False)
+            .filter(MonitoredSource.is_deleted is False)
             .offset(skip)
             .limit(limit)
         )
@@ -105,9 +115,9 @@ async def list_monitored_sources(
     except Exception as e:
         logger.exception(f"Database error listing monitored sources: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
             detail="Failed to list monitored sources.",
-        )
+        ) from e
 
 
 @router.get("/monitored-sources/{source_id}", response_model=MonitoredSourceInDB)
@@ -115,7 +125,7 @@ async def get_monitored_source(source_id: int, db: AsyncSession = Depends(get_db
     logger.info(f"Received request to get monitored source ID: {source_id}")
     result = await db.execute(
         select(MonitoredSource).filter(
-            MonitoredSource.id == source_id, MonitoredSource.is_deleted == False
+            MonitoredSource.id == source_id, MonitoredSource.is_deleted is False
         )
     )
     db_source = result.scalars().first()
@@ -133,20 +143,22 @@ async def update_monitored_source(
     source_id: int, source_in: MonitoredSourceUpdate, db: AsyncSession = Depends(get_db)
 ):
     logger.info(
-        f"Received request to update monitored source ID: {source_id} with data: {source_in.model_dump(exclude_unset=True)}"
+        f"Received request to update monitored source ID: {source_id} with data: "
+        f"{source_in.model_dump(exclude_unset=True)}"
     )
     result = await db.execute(
         select(MonitoredSource).filter(
-            MonitoredSource.id == source_id, MonitoredSource.is_deleted == False
+            MonitoredSource.id == source_id, MonitoredSource.is_deleted is False
         )
     )
     db_source = result.scalars().first()
     if db_source is None:
         logger.warning(
-            f"Attempted to update non-existent or deleted monitored source ID: {source_id}"
+            f"Attempted to update non-existent or deleted monitored source ID: "
+            f"{source_id}"
         )
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Monitored source not found"
+            status_code=HTTP_STATUS_NOT_FOUND, detail="Monitored source not found"
         )
 
     update_data = source_in.model_dump(exclude_unset=True, mode="python")
@@ -164,26 +176,28 @@ async def update_monitored_source(
         await db.commit()
         await db.refresh(db_source)
         logger.info(
-            f"Successfully updated monitored source ID: {source_id}. Fields updated: {updated_fields}"
+            f"Successfully updated monitored source ID: {source_id}. "
+            f"Fields updated: {updated_fields}"
         )
         return db_source
     except Exception as e:
         await db.rollback()
         if "UNIQUE constraint failed" in str(e):
             logger.warning(
-                f"Update failed for source ID {source_id} due to UNIQUE constraint (likely URL): {e}"
+                f"Update failed for source ID {source_id} due to UNIQUE constraint "
+                f"(likely URL): {e}"
             )
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Update failed. URL '{source_in.url}' may already be monitored.",
-            )
+                status_code=HTTP_STATUS_BAD_REQUEST,
+                detail=f"Update failed. URL '{source_in.url}' may be in use.",
+            ) from e
         logger.exception(
             f"Database error updating monitored source ID {source_id}: {e}"
         )
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
             detail="Failed to update monitored source.",
-        )
+        ) from e
 
 
 @router.delete("/monitored-sources/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -191,16 +205,17 @@ async def delete_monitored_source(source_id: int, db: AsyncSession = Depends(get
     logger.info(f"Received request to delete monitored source ID: {source_id}")
     result = await db.execute(
         select(MonitoredSource).filter(
-            MonitoredSource.id == source_id, MonitoredSource.is_deleted == False
+            MonitoredSource.id == source_id, MonitoredSource.is_deleted is False
         )
     )
     db_source = result.scalars().first()
     if db_source is None:
         logger.warning(
-            f"Attempted to delete non-existent or already deleted monitored source ID: {source_id}"
+            f"Attempted to delete non-existent or already deleted monitored source ID: "
+            f"{source_id}"
         )
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Monitored source not found"
+            status_code=HTTP_STATUS_NOT_FOUND, detail="Monitored source not found"
         )
 
     db_source.is_deleted = True
@@ -216,15 +231,15 @@ async def delete_monitored_source(source_id: int, db: AsyncSession = Depends(get
             f"Database error deleting monitored source ID {source_id}: {e}"
         )
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
             detail="Failed to delete monitored source.",
-        )
+        ) from e
 
 
 # --- Change Alerts Endpoints ---
 
 
-@router.get("/alerts/", response_model=List[ChangeAlertSchema])
+@router.get("/alerts/", response_model=list[ChangeAlertSchema])
 async def list_change_alerts(
     skip: int = 0,
     limit: int = 100,
@@ -255,9 +270,9 @@ async def list_change_alerts(
     except Exception as e:
         logger.exception(f"Database error listing alerts: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
             detail="Failed to list alerts.",
-        )
+        ) from e
 
 
 @router.get("/alerts/{alert_id}", response_model=ChangeAlertSchema)
@@ -298,9 +313,9 @@ async def acknowledge_change_alert(alert_id: int, db: AsyncSession = Depends(get
         await db.rollback()
         logger.exception(f"Database error acknowledging alert ID {alert_id}: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
             detail="Failed to acknowledge change alert.",
-        )
+        ) from e
 
 
 # Endpoints for ChangeAlerts will be added below this

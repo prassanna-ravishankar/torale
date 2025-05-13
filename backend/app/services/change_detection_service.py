@@ -1,17 +1,17 @@
-from typing import Optional, Tuple, Any, Dict, List
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
-import numpy as np
-from datetime import datetime
 import logging  # Import logging
-import json  # For logging dicts
+from datetime import datetime
+from typing import Optional
 
-from app.services.ai_integrations.interface import AIModelInterface
-from app.models.monitored_source_model import MonitoredSource
-from app.models.content_embedding_model import ContentEmbedding
-from app.models.change_alert_model import ChangeAlert
+import numpy as np
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
+
 from app.core.config import get_settings  # For similarity threshold
+from app.core.constants import MIN_EMBEDDINGS_FOR_COMPARISON  # Import constant
+from app.models.change_alert_model import ChangeAlert
+from app.models.content_embedding_model import ContentEmbedding
 from app.models.scraped_content_model import ScrapedContent
+from app.services.ai_integrations.interface import AIModelInterface
 
 settings = get_settings()
 logger = logging.getLogger(__name__)  # Get logger instance
@@ -30,7 +30,7 @@ class ChangeDetectionService:
             f"ChangeDetectionService initialized with AI model: {ai_model_name}"
         )
 
-    def _calculate_similarity(self, emb1: List[float], emb2: List[float]) -> float:
+    def _calculate_similarity(self, emb1: list[float], emb2: list[float]) -> float:
         """Calculates cosine similarity between two embedding vectors."""
         vec1 = np.array(emb1)
         vec2 = np.array(emb2)
@@ -41,11 +41,12 @@ class ChangeDetectionService:
         self, monitored_source_id: int, monitored_source_url: str
     ) -> Optional[ChangeAlert]:
         """
-        Detects changes for a single monitored source by comparing the latest two embeddings.
+        Detects changes by comparing the latest two embeddings.
         Creates a ChangeAlert if a significant change is detected.
         """
         logger.info(
-            f"Starting change detection for source ID {monitored_source_id} ({monitored_source_url})"
+            f"Starting change detection for source ID {monitored_source_id} "
+            f"({monitored_source_url})"
         )
         try:
             latest_embeddings = (
@@ -58,21 +59,26 @@ class ChangeDetectionService:
             )
         except Exception as e:
             logger.error(
-                f"Database error fetching embeddings for source ID {monitored_source_id}: {e}",
+                f"Database error fetching embeddings for source ID "
+                f"{monitored_source_id}: {e}",
                 exc_info=True,
             )
             return None
 
-        if len(latest_embeddings) < 2:
+        if len(latest_embeddings) < MIN_EMBEDDINGS_FOR_COMPARISON:
             logger.info(
-                f"Not enough embeddings ({len(latest_embeddings)}) to compare for source ID {monitored_source_id}"
+                f"Not enough embeddings ({len(latest_embeddings)}) to compare "
+                f"for source ID {monitored_source_id}"
             )
             return None
 
         current_embedding = latest_embeddings[0]
         previous_embedding = latest_embeddings[1]
         logger.debug(
-            f"Comparing embeddings: current ID {current_embedding.id} (scraped: {current_embedding.scraped_content.scraped_at}) vs previous ID {previous_embedding.id} (scraped: {previous_embedding.scraped_content.scraped_at})"
+            f"Comparing embeddings: current ID {current_embedding.id} "
+            f"(scraped: {current_embedding.scraped_content.scraped_at}) vs "
+            f"previous ID {previous_embedding.id} "
+            f"(scraped: {previous_embedding.scraped_content.scraped_at})"
         )
 
         try:
@@ -81,26 +87,34 @@ class ChangeDetectionService:
             )
         except Exception as e:
             logger.error(
-                f"Error calculating similarity for source ID {monitored_source_id} between embeddings {current_embedding.id} and {previous_embedding.id}: {e}",
+                f"Error calculating similarity for source ID {monitored_source_id} "
+                f"between embeddings {current_embedding.id} and "
+                f"{previous_embedding.id}: {e}",
                 exc_info=True,
             )
             return None
 
         similarity_threshold = settings.DEFAULT_SIMILARITY_THRESHOLD
         logger.info(
-            f"Similarity for source ID {monitored_source_id}: {similarity:.4f} (Threshold: {similarity_threshold})"
+            f"Similarity for source ID {monitored_source_id}: {similarity:.4f} "
+            f"(Threshold: {similarity_threshold})"
         )
 
         if similarity < similarity_threshold:
             logger.info(
-                f"Significant change detected for source ID {monitored_source_id} ({monitored_source_url}). Similarity {similarity:.4f} < {similarity_threshold}"
+                f"Significant change detected for source ID {monitored_source_id} "
+                f"({monitored_source_url}). Similarity {similarity:.4f} < "
+                f"{similarity_threshold}"
             )
-            change_summary = f"Content similarity dropped to {similarity:.2f} (below threshold of {similarity_threshold})"
+            change_summary = (
+                f"Content similarity dropped to {similarity:.2f} "
+                f"(below threshold of {similarity_threshold})"
+            )
             change_details = {
                 "current_embedding_id": current_embedding.id,
                 "previous_embedding_id": previous_embedding.id,
-                "current_scraped_at": current_embedding.scraped_content.scraped_at.isoformat(),
-                "previous_scraped_at": previous_embedding.scraped_content.scraped_at.isoformat(),
+                "current_scraped_at": current_embedding.scraped_content.scraped_at.isoformat(),  # noqa: E501
+                "previous_scraped_at": previous_embedding.scraped_content.scraped_at.isoformat(),  # noqa: E501
                 "similarity_score": similarity,
             }
 
@@ -124,20 +138,27 @@ class ChangeDetectionService:
                     change_summary = diff_analysis.get("summary", change_summary)
                     change_details.update(diff_analysis.get("details", {}))
                     logger.info(
-                        f"AI diff analysis successful for source ID {monitored_source_id}. Summary: '{change_summary[:100]}...'"
+                        f"AI diff analysis successful for source ID "
+                        f"{monitored_source_id}. Summary: '{change_summary[:100]}...'"
                     )
                 except NotImplementedError:
+                    model_name = getattr(
+                        self.ai_model, "model_name", type(self.ai_model).__name__
+                    )
                     logger.warning(
-                        f"analyze_diff not implemented by AI model {getattr(self.ai_model, 'model_name', type(self.ai_model).__name__)}. Using basic similarity summary."
+                        f"analyze_diff not implemented by AI model "
+                        f"{model_name}. Using basic similarity summary."
                     )
                 except Exception as e:
                     logger.error(
-                        f"Error during AI diff analysis for source ID {monitored_source_id}: {e}",
+                        f"Error during AI diff analysis for source ID "
+                        f"{monitored_source_id}: {e}",
                         exc_info=True,
                     )
             else:
                 logger.info(
-                    "AI model not configured or does not support analyze_diff. Skipping AI analysis."
+                    "AI model not configured or does not support analyze_diff. "
+                    "Skipping AI analysis."
                 )
 
             try:
@@ -151,13 +172,15 @@ class ChangeDetectionService:
                 self.db.commit()
                 self.db.refresh(db_alert)
                 logger.info(
-                    f"ChangeAlert {db_alert.id} created for source ID {monitored_source_id}"
+                    f"ChangeAlert {db_alert.id} created for source ID "
+                    f"{monitored_source_id}"
                 )
                 return db_alert
             except Exception as e:
                 self.db.rollback()
                 logger.error(
-                    f"Database error creating ChangeAlert for source ID {monitored_source_id}: {e}",
+                    f"Database error creating ChangeAlert for source ID "
+                    f"{monitored_source_id}: {e}",
                     exc_info=True,
                 )
                 return None

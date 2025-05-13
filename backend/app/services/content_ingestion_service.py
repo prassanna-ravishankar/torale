@@ -1,49 +1,61 @@
 # Placeholder for content_ingestion_service.py
 
 import asyncio
-from typing import List, Optional, Tuple
+import logging  # Import logging
+import re  # For basic text cleaning
+from datetime import datetime
+from enum import Enum
+from typing import ClassVar, Optional, Union  # Added Enum, Tuple, Union types
+from urllib.parse import urljoin, urlparse  # For robots.txt
+
 import aiohttp
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
-from datetime import datetime
-import re  # For basic text cleaning
-from urllib.parse import urlparse, urljoin  # For robots.txt
-import logging  # Import logging
 
 # Attempt to import a robots.txt parser, if available. This is an optional enhancement.
 try:
     import robotexclusionrulesparser
 except ImportError:
     robotexclusionrulesparser = None
-    # logging.getLogger(__name__).info("robotexclusionrulesparser not installed. Robots.txt checking will be skipped.")
+    logging.getLogger(__name__).info(
+        "robotexclusionrulesparser not installed. Robots.txt checking will be skipped."
+    )
 
-from app.services.ai_integrations.interface import AIModelInterface
-from app.models.monitored_source_model import MonitoredSource  # Assuming you have this
-from app.models.scraped_content_model import ScrapedContent
-from app.models.content_embedding_model import ContentEmbedding
-from app.schemas.content_schemas import (
-    ScrapedContentSchema,
-    ContentEmbeddingSchema,
-)  # For data validation if needed
 from app.core.config import get_settings
+from app.models.content_embedding_model import ContentEmbedding
+from app.models.scraped_content_model import ScrapedContent
+from app.services.ai_integrations.interface import AIModelInterface
 
 settings = get_settings()
 logger = logging.getLogger(__name__)  # Get logger instance
 
+HTTP_STATUS_OK = 200  # Defined constant for status code 200
+
+
+class IngestionResult(Enum):
+    """Enum to represent different ingestion outcomes for better error handling."""
+
+    SUCCESS = "success"
+    ROBOTS_DISALLOWED = "robots_disallowed"
+    SCRAPE_FAILED = "scrape_failed"
+    EMPTY_CONTENT = "empty_content"
+    EMBEDDING_FAILED = "embedding_failed"
+    DB_ERROR = "db_error"
+
 
 class ContentIngestionService:
-    _robot_parsers_cache = {}  # Cache for robot_parsers to avoid re-fetching robots.txt frequently
+    _robot_parsers_cache: ClassVar[dict] = {}  # RUF012: Cache for robot_parsers
     _USER_AGENT = settings.PROJECT_NAME + " Bot/0.1"  # Define a user agent
 
     def __init__(self, ai_model: AIModelInterface, db: Session):
         self.ai_model = ai_model
         self.db = db
-        logger.info(
-            f"ContentIngestionService initialized with AI model: {getattr(ai_model, 'model_name', type(ai_model).__name__)}"
-        )
+        model_name = getattr(ai_model, "model_name", type(ai_model).__name__)
+        logger.info(f"ContentIngestionService initialized with AI model: {model_name}")
         if not robotexclusionrulesparser:
             logger.info(
-                "robotexclusionrulesparser not installed. Robots.txt checking will be skipped for this service instance."
+                "robotexclusionrulesparser not installed. "
+                "Robots.txt checking will be skipped for this service instance."
             )
 
     async def _get_robots_parser(self, target_url: str) -> Optional[any]:
@@ -65,19 +77,23 @@ class ContentIngestionService:
                 headers={"User-Agent": self._USER_AGENT}
             ) as session:
                 async with session.get(robots_url, timeout=5) as response:
-                    if response.status == 200:
+                    if response.status == HTTP_STATUS_OK:  # Used constant
                         robots_txt_content = await response.text()
                         parser = robotexclusionrulesparser.RobotExclusionRulesParser()
                         parser.parse(robots_txt_content)
                         self._robot_parsers_cache[robots_url] = parser
                         logger.info(
-                            f"Successfully fetched and parsed robots.txt for {parsed_url.netloc}"
+                            f"Successfully fetched and parsed robots.txt for "
+                            f"{parsed_url.netloc}"
                         )
                         return parser
                     else:
-                        # No robots.txt or not accessible, assume allow (or cache a specific "allow all" state)
+                        # No robots.txt or not accessible, assume allow
+                        # (or cache a specific "allow all" state)
                         logger.warning(
-                            f"robots.txt not found or not accessible (status: {response.status}) for {parsed_url.netloc}. Assuming allow."
+                            f"robots.txt not found or not accessible "
+                            f"(status: {response.status}) for {parsed_url.netloc}. "
+                            f"Assuming allow."
                         )
                         self._robot_parsers_cache[robots_url] = None  # Mark as tried
                         return None
@@ -98,7 +114,8 @@ class ContentIngestionService:
         if parser:
             is_allowed = parser.is_allowed(self._USER_AGENT, target_url)
             logger.debug(
-                f"robots.txt check for {target_url}: {'Allowed' if is_allowed else 'Disallowed'}"
+                f"robots.txt check for {target_url}: "
+                f"{'Allowed' if is_allowed else 'Disallowed'}"
             )
             return is_allowed
         return True  # Default to allowed if robots.txt is missing or parsing fails
@@ -113,7 +130,7 @@ class ContentIngestionService:
         )  # Replace multiple spaces/tabs with a single space
         text = re.sub(
             r"\n[\n\s]*\n", "\n\n", text
-        )  # Replace multiple newlines (with optional space in between) with double newlines
+        )  # Replace multiple newlines with double newlines
         text = text.strip()  # Remove leading/trailing whitespace
         return text
 
@@ -135,7 +152,8 @@ class ContentIngestionService:
                 async with session.get(
                     url, timeout=settings.DEFAULT_REQUEST_TIMEOUT_SECONDS or 15
                 ) as response:
-                    response.raise_for_status()  # Raise an exception for HTTP errors (4xx or 5xx)
+                    # Raise an exception for HTTP errors (4xx or 5xx)
+                    response.raise_for_status()
                     html_content = await response.text()
 
                     # Basic HTML parsing to extract text content
@@ -143,13 +161,15 @@ class ContentIngestionService:
                     for script_or_style in soup(
                         ["script", "style", "header", "footer", "nav", "aside"]
                     ):
-                        script_or_style.decompose()  # Remove common non-main content elements
+                        # Remove common non-main content elements
+                        script_or_style.decompose()
 
                     # Get text and then preprocess it
                     raw_extracted_text = soup.get_text(separator="\n", strip=False)
                     processed_text = self._preprocess_text(raw_extracted_text)
                     logger.info(
-                        f"Successfully scraped and preprocessed content from {url} (length: {len(processed_text)} chars)."
+                        f"Successfully scraped and preprocessed content from {url} "
+                        f"(length: {len(processed_text)} chars)."
                     )
                     return processed_text
             except aiohttp.ClientResponseError as e:
@@ -175,7 +195,7 @@ class ContentIngestionService:
 
     async def ingest_content_from_url(
         self, monitored_source_id: int, url: str
-    ) -> Optional[Tuple[ScrapedContent, ContentEmbedding]]:
+    ) -> Optional[tuple[ScrapedContent, ContentEmbedding]]:
         """
         Scrapes content from a single URL, generates embeddings, and stores them.
         Returns the ScrapedContent and ContentEmbedding objects or None if failed.
@@ -183,94 +203,118 @@ class ContentIngestionService:
         logger.info(
             f"Starting ingestion process for URL ID {monitored_source_id}: {url}"
         )
+
+        # Record result type to reduce number of return statements
+        result: Union[tuple[ScrapedContent, ContentEmbedding], IngestionResult] = (
+            IngestionResult.SCRAPE_FAILED
+        )
+
         # 1. Scrape content
         scraped_text = await self._scrape_website_content(url)
+
         if scraped_text is None:
             logger.warning(
-                f"Failed to scrape content from {url} (or timed out/error). Skipping ingestion."
+                f"Failed to scrape content from {url} (or timed out/error). "
+                f"Skipping ingestion."
             )
-            # Optionally, update MonitoredSource status here to indicate error
-            return None
-        if scraped_text == "ROBOTS_DISALLOWED":
+            result = IngestionResult.SCRAPE_FAILED
+        elif scraped_text == "ROBOTS_DISALLOWED":
             logger.info(f"Skipping ingestion for {url} due to robots.txt exclusion.")
-            # Optionally, update MonitoredSource status here
-            return None
-        if (
-            not scraped_text.strip()
-        ):  # Check if scraped text is empty after preprocessing
+            result = IngestionResult.ROBOTS_DISALLOWED
+        elif not scraped_text.strip():
+            # Check if scraped text is empty after preprocessing
             logger.info(
-                f"Scraped content from {url} is empty after preprocessing. Skipping ingestion."
+                f"Scraped content from {url} is empty after preprocessing. "
+                f"Skipping ingestion."
             )
-            return None
+            result = IngestionResult.EMPTY_CONTENT
+        else:
+            # For this iteration, raw_content and processed_text will be the same
+            # (the preprocessed text). A more advanced setup might store the full HTML
+            # as raw_content.
+            processed_text_for_embedding = scraped_text
 
-        # For this iteration, raw_content and processed_text will be the same (the preprocessed text).
-        # A more advanced setup might store the full HTML as raw_content.
-        processed_text_for_embedding = scraped_text
-
-        # 2. Generate embeddings
-        # generate_embeddings expects a list of texts
-        try:
-            logger.debug(
-                f"Generating embeddings for content from {url} (length: {len(processed_text_for_embedding)} chars)."
-            )
-            embeddings_list = await self.ai_model.generate_embeddings(
-                [processed_text_for_embedding]
-            )
-            if not embeddings_list or not embeddings_list[0]:
-                logger.error(
-                    f"Failed to generate embeddings for {url}. AI model returned no/empty embeddings."
+            # 2. Generate embeddings
+            # generate_embeddings expects a list of texts
+            try:
+                logger.debug(
+                    f"Generating embeddings for content from {url} "
+                    f"(length: {len(processed_text_for_embedding)} chars)."
                 )
-                return None
-            embedding_vector = embeddings_list[0]
-            logger.info(f"Successfully generated embeddings for {url}.")
-        except NotImplementedError:
-            logger.error(
-                f"generate_embeddings not implemented by the AI model: {getattr(self.ai_model, 'model_name', type(self.ai_model).__name__)} for {url}"
-            )
-            return None
-        except Exception as e:
-            logger.error(
-                f"Error generating embeddings for {url}: {type(e).__name__} {e}",
-                exc_info=True,
-            )
-            return None
+                embeddings_list = await self.ai_model.generate_embeddings(
+                    [processed_text_for_embedding]
+                )
+                if not embeddings_list or not embeddings_list[0]:
+                    logger.error(
+                        f"Failed to generate embeddings for {url}. "
+                        f"AI model returned no/empty embeddings."
+                    )
+                    result = IngestionResult.EMBEDDING_FAILED
+                else:
+                    embedding_vector = embeddings_list[0]
+                    logger.info(f"Successfully generated embeddings for {url}.")
 
-        # 3. Store scraped content and embeddings
-        try:
-            db_scraped_content = ScrapedContent(
-                monitored_source_id=monitored_source_id,
-                scraped_at=datetime.utcnow(),  # Use UTC for server-side datetimes
-                raw_content=processed_text_for_embedding,  # Storing preprocessed text as raw for now
-                processed_text=processed_text_for_embedding,
-            )
-            self.db.add(db_scraped_content)
-            self.db.flush()  # To get the ID for db_scraped_content
+                    # 3. Store scraped content and embeddings
+                    try:
+                        db_scraped_content = ScrapedContent(
+                            monitored_source_id=monitored_source_id,
+                            # Use UTC for server-side datetimes
+                            scraped_at=datetime.utcnow(),
+                            # Store preprocessed text
+                            raw_content=processed_text_for_embedding,
+                            processed_text=processed_text_for_embedding,
+                        )
+                        self.db.add(db_scraped_content)
+                        self.db.flush()  # To get the ID for db_scraped_content
 
-            db_content_embedding = ContentEmbedding(
-                scraped_content_id=db_scraped_content.id,
-                embedding_vector=embedding_vector,
-                # TODO: Get model_name from AIModelInterface or config
-                model_name=getattr(self.ai_model, "model_name", "unknown"),
-            )
-            self.db.add(db_content_embedding)
-            self.db.commit()
-            self.db.refresh(db_scraped_content)
-            self.db.refresh(db_content_embedding)
-            logger.info(
-                f"Successfully ingested and stored content (ID: {db_scraped_content.id}) and embedding (ID: {db_content_embedding.id}) for {url}"
-            )
-            return db_scraped_content, db_content_embedding
-        except Exception as e:
-            self.db.rollback()
-            logger.error(
-                f"Database error storing content/embeddings for {url}: {type(e).__name__} {e}",
-                exc_info=True,
-            )
+                        db_content_embedding = ContentEmbedding(
+                            scraped_content_id=db_scraped_content.id,
+                            embedding_vector=embedding_vector,
+                            # TODO: Get model_name from AIModelInterface or config
+                            model_name=getattr(self.ai_model, "model_name", "unknown"),
+                        )
+                        self.db.add(db_content_embedding)
+                        self.db.commit()  # Commit transaction
+                        self.db.refresh(db_scraped_content)
+                        self.db.refresh(db_content_embedding)
+                        logger.info(
+                            f"Stored scraped content (ID: {db_scraped_content.id}) and "
+                            f"embedding (ID: {db_content_embedding.id}) for {url}"
+                        )
+                        result = (db_scraped_content, db_content_embedding)
+                    except Exception as e:  # Catch broader exceptions for DB operations
+                        self.db.rollback()
+                        logger.error(
+                            f"Database error storing content/embeddings for {url}: "
+                            f"{type(e).__name__} {e}",
+                            exc_info=True,
+                        )
+                        result = IngestionResult.DB_ERROR
+            except NotImplementedError:
+                model_name = getattr(
+                    self.ai_model, "model_name", type(self.ai_model).__name__
+                )
+                logger.error(
+                    f"generate_embeddings not implemented by the AI model: "
+                    f"{model_name} for {url}"
+                )
+                result = IngestionResult.EMBEDDING_FAILED
+            except Exception as e:
+                logger.error(
+                    f"Error generating embeddings for {url}: {type(e).__name__} {e}",
+                    exc_info=True,
+                )
+                result = IngestionResult.EMBEDDING_FAILED
+
+        # Return the result based on the outcome
+        if isinstance(result, tuple):
+            return result
+        else:
             return None
 
     async def ingest_batch(
-        self, sources: List[Tuple[int, str]]
-    ) -> List[Optional[Tuple[ScrapedContent, ContentEmbedding]]]:
+        self, sources: list[tuple[int, str]]
+    ) -> list[Optional[tuple[ScrapedContent, ContentEmbedding]]]:
         """Ingests content from a batch of (monitored_source_id, url) tuples."""
         logger.info(f"Starting batch ingestion for {len(sources)} sources.")
         tasks = [
@@ -287,20 +331,25 @@ class ContentIngestionService:
             source_id, url = sources[i]
             if isinstance(res, Exception):
                 logger.error(
-                    f"Task for ingesting {url} (ID: {source_id}) failed in batch: {type(res).__name__} {res}",
-                    exc_info=False,
-                )  # exc_info already logged by individual task if it was an exception there
+                    f"Task for ingesting {url} (ID: {source_id}) failed in batch: "
+                    f"{type(res).__name__} {res}",
+                    exc_info=False,  # exc_info logged by individual task
+                )
                 processed_results.append(None)
             elif res is None:
-                # This means ingest_content_from_url returned None (e.g. scrape failed, robots, no embedding)
+                # ingest_content_from_url returned None (e.g. scrape failed,
+                # robots, no embedding)
                 logger.warning(
-                    f"Task for ingesting {url} (ID: {source_id}) returned None in batch."
+                    f"Task for ingesting {url} (ID: {source_id}) "
+                    f"returned None in batch."
                 )
                 processed_results.append(None)
             else:
                 success_count += 1
                 processed_results.append(res)
+        success_count = sum(1 for r in processed_results if r is not None)
         logger.info(
-            f"Batch ingestion completed. {success_count}/{len(sources)} sources successfully ingested."
+            f"Batch ingestion completed. {success_count}/{len(sources)} sources "
+            f"successfully ingested."
         )
         return processed_results

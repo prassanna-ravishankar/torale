@@ -1,10 +1,11 @@
-from typing import Any, Dict, List, Optional
-import aiohttp
 import json
 import logging
+from typing import Any, Optional
 
-from app.services.ai_integrations.interface import AIModelInterface
+import aiohttp
+
 from app.core.config import get_settings
+from app.services.ai_integrations.interface import AIModelInterface
 
 # Potentially import perplexity library here if you install or create one
 # from perplexity import Perplexity // Assuming a hypothetical library
@@ -15,43 +16,87 @@ logger = logging.getLogger(__name__)
 # Constants from the example script
 PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions"
 
-# System prompts from the example script - can be moved to a config or constants file later
-SYSTEM_PROMPT_REFINE_QUERY = """You are an AI assistant that refines a user's general interest into a focused search query.
-The user wants to monitor a topic, entity, or type of information online for any significant changes or new updates.
-Your task is to transform their initial interest into a concise search query string. This refined query should be designed to help another AI find one or more stable, central webpages (e.g., official news sections, main product/service pages, primary blog URLs, key community hubs, or official announcement channels) that are most likely to be updated when new, relevant information appears.
-Output *only* the refined search query string. No explanations or labels.
+# System prompts - moved to separate files or config would be even better
+# Part 1 of SYSTEM_PROMPT_REFINE_QUERY
+REFINE_QUERY_INTRO = (
+    "You are an AI assistant that refines a user's general interest "
+    "into a focused search query.\n"
+    "The user wants to monitor a topic, entity, or type of information online "
+    "for any significant changes or new updates.\n"
+)
 
-Example User Interest: "latest from OpenAI"
-Example Refined Query Output: "OpenAI official announcements or blog"
+# Part 2 of SYSTEM_PROMPT_REFINE_QUERY
+REFINE_QUERY_TASK = (
+    "Your task is to transform their initial interest into a concise "
+    "search query string.\n"
+    "This refined query should be designed to help another AI find one or more "
+    "stable, central webpages (e.g., official news sections, main product/service "
+    "pages, primary blog URLs, key community hubs, or official announcement "
+    "channels) that are most likely to be updated when new, relevant information "
+    "appears.\n"
+    "Output *only* the refined search query string. No explanations or labels.\n"
+)
 
-Example User Interest: "Sony camera rumors"
-Example Refined Query Output: "Sony camera news and rumor hubs"
+# Part 3 of SYSTEM_PROMPT_REFINE_QUERY - examples
+REFINE_QUERY_EXAMPLES = (
+    'Example User Interest: "latest from OpenAI"\n'
+    'Example Refined Query Output: "OpenAI official announcements or blog"\n\n'
+    'Example User Interest: "Sony camera rumors"\n'
+    'Example Refined Query Output: "Sony camera news and rumor hubs"\n\n'
+    'Example User Interest: "discounts in tkmaxx"\n'
+    'Example Refined Query Output: "TK Maxx official offers and deals page"'
+)
 
-Example User Interest: "discounts in tkmaxx"
-Example Refined Query Output: "TK Maxx official offers and deals page"""
+# Combine all parts of the SYSTEM_PROMPT_REFINE_QUERY
+SYSTEM_PROMPT_REFINE_QUERY = (
+    REFINE_QUERY_INTRO + REFINE_QUERY_TASK + REFINE_QUERY_EXAMPLES
+)
 
-SYSTEM_PROMPT_IDENTIFY_SOURCES = """Based on the user's search query, which expresses an interest in monitoring a topic for updates:
-1. Identify one or more primary, stable URLs that are central to the user's interest and likely to be updated when relevant new information, products, services, news, or offers appear.
-2. Prioritize official pages (e.g., news sections, main product/service category homepages, primary blog URLs, official offer/announcement channels) or highly reputable and comprehensive community hubs/forums if appropriate for the topic (e.g., for discussions, rumors, or community-driven updates).
-3. The goal is to find pages that serve as ongoing, canonical sources of information or updates for the given query, suitable for long-term monitoring.
-4. Avoid linking to specific, transient articles or individual forum posts unless they are explicitly designed as continuously updated 'live blogs' or master threads.
-5. Output a list of these relevant URLs, each on a new line.
-6. Output *only* the list of URLs. No extra text, explanations, or numbering.
+# Part 1 of SYSTEM_PROMPT_IDENTIFY_SOURCES - intro
+IDENTIFY_SOURCES_INTRO = (
+    "Based on the user's search query, which expresses an "
+    "interest in monitoring a topic for updates:\n"
+)
 
-Example User Query: "OpenAI official announcements or blog"
-Example Expected Output:
-openai.com/blog
-openai.com/news
+# Part 2 of SYSTEM_PROMPT_IDENTIFY_SOURCES - instructions
+IDENTIFY_SOURCES_INSTRUCTIONS = (
+    "1. Identify one or more primary, stable URLs that are central to the "
+    "user's interest and likely to be updated when relevant new information, "
+    "products, services, news, or offers appear.\n"
+    "2. Prioritize official pages (e.g., news sections, main product/service "
+    "category homepages, primary blog URLs, official offer/announcement "
+    "channels) or highly reputable and comprehensive community hubs/forums "
+    "if appropriate for the topic (e.g., for discussions, rumors, or "
+    "community-driven updates).\n"
+    "3. The goal is to find pages that serve as ongoing, canonical sources of "
+    "information or updates for the given query, suitable for long-term "
+    "monitoring.\n"
+    "4. Avoid linking to specific, transient articles or individual forum posts "
+    "unless they are explicitly designed as continuously updated 'live blogs' "
+    "or master threads.\n"
+    "5. Output a list of these relevant URLs, each on a new line.\n"
+    "6. Output *only* the list of URLs. No extra text, explanations, or numbering.\n"
+)
 
-Example User Query: "Sony camera news and rumor hubs"
-Example Expected Output:
-sonyalpharumors.com
-dpreview.com/news/sony
+# Part 3 of SYSTEM_PROMPT_IDENTIFY_SOURCES - examples
+IDENTIFY_SOURCES_EXAMPLES = (
+    'Example User Query: "OpenAI official announcements or blog"\n'
+    "Example Expected Output:\n"
+    "openai.com/blog\n"
+    "openai.com/news\n\n"
+    'Example User Query: "Sony camera news and rumor hubs"\n'
+    "Example Expected Output:\n"
+    "sonyalpharumors.com\n"
+    "dpreview.com/news/sony\n\n"
+    'Example User Query: "TK Maxx official offers and deals page"\n'
+    "Example Expected Output:\n"
+    "tkmaxx.com/uk/en/offers\n"
+)
 
-Example User Query: "TK Maxx official offers and deals page"
-Example Expected Output:
-tkmaxx.com/uk/en/offers
-"""
+# Combine all parts of the SYSTEM_PROMPT_IDENTIFY_SOURCES
+SYSTEM_PROMPT_IDENTIFY_SOURCES = (
+    IDENTIFY_SOURCES_INTRO + IDENTIFY_SOURCES_INSTRUCTIONS + IDENTIFY_SOURCES_EXAMPLES
+)
 
 
 class PerplexityClient(AIModelInterface):
@@ -75,18 +120,20 @@ class PerplexityClient(AIModelInterface):
         }
         logger.info(f"PerplexityClient initialized with model: {self.model_name}")
 
-    async def _make_perplexity_request(self, payload: Dict) -> Dict:
+    async def _make_perplexity_request(self, payload: dict) -> dict:
         async with aiohttp.ClientSession(headers=self.headers) as session:
             try:
                 logger.debug(
-                    f"Sending request to Perplexity API: {PERPLEXITY_API_URL} with payload: {json.dumps(payload)[:200]}..."
+                    f"Sending request to Perplexity API: {PERPLEXITY_API_URL} with "
+                    f"payload: {json.dumps(payload)[:200]}..."
                 )
                 response = await session.post(PERPLEXITY_API_URL, json=payload)
                 response.raise_for_status()
                 return await response.json()
             except aiohttp.ClientError as e:
                 logger.error(
-                    f"AIOHTTP client error with Perplexity API ({PERPLEXITY_API_URL}): {e}",
+                    f"AIOHTTP client error with Perplexity API "
+                    f"({PERPLEXITY_API_URL}): {e}",
                     exc_info=True,
                 )
                 raise ConnectionError(
@@ -94,7 +141,9 @@ class PerplexityClient(AIModelInterface):
                 ) from e
             except json.JSONDecodeError as e:
                 logger.error(
-                    f"JSON decode error from Perplexity API ({PERPLEXITY_API_URL}): {e}. Status: {response.status if 'response' in locals() else 'N/A'}",
+                    f"JSON decode error from Perplexity API "
+                    f"({PERPLEXITY_API_URL}): {e}. "
+                    f"Status: {response.status if 'response' in locals() else 'N/A'}",
                     exc_info=True,
                 )
                 raise ValueError(
@@ -123,14 +172,15 @@ class PerplexityClient(AIModelInterface):
             return refined_query
         except (KeyError, IndexError) as e:
             logger.error(
-                f"Error parsing refined query from Perplexity response. Response: {response_data}",
+                f"Error parsing refined query from Perplexity response. "
+                f"Response: {response_data}",
                 exc_info=True,
             )
             raise ValueError(
                 "Invalid response structure from Perplexity API for refine_query."
             ) from e
 
-    async def identify_sources(self, refined_query: str, **kwargs) -> List[str]:
+    async def identify_sources(self, refined_query: str, **kwargs) -> list[str]:
         logger.info(
             f"Identifying sources with Perplexity for: '{refined_query[:50]}...'"
         )
@@ -160,12 +210,14 @@ class PerplexityClient(AIModelInterface):
                 and (url.startswith("http://") or url.startswith("https://"))
             ]
             logger.info(
-                f"Perplexity identified {len(identified_urls)} sources for '{refined_query[:50]}...'. First few: {identified_urls[:3]}"
+                f"Perplexity identified {len(identified_urls)} sources for "
+                f"'{refined_query[:50]}...'. First few: {identified_urls[:3]}"
             )
             return identified_urls
         except (KeyError, IndexError) as e:
             logger.error(
-                f"Error parsing sources from Perplexity response. Response: {response_data}",
+                f"Error parsing sources from Perplexity response. "
+                f"Response: {response_data}",
                 exc_info=True,
             )
             raise ValueError(
@@ -173,10 +225,11 @@ class PerplexityClient(AIModelInterface):
             ) from e
 
     async def generate_embeddings(
-        self, texts: List[str], **kwargs
-    ) -> List[List[float]]:
+        self, texts: list[str], **kwargs
+    ) -> list[list[float]]:
         logger.warning(
-            f"PerplexityClient.generate_embeddings called for {len(texts)} texts but is not implemented. kwargs: {kwargs}"
+            f"PerplexityClient.generate_embeddings called for {len(texts)} texts "
+            f"but is not implemented. kwargs: {kwargs}"
         )
         raise NotImplementedError(
             "PerplexityClient does not support generate_embeddings."
@@ -184,9 +237,10 @@ class PerplexityClient(AIModelInterface):
 
     async def analyze_diff(
         self, old_representation: Any, new_representation: Any, **kwargs
-    ) -> Dict:
+    ) -> dict:
         logger.warning(
-            f"PerplexityClient.analyze_diff called but is not implemented. kwargs: {kwargs}"
+            f"PerplexityClient.analyze_diff called but is not implemented. "
+            f"kwargs: {kwargs}"
         )
         raise NotImplementedError(
             "PerplexityClient.analyze_diff is not implemented for now."

@@ -1,7 +1,11 @@
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Optional
+
 import pytest
 from pydantic import ValidationError
-from datetime import datetime
 
+from app.core.constants import TEST_ID_2
 from app.schemas.user_query_schemas import UserQueryBase, UserQueryCreate, UserQueryInDB
 
 
@@ -51,22 +55,22 @@ def test_user_query_in_db():
 
 
 # Example mock object that mimics a SQLAlchemy model for orm_mode test
+@dataclass
 class MockOrmQuery:
-    def __init__(
-        self, id, raw_query, status, config_hints_json, created_at, updated_at
-    ):
-        self.id = id
-        self.raw_query = raw_query
-        self.status = status
-        self.config_hints_json = config_hints_json
-        self.created_at = created_at
-        self.updated_at = updated_at
+    """Data class for mimicking a SQLAlchemy model in tests."""
+
+    id: int
+    raw_query: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    config_hints_json: Optional[dict[str, Any]] = None
 
 
 def test_user_query_in_db_orm_mode():
     now = datetime.now()
     mock_orm_object = MockOrmQuery(
-        id=2,
+        id=TEST_ID_2,
         raw_query="ORM Query",
         status="processing",
         config_hints_json={"orm": True},
@@ -74,7 +78,7 @@ def test_user_query_in_db_orm_mode():
         updated_at=now,
     )
     schema = UserQueryInDB.model_validate(mock_orm_object)
-    assert schema.id == 2
+    assert schema.id == TEST_ID_2
     assert schema.raw_query == "ORM Query"
     assert schema.status == "processing"
     assert schema.config_hints_json == {"orm": True}

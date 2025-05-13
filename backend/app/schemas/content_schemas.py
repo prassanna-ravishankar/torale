@@ -1,6 +1,7 @@
-from typing import List, Optional
-from pydantic import BaseModel, HttpUrl
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, HttpUrl
 
 
 class ScrapedContentSchema(BaseModel):
@@ -17,7 +18,7 @@ class ScrapedContentSchema(BaseModel):
 class ContentEmbeddingSchema(BaseModel):
     id: Optional[int] = None
     scraped_content_id: int
-    embedding_vector: List[float]
+    embedding_vector: list[float]
     model_name: str  # To track which embedding model was used
 
     class Config:

@@ -1,20 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
-from sqlalchemy.orm import Session
 from typing import Any
 
-from app.schemas import user_query_schemas
-from app.models import user_query_model
-from app.core.db import get_db
+from fastapi import APIRouter, BackgroundTasks, Depends, status
+from sqlalchemy.orm import Session
 
-# Import the processing service and the AI model dependency getter
-from app.services.user_query_processing_service import UserQueryProcessingService
-from app.services.source_discovery_service import (
-    SourceDiscoveryService,
-)  # Keep this import
 from app.api.dependencies import (
     get_source_discovery_ai_model,
 )  # Need the AI model getter
+from app.core.db import get_db
+from app.models import user_query_model
+from app.schemas import user_query_schemas
 from app.services.ai_integrations.interface import AIModelInterface  # For type hinting
+from app.services.source_discovery_service import (
+    SourceDiscoveryService,
+)  # Keep this import
+
+# Import the processing service and the AI model dependency getter
+from app.services.user_query_processing_service import UserQueryProcessingService
 
 router = APIRouter()
 
@@ -61,6 +62,6 @@ async def create_user_query(
         discovery_service=discovery_service_instance,  # Pass the instantiated service
     )
 
-    # Need to return the object state *after* flush but potentially *before* commit within the request
+    # Return object state post-flush, pre-commit for the request
     # Rely on the ORM instance state after flush for the response
     return db_query

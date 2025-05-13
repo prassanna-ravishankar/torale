@@ -1,5 +1,5 @@
-from typing import List
 import logging
+
 from app.services.ai_integrations.interface import AIModelInterface
 
 logger = logging.getLogger(__name__)
@@ -9,7 +9,7 @@ class SourceDiscoveryService:
     def __init__(self, ai_model: AIModelInterface):
         self.ai_model = ai_model
 
-    async def discover_sources(self, raw_query: str, **kwargs) -> List[str]:
+    async def discover_sources(self, raw_query: str, **kwargs) -> list[str]:
         """
         Discovers relevant source URLs for a given raw query.
         It refines the query and then identifies sources using the AI model.

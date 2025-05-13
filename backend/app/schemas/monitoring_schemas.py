@@ -1,6 +1,7 @@
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, HttpUrl
 from datetime import datetime
+from typing import Any, Optional
+
+from pydantic import BaseModel, HttpUrl
 
 
 class MonitoredSourceBase(BaseModel):
@@ -8,8 +9,8 @@ class MonitoredSourceBase(BaseModel):
     name: Optional[str] = None  # User-defined name or query description
     check_interval_seconds: Optional[int] = 3600
     source_type: Optional[str] = None  # E.g., 'website', 'rss', 'youtube'
-    keywords: Optional[List[str]] = None  # List of keywords to monitor for
-    config: Optional[Dict[str, Any]] = (
+    keywords: Optional[list[str]] = None  # List of keywords to monitor for
+    config: Optional[dict[str, Any]] = (
         None  # For other configs like similarity_threshold
     )
     # status: Optional[str] = "active"
@@ -25,8 +26,8 @@ class MonitoredSourceUpdate(MonitoredSourceBase):
     name: Optional[str] = None
     check_interval_seconds: Optional[int] = None
     source_type: Optional[str] = None
-    keywords: Optional[List[str]] = None
-    config: Optional[Dict[str, Any]] = None
+    keywords: Optional[list[str]] = None
+    config: Optional[dict[str, Any]] = None
     status: Optional[str] = None
 
 

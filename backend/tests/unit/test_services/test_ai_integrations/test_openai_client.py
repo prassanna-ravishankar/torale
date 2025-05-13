@@ -1,17 +1,13 @@
-import pytest
-import aiohttp
-from unittest.mock import AsyncMock, patch, MagicMock
-import os
 import json
+from unittest.mock import patch
+
+import pytest
 
 from app.services.ai_integrations.openai_client import (
-    OpenAIClient,
     DEFAULT_EMBEDDING_MODEL,
-    DEFAULT_CHAT_MODEL,
     OPENAI_API_URL_EMBEDDINGS,
-    OPENAI_API_URL_CHAT_COMPLETIONS,
+    OpenAIClient,
 )
-from app.core.config import Settings
 
 
 @pytest.fixture
