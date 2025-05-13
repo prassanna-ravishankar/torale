@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import Image from 'next/image';
 import toast from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
 
@@ -155,7 +156,17 @@ export default function AlertsPage() {
               {/* Placeholder for Detail View link/modal - Task 4.2 */}
               {/* Example: <Link href={`/alerts/${alert.id}`}>View Details</Link> */}
               {alert.details && <pre className="mt-2 p-2 bg-gray-50 text-xs text-gray-700 rounded overflow-x-auto">{typeof alert.details === 'string' ? alert.details : JSON.stringify(alert.details, null, 2)}</pre>}
-              {alert.screenshot_url && <img src={alert.screenshot_url} alt="Change screenshot" className="mt-2 rounded max-w-xs max-h-48 object-contain border"/>}
+              {alert.screenshot_url && (
+                <div className="mt-2 relative w-full max-w-xs h-48 border border-gray-300 rounded overflow-hidden">
+                  <Image 
+                    src={alert.screenshot_url} 
+                    alt="Change screenshot" 
+                    fill 
+                    style={{ objectFit: "contain" }}
+                    className="rounded"
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>
