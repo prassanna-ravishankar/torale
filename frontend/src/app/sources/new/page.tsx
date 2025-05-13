@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -35,7 +35,7 @@ interface MonitoredSourceInDB {
   last_changed_at?: string | null;
 }
 
-export default function CreateMonitoredSourcePage() {
+function CreateMonitoredSourcePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -327,5 +327,13 @@ export default function CreateMonitoredSourcePage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function CreateMonitoredSourcePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CreateMonitoredSourcePageContent />
+    </Suspense>
   );
 } 

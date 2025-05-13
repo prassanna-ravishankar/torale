@@ -4,6 +4,7 @@ import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { /* useRouter, */ useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import toast from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
 
@@ -148,11 +149,15 @@ export default function AlertDetailPage() {
           {alert.screenshot_url && (
             <div>
               <h3 className="text-xs font-medium text-gray-500 uppercase">Screenshot</h3>
-              <img 
-                src={alert.screenshot_url} 
-                alt={`Screenshot for alert ${alert.id}`} 
-                className="mt-1 rounded-md border border-gray-300 max-w-full h-auto object-contain"
-              />
+              <div className="mt-1 relative w-full aspect-video border border-gray-300 rounded-md overflow-hidden">
+                <Image 
+                  src={alert.screenshot_url} 
+                  alt={`Screenshot for alert ${alert.id}`} 
+                  fill
+                  style={{ objectFit: "contain" }}
+                  className="rounded-md"
+                />
+              </div>
             </div>
           )}
         </div>
