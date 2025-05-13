@@ -24,10 +24,16 @@ class Settings(BaseSettings):
     # AI Model Selection (examples)
     # Specifies which AI client to use for specific tasks defined in AIModelInterface
     # Values could be e.g., "openai", "perplexity", "claude" etc.
-    AI_PROVIDER_FOR_REFINE_QUERY: Optional[str] = "perplexity" # Default to perplexity as per plan for source discovery
-    AI_PROVIDER_FOR_IDENTIFY_SOURCES: Optional[str] = "perplexity" # Default to perplexity
-    AI_PROVIDER_FOR_GENERATE_EMBEDDINGS: Optional[str] = "openai" # Default to openai as per plan
-    AI_PROVIDER_FOR_ANALYZE_DIFF: Optional[str] = "openai" # Default to openai
+    AI_PROVIDER_FOR_REFINE_QUERY: Optional[str] = (
+        "perplexity"  # Default to perplexity as per plan for source discovery
+    )
+    AI_PROVIDER_FOR_IDENTIFY_SOURCES: Optional[str] = (
+        "perplexity"  # Default to perplexity
+    )
+    AI_PROVIDER_FOR_GENERATE_EMBEDDINGS: Optional[str] = (
+        "openai"  # Default to openai as per plan
+    )
+    AI_PROVIDER_FOR_ANALYZE_DIFF: Optional[str] = "openai"  # Default to openai
 
     # Network/Scraping Settings
     DEFAULT_REQUEST_TIMEOUT_SECONDS: int = 15

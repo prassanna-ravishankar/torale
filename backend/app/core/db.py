@@ -13,16 +13,18 @@ SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=
 
 Base = declarative_base()
 
+
 # Dependency to get DB session
 async def get_db():
     async with SessionLocal() as session:
         yield session
 
+
 # Old synchronous engine and session maker
 # from sqlalchemy import create_engine
 # from sqlalchemy.orm import sessionmaker
 # engine = create_engine(
-#     SQLALCHEMY_DATABASE_URL, 
+#     SQLALCHEMY_DATABASE_URL,
 #     # connect_args={"check_same_thread": False} # Only for SQLite, if used
 # )
 # SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -33,4 +35,4 @@ async def get_db():
 #     try:
 #         yield db
 #     finally:
-#         db.close() 
+#         db.close()

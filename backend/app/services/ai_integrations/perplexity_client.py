@@ -53,12 +53,19 @@ Example Expected Output:
 tkmaxx.com/uk/en/offers
 """
 
+
 class PerplexityClient(AIModelInterface):
-    def __init__(self, api_key: Optional[str] = None, model: str = "sonar-medium-online"):
+    def __init__(
+        self, api_key: Optional[str] = None, model: str = "sonar-medium-online"
+    ):
         self.api_key = api_key or settings.PERPLEXITY_API_KEY
         if not self.api_key:
-            logger.critical("Perplexity API key is required but not found. Set PERPLEXITY_API_KEY.")
-            raise ValueError("Perplexity API key is required. Set PERPLEXITY_API_KEY in environment.")
+            logger.critical(
+                "Perplexity API key is required but not found. Set PERPLEXITY_API_KEY."
+            )
+            raise ValueError(
+                "Perplexity API key is required. Set PERPLEXITY_API_KEY in environment."
+            )
         self.model = model
         self.model_name = f"perplexity/{self.model}"
         self.headers = {
@@ -71,16 +78,28 @@ class PerplexityClient(AIModelInterface):
     async def _make_perplexity_request(self, payload: Dict) -> Dict:
         async with aiohttp.ClientSession(headers=self.headers) as session:
             try:
-                logger.debug(f"Sending request to Perplexity API: {PERPLEXITY_API_URL} with payload: {json.dumps(payload)[:200]}...")
+                logger.debug(
+                    f"Sending request to Perplexity API: {PERPLEXITY_API_URL} with payload: {json.dumps(payload)[:200]}..."
+                )
                 response = await session.post(PERPLEXITY_API_URL, json=payload)
                 response.raise_for_status()
                 return await response.json()
             except aiohttp.ClientError as e:
-                logger.error(f"AIOHTTP client error with Perplexity API ({PERPLEXITY_API_URL}): {e}", exc_info=True)
-                raise ConnectionError(f"Failed to connect to Perplexity API: {e}") from e
+                logger.error(
+                    f"AIOHTTP client error with Perplexity API ({PERPLEXITY_API_URL}): {e}",
+                    exc_info=True,
+                )
+                raise ConnectionError(
+                    f"Failed to connect to Perplexity API: {e}"
+                ) from e
             except json.JSONDecodeError as e:
-                logger.error(f"JSON decode error from Perplexity API ({PERPLEXITY_API_URL}): {e}. Status: {response.status if 'response' in locals() else 'N/A'}", exc_info=True)
-                raise ValueError(f"Failed to parse JSON response from Perplexity API: {e}") from e
+                logger.error(
+                    f"JSON decode error from Perplexity API ({PERPLEXITY_API_URL}): {e}. Status: {response.status if 'response' in locals() else 'N/A'}",
+                    exc_info=True,
+                )
+                raise ValueError(
+                    f"Failed to parse JSON response from Perplexity API: {e}"
+                ) from e
 
     async def refine_query(self, raw_query: str, **kwargs) -> str:
         logger.info(f"Refining query with Perplexity: '{raw_query[:50]}...'")
@@ -88,13 +107,13 @@ class PerplexityClient(AIModelInterface):
             "model": kwargs.get("model", self.model),
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT_REFINE_QUERY},
-                {"role": "user", "content": raw_query}
+                {"role": "user", "content": raw_query},
             ],
-            **kwargs.get("api_params", {})
+            **kwargs.get("api_params", {}),
         }
-        
+
         response_data = await self._make_perplexity_request(payload)
-        
+
         try:
             refined_query = response_data["choices"][0]["message"]["content"].strip()
             if not refined_query:
@@ -103,18 +122,25 @@ class PerplexityClient(AIModelInterface):
             logger.info(f"Perplexity refined query to: '{refined_query[:50]}...'")
             return refined_query
         except (KeyError, IndexError) as e:
-            logger.error(f"Error parsing refined query from Perplexity response. Response: {response_data}", exc_info=True)
-            raise ValueError("Invalid response structure from Perplexity API for refine_query.") from e
+            logger.error(
+                f"Error parsing refined query from Perplexity response. Response: {response_data}",
+                exc_info=True,
+            )
+            raise ValueError(
+                "Invalid response structure from Perplexity API for refine_query."
+            ) from e
 
     async def identify_sources(self, refined_query: str, **kwargs) -> List[str]:
-        logger.info(f"Identifying sources with Perplexity for: '{refined_query[:50]}...'")
+        logger.info(
+            f"Identifying sources with Perplexity for: '{refined_query[:50]}...'"
+        )
         payload = {
             "model": kwargs.get("model", self.model),
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT_IDENTIFY_SOURCES},
-                {"role": "user", "content": refined_query}
+                {"role": "user", "content": refined_query},
             ],
-            **kwargs.get("api_params", {})
+            **kwargs.get("api_params", {}),
         }
 
         response_data = await self._make_perplexity_request(payload)
@@ -122,20 +148,46 @@ class PerplexityClient(AIModelInterface):
         try:
             content = response_data["choices"][0]["message"]["content"].strip()
             if not content:
-                logger.info(f"Perplexity found no URLs for query: '{refined_query[:50]}...'")
-                return [] 
-            
-            identified_urls = [url.strip() for url in content.split('\n') if url.strip() and (url.startswith("http://") or url.startswith("https://"))]
-            logger.info(f"Perplexity identified {len(identified_urls)} sources for '{refined_query[:50]}...'. First few: {identified_urls[:3]}")
+                logger.info(
+                    f"Perplexity found no URLs for query: '{refined_query[:50]}...'"
+                )
+                return []
+
+            identified_urls = [
+                url.strip()
+                for url in content.split("\n")
+                if url.strip()
+                and (url.startswith("http://") or url.startswith("https://"))
+            ]
+            logger.info(
+                f"Perplexity identified {len(identified_urls)} sources for '{refined_query[:50]}...'. First few: {identified_urls[:3]}"
+            )
             return identified_urls
         except (KeyError, IndexError) as e:
-            logger.error(f"Error parsing sources from Perplexity response. Response: {response_data}", exc_info=True)
-            raise ValueError("Invalid response structure from Perplexity API for identify_sources.") from e
+            logger.error(
+                f"Error parsing sources from Perplexity response. Response: {response_data}",
+                exc_info=True,
+            )
+            raise ValueError(
+                "Invalid response structure from Perplexity API for identify_sources."
+            ) from e
 
-    async def generate_embeddings(self, texts: List[str], **kwargs) -> List[List[float]]:
-        logger.warning(f"PerplexityClient.generate_embeddings called for {len(texts)} texts but is not implemented. kwargs: {kwargs}")
-        raise NotImplementedError("PerplexityClient does not support generate_embeddings.")
+    async def generate_embeddings(
+        self, texts: List[str], **kwargs
+    ) -> List[List[float]]:
+        logger.warning(
+            f"PerplexityClient.generate_embeddings called for {len(texts)} texts but is not implemented. kwargs: {kwargs}"
+        )
+        raise NotImplementedError(
+            "PerplexityClient does not support generate_embeddings."
+        )
 
-    async def analyze_diff(self, old_representation: Any, new_representation: Any, **kwargs) -> Dict:
-        logger.warning(f"PerplexityClient.analyze_diff called but is not implemented. kwargs: {kwargs}")
-        raise NotImplementedError("PerplexityClient.analyze_diff is not implemented for now.") 
+    async def analyze_diff(
+        self, old_representation: Any, new_representation: Any, **kwargs
+    ) -> Dict:
+        logger.warning(
+            f"PerplexityClient.analyze_diff called but is not implemented. kwargs: {kwargs}"
+        )
+        raise NotImplementedError(
+            "PerplexityClient.analyze_diff is not implemented for now."
+        )

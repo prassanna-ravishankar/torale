@@ -2,19 +2,22 @@ import logging
 import sys
 
 # Define a custom formatter to include more details if needed
-LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s"
+LOG_FORMAT = (
+    "%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s"
+)
+
 
 # Define a basic logging configuration function
 def setup_logging(log_level: str = "INFO"):
     """Sets up basic stream logging.
-    
+
     Args:
         log_level (str): The minimum log level to output (e.g., "DEBUG", "INFO", "WARNING").
     """
     # Ensure valid log level
     numeric_level = getattr(logging, log_level.upper(), None)
     if not isinstance(numeric_level, int):
-        raise ValueError(f'Invalid log level: {log_level}')
+        raise ValueError(f"Invalid log level: {log_level}")
 
     # Get the root logger
     root_logger = logging.getLogger()
@@ -43,7 +46,8 @@ def setup_logging(log_level: str = "INFO"):
 
     logging.info(f"Logging configured with level {log_level.upper()}.")
 
+
 # Example of how to get a logger in other modules:
 # import logging
 # logger = logging.getLogger(__name__)
-# logger.info("This is an info message.") 
+# logger.info("This is an info message.")

@@ -10,6 +10,7 @@ HTTP_ACCEPTED = 202
 
 logger = logging.getLogger(__name__)
 
+
 class NotificationService:
     def __init__(self, api_key: Optional[str] = None):
         self.sendgrid_client = SendGridAPIClient(api_key)

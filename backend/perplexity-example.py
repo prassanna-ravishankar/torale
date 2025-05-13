@@ -9,11 +9,13 @@ url = "https://api.perplexity.ai/chat/completions"
 perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
 
 if not perplexity_api_key:
-    raise ValueError("PERPLEXITY_API_KEY not found in .env file or environment variables")
+    raise ValueError(
+        "PERPLEXITY_API_KEY not found in .env file or environment variables"
+    )
 
 headers = {
     "Authorization": f"Bearer {perplexity_api_key}",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
 }
 
 initial_user_query = "discounts in tkmax"
@@ -38,8 +40,8 @@ payload_step1 = {
     "model": "sonar",
     "messages": [
         {"role": "system", "content": system_prompt_step1},
-        {"role": "user", "content": initial_user_query}
-    ]
+        {"role": "user", "content": initial_user_query},
+    ],
 }
 
 print("--- Running Step 1: Generate Intermediate Query ---")
@@ -87,8 +89,8 @@ payload_step2 = {
     "model": "sonar",
     "messages": [
         {"role": "system", "content": system_prompt_step2},
-        {"role": "user", "content": intermediate_query}
-    ]
+        {"role": "user", "content": intermediate_query},
+    ],
 }
 
 print("--- Running Step 2: Find Monitorable Website(s) ---")
@@ -99,19 +101,23 @@ monitorable_urls = []
 if response_step2_data.get("choices") and len(response_step2_data["choices"]) > 0:
     content = response_step2_data["choices"][0]["message"]["content"].strip()
     if content:
-        monitorable_urls = [url.strip() for url in content.split('\n') if url.strip()]
-    
+        monitorable_urls = [url.strip() for url in content.split("\n") if url.strip()]
+
     if monitorable_urls:
         print(f"Identified Monitorable URL(s):\n")
         for url_item in monitorable_urls:
             print(url_item)
         print("")
     else:
-        print("No monitorable URLs identified in Step 2 content, or content was empty.\n")
+        print(
+            "No monitorable URLs identified in Step 2 content, or content was empty.\n"
+        )
 elif not intermediate_query:
     print("Error: Intermediate query is empty. Skipping Step 2.")
 else:
-    print("Error: Could not identify monitorable URL(s) from Step 2 response structure.")
+    print(
+        "Error: Could not identify monitorable URL(s) from Step 2 response structure."
+    )
     print(f"Step 2 Response (choices): {response_step2_data.get('choices')}\n")
 
 
