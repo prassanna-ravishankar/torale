@@ -40,14 +40,6 @@ function CreateMonitoredSourcePageContent() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const prefilledUrl = searchParams.get('url');
-  const [formData, setFormData] = useState({
-    query: "",
-    target_url: "",
-    target_type: "website",
-    keywords: "",
-    check_frequency_minutes: 30,
-    similarity_threshold: 0.9,
-  });
 
   const {
     register,
@@ -93,238 +85,130 @@ function CreateMonitoredSourcePageContent() {
     createSourceMutation.mutate(data);
   };
 
-  const handleAlertSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      // TODO: Implement API call
-      console.log("Creating alert:", formData);
-      router.push("/alerts");
-    } catch (error) {
-      console.error("Failed to create alert:", error);
-    }
-  };
-
   return (
-    <div className="max-w-xl mx-auto p-4 sm:p-6 lg:p-8">
-      <button
-        onClick={() => router.back()}
-        className="mb-6 text-sm text-teal-600 hover:text-teal-800 flex items-center"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        Back to Discover
-      </button>
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Add New Monitored Source</h1>
-      <p className="text-gray-600 mb-6">
-        Enter the URL you want to monitor and how often it should be checked.
-      </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-12">
+      <div className="max-w-2xl mx-auto px-4">
+        <button
+          onClick={() => router.back()}
+          className="mb-6 text-sm text-teal-600 hover:text-teal-800 flex items-center"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Discover
+        </button>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 bg-white p-6 shadow-md rounded-lg">
-        <div>
-          <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-1">
-            URL to Monitor <span className="text-red-500">*</span>
-          </label>
-          <input
-            {...register('url')}
-            type="url"
-            id="url"
-            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-500 focus:ring-opacity-50 transition duration-150 ease-in-out sm:text-sm ${errors.url ? 'border-red-500' : ''}`}
-            placeholder="https://example.com/article"
-            disabled={isSubmitting || createSourceMutation.isPending}
-          />
-          {errors.url && (
-            <p className="mt-1 text-sm text-red-600">{errors.url.message}</p>
-          )}
+        {/* Header */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-6 animate-float">
+            <span className="text-2xl">➕</span>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold gradient-text font-space-grotesk mb-4">
+            Add New Source
+          </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+            Enter the URL you want to monitor and configure how often it should be checked for changes.
+          </p>
         </div>
 
-        <div>
-          <label htmlFor="check_interval_seconds" className="block text-sm font-medium text-gray-700 mb-1">
-            Check Interval (seconds)
-          </label>
-          <input
-            {...register('check_interval_seconds')}
-            type="number"
-            id="check_interval_seconds"
-            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-500 focus:ring-opacity-50 transition duration-150 ease-in-out sm:text-sm ${errors.check_interval_seconds ? 'border-red-500' : ''}`}
-            placeholder="e.g., 3600 for 1 hour, 86400 for 1 day"
-            disabled={isSubmitting || createSourceMutation.isPending}
-          />
-          <p className="mt-1 text-xs text-gray-500">Minimum: 60 seconds. Default: 3600 seconds (1 hour).</p>
-          {errors.check_interval_seconds && (
-            <p className="mt-1 text-sm text-red-600">{errors.check_interval_seconds.message}</p>
-          )}
+        {/* Main Form */}
+        <div className="startup-card rounded-2xl p-8">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div>
+              <label htmlFor="url" className="block text-lg font-semibold text-gray-800 mb-3">
+                URL to Monitor <span className="text-red-500">*</span>
+              </label>
+              <input
+                {...register('url')}
+                type="url"
+                id="url"
+                className={`w-full px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300 bg-white/80 backdrop-blur-sm ${errors.url ? 'border-red-500' : ''}`}
+                placeholder="https://example.com/page-to-monitor"
+                disabled={isSubmitting || createSourceMutation.isPending}
+              />
+              {errors.url && (
+                <p className="mt-2 text-sm text-red-600">{errors.url.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="check_interval_seconds" className="block text-lg font-semibold text-gray-800 mb-3">
+                Check Interval (seconds)
+              </label>
+              <input
+                {...register('check_interval_seconds')}
+                type="number"
+                id="check_interval_seconds"
+                className={`w-full px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300 bg-white/80 backdrop-blur-sm ${errors.check_interval_seconds ? 'border-red-500' : ''}`}
+                placeholder="3600"
+                disabled={isSubmitting || createSourceMutation.isPending}
+              />
+              <p className="mt-2 text-sm text-gray-500">
+                Minimum: 60 seconds. Default: 3600 seconds (1 hour). 
+                <br />
+                <strong>Common intervals:</strong> 300 (5 min), 1800 (30 min), 3600 (1 hour), 86400 (1 day)
+              </p>
+              {errors.check_interval_seconds && (
+                <p className="mt-2 text-sm text-red-600">{errors.check_interval_seconds.message}</p>
+              )}
+            </div>
+
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={isSubmitting || createSourceMutation.isPending}
+                className="w-full py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-lg font-semibold rounded-xl hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
+              >
+                {(isSubmitting || createSourceMutation.isPending) ? (
+                  <div className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Adding Source...
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center">
+                    <span className="mr-2">🚀</span>
+                    Add Monitored Source
+                  </div>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
 
-        <div>
-          <button
-            type="submit"
-            disabled={isSubmitting || createSourceMutation.isPending}
-            className="w-full inline-flex items-center justify-center rounded-md border border-transparent bg-teal-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 ease-in-out"
-          >
-            {(isSubmitting || createSourceMutation.isPending) ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Adding Source...
-              </>
-            ) : (
-              'Add Monitored Source'
-            )}
-          </button>
+        {/* Help Section */}
+        <div className="startup-card rounded-2xl p-8 mt-8">
+          <h3 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+            <span className="mr-3">💡</span>
+            Tips for Better Monitoring
+          </h3>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-semibold text-gray-700 mb-2">Choose the Right Interval</h4>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  <li>• <strong>News sites:</strong> 5-15 minutes</li>
+                  <li>• <strong>Blogs:</strong> 1-6 hours</li>
+                  <li>• <strong>Product pages:</strong> 1-24 hours</li>
+                  <li>• <strong>Documentation:</strong> 1-7 days</li>
+                </ul>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-semibold text-gray-700 mb-2">Best Practices</h4>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  <li>• Monitor specific pages, not homepages</li>
+                  <li>• Use longer intervals for stable content</li>
+                  <li>• Test with shorter intervals initially</li>
+                  <li>• Respect website rate limits</li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
-      </form>
-
-      <div className="mt-6">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-2">Create New Alert</h2>
-        <p className="text-gray-600 mb-6">
-          Enter the details for the new alert.
-        </p>
-
-        <form onSubmit={handleAlertSubmit} className="space-y-6">
-          <div>
-            <label
-              htmlFor="query"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Alert Query
-            </label>
-            <input
-              type="text"
-              id="query"
-              value={formData.query}
-              onChange={(e) =>
-                setFormData({ ...formData, query: e.target.value })
-              }
-              placeholder="e.g., Tell me when OpenAI updates their research page"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="target_url"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Target URL
-            </label>
-            <input
-              type="url"
-              id="target_url"
-              value={formData.target_url}
-              onChange={(e) =>
-                setFormData({ ...formData, target_url: e.target.value })
-              }
-              placeholder="https://example.com"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="target_type"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Target Type
-            </label>
-            <select
-              id="target_type"
-              value={formData.target_type}
-              onChange={(e) =>
-                setFormData({ ...formData, target_type: e.target.value })
-              }
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            >
-              <option value="website">Website</option>
-              <option value="rss">RSS Feed</option>
-              <option value="youtube">YouTube Channel</option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              htmlFor="keywords"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Keywords (optional)
-            </label>
-            <input
-              type="text"
-              id="keywords"
-              value={formData.keywords}
-              onChange={(e) =>
-                setFormData({ ...formData, keywords: e.target.value })
-              }
-              placeholder="e.g., GPT, model, research"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="check_frequency"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Check Frequency (minutes)
-            </label>
-            <input
-              type="number"
-              id="check_frequency"
-              value={formData.check_frequency_minutes}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  check_frequency_minutes: parseInt(e.target.value),
-                })
-              }
-              min="5"
-              max="1440"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="similarity_threshold"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Similarity Threshold (0-1)
-            </label>
-            <input
-              type="number"
-              id="similarity_threshold"
-              value={formData.similarity_threshold}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  similarity_threshold: parseFloat(e.target.value),
-                })
-              }
-              min="0"
-              max="1"
-              step="0.1"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </div>
-
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-            >
-              Create Alert
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );
@@ -332,8 +216,15 @@ function CreateMonitoredSourcePageContent() {
 
 export default function CreateMonitoredSourcePage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-indigo-500 border-r-transparent"></div>
+          <p className="mt-4 text-gray-700 text-lg">Loading...</p>
+        </div>
+      </div>
+    }>
       <CreateMonitoredSourcePageContent />
     </Suspense>
   );
-} 
+}
