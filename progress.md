@@ -461,7 +461,7 @@ Based on the new project goals, we're undertaking a major refactoring to:
   - Added success/failure reporting
 - 🧹 Improved resource cleanup:
   - Added proper SMTP connection cleanup
-  - Added cleanup in AmbiAlert's run_monitor
+  - Added cleanup in Torale's run_monitor
   - Better error handling for cleanup
 - 📝 Updated type hints and documentation
 
@@ -492,7 +492,7 @@ Based on the new project goals, we're undertaking a major refactoring to:
   - Added proper connection management
   - Added async context manager support
   - Converted all database operations to async
-- 🔄 Enhanced AmbiAlert class:
+- 🔄 Enhanced Torale class:
   - Added async context manager support
   - Added proper resource cleanup
   - Updated all database calls to async
@@ -548,7 +548,7 @@ Based on the new project goals, we're undertaking a major refactoring to:
 
 1. Update database operations to use aiosqlite
 2. Implement async alert backends
-3. Update main AmbiAlert class for async operation
+3. Update main Torale class for async operation
 4. Update CLI for async support
 5. Add async tests
 6. Update documentation with async examples
@@ -693,7 +693,7 @@ Based on the new project goals, we're undertaking a major refactoring to:
    - `database.py`: SQLite-based URL tracking
    - `monitor.py`: Website monitoring and change detection
    - `alerting.py`: Flexible alerting system
-   - `main.py`: Main AmbiAlert coordination
+   - `main.py`: Main Torale coordination
    - `cli.py`: Command-line interface
 
 2. **Key Features Implemented**:
@@ -718,4 +718,4 @@ Based on the new project goals, we're undertaking a major refactoring to:
    - Built-in modules:
      - sqlite3: Database storage
      - email: Email notifications
-     - argparse: CLI interface 
+     - argparse: CLI interface

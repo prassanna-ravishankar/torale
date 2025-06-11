@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# This script starts both the backend and frontend development servers for AmbiAlert.
+# This script starts both the backend and frontend development servers for Torale.
 
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
-echo "🚀 Starting AmbiAlert services..."
+echo "🚀 Starting Torale services..."
 
 # --- Start Backend Server ---
 echo "🔄 Starting Backend (FastAPI)..."
@@ -44,4 +44,4 @@ npm run dev
 # The backend, started with &, will need to be stopped manually (e.g., kill $BACKEND_PID) or when the terminal session ends.
 
 echo "👋 Frontend server (npm run dev) has been stopped (or Ctrl+C was pressed)."
-echo "👉 Remember to stop the backend server (PID: $BACKEND_PID) if it's still running. (e.g., 'kill $BACKEND_PID')" 
+echo "👉 Remember to stop the backend server (PID: $BACKEND_PID) if it's still running. (e.g., 'kill $BACKEND_PID')"

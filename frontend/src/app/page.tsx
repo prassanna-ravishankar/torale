@@ -238,7 +238,7 @@ export default function Home() {
               Ready to Get Started?
             </h2>
             <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-              Join thousands of users who trust AmbiAlert to keep them informed about what matters most.
+              Join thousands of users who trust Torale to keep them informed about what matters most.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link
@@ -267,9 +267,9 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-3 mb-4 md:mb-0">
               <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <span className="text-xl font-bold text-white">A</span>
+                <span className="text-xl font-bold text-white">T</span>
               </div>
-              <span className="text-xl font-bold text-gray-800 font-space-grotesk">AmbiAlert</span>
+              <span className="text-xl font-bold text-gray-800 font-space-grotesk">Torale</span>
             </div>
             <div className="flex items-center space-x-6 text-gray-600">
               <Link href="/auth" className="hover:text-indigo-600 transition-colors">Sign In</Link>
@@ -279,7 +279,7 @@ export default function Home() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-200 text-center text-gray-500">
-            <p>&copy; 2025 AmbiAlert. All rights reserved. Built with ❤️ for the future of content monitoring.</p>
+            <p>&copy; 2025 Torale. All rights reserved. Built with ❤️ for the future of content monitoring.</p>
           </div>
         </div>
       </footer>
