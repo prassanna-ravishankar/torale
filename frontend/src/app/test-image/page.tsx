@@ -4,12 +4,12 @@ export default function TestImagePage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
       <h1 className="text-2xl font-bold mb-4">Image Test Page</h1>
-
+      
       <div className="border p-4 rounded-lg">
         <h2 className="text-lg font-semibold mb-2">Normal Image Tag:</h2>
         {/* <img
-          src="/ambi-alert.png"
-          alt="Ambi Alert Logo (normal img)"
+          src="/torale-logo.svg"
+          alt="Torale Logo (normal img)"
           className="h-24 w-24 object-contain"
         /> */}
       </div>
@@ -18,8 +18,8 @@ export default function TestImagePage() {
         <h2 className="text-lg font-semibold mb-2">Next.js Image Component:</h2>
         <div className="relative h-24 w-24">
           <Image
-            src="/ambi-alert.png"
-            alt="Ambi Alert Logo (Next.js)"
+            src="/torale-logo.svg"
+            alt="Torale Logo (Next.js)"
             fill
             className="object-contain"
           />
