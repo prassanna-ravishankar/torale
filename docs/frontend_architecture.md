@@ -1,8 +1,12 @@
 # Frontend Architecture
 
+<div align="center">
+  <img src="../frontend/public/torale-logo.svg" alt="Torale Logo" width="120" height="120"/>
+</div>
+
 ## 1. Overview
 
-The AmbiAlert frontend is a Next.js application built with TypeScript, designed to provide a user-friendly interface for interacting with the AmbiAlert backend. It allows users to authenticate, discover potential monitoring sources, manage their monitored sources, and view change alerts.
+The Torale frontend is a Next.js application built with TypeScript, designed to provide a user-friendly interface for interacting with the Torale backend. It allows users to authenticate, discover potential monitoring sources, manage their monitored sources, and view change alerts.
 
 Key technologies include:
 *   **Next.js (App Router):** Framework for server-side rendering, client-side navigation, and API routes (though backend is separate).

@@ -1,6 +1,6 @@
-# AmbiAlert Backend
+# Torale Backend
 
-The backend service for AmbiAlert, a natural language-powered alerting service that monitors websites and content sources for meaningful changes.
+The backend service for Torale, a natural language-powered alerting service that monitors websites and content sources for meaningful changes.
 
 ## Features
 
@@ -23,8 +23,8 @@ The backend service for AmbiAlert, a natural language-powered alerting service t
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/ambi-alert.git
-cd ambi-alert/backend
+git clone https://github.com/yourusername/torale.git
+cd torale/backend
 ```
 
 2. Create virtual environment:

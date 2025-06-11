@@ -1,6 +1,6 @@
 # Key User and Data Flows
 
-This document outlines some of the key user interaction and data flows across the AmbiAlert frontend and backend systems. These flows are based on the Iteration 1 completed features.
+This document outlines some of the key user interaction and data flows across the Torale frontend and backend systems. These flows are based on the Iteration 1 completed features.
 
 ## 1. User Authentication Flow
 
@@ -182,4 +182,4 @@ sequenceDiagram
     *   User can view alert details and acknowledge them.
     *   Acknowledging an alert calls `POST /alerts/{alert_id}/acknowledge` on the backend, which updates the alert's status.
 
-These flows provide a high-level understanding of how users interact with AmbiAlert and how data moves through the system to achieve its monitoring and alerting goals. 
+These flows provide a high-level understanding of how users interact with Torale and how data moves through the system to achieve its monitoring and alerting goals. 

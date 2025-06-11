@@ -1,8 +1,8 @@
-# 🛰️ Project: Ambient Alert System (Codename: AmbiAlert)
+# 🛰️ Project: Torale
 
 ## 🌟 Overview
 
-**AmbiAlert** is a natural language-powered alerting service that monitors websites and content sources for meaningful changes. Users define alerts in plain English, and the system watches for changes using LLM-based query parsing and embedding-based change detection.
+**Torale** is a natural language-powered alerting service that monitors websites and content sources for meaningful changes. Users define alerts in plain English, and the system watches for changes using LLM-based query parsing and embedding-based change detection.
 
 ---
 

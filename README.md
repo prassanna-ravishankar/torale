@@ -1,4 +1,8 @@
-# AmbiAlert
+# Torale
+
+<div align="center">
+  <img src="frontend/public/torale-logo.svg" alt="Torale Logo" width="120" height="120"/>
+</div>
 
 A natural language-powered alerting service that monitors websites and content sources for meaningful changes.
 
@@ -17,7 +21,7 @@ A natural language-powered alerting service that monitors websites and content s
 ## 🏗️ Project Structure
 
 ```
-ambi-alert/
+torale/
 ├── backend/           # FastAPI backend service
 │   ├── app/          # Application code
 │   ├── tests/        # Backend tests
@@ -46,7 +50,7 @@ ambi-alert/
 
 ### 🚀 Launch Instructions
 
-The easiest way to launch AmbiAlert for development is by using the provided `start.sh` script from the root of the project. This script handles starting both the backend and frontend services.
+The easiest way to launch Torale for development is by using the provided `start.sh` script from the root of the project. This script handles starting both the backend and frontend services.
 
 1.  **Ensure Prerequisites are Met:**
     *   Complete the **Backend Setup** and **Frontend Setup** as detailed in their respective `README.md` files ([backend/README.md](backend/README.md) and [frontend/README.md](frontend/README.md)). This includes installing dependencies and setting up environment variables.
@@ -61,7 +65,7 @@ The easiest way to launch AmbiAlert for development is by using the provided `st
     ```
     *   The backend API will start in the background (typically at `http://localhost:8000`).
     *   The frontend application will start in the foreground (typically at `http://localhost:3000`).
-    *   Open your web browser and navigate to `http://localhost:3000` to use AmbiAlert.
+    *   Open your web browser and navigate to `http://localhost:3000` to use Torale.
     *   To stop the frontend server (and the script), press `Ctrl+C` in the terminal where `start.sh` is running. 
     *   The script will remind you to manually stop the backgrounded backend server (its PID will be displayed when it starts).
 

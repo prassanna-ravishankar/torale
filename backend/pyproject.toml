@@ -1,7 +1,7 @@
 [project]
-name = "ambi-alert-backend"
+name = "torale-backend"
 version = "0.1.0"
-description = "Backend for AmbiAlert - Natural language-powered alerting service"
+description = "Backend for Torale - Natural language-powered alerting service"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [

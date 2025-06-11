@@ -14,13 +14,13 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "AmbiAlert - AI-Powered Content Monitoring",
+  title: "Torale - AI-Powered Content Monitoring",
   description:
     "Monitor websites and content sources for meaningful changes using natural language queries. Get instant alerts when what matters to you changes.",
   keywords: "content monitoring, AI alerts, website changes, natural language, automation",
-  authors: [{ name: "AmbiAlert Team" }],
+  authors: [{ name: "Torale Team" }],
   openGraph: {
-    title: "AmbiAlert - AI-Powered Content Monitoring",
+    title: "Torale - AI-Powered Content Monitoring",
     description: "Monitor websites and content sources for meaningful changes using natural language queries.",
     type: "website",
   },
