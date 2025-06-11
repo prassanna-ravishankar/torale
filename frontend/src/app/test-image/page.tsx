@@ -7,11 +7,11 @@ export default function TestImagePage() {
 
       <div className="border p-4 rounded-lg">
         <h2 className="text-lg font-semibold mb-2">Normal Image Tag:</h2>
-        <img
+        {/* <img
           src="/ambi-alert.png"
           alt="Ambi Alert Logo (normal img)"
           className="h-24 w-24 object-contain"
-        />
+        /> */}
       </div>
 
       <div className="border p-4 rounded-lg mt-4">

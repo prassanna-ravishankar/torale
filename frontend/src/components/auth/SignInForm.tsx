@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
+import Image from 'next/image';
 
 const signInSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -165,10 +166,12 @@ export default function SignInForm() {
     <div className="w-full max-w-md space-y-6 bg-white p-8 rounded-xl shadow-lg">
       <div className="flex flex-col items-center">
         <div className="mb-4">
-          <img
+          <Image
             src="/ambi-alert.png"
             alt="Ambi Alert Logo"
-            className="h-24 w-24 object-contain"
+            width={96}
+            height={96}
+            className="object-contain"
           />
         </div>
         <h2 className="text-center text-2xl font-bold tracking-tight text-gray-900">

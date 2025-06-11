@@ -3,7 +3,7 @@ from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.models.alert import Base
+from app.core.db import Base
 
 # Use SQLite for development, can be changed to PostgreSQL for production
 SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./ambi_alert.db"
