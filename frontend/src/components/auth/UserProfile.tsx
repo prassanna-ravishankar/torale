@@ -33,6 +33,7 @@ export default function UserProfile() {
   const { user, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const typedSupabase = supabase as SupabaseClient;
 
@@ -112,6 +113,21 @@ export default function UserProfile() {
       console.error("[UserProfile] Profile update error:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    setIsLoggingOut(true);
+    try {
+      const { error } = await typedSupabase.auth.signOut();
+      if (error) throw error;
+      toast.success("Successfully signed out!");
+      window.location.href = '/auth';
+    } catch (error) {
+      toast.error("Failed to sign out.");
+      console.error("[UserProfile] Sign out error:", error);
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -240,6 +256,42 @@ export default function UserProfile() {
           </button>
         </div>
       </form>
+
+      <div className="mt-8 pt-6 border-t border-gray-200">
+        <button
+          onClick={handleSignOut}
+          disabled={isLoggingOut}
+          className="w-full inline-flex items-center justify-center rounded-md border border-transparent bg-red-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 ease-in-out"
+        >
+          {isLoggingOut ? (
+            <>
+              <svg
+                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Signing Out...
+            </>
+          ) : (
+            "Sign Out"
+          )}
+        </button>
+      </div>
     </div>
   );
 }

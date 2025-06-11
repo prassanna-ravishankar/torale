@@ -1,117 +1,183 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { BellIcon, GlobeAltIcon, RssIcon } from "@heroicons/react/24/outline";
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
+import Image from 'next/image';
+import toast from 'react-hot-toast';
+import axiosInstance from '@/lib/axiosInstance';
 
-// Mock data for demonstration
-const alerts = [
-  {
-    id: 1,
-    query: "Tell me when OpenAI updates their research page",
-    target: "https://openai.com/research/",
-    type: "website",
-    lastChecked: "2024-03-29T10:00:00Z",
-    status: "active",
-  },
-  {
-    id: 2,
-    query: "Notify me about new GPT-4 papers",
-    target: "https://arxiv.org/list/cs.AI/recent",
-    type: "rss",
-    lastChecked: "2024-03-29T09:30:00Z",
-    status: "active",
-  },
-];
+// Define the expected structure for a ChangeAlert (ChangeAlertSchema from backend)
+interface ChangeAlertSchema {
+  id: number;
+  monitored_source_id: number;
+  summary: string;
+  details?: Record<string, unknown> | string | null; // Changed any to unknown
+  screenshot_url?: string | null;
+  old_value?: string | null;
+  new_value?: string | null;
+  created_at: string;
+  is_acknowledged: boolean;
+  acknowledged_at?: string | null;
+  // Potentially include source_url or name if backend provides it directly or via a join
+  source_url?: string; // Example: to be fetched or joined by backend
+}
+
+interface FetchAlertsParams {
+  skip?: number;
+  limit?: number;
+  monitored_source_id?: number;
+  is_acknowledged?: boolean;
+}
+
+const fetchAlerts = async (params: FetchAlertsParams): Promise<ChangeAlertSchema[]> => {
+  const response = await axiosInstance.get<ChangeAlertSchema[]>('/alerts/', { params });
+  return response.data;
+};
 
 export default function AlertsPage() {
-  const [activeAlerts, setActiveAlerts] = useState(alerts);
+  const queryClient = useQueryClient();
+  // Basic filtering state examples (can be expanded)
+  const [filterAcknowledged, setFilterAcknowledged] = useState<boolean | undefined>(undefined);
+  // TODO: Add state for monitored_source_id filter, skip, limit, sorting
 
-  const handleDelete = (id: number) => {
-    setActiveAlerts(activeAlerts.filter((alert) => alert.id !== id));
+  const {
+    data: alerts,
+    isLoading,
+    error,
+    isError,
+  } = useQuery<ChangeAlertSchema[], Error>({
+    queryKey: ['alerts', { acknowledged: filterAcknowledged }], // Query key includes filters
+    queryFn: () => fetchAlerts({ is_acknowledged: filterAcknowledged }),
+    // keepPreviousData: true, // Useful for pagination/filtering to keep data while new is fetched
+  });
+
+  // Mutation for acknowledging an alert - Task 4.3
+  const acknowledgeAlertMutation = useMutation<ChangeAlertSchema, Error, number>({
+    mutationFn: async (alertId: number) => {
+      const response = await axiosInstance.post<ChangeAlertSchema>(`/alerts/${alertId}/acknowledge`);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success(`Alert (ID: ${data.id}) acknowledged.`);
+      queryClient.invalidateQueries({ queryKey: ['alerts'] });
+      // Optionally, update the specific alert in the cache if more granular control is needed
+      // queryClient.setQueryData(['alerts', { id: data.id }], data);
+    },
+    onError: (error, alertId) => {
+      toast.error(`Failed to acknowledge alert (ID: ${alertId}). ${error.message}`);
+      console.error("Error acknowledging alert:", error);
+    },
+  });
+
+  const handleAcknowledge = (alertId: number) => {
+    acknowledgeAlertMutation.mutate(alertId);
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
+        <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-teal-500 border-r-transparent"></div>
+        <p className="ml-4 text-gray-700 text-lg">Loading alerts...</p>
+      </div>
+    );
+  }
+
+  if (isError && error) {
+    toast.error(error.message || 'Failed to load alerts.');
+    return (
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 text-center">
+        <p className="text-red-600 text-lg">Error loading alerts: {error.message}</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Alerts</h1>
-        <Link
-          href="/alerts/new"
-          className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-        >
-          New Alert
+    <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Change Alerts</h1>
+        <Link href="/alerts/new" className="ml-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">
+          Define New Monitoring Task
         </Link>
+        {/* Placeholder for global actions like "Acknowledge All" or bulk actions */}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {activeAlerts.map((alert) => (
-          <div
-            key={alert.id}
-            className="bg-white shadow rounded-lg p-6 space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                {alert.type === "website" && (
-                  <GlobeAltIcon className="h-5 w-5 text-gray-400" />
-                )}
-                {alert.type === "rss" && (
-                  <RssIcon className="h-5 w-5 text-gray-400" />
-                )}
-                <h3 className="text-lg font-medium text-gray-900">
-                  {alert.query}
-                </h3>
-              </div>
-              <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                {alert.status}
-              </span>
-            </div>
-            <p className="text-sm text-gray-500">
-              Monitoring:{" "}
-              <a
-                href={alert.target}
-                className="text-indigo-600 hover:text-indigo-500"
-              >
-                {alert.target}
-              </a>
-            </p>
-            <div className="flex items-center text-sm text-gray-500">
-              <BellIcon className="h-4 w-4 mr-1" />
-              Last checked: {new Date(alert.lastChecked).toLocaleString()}
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Link
-                href={`/alerts/${alert.id}/edit`}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                Edit
-              </Link>
-              <button
-                onClick={() => handleDelete(alert.id)}
-                className="text-sm text-red-500 hover:text-red-700"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {activeAlerts.length === 0 && (
-        <div className="text-center py-12">
-          <h3 className="mt-2 text-sm font-semibold text-gray-900">
-            No alerts
-          </h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Get started by creating a new alert.
-          </p>
-          <div className="mt-6">
-            <Link
-              href="/alerts/new"
-              className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+      {/* Placeholder for Filtering UI - Task 4.1 */}
+      <div className="mb-6 p-4 bg-gray-100 rounded-lg">
+        <h3 className="text-lg font-medium text-gray-800 mb-2">Filters (Placeholder)</h3>
+        <div className="flex space-x-4 items-center">
+          <div>
+            <label htmlFor="filterAcknowledged" className="text-sm text-gray-600 mr-2">Status:</label>
+            <select 
+              id="filterAcknowledged"
+              value={filterAcknowledged === undefined ? 'all' : filterAcknowledged ? 'acknowledged' : 'unacknowledged'}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'all') setFilterAcknowledged(undefined);
+                else if (val === 'acknowledged') setFilterAcknowledged(true);
+                else setFilterAcknowledged(false);
+              }}
+              className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
             >
-              Create Alert
-            </Link>
+              <option value="all">All</option>
+              <option value="acknowledged">Acknowledged</option>
+              <option value="unacknowledged">Unacknowledged</option>
+            </select>
           </div>
+          {/* TODO: Add filter for monitored_source_id (e.g., dropdown populated from user's sources) */}
+          {/* TODO: Add sorting options */}
+        </div>
+      </div>
+
+      {alerts && alerts.length > 0 ? (
+        <div className="space-y-4">
+          {alerts.map((alert) => (
+            <div key={alert.id} className={`bg-white shadow-md rounded-lg p-4 border-l-4 ${alert.is_acknowledged ? 'border-green-500' : 'border-red-500'}`}>
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800">
+                    <Link href={`/sources/${alert.monitored_source_id}`} className="hover:underline hover:text-teal-600">
+                      Source ID: {alert.monitored_source_id} {alert.source_url ? `(${alert.source_url})` : ''}
+                    </Link>
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">{alert.summary}</p>
+                  <p className="text-xs text-gray-400 mt-1">Detected: {new Date(alert.created_at).toLocaleString()}</p>
+                </div>
+                {!alert.is_acknowledged && (
+                  <button
+                    onClick={() => handleAcknowledge(alert.id)}
+                    disabled={acknowledgeAlertMutation.isPending && acknowledgeAlertMutation.variables === alert.id}
+                    className="ml-4 py-1 px-3 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {acknowledgeAlertMutation.isPending && acknowledgeAlertMutation.variables === alert.id ? 'Ack...' : 'Acknowledge'}
+                  </button>
+                )}
+              </div>
+              {/* Placeholder for Detail View link/modal - Task 4.2 */}
+              {/* Example: <Link href={`/alerts/${alert.id}`}>View Details</Link> */}
+              {alert.details && <pre className="mt-2 p-2 bg-gray-50 text-xs text-gray-700 rounded overflow-x-auto">{typeof alert.details === 'string' ? alert.details : JSON.stringify(alert.details, null, 2)}</pre>}
+              {alert.screenshot_url && (
+                <div className="mt-2 relative w-full max-w-xs h-48 border border-gray-300 rounded overflow-hidden">
+                  <Image 
+                    src={alert.screenshot_url} 
+                    alt="Change screenshot" 
+                    fill 
+                    style={{ objectFit: "contain" }}
+                    className="rounded"
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          <h3 className="mt-2 text-lg font-medium text-gray-900">No Alerts Found</h3>
+          <p className="mt-1 text-sm text-gray-500">There are currently no change alerts to display.</p>
+          {filterAcknowledged !== undefined && <p className="mt-1 text-sm text-gray-500">Try adjusting your filters.</p>}
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
 # ruff: noqa: E501
+import logging
 from typing import Optional
 
 from sendgrid import SendGridAPIClient
@@ -6,6 +7,8 @@ from sendgrid.helpers.mail import Mail
 
 # HTTP Status Codes
 HTTP_ACCEPTED = 202
+
+logger = logging.getLogger(__name__)
 
 
 class NotificationService:
@@ -40,29 +43,5 @@ class NotificationService:
             response = self.sendgrid_client.send(message)
             return response.status_code == HTTP_ACCEPTED
         except Exception as e:
-            print(f"Error sending email alert: {e}")
+            logger.error("Error sending email alert: %s", e, exc_info=True)
             return False
-
-    def _generate_email_content(self, query: str, target_url: str, content: str) -> str:
-        """Generate HTML content for the email."""
-        return f"""
-        <html>
-            <body>
-                <h2>Changes Detected!</h2>
-                <p>We've detected changes for your alert:</p>
-                <p><strong>Query:</strong> {query}</p>
-                <p><strong>URL:</strong> <a href="{target_url}">{target_url}</a></p>
-                <hr>
-                <h3>Updated Content:</h3>
-                <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px;">
-                    {content[:1000]}...
-                </div>
-                <p>
-                    <small>
-                        This is an automated alert from AmbiAlert.
-                        You can manage your alerts at <a href="https://ambialert.com/dashboard">ambialert.com/dashboard</a>
-                    </small>
-                </p>
-            </body>
-        </html>
-        """
