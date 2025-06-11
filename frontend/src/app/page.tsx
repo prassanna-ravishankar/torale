@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import AuthModal from "@/components/auth/AuthModal";
 
 export default function Home() {
@@ -52,6 +51,10 @@ export default function Home() {
 
         <div className="relative z-10 text-center max-w-5xl mx-auto">
           <div className="mb-8">
+            <div className="flex items-center justify-center mb-6">
+              <img src="/torale-logo.svg" alt="Torale" className="w-16 h-16 mr-3" />
+              <span className="text-2xl font-bold gradient-text font-space-grotesk">Torale</span>
+            </div>
             <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold mb-6 leading-tight">
               <span className="gradient-text font-space-grotesk">Monitor</span>
               <br />
