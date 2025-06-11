@@ -1,0 +1,149 @@
+# Torale Cursor Rules - KISS & Pythonic Focus
+
+## General Principles
+- Follow KISS (Keep It Simple, Stupid) - prefer simple, clear solutions over complex ones
+- Write self-documenting code with clear naming
+- Favor composition over inheritance
+- Use type hints everywhere for better IDE support and code clarity
+- Keep functions small and focused on a single responsibility
+
+## Python Backend (FastAPI)
+
+### Code Style & Formatting
+- Follow PEP 8 and pythonic conventions
+- Use ruff for linting (already configured in pyproject.toml)
+- Use black for formatting (line length: 88)
+- Use snake_case for variables, functions, and module names
+- Use PascalCase for classes
+- Use UPPER_CASE for constants
+
+### FastAPI Patterns
+- Use dependency injection for services and database connections
+- Keep route handlers thin - delegate business logic to services
+- Use Pydantic models for request/response validation
+- Structure endpoints with consistent HTTP status codes
+- Use async/await for I/O operations
+- Group related endpoints in routers
+
+### Database & Models
+- Use SQLAlchemy declarative models with type hints
+- Keep database logic in repository/service classes
+- Use Alembic for database migrations
+- Always use connection pooling and proper session management
+- Prefer explicit database transactions
+
+### Error Handling
+- Use HTTPException for API errors with proper status codes
+- Create custom exception classes for business logic errors
+- Always include meaningful error messages
+- Log errors appropriately but don't expose internal details to clients
+
+### Testing
+- Write tests for all business logic and API endpoints
+- Use pytest with async support
+- Mock external dependencies (AI models, email services)
+- Aim for high test coverage but focus on critical paths
+
+## TypeScript Frontend (Next.js)
+
+### Code Style & Formatting
+- Use TypeScript strict mode
+- Prefer const over let, avoid var
+- Use descriptive variable names
+- Use PascalCase for components, camelCase for functions/variables
+- Use kebab-case for file names
+
+### React/Next.js Patterns
+- Use functional components with hooks
+- Keep components small and focused
+- Use custom hooks for shared logic
+- Prefer composition over prop drilling
+- Handle loading and error states consistently
+- Use React Server Components where appropriate
+
+### State Management
+- Use TanStack Query for server state
+- Use React Hook Form for form state
+- Keep local state minimal and close to where it's used
+- Use Zustand for complex client state if needed
+
+### API Integration
+- Use the configured axios instance with interceptors
+- Handle errors gracefully with toast notifications
+- Use proper TypeScript types for API responses
+- Implement proper loading states
+
+### UI/UX
+- Follow consistent design patterns
+- Use Tailwind CSS utility classes
+- Ensure responsive design
+- Implement proper loading states and error boundaries
+- Use semantic HTML elements
+
+## Project Structure & Organization
+
+### Backend Structure
+```
+backend/
+├── app/
+│   ├── api/           # API routes/routers
+│   ├── core/          # Core configuration, dependencies
+│   ├── models/        # SQLAlchemy models
+│   ├── schemas/       # Pydantic schemas
+│   ├── services/      # Business logic
+│   └── main.py        # FastAPI app
+├── tests/             # Test files mirroring app structure
+└── alembic/          # Database migrations
+```
+
+### Frontend Structure
+```
+frontend/src/
+├── app/              # Next.js app router pages
+├── components/       # Reusable UI components
+├── lib/             # Utilities, configurations
+├── hooks/           # Custom React hooks
+└── types/           # TypeScript type definitions
+```
+
+## Development Practices
+
+### Git & Commits
+- Write clear, descriptive commit messages
+- Use conventional commits format when possible
+- Keep commits atomic and focused
+- Use feature branches for new development
+
+### Documentation
+- Write docstrings for Python functions/classes
+- Use JSDoc comments for complex TypeScript functions
+- Keep README files updated
+- Document API endpoints in FastAPI (automatic with docstrings)
+
+### Performance
+- Use appropriate caching strategies
+- Optimize database queries (avoid N+1 problems)
+- Use React.memo for expensive components only when needed
+- Implement proper pagination for lists
+
+### Security
+- Validate all inputs on both frontend and backend
+- Use environment variables for sensitive configuration
+- Implement proper authentication and authorization
+- Sanitize user inputs and prevent XSS/SQL injection
+
+## AI Integration Guidelines
+- Abstract AI model interactions behind interfaces
+- Handle AI API failures gracefully
+- Don't expose AI model details to frontend
+- Cache AI responses when appropriate
+- Rate limit AI API calls
+
+## Specific to Torale
+- Focus on the core monitoring and alerting functionality
+- Keep the natural language processing simple and effective
+- Ensure email notifications are reliable
+- Design for horizontal scaling from the start
+- Monitor and log key metrics (source checks, alert generation)
+
+Remember: When in doubt, choose the simpler solution. Code should be readable by humans first, optimized second. 
