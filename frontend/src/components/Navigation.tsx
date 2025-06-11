@@ -26,10 +26,10 @@ export default function Navigation() {
             {/* Logo */}
             <Link href="/" className="flex items-center space-x-3 group">
               <div className="w-10 h-10 bg-gradient-to-br from-white/20 to-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/20 group-hover:scale-110 transition-transform duration-300">
-                <span className="text-xl font-bold text-white">A</span>
+                <span className="text-xl font-bold text-white">T</span>
               </div>
               <span className="text-xl font-bold text-white font-space-grotesk tracking-tight">
-                AmbiAlert
+                Torale
               </span>
             </Link>
 
@@ -57,10 +57,10 @@ export default function Navigation() {
             {/* Logo */}
             <Link href={user ? "/dashboard" : "/"} className="flex items-center space-x-3 group">
               <div className="w-10 h-10 bg-gradient-to-br from-white/20 to-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/20 group-hover:scale-110 transition-transform duration-300">
-                <span className="text-xl font-bold text-white">A</span>
+                <span className="text-xl font-bold text-white">T</span>
               </div>
               <span className="text-xl font-bold text-white font-space-grotesk tracking-tight">
-                AmbiAlert
+                Torale
               </span>
             </Link>
 

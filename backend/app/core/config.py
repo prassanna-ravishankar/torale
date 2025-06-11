@@ -7,14 +7,14 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # API Settings
     API_V1_STR: str = "/api/v1"
-    PROJECT_NAME: str = "AmbiAlert"
+    PROJECT_NAME: str = "Torale"
 
     # Database Settings
-    DATABASE_URL: str = "sqlite+aiosqlite:///./ambi_alert.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./torale.db"
 
     # Email Settings
     SENDGRID_API_KEY: str
-    ALERT_FROM_EMAIL: str = "alerts@ambialert.com"
+    ALERT_FROM_EMAIL: str = "alerts@torale.com"
 
     # AI Provider API Keys - these should be loaded from .env
     OPENAI_API_KEY: Optional[str] = None

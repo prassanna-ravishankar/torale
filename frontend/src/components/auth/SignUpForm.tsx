@@ -119,16 +119,10 @@ export default function SignUpForm() {
       <div className="startup-card rounded-2xl p-8">
         <div className="flex flex-col items-center mb-8">
           <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6 animate-float">
-            <Image
-              src="/ambi-alert.png"
-              alt="Ambi Alert Logo"
-              width={40}
-              height={40}
-              className="object-contain"
-            />
+            <span className="text-3xl font-bold text-white">T</span>
           </div>
           <h2 className="text-3xl font-bold gradient-text font-space-grotesk text-center">
-            Join AmbiAlert
+            Join Torale
           </h2>
           <p className="mt-3 text-center text-gray-600 text-lg">
             Start monitoring what matters to you
