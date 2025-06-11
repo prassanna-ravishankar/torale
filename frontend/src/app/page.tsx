@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import AuthModal from "@/components/auth/AuthModal";
 
 export default function Home() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<'signin' | 'signup'>('signin');
 
   useEffect(() => {
     if (!loading && user) {
@@ -30,6 +33,11 @@ export default function Home() {
   if (user) {
     return null; // Will redirect to dashboard
   }
+
+  const openAuthModal = (tab: 'signin' | 'signup') => {
+    setAuthModalTab(tab);
+    setIsAuthModalOpen(true);
+  };
 
   return (
     <main className="relative overflow-hidden">
@@ -56,12 +64,12 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-            <Link
-              href="/auth"
+            <button
+              onClick={() => openAuthModal('signup')}
               className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-lg font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105 animate-pulse-glow"
             >
               Get Started Free
-            </Link>
+            </button>
             <a
               href="#features"
               className="px-8 py-4 bg-white/80 backdrop-blur-sm text-gray-800 rounded-xl text-lg font-semibold hover:bg-white transition-all duration-300 shadow-lg hover:shadow-xl border border-gray-200"
@@ -241,18 +249,18 @@ export default function Home() {
               Join thousands of users who trust Torale to keep them informed about what matters most.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link
-                href="/auth"
+              <button
+                onClick={() => openAuthModal('signup')}
                 className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-lg font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105"
               >
                 Start Monitoring Today
-              </Link>
-              <Link
+              </button>
+              <a
                 href="#features"
                 className="px-8 py-4 bg-white/80 backdrop-blur-sm text-gray-800 rounded-xl text-lg font-semibold hover:bg-white transition-all duration-300 shadow-lg hover:shadow-xl border border-gray-200"
               >
                 Learn More
-              </Link>
+              </a>
             </div>
             <p className="text-gray-500 text-sm mt-4">
               No credit card required • Free forever plan available
@@ -272,10 +280,10 @@ export default function Home() {
               <span className="text-xl font-bold text-gray-800 font-space-grotesk">Torale</span>
             </div>
             <div className="flex items-center space-x-6 text-gray-600">
-              <Link href="/auth" className="hover:text-indigo-600 transition-colors">Sign In</Link>
-              <Link href="#features" className="hover:text-indigo-600 transition-colors">Features</Link>
-              <Link href="#" className="hover:text-indigo-600 transition-colors">Privacy</Link>
-              <Link href="#" className="hover:text-indigo-600 transition-colors">Terms</Link>
+              <button onClick={() => openAuthModal('signin')} className="hover:text-indigo-600 transition-colors">Sign In</button>
+              <a href="#features" className="hover:text-indigo-600 transition-colors">Features</a>
+              <a href="#" className="hover:text-indigo-600 transition-colors">Privacy</a>
+              <a href="#" className="hover:text-indigo-600 transition-colors">Terms</a>
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-200 text-center text-gray-500">
@@ -283,6 +291,13 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)}
+        defaultTab={authModalTab}
+      />
     </main>
   );
 }
