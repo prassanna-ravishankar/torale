@@ -25,7 +25,7 @@ class NotificationService:
         """Send an email alert to the user."""
         try:
             message = Mail(
-                from_email="noreply@ambialert.com",
+                from_email="noreply@torale.com",
                 to_emails=user_email,
                 subject=f"Alert: Changes detected for '{query}'",
                 html_content=f"""

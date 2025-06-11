@@ -1,5 +1,9 @@
 # Torale
 
+<div align="center">
+  <img src="frontend/public/torale-logo.svg" alt="Torale Logo" width="120" height="120"/>
+</div>
+
 A natural language-powered alerting service that monitors websites and content sources for meaningful changes.
 
 ## 🌟 Features

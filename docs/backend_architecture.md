@@ -1,8 +1,12 @@
 # Backend Architecture
 
+<div align="center">
+  <img src="../frontend/public/torale-logo.svg" alt="Torale Logo" width="120" height="120"/>
+</div>
+
 ## 1. Overview
 
-The AmbiAlert backend is built with FastAPI and designed to monitor web content for meaningful changes based on user queries. It features a service-oriented architecture with a clear separation of concerns, an abstraction layer for AI model interactions to allow flexibility in choosing AI providers (e.g., Perplexity, OpenAI), and a PostgreSQL database managed via SQLAlchemy.
+The Torale backend is built with FastAPI and designed to monitor web content for meaningful changes based on user queries. It features a service-oriented architecture with a clear separation of concerns, an abstraction layer for AI model interactions to allow flexibility in choosing AI providers (e.g., Perplexity, OpenAI), and a PostgreSQL database managed via SQLAlchemy.
 
 The system processes user queries to discover relevant web sources, periodically ingests content from these sources, detects significant changes using embedding comparisons, and generates alerts.
 

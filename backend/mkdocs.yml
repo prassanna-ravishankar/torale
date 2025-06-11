@@ -1,10 +1,10 @@
-site_name: ambi-alert
-repo_url: https://github.com/prassanna-ravishankar/ambi-alert
-site_url: https://prassanna-ravishankar.github.io/ambi-alert
+site_name: torale
+repo_url: https://github.com/prassanna-ravishankar/torale
+site_url: https://prassanna-ravishankar.github.io/torale
 site_description: This is a reverse search tool. Agentic Alerting
 site_author: Prass, The Nomadic Coder
 edit_uri: edit/main/docs/
-repo_name: prassanna-ravishankar/ambi-alert
+repo_name: prassanna-ravishankar/torale
 copyright: Maintained by <a href="https://prassanna-ravishankar.com">prassanna-ravishankar</a>.
 
 nav:
@@ -69,9 +69,9 @@ theme:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/prassanna-ravishankar/ambi-alert
+      link: https://github.com/prassanna-ravishankar/torale
     - icon: fontawesome/brands/python
-      link: https://pypi.org/project/ambi-alert
+      link: https://pypi.org/project/torale/
 
 markdown_extensions:
   - toc:
