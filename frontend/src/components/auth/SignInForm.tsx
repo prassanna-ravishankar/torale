@@ -37,11 +37,9 @@ export default function SignInForm() {
       setEmailNotConfirmed(false);
       console.log("[SignInForm] Signing in with:", data.email);
 
-      // Use the auth context signIn method
       const { error, session } = await signIn(data.email, data.password);
 
       if (error) {
-        // Check for specific error types
         console.log(
           "[SignInForm] Auth error details:",
           error.message,
@@ -70,15 +68,11 @@ export default function SignInForm() {
         return;
       }
 
-      // Session established successfully
-      toast.success("Signed in successfully");
+      toast.success("Welcome back! 🎉");
 
-      // Verify session is immediately accessible by attempting to refresh
-      console.log("[SignInForm] Verifying session with refresh");
       const refreshSuccessful = await refreshSession();
       console.log("[SignInForm] Session refresh result:", refreshSuccessful);
 
-      // Delay redirect slightly to ensure logs are sent
       console.log("[SignInForm] About to redirect to dashboard");
       setTimeout(() => {
         console.log("[SignInForm] Performing redirect now");
@@ -114,7 +108,6 @@ export default function SignInForm() {
       setIsLoading(true);
       setEmailNotConfirmed(false);
 
-      // Direct Supabase call for magic link
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -123,7 +116,7 @@ export default function SignInForm() {
       });
 
       if (error) throw error;
-      toast.success("Magic link sent! Check your email");
+      toast.success("Magic link sent! ✨ Check your email");
     } catch (error) {
       const authError = error as AuthError;
       if (authError.message) {
@@ -153,7 +146,7 @@ export default function SignInForm() {
       });
 
       if (error) throw error;
-      toast.success("Confirmation email sent! Please check your inbox");
+      toast.success("Confirmation email sent! 📧 Please check your inbox");
     } catch (error) {
       toast.error("Failed to send confirmation email");
       console.error("[SignInForm] Resend confirmation error:", error);
@@ -163,57 +156,46 @@ export default function SignInForm() {
   };
 
   return (
-    <div className="w-full max-w-md space-y-6 bg-white p-8 rounded-xl shadow-lg">
-      <div className="flex flex-col items-center">
-        <div className="mb-4">
-          <Image
-            src="/ambi-alert.png"
-            alt="Ambi Alert Logo"
-            width={96}
-            height={96}
-            className="object-contain"
-          />
+    <div className="w-full max-w-md space-y-8">
+      <div className="startup-card rounded-2xl p-8">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6 animate-float">
+            <Image
+              src="/ambi-alert.png"
+              alt="Ambi Alert Logo"
+              width={40}
+              height={40}
+              className="object-contain"
+            />
+          </div>
+          <h2 className="text-3xl font-bold gradient-text font-space-grotesk text-center">
+            Welcome Back
+          </h2>
+          <p className="mt-3 text-center text-gray-600 text-lg">
+            Sign in to your AmbiAlert account
+          </p>
         </div>
-        <h2 className="text-center text-2xl font-bold tracking-tight text-gray-900">
-          Sign in to Ambi Alert
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Monitor and respond to alerts in real-time
-        </p>
-      </div>
 
-      {emailNotConfirmed && (
-        <div className="rounded-lg bg-amber-50 p-4 border border-amber-200">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg
-                className="h-5 w-5 text-amber-400"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-amber-800">
-                Email not confirmed
-              </h3>
-              <div className="mt-2 text-sm text-amber-700">
-                <p>
-                  Your email address hasn&apos;t been confirmed yet. Please
-                  check your inbox for a confirmation email or click the button
-                  below to resend it.
-                </p>
-                <div className="mt-4">
+        {emailNotConfirmed && (
+          <div className="rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 p-6 border border-amber-200 mb-6">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-lg font-semibold text-amber-800">
+                  Email not confirmed
+                </h3>
+                <div className="mt-2 text-amber-700">
+                  <p className="mb-4">
+                    Your email address hasn&apos;t been confirmed yet. Please
+                    check your inbox for a confirmation email.
+                  </p>
                   <button
                     type="button"
                     onClick={handleResendConfirmation}
                     disabled={isLoading}
-                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-amber-700 bg-amber-100 hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition duration-150 ease-in-out"
+                    className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium hover:from-amber-600 hover:to-orange-600 transition-all duration-300 disabled:opacity-50"
                   >
                     Resend confirmation email
                   </button>
@@ -221,68 +203,60 @@ export default function SignInForm() {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-        <div className="space-y-4">
+        <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-semibold text-gray-700 mb-2"
             >
               Email address
             </label>
-            <div className="mt-1">
-              <input
-                {...register("email")}
-                id="email"
-                type="email"
-                className="block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:border-teal-500 focus:ring focus:ring-teal-500 focus:ring-opacity-50 transition duration-150 ease-in-out"
-                placeholder="you@example.com"
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
+            <input
+              {...register("email")}
+              id="email"
+              type="email"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300 bg-white/80 backdrop-blur-sm"
+              placeholder="you@example.com"
+            />
+            {errors.email && (
+              <p className="mt-2 text-sm text-red-600">
+                {errors.email.message}
+              </p>
+            )}
           </div>
 
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-semibold text-gray-700 mb-2"
             >
               Password
             </label>
-            <div className="mt-1">
-              <input
-                {...register("password")}
-                id="password"
-                type="password"
-                className="block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:border-teal-500 focus:ring focus:ring-teal-500 focus:ring-opacity-50 transition duration-150 ease-in-out"
-                placeholder="••••••"
-              />
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
+            <input
+              {...register("password")}
+              id="password"
+              type="password"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300 bg-white/80 backdrop-blur-sm"
+              placeholder="••••••••"
+            />
+            {errors.password && (
+              <p className="mt-2 text-sm text-red-600">
+                {errors.password.message}
+              </p>
+            )}
           </div>
-        </div>
 
-        <div>
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-lg font-semibold rounded-xl hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
           >
             {isLoading ? (
-              <>
+              <div className="flex items-center justify-center">
                 <svg
-                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -302,36 +276,39 @@ export default function SignInForm() {
                   ></path>
                 </svg>
                 Signing in...
-              </>
+              </div>
             ) : (
-              "Sign in"
+              <div className="flex items-center justify-center">
+                <span className="mr-2">🚀</span>
+                Sign In
+              </div>
             )}
           </button>
-        </div>
 
-        <div className="text-center">
-          <button
-            type="button"
-            onClick={() => handleMagicLink(email)}
-            className="text-sm font-medium text-teal-600 hover:text-teal-500 transition duration-150 ease-in-out"
-            disabled={isLoading}
-          >
-            Sign in with magic link instead
-          </button>
-        </div>
-
-        <div className="pt-2 text-center">
-          <p className="text-sm text-gray-600">
-            Don&apos;t have an account?{" "}
-            <a
-              href="/auth/signup"
-              className="font-medium text-teal-600 hover:text-teal-500 transition duration-150 ease-in-out"
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => handleMagicLink(email)}
+              className="text-indigo-600 hover:text-indigo-500 font-medium transition-colors duration-300"
+              disabled={isLoading}
             >
-              Sign up
-            </a>
-          </p>
-        </div>
-      </form>
+              ✨ Sign in with magic link instead
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="text-center">
+        <p className="text-gray-600">
+          Don&apos;t have an account?{" "}
+          <button
+            onClick={() => window.location.href = '/auth'}
+            className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors duration-300"
+          >
+            Sign up here
+          </button>
+        </p>
+      </div>
     </div>
   );
 }

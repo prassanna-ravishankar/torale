@@ -58,7 +58,7 @@ export default function SignUpForm() {
       console.log("[SignUpForm] Account created successfully");
       setSignupSuccess(true);
       toast.success(
-        "Account created successfully! Please check your email to verify your account.",
+        "Account created! 🎉 Please check your email to verify your account.",
       );
     } catch (error) {
       const authError = error as AuthError;
@@ -75,170 +75,139 @@ export default function SignUpForm() {
 
   if (signupSuccess) {
     return (
-      <div className="w-full max-w-md space-y-6 bg-white p-8 rounded-xl shadow-lg">
-        <div className="flex flex-col items-center">
-          <div className="mb-4">
-            <Image
-              src="/ambi-alert.png"
-              alt="Ambi Alert Logo"
-              width={96}
-              height={96}
-              className="object-contain"
-            />
+      <div className="w-full max-w-md space-y-8">
+        <div className="startup-card rounded-2xl p-8 text-center">
+          <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float">
+            <span className="text-3xl">✅</span>
           </div>
-          <h2 className="text-center text-2xl font-bold tracking-tight text-gray-900">
-            Verification Email Sent
+          <h2 className="text-3xl font-bold gradient-text font-space-grotesk mb-4">
+            Check Your Email
           </h2>
-        </div>
-
-        <div className="rounded-lg bg-green-50 p-4 border border-green-200">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg
-                className="h-5 w-5 text-green-400"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-green-800">
-                Account created successfully
-              </h3>
-              <div className="mt-2 text-sm text-green-700">
-                <p>
+          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-6 border border-emerald-200">
+            <div className="flex items-start">
+              <span className="text-2xl mr-3 mt-1">📧</span>
+              <div className="text-left">
+                <h3 className="text-lg font-semibold text-emerald-800 mb-2">
+                  Verification email sent!
+                </h3>
+                <p className="text-emerald-700 mb-3">
                   We&apos;ve sent a verification email to{" "}
-                  <strong>{email}</strong>. Please check your inbox and follow
-                  the instructions to verify your account.
+                  <strong className="font-semibold">{email}</strong>
                 </p>
-                <p className="mt-2">
-                  If you don&apos;t see the email, please check your spam
-                  folder.
+                <p className="text-emerald-600 text-sm">
+                  Please check your inbox and follow the instructions to verify your account.
+                  Don&apos;t forget to check your spam folder!
                 </p>
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="pt-4 text-center">
-          <a
-            href="/auth/signin"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition duration-150 ease-in-out"
-          >
-            Return to Sign In
-          </a>
+          <div className="mt-8">
+            <button
+              onClick={() => window.location.href = '/auth'}
+              className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold rounded-xl hover:from-indigo-600 hover:to-purple-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              Return to Sign In
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-md space-y-6 bg-white p-8 rounded-xl shadow-lg">
-      <div className="flex flex-col items-center">
-        <div className="mb-4">
-          <Image
-            src="/ambi-alert.png"
-            alt="Ambi Alert Logo"
-            width={96}
-            height={96}
-            className="object-contain"
-          />
+    <div className="w-full max-w-md space-y-8">
+      <div className="startup-card rounded-2xl p-8">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6 animate-float">
+            <Image
+              src="/ambi-alert.png"
+              alt="Ambi Alert Logo"
+              width={40}
+              height={40}
+              className="object-contain"
+            />
+          </div>
+          <h2 className="text-3xl font-bold gradient-text font-space-grotesk text-center">
+            Join AmbiAlert
+          </h2>
+          <p className="mt-3 text-center text-gray-600 text-lg">
+            Start monitoring what matters to you
+          </p>
         </div>
-        <h2 className="text-center text-2xl font-bold tracking-tight text-gray-900">
-          Create your account
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Get started with Ambi Alert
-        </p>
-      </div>
 
-      <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-        <div className="space-y-4">
+        <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-semibold text-gray-700 mb-2"
             >
               Email address
             </label>
-            <div className="mt-1">
-              <input
-                {...register("email")}
-                id="email"
-                type="email"
-                className="block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:border-teal-500 focus:ring focus:ring-teal-500 focus:ring-opacity-50 transition duration-150 ease-in-out"
-                placeholder="you@example.com"
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
+            <input
+              {...register("email")}
+              id="email"
+              type="email"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300 bg-white/80 backdrop-blur-sm"
+              placeholder="you@example.com"
+            />
+            {errors.email && (
+              <p className="mt-2 text-sm text-red-600">
+                {errors.email.message}
+              </p>
+            )}
           </div>
 
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-semibold text-gray-700 mb-2"
             >
               Password
             </label>
-            <div className="mt-1">
-              <input
-                {...register("password")}
-                id="password"
-                type="password"
-                className="block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:border-teal-500 focus:ring focus:ring-teal-500 focus:ring-opacity-50 transition duration-150 ease-in-out"
-                placeholder="••••••"
-              />
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
+            <input
+              {...register("password")}
+              id="password"
+              type="password"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300 bg-white/80 backdrop-blur-sm"
+              placeholder="••••••••"
+            />
+            {errors.password && (
+              <p className="mt-2 text-sm text-red-600">
+                {errors.password.message}
+              </p>
+            )}
           </div>
 
           <div>
             <label
               htmlFor="confirmPassword"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-semibold text-gray-700 mb-2"
             >
               Confirm Password
             </label>
-            <div className="mt-1">
-              <input
-                {...register("confirmPassword")}
-                id="confirmPassword"
-                type="password"
-                className="block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:border-teal-500 focus:ring focus:ring-teal-500 focus:ring-opacity-50 transition duration-150 ease-in-out"
-                placeholder="••••••"
-              />
-              {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.confirmPassword.message}
-                </p>
-              )}
-            </div>
+            <input
+              {...register("confirmPassword")}
+              id="confirmPassword"
+              type="password"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300 bg-white/80 backdrop-blur-sm"
+              placeholder="••••••••"
+            />
+            {errors.confirmPassword && (
+              <p className="mt-2 text-sm text-red-600">
+                {errors.confirmPassword.message}
+              </p>
+            )}
           </div>
-        </div>
 
-        <div>
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-lg font-semibold rounded-xl hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
           >
             {isLoading ? (
-              <>
+              <div className="flex items-center justify-center">
                 <svg
-                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -258,25 +227,28 @@ export default function SignUpForm() {
                   ></path>
                 </svg>
                 Creating account...
-              </>
+              </div>
             ) : (
-              "Sign up"
+              <div className="flex items-center justify-center">
+                <span className="mr-2">🚀</span>
+                Create Account
+              </div>
             )}
           </button>
-        </div>
+        </form>
+      </div>
 
-        <div className="pt-2 text-center">
-          <p className="text-sm text-gray-600">
-            Already have an account?{" "}
-            <a
-              href="/auth/signin"
-              className="font-medium text-teal-600 hover:text-teal-500 transition duration-150 ease-in-out"
-            >
-              Sign in
-            </a>
-          </p>
-        </div>
-      </form>
+      <div className="text-center">
+        <p className="text-gray-600">
+          Already have an account?{" "}
+          <button
+            onClick={() => window.location.href = '/auth'}
+            className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors duration-300"
+          >
+            Sign in here
+          </button>
+        </p>
+      </div>
     </div>
   );
 }
