@@ -39,13 +39,10 @@ export default function AuthPage() {
         errorMessage = "Invalid email or password.";
       } else if (error.includes("Email not confirmed")) {
         errorMessage = "Please confirm your email before signing in.";
-        // Switch to sign in form if on sign up when this error occurs
         setIsSignIn(true);
       } else if (errorDescription) {
-        // Use the error description if available
         errorMessage = errorDescription;
       } else {
-        // Use the raw error message as fallback
         errorMessage = error;
       }
 
@@ -74,27 +71,41 @@ export default function AuthPage() {
   }, [searchParams]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8">
-        {isSignIn ? <SignInForm /> : <SignUpForm />}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4">
+      {/* Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full opacity-10 animate-float"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-br from-blue-400 to-indigo-400 rounded-full opacity-10 animate-float" style={{ animationDelay: '1s' }}></div>
+      </div>
 
-        <div className="text-center">
+      <div className="relative z-10 w-full max-w-md">
+        {/* Toggle Buttons */}
+        <div className="flex mb-8 bg-white/80 backdrop-blur-sm rounded-xl p-1 border border-gray-200">
           <button
-            type="button"
-            onClick={() => {
-              console.log(
-                "[AuthPage] Switching to",
-                isSignIn ? "sign up" : "sign in",
-                "form",
-              );
-              setIsSignIn(!isSignIn);
-            }}
-            className="text-sm font-medium text-teal-600 hover:text-teal-500"
+            onClick={() => setIsSignIn(true)}
+            className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-300 ${
+              isSignIn
+                ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
           >
-            {isSignIn
-              ? "Don't have an account? Sign up"
-              : "Already have an account? Sign in"}
+            Sign In
           </button>
+          <button
+            onClick={() => setIsSignIn(false)}
+            className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-300 ${
+              !isSignIn
+                ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            Sign Up
+          </button>
+        </div>
+
+        {/* Forms */}
+        <div className="transition-all duration-500 ease-in-out">
+          {isSignIn ? <SignInForm /> : <SignUpForm />}
         </div>
       </div>
     </div>
