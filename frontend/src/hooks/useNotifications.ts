@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabaseClient'
+import axiosInstance from '@/lib/axiosInstance'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
 export interface NotificationAlert {
@@ -42,7 +43,6 @@ export function useNotifications() {
   const [error, setError] = useState<string | null>(null)
   const [channel, setChannel] = useState<RealtimeChannel | null>(null)
 
-  const supabase = createClient()
 
   // Fetch initial data
   useEffect(() => {
@@ -70,32 +70,16 @@ export function useNotifications() {
 
         // Fetch preferences via backend API
         try {
-          const prefsResponse = await fetch('/api/v1/notifications/preferences', {
-            headers: {
-              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-            }
-          })
-          
-          if (prefsResponse.ok) {
-            const prefsData = await prefsResponse.json()
-            setPreferences(prefsData)
-          }
+          const prefsResponse = await axiosInstance.get('/notifications/preferences')
+          setPreferences(prefsResponse.data)
         } catch (prefsError) {
           console.warn('Could not fetch notification preferences:', prefsError)
         }
 
         // Fetch stats via backend API
         try {
-          const statsResponse = await fetch('/api/v1/notifications/stats', {
-            headers: {
-              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-            }
-          })
-          
-          if (statsResponse.ok) {
-            const statsData = await statsResponse.json()
-            setStats(statsData)
-          }
+          const statsResponse = await axiosInstance.get('/notifications/stats')
+          setStats(statsResponse.data)
         } catch (statsError) {
           console.warn('Could not fetch notification stats:', statsError)
         }
@@ -198,33 +182,13 @@ export function useNotifications() {
   // Update notification preferences via backend API
   const updatePreferences = async (updates: Partial<NotificationPreferences>) => {
     try {
-      const response = await fetch('/api/v1/notifications/preferences', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        },
-        body: JSON.stringify(updates)
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to update preferences')
-      }
-
-      const result = await response.json()
+      const response = await axiosInstance.put('/notifications/preferences', updates)
+      const result = response.data
       
       if (result.success) {
         // Refetch preferences to get updated data
-        const prefsResponse = await fetch('/api/v1/notifications/preferences', {
-          headers: {
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-          }
-        })
-        
-        if (prefsResponse.ok) {
-          const prefsData = await prefsResponse.json()
-          setPreferences(prefsData)
-        }
+        const prefsResponse = await axiosInstance.get('/notifications/preferences')
+        setPreferences(prefsResponse.data)
       }
 
       return result.success
@@ -265,24 +229,12 @@ export function useNotifications() {
   // Manually trigger notification for an alert via backend API
   const resendNotification = async (alertId: string, forceResend: boolean = false) => {
     try {
-      const response = await fetch('/api/v1/notifications/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        },
-        body: JSON.stringify({
-          alert_id: alertId,
-          force_resend: forceResend
-        })
+      const response = await axiosInstance.post('/notifications/send', {
+        alert_id: alertId,
+        force_resend: forceResend
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to send notification')
-      }
-
-      const result = await response.json()
-      return result.success
+      return response.data.success
     } catch (err) {
       console.error('Error resending notification:', err)
       setError(err instanceof Error ? err.message : 'Failed to resend notification')

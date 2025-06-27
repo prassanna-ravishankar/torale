@@ -73,7 +73,7 @@ export function NotificationPreferences() {
     )
   }
 
-  const isNotificationSupported = 'Notification' in window
+  const isNotificationSupported = typeof window !== 'undefined' && 'Notification' in window
   const browserPermission = isNotificationSupported ? Notification.permission : 'denied'
 
   return (
