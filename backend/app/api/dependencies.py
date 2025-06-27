@@ -1,11 +1,14 @@
 import logging
+from typing import Union
 
 from fastapi import Depends, HTTPException
 
+from app.clients.notification_client import NotificationClient
 from app.core.config import Settings, get_settings
 from app.services.ai_integrations.interface import AIModelInterface
 from app.services.ai_integrations.openai_client import OpenAIClient
 from app.services.ai_integrations.perplexity_client import PerplexityClient
+from app.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -117,3 +120,20 @@ async def get_source_discovery_ai_model(
         status_code=503,
         detail="Source discovery service not configured (no suitable AI provider).",
     )
+
+
+async def get_notification_service(
+    s: Settings = Depends(get_settings),
+) -> Union[NotificationClient, NotificationService]:
+    """
+    Provides notification capability - either via microservice or legacy service.
+    
+    Returns NotificationClient if NOTIFICATION_SERVICE_URL is configured,
+    otherwise falls back to the legacy NotificationService.
+    """
+    if s.NOTIFICATION_SERVICE_URL:
+        logger.info(f"Using notification microservice at {s.NOTIFICATION_SERVICE_URL}")
+        return NotificationClient(base_url=s.NOTIFICATION_SERVICE_URL)
+    else:
+        logger.info("Using legacy notification service (monolith)")
+        return NotificationService(api_key=s.SENDGRID_API_KEY)

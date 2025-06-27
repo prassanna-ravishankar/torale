@@ -17,6 +17,20 @@ services:
       timeout: 10s
       retries: 3
 
+  notification-service:
+    build: ./notification-service
+    ports:
+      - "8002:8002"
+    environment:
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - LOG_LEVEL=INFO
+      - CORS_ORIGINS=http://localhost:8000,http://localhost:3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   backend:
     build: ./backend
     ports:
@@ -30,8 +44,11 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
       - DISCOVERY_SERVICE_URL=http://discovery-service:8001
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8002
     depends_on:
       discovery-service:
+        condition: service_healthy
+      notification-service:
         condition: service_healthy
     volumes:
       - ./backend:/app

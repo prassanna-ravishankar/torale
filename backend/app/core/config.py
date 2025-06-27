@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     # Email Settings
     SENDGRID_API_KEY: str
     ALERT_FROM_EMAIL: str = "alerts@torale.com"
+    
+    # Microservices URLs
+    DISCOVERY_SERVICE_URL: Optional[str] = None
+    NOTIFICATION_SERVICE_URL: Optional[str] = None
 
     # AI Provider API Keys - these should be loaded from .env
     OPENAI_API_KEY: Optional[str] = None

@@ -11,14 +11,14 @@ cd backend
 uv run python -m uvicorn app.main:app --reload --port 8000
 
 # Testing
-pytest
-pytest --cov=app --cov-report=term-missing
+uv run pytest
+uv run pytest --cov=app --cov-report=term-missing
 
 # Linting and Formatting
-ruff check .
-ruff format .
-black .
-mypy .
+uv run ruff check .
+uv run ruff format .
+uv run black .
+uv run mypy .
 ```
 
 ### Frontend (TypeScript/Next.js)
@@ -42,6 +42,29 @@ npm run coverage
 ```bash
 # From project root - starts both services
 ./start.sh
+```
+
+### Microservices (Python/FastAPI)
+```bash
+# Development (any Python microservice)
+cd <service-name>
+uv run python -m uvicorn app.main:app --reload --port <port>
+
+# Testing
+uv run pytest
+uv run pytest --cov=app --cov-report=term-missing
+
+# Linting and Formatting
+uv run ruff check .
+uv run ruff format .
+
+# Docker build
+docker build -t <service-name> .
+
+# Run all microservices
+docker-compose up
+# or
+./start-microservices.sh
 ```
 
 ## Architecture Overview
