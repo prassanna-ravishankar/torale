@@ -36,3 +36,6 @@ supabase/.branches/
 ambi_alert.db
 
 !frontend/src/lib/supabaseClient.ts
+
+# other stuff
+.mcp.json
