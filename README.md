@@ -32,34 +32,56 @@ A natural language-powered alerting service that monitors websites for meaningfu
 - Node.js 18+
 - [uv](https://github.com/astral-sh/uv) for Python package management
 - Supabase account and project
+- Perplexity API key (for discovery service)
 
-### Backend Setup
+### Option 1: Microservices Mode (Recommended)
+
+Start all services including the new Discovery microservice:
 
 ```bash
+# Set up discovery service
+cd discovery-service
+cp .env.example .env  # Add your PERPLEXITY_API_KEY
+uv sync
+
+# Start all microservices
+cd ..
+./start-microservices.sh
+```
+
+This starts:
+- Discovery Service (port 8001) - Natural language → URL discovery
+- Backend API (port 8000) - Main application logic
+- Frontend (port 3000) - User interface
+
+### Option 2: Legacy Monolith Mode
+
+```bash
+# Backend setup
 cd backend
 cp .env.example .env  # Configure your environment variables
 uv sync
 uv run python -m uvicorn app.main:app --reload --port 8000
-```
 
-### Frontend Setup
-
-```bash
+# Frontend setup  
 cd frontend
 cp .env.example .env.local  # Configure Supabase URL and anon key
 npm install
 npm run dev
-```
 
-### Full Stack Development
-
-From the project root:
-
-```bash
-./start.sh  # Starts both frontend and backend services
+# Or use the original start script
+./start.sh  # Starts both frontend and backend (no microservices)
 ```
 
 ## Environment Variables
+
+### Discovery Service (.env)
+```bash
+PERPLEXITY_API_KEY=your_perplexity_key
+AI_PROVIDER=perplexity
+SERVICE_PORT=8001
+LOG_LEVEL=INFO
+```
 
 ### Backend (.env)
 ```bash
@@ -67,6 +89,8 @@ SENDGRID_API_KEY=your_sendgrid_key
 DATABASE_URL=your_supabase_db_url
 OPENAI_API_KEY=your_openai_key
 PERPLEXITY_API_KEY=your_perplexity_key
+# Set to use microservice, leave empty for legacy mode
+DISCOVERY_SERVICE_URL=http://localhost:8001
 ```
 
 ### Frontend (.env.local)
@@ -77,14 +101,34 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 ## Architecture
 
-The project follows a modular architecture with clear separation of concerns:
+Torale is transitioning from a monolithic to a microservices architecture:
 
-- **API Layer**: Thin route handlers that delegate to services
-- **Services Layer**: Business logic including AI integrations and change detection
+### Current Microservices (✅ Live)
+
+**Discovery Service** (Port 8001)
+- Natural language query processing
+- AI-powered URL discovery using Perplexity
+- Stateless, horizontally scalable
+- RESTful API: `POST /api/v1/discover`
+
+### Legacy Monolith (Port 8000)
+- **API Layer**: Route handlers and request/response logic
+- **Services Layer**: Business logic (content monitoring, change detection)
 - **Repository Layer**: Database operations using Supabase
-- **Frontend**: Next.js App Router with server components by default
+- **AI Integration**: OpenAI for embeddings, fallback discovery logic
 
-For detailed architecture and microservices migration plan, see [architecture-plan.md](./architecture-plan.md).
+### Frontend (Port 3000)
+- **Next.js App Router**: Server components by default
+- **Real-time**: Supabase Realtime subscriptions
+- **State Management**: TanStack Query for server state
+
+### Benefits Achieved
+- ✅ **Independent Scaling**: Discovery service scales separately
+- ✅ **Technology Flexibility**: Different tech stacks per service
+- ✅ **Fault Isolation**: Service failures don't cascade
+- ✅ **Development Velocity**: Teams can work independently
+
+For detailed migration plan and future milestones, see [architecture-plan.md](./architecture-plan.md).
 
 ## Development
 
@@ -127,24 +171,29 @@ npm run coverage
 ### ✅ Completed
 
 - Core user authentication flow with Supabase
-- Natural language source discovery using Perplexity API
+- **🎉 Discovery Microservice**: Natural language → URL discovery via Perplexity API
 - Monitored source CRUD operations
 - Change alert system with acknowledgment
 - Semantic change detection using OpenAI embeddings
 - Email notifications via SendGrid
 - Comprehensive test coverage
 - Modern, responsive UI
+- **Microservices Foundation**: Service extraction, HTTP communication, fallback logic
 
-### 🚀 Roadmap
+### 🚀 Current Milestone Progress
 
-See [architecture-plan.md](./architecture-plan.md) for the detailed microservices migration plan.
+**✅ Milestone 1: Discovery Service** - COMPLETE
+- Standalone discovery microservice (port 8001)
+- Perplexity API integration for source discovery
+- RESTful API with proper error handling
+- Backend integration with fallback support
 
-**Next Steps**:
-1. Extract Discovery Service as first microservice
-2. Implement background task processing
-3. Add real-time updates
-4. Support additional content sources (YouTube, RSS)
-5. Enhanced monitoring and observability
+**🔄 Next: Milestone 2: Notification Service**
+- Extract notification logic to dedicated service
+- Multi-channel support (email, webhooks, future SMS/Slack)
+- Template management and delivery tracking
+
+See [MILESTONE-1-SUCCESS.md](./MILESTONE-1-SUCCESS.md) for detailed completion report and [architecture-plan.md](./architecture-plan.md) for the full migration roadmap.
 
 ## Contributing
 

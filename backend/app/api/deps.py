@@ -8,6 +8,7 @@ from supabase import Client
 from app.services.ai_integrations.interface import AIModelInterface
 from app.services.ai_integrations.openai_client import OpenAIClient
 from app.services.ai_integrations.perplexity_client import PerplexityClient
+from app.services.source_discovery_service import SourceDiscoveryService
 
 settings = get_settings()
 security = HTTPBearer()
@@ -108,11 +109,27 @@ def get_supabase_with_optional_auth(
     return supabase
 
 
+def get_source_discovery_service() -> SourceDiscoveryService:
+    """Get source discovery service instance.
+    
+    This will use the microservice if DISCOVERY_SERVICE_URL is set,
+    otherwise it will use the legacy AI model approach.
+    """
+    if settings.DISCOVERY_SERVICE_URL:
+        # Microservice mode - no AI model needed
+        return SourceDiscoveryService(ai_model=None)
+    else:
+        # Legacy mode - get AI model for source discovery
+        ai_model = get_ai_model(settings.AI_PROVIDER_FOR_IDENTIFY_SOURCES or "perplexity")
+        return SourceDiscoveryService(ai_model=ai_model)
+
+
 # Re-export commonly used dependencies
 __all__ = [
     "get_current_user",
     "get_optional_current_user", 
     "get_ai_model_for_task",
+    "get_source_discovery_service",
     "User",
     "get_supabase_with_auth",
     "get_supabase_with_optional_auth",

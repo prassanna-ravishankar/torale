@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  discovery-service:
+    build: ./discovery-service
+    ports:
+      - "8001:8001"
+    environment:
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AI_PROVIDER=perplexity
+      - LOG_LEVEL=INFO
+      - CORS_ORIGINS=http://localhost:8000,http://localhost:3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
+      - DISCOVERY_SERVICE_URL=http://discovery-service:8001
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app

@@ -53,6 +53,9 @@ class Settings(BaseSettings):
 
     # Security Settings
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    
+    # Microservices URLs
+    DISCOVERY_SERVICE_URL: Optional[str] = None  # e.g., "http://discovery-service:8001"
 
     class Config:
         env_file = ".env"
