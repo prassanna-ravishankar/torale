@@ -59,7 +59,25 @@ uv run ruff check .
 uv run ruff format .
 
 # Docker build
-docker build -t <service-name> .
+docker build -t discovery-service .
+```
+
+### Content Monitoring Service (Microservice)
+```bash
+# Development
+cd content-monitoring-service
+uv run python -m uvicorn main:app --reload --port 8002
+
+# Testing
+uv run pytest
+uv run pytest --cov=. --cov-report=term-missing
+
+# Linting and Formatting
+uv run ruff check .
+uv run ruff format .
+
+# Docker build
+docker build -t content-monitoring-service .
 
 # Run all microservices
 docker-compose up
@@ -69,20 +87,30 @@ docker-compose up
 
 ## Architecture Overview
 
-### Backend Architecture
-The backend follows a layered architecture with clear separation of concerns:
+### Selective Microservices Architecture
+Torale uses a selective microservice approach, extracting services where it provides clear benefits:
 
-- **API Layer** (`/api/endpoints/`): Thin route handlers that delegate to services
-- **Services Layer** (`/services/`): Business logic including AI integrations, change detection, content ingestion, and notifications
+**Microservices:**
+- **Discovery Service** (`:8001`): Stateless query processing and source identification
+- **Content Monitoring Service** (`:8002`): Heavy computational work for content processing
+
+**Main Backend (`:8000`):**
+- **API Layer** (`/api/endpoints/`): Orchestrates microservices and handles CRUD operations
+- **Services Layer** (`/services/`): Integrated notification system and user management
 - **Repository Layer**: Database operations using Supabase
 - **Schemas** (`/schemas/`): Pydantic models for validation and serialization
-- **Dependency Injection**: AI models and services injected as dependencies
+
+**Architecture Benefits:**
+- **Service Isolation**: Heavy processing doesn't affect main application
+- **Independent Scaling**: Scale content processing and discovery independently  
+- **Technology Flexibility**: Each service can use optimal technology stack
+- **Deployment Simplicity**: Critical services (auth, notifications) remain integrated
 
 Key design patterns:
 - Async/await throughout for I/O operations
-- Abstract AI model interface with multiple implementations (OpenAI, Perplexity)
-- Background tasks for long-running operations
-- Embeddings-based semantic change detection
+- Service-to-service communication via HTTP APIs
+- Shared database with service-specific table ownership
+- Integrated notification processing for better performance
 
 ### Frontend Architecture
 The frontend uses Next.js 15 with App Router and follows modern React patterns:

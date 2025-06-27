@@ -11,19 +11,26 @@ This document outlines the microservices architecture for Torale, integrating Su
 │   Next.js App   │────▶│        Main Backend             │
 │  (Supabase SDK) │     │        (FastAPI)                │
 └─────────────────┘     │  ┌─────────────────────────────┐│
-                        │  │ • User Queries              ││
-                        │  │ • Content Processing        ││
-                        │  │ • Change Detection          ││
+                        │  │ • User Management           ││
+                        │  │ • API Orchestration         ││
               ┌─────────┼──┤ • Notifications (Integrated)││
-              │         │  │ • Monitoring & Alerts       ││
+              │         │  │ • Service Coordination      ││
               │         │  └─────────────────────────────┘│
               │         └─────────────┬───────────────────┘
               │                       │
-        ┌─────▼─────┐                 │
-        │ Discovery │                 │
-        │ Service   │                 │
-        │ :8001     │                 │
-        └─────┬─────┘                 │
+        ┌─────▼─────┐           ┌─────▼──────────┐
+        │ Discovery │           │Content Monitor │
+        │ Service   │           │    Service     │
+        │ :8001     │           │    :8002       │
+        │           │           │                │
+        │• Query    │           │• Content       │
+        │  Refining │           │  Scraping      │
+        │• Source   │           │• Embeddings    │
+        │  Finding  │           │• Change        │
+        │• AI Models│           │  Detection     │
+        │           │           │• Alert         │
+        │           │           │  Generation    │
+        └─────┬─────┘           └─────┬──────────┘
               │                       │
               └───────────┬───────────┘
                           │
@@ -44,11 +51,10 @@ This document outlines the microservices architecture for Torale, integrating Su
 **Responsibilities**:
 - Authentication & authorization via Supabase JWT
 - User query management
-- Content processing and ingestion
-- Change detection and alerts
 - **Integrated notification system** with email delivery
-- Background task processing
+- API orchestration and service coordination
 - Monitored source CRUD operations
+- User interface to microservices
 
 **Key Changes**:
 - ✅ Supabase JWT verification middleware
@@ -60,8 +66,6 @@ This document outlines the microservices architecture for Torale, integrating Su
 - `user_queries`
 - `monitored_sources` 
 - `change_alerts`
-- `scraped_contents`
-- `content_embeddings`
 - `notification_preferences`
 - `notification_logs`
 
@@ -88,7 +92,46 @@ POST /discover-sources/
 - Output: list of monitorable URLs
 ```
 
-### 3. Integrated Notification System 📧
+### 3. Content Monitoring Service (Microservice) ✅
+**Repository**: `content-monitoring-service/`
+**Status**: **Deployed and operational**
+**Responsibilities**:
+- Content scraping from monitored URLs
+- Embedding generation for semantic comparison
+- Change detection using vector similarity
+- Alert generation for significant changes
+- Background processing and batch operations
+
+**Key Features**:
+- ✅ Independent Docker container (`:8002`)
+- ✅ OpenAI integration for embeddings and AI analysis
+- ✅ BeautifulSoup4 for content extraction
+- ✅ Cosine similarity for change detection
+- ✅ Configurable similarity thresholds
+- ✅ Robots.txt compliance
+- ✅ Batch processing capabilities
+
+**Database Tables Used**:
+- `scraped_contents`
+- `content_embeddings`
+- `change_alerts` (creates)
+- `monitored_sources` (reads)
+
+**API Interface**:
+```
+POST /api/v1/process-source/{source_id}
+- Input: monitored source ID
+- Output: processing result with alert info
+
+POST /api/v1/process-batch
+- Input: list of source IDs
+- Output: batch processing summary
+
+GET /api/v1/sources/{source_id}/status
+- Output: source status and recent activity
+```
+
+### 4. Integrated Notification System 📧
 **Repository**: `backend/app/services/notification_*`
 **Status**: **Integrated in main backend** (not a separate microservice)
 **Approach**: Database-first with Python processing
@@ -165,25 +208,34 @@ notification_logs (alert_id, user_email, notification_type, status, sent_at)
 - [x] Stateless API interface
 - [x] Docker Compose orchestration
 
-#### Database Integration ✅
-- [x] Supabase PostgreSQL schema
-- [x] Row Level Security (RLS) policies
-- [x] JWT authentication system
-- [x] Vector search with pgvector
-
-#### Notification System ✅
+#### Milestone 2: Notification System Implementation ✅
 - [x] **Integrated notification system** (not microservice)
 - [x] Email delivery via SendGrid
 - [x] Background processing with retries
 - [x] User preference management
 - [x] Database functions for queue management
 
+#### Milestone 3: Content Monitoring Service Extraction ✅
+- [x] **Content Monitoring Service** extracted to separate microservice
+- [x] Independent Docker container at `:8002`
+- [x] Content scraping and embedding generation
+- [x] Change detection with AI analysis
+- [x] Batch processing capabilities
+- [x] Full service isolation from main backend
+
+#### Database Integration ✅
+- [x] Supabase PostgreSQL schema
+- [x] Row Level Security (RLS) policies
+- [x] JWT authentication system
+- [x] Vector search with pgvector
+
 ### 🎯 Current Architecture Decision
 
-**Hybrid Approach**: 
-- **Discovery Service**: True microservice (successful decomposition)
-- **Notification System**: Integrated backend service (better for this use case)
-- **Main Backend**: Handles all other services as monolith
+**Selective Microservice Architecture**: 
+- **Discovery Service**: True microservice (stateless AI processing)
+- **Content Monitoring Service**: True microservice (heavy computational work)
+- **Notification System**: Integrated backend service (database-heavy operations)
+- **Main Backend**: Orchestration and user management hub
 
 ### Phase 3: Background Processing
 1. **Replace FastAPI BackgroundTasks**
