@@ -1,6 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 
+import structlog
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -9,24 +10,29 @@ from app.core.config import get_settings
 from app.core.logging_config import setup_logging
 from app.core.supabase_client import get_supabase_client
 
+# Setup logging first
+settings = get_settings()
+setup_logging(log_level=settings.LOG_LEVEL)
+logger = structlog.get_logger(__name__)
+
 
 class CORSOptionsMiddleware(BaseHTTPMiddleware):
     """Custom middleware to handle CORS requests, especially OPTIONS preflight."""
-    
+
     def __init__(self, app, cors_origins):
         super().__init__(app)
         self.cors_origins = cors_origins
-    
+
     async def dispatch(self, request: Request, call_next):
         origin = request.headers.get("origin")
-        
+
         # Determine allowed origin
         allowed_origin = None
         if origin and str(origin) in [str(o) for o in self.cors_origins]:
             allowed_origin = origin
         elif self.cors_origins:
             allowed_origin = str(self.cors_origins[0])  # Default to first allowed origin
-        
+
         if request.method == "OPTIONS":
             # Handle preflight requests immediately - bypass authentication
             headers = {
@@ -37,15 +43,15 @@ class CORSOptionsMiddleware(BaseHTTPMiddleware):
                 "Access-Control-Max-Age": "86400",  # Cache preflight for 24 hours
             }
             return Response(status_code=200, headers=headers)
-        
+
         # Process the actual request
         response = await call_next(request)
-        
+
         # Add CORS headers to actual responses
         if allowed_origin:
             response.headers["Access-Control-Allow-Origin"] = allowed_origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
-        
+
         return response
 
 
@@ -53,22 +59,22 @@ class CORSOptionsMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     # Startup
-    print("🚀 Starting Torale API...")
-    
+    logger.info("torale_api_starting", service_name=settings.PROJECT_NAME)
+
     # Test Supabase connection
     try:
         supabase = get_supabase_client()
         # Simple test query to verify connection
         result = supabase.table("user_queries").select("count", count="exact").execute()
-        print(f"✅ Supabase connected successfully! Query count: {result.count}")
+        logger.info("supabase_connection_successful", query_count=result.count)
     except Exception as e:
-        print(f"❌ Supabase connection failed: {e}")
+        logger.error("supabase_connection_failed", error=str(e))
         # Don't fail startup - let the app start and handle errors per request
-    
+
     yield
-    
+
     # Shutdown
-    print("🛑 Shutting down Torale API...")
+    logger.info("torale_api_shutting_down")
 
 
 app = FastAPI(
@@ -77,10 +83,6 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
-
-# Setup logging
-settings = get_settings()
-setup_logging(log_level=settings.LOG_LEVEL)
 
 # Configure CORS with custom middleware that handles authentication properly
 app.add_middleware(CORSOptionsMiddleware, cors_origins=settings.CORS_ORIGINS or [])
@@ -130,18 +132,19 @@ async def test_supabase():
         return {
             "status": "supabase_connected",
             "test_result": "success",
-            "data_count": result.count
+            "data_count": result.count,
         }
     except Exception as e:
         return {
             "status": "supabase_error",
             "test_result": "failed",
-            "error": str(e)
+            "error": str(e),
         }
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
