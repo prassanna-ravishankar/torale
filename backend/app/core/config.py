@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     
     # Microservices URLs
     DISCOVERY_SERVICE_URL: Optional[str] = None  # e.g., "http://discovery-service:8001"
+    NOTIFICATION_SERVICE_URL: Optional[str] = None  # e.g., "http://notification-service:8003"
 
     class Config:
         env_file = ".env"

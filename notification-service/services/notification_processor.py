@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from supabase import Client
 
-from app.services.notification_service import SupabaseNotificationService
+from services.notification_service import SupabaseNotificationService
 
 logger = logging.getLogger(__name__)
 

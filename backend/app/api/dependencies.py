@@ -8,7 +8,6 @@ from app.core.config import Settings, get_settings
 from app.services.ai_integrations.interface import AIModelInterface
 from app.services.ai_integrations.openai_client import OpenAIClient
 from app.services.ai_integrations.perplexity_client import PerplexityClient
-from app.services.notification_service import SupabaseNotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -122,12 +121,3 @@ async def get_source_discovery_ai_model(
     )
 
 
-async def get_notification_service(
-    supabase: Client = Depends(get_supabase_with_auth),
-    settings: Settings = Depends(get_settings),
-) -> SupabaseNotificationService:
-    """Provides notification service using Supabase."""
-    return SupabaseNotificationService(
-        supabase_client=supabase,
-        sendgrid_api_key=settings.SENDGRID_API_KEY
-    )

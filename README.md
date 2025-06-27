@@ -19,10 +19,12 @@ A natural language-powered alerting service that monitors websites for meaningfu
 
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
 - **Backend**: FastAPI, Python 3.12+, Pydantic
+- **Microservices**: Discovery, Content Monitoring, Notifications
 - **Database**: Supabase (PostgreSQL with pgvector)
 - **AI/ML**: OpenAI embeddings, Perplexity for source discovery
 - **Auth**: Supabase Auth
-- **Development**: uv (Python), npm (Node.js)
+- **Notifications**: SendGrid for email delivery
+- **Development**: uv (Python), npm (Node.js), Docker
 
 ## Quick Start
 
@@ -36,25 +38,36 @@ A natural language-powered alerting service that monitors websites for meaningfu
 
 ### Option 1: Microservices Mode (Recommended)
 
-Start all services including the new Discovery microservice:
+Start all services with the complete microservices architecture:
 
 ```bash
-# Set up discovery service
-cd discovery-service
-cp .env.example .env  # Add your PERPLEXITY_API_KEY
-uv sync
+# Set up all microservices
+cp discovery-service/.env.example discovery-service/.env
+cp content-monitoring-service/.env.example content-monitoring-service/.env
+cp notification-service/.env.example notification-service/.env
+cp backend/.env.example backend/.env
+
+# Configure API keys in each .env file
 
 # Start all microservices
-cd ..
 ./start-microservices.sh
 ```
 
 This starts:
 - Discovery Service (port 8001) - Natural language → URL discovery
-- Backend API (port 8000) - Main application logic
+- Content Monitoring Service (port 8002) - Web scraping & change detection
+- Notification Service (port 8003) - Email & push notifications
+- Backend API (port 8000) - API gateway & orchestration
 - Frontend (port 3000) - User interface
 
-### Option 2: Legacy Monolith Mode
+### Option 2: Docker Compose (Production-like)
+
+```bash
+# Build and start all services
+docker-compose up --build
+```
+
+### Option 3: Legacy Monolith Mode
 
 ```bash
 # Backend setup
@@ -78,19 +91,40 @@ npm run dev
 ### Discovery Service (.env)
 ```bash
 PERPLEXITY_API_KEY=your_perplexity_key
+OPENAI_API_KEY=your_openai_key  # Optional fallback
 AI_PROVIDER=perplexity
-SERVICE_PORT=8001
+LOG_LEVEL=INFO
+```
+
+### Content Monitoring Service (.env)
+```bash
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_KEY=your_service_key
+OPENAI_API_KEY=your_openai_key
+DEFAULT_SIMILARITY_THRESHOLD=0.85
+```
+
+### Notification Service (.env)
+```bash
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_service_key
+SENDGRID_API_KEY=your_sendgrid_key
 LOG_LEVEL=INFO
 ```
 
 ### Backend (.env)
 ```bash
-SENDGRID_API_KEY=your_sendgrid_key
 DATABASE_URL=your_supabase_db_url
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_KEY=your_service_key
+SUPABASE_JWT_SECRET=your_jwt_secret
+SENDGRID_API_KEY=your_sendgrid_key
 OPENAI_API_KEY=your_openai_key
 PERPLEXITY_API_KEY=your_perplexity_key
-# Set to use microservice, leave empty for legacy mode
+# Microservice URLs (for local development)
 DISCOVERY_SERVICE_URL=http://localhost:8001
+CONTENT_MONITORING_SERVICE_URL=http://localhost:8002
+NOTIFICATION_SERVICE_URL=http://localhost:8003
 ```
 
 ### Frontend (.env.local)
