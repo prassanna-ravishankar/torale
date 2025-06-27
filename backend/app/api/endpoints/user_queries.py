@@ -1,67 +1,189 @@
-from typing import Any
+import json
+import logging
+from datetime import datetime
+from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, status
+from supabase import Client
 
-from app.api.dependencies import (
-    get_source_discovery_ai_model,
-)  # Need the AI model getter
-from app.core.db import get_db
-from app.models import user_query_model
-from app.schemas import user_query_schemas
-from app.services.ai_integrations.interface import AIModelInterface  # For type hinting
-from app.services.source_discovery_service import (
-    SourceDiscoveryService,
-)  # Keep this import
-
-# Import the processing service and the AI model dependency getter
-from app.services.user_query_processing_service import UserQueryProcessingService
+from app.api.deps import get_current_user, get_supabase_with_auth, User
+from app.core.constants import (
+    HTTP_STATUS_BAD_REQUEST,
+    HTTP_STATUS_INTERNAL_SERVER_ERROR,
+    HTTP_STATUS_NOT_FOUND,
+)
+from app.schemas.user_query_schemas import (
+    UserQueryCreate,
+    UserQueryInDB,
+)
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post(
-    "/",
-    response_model=user_query_schemas.UserQueryInDB,
+    "/user-queries/",
+    response_model=dict,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_user_query(
-    query_in: user_query_schemas.UserQueryCreate,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-    # Remove discovery_service dependency from endpoint signature
-    ai_model_for_discovery: AIModelInterface = Depends(
-        get_source_discovery_ai_model
-    ),  # Get the AI model needed for discovery
-) -> Any:
+    query_in: UserQueryCreate,
+    current_user: User = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase_with_auth),
+):
     """
-    Create a new user query and schedule background processing.
-
-    - **raw_query**: The user's query string.
-    - **config_hints_json**: Optional JSON object for configuration.
+    Create a new user query using Supabase client.
+    
+    Stores the user's natural language query and any associated preferences.
     """
-    db_query = user_query_model.UserQuery(
-        raw_query=query_in.raw_query,
-        config_hints_json=query_in.config_hints_json,
-        status="pending_discovery",
+    logger.info(
+        f"User {current_user.id} creating query: {query_in.model_dump(exclude_none=True)}"
     )
-    db.add(db_query)
-    await db.flush()  # Flush to get the ID for the background task
+    
+    try:
+        new_query = {
+            "user_id": current_user.id,
+            "raw_query": query_in.raw_query,
+            "config_hints_json": json.dumps(query_in.config_hints_json) if query_in.config_hints_json else None,
+            "status": "active",
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+        }
+        
+        result = supabase.table("user_queries").insert(new_query).execute()
+        
+        if not result.data:
+            raise HTTPException(
+                status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
+                detail="Failed to create user query.",
+            )
+        
+        logger.info(
+            f"User {current_user.id} successfully created query ID {result.data[0]['id']}"
+        )
+        return result.data[0]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error creating query for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
+            detail="Failed to create user query.",
+        ) from e
 
-    query_id = db_query.id  # Get ID after flush
 
-    # Instantiate services needed for the background task
-    processing_service = UserQueryProcessingService()
-    # Instantiate the discovery service directly, passing the already resolved AI model
-    discovery_service_instance = SourceDiscoveryService(ai_model=ai_model_for_discovery)
-
-    background_tasks.add_task(
-        processing_service.process_query,
-        query_id=query_id,
-        db=db,
-        discovery_service=discovery_service_instance,  # Pass the instantiated service
+@router.get("/user-queries/", response_model=list[dict])
+async def list_user_queries(
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase_with_auth),
+):
+    """
+    List user queries using Supabase client.
+    
+    - **skip**: Number of records to skip (for pagination)
+    - **limit**: Maximum number of records to return
+    """
+    logger.info(
+        f"User {current_user.id} listing queries (skip={skip}, limit={limit})"
     )
+    
+    try:
+        result = supabase.table("user_queries").select("*").eq("user_id", current_user.id).order("created_at", desc=True).range(skip, skip + limit - 1).execute()
+        
+        logger.info(f"User {current_user.id} has {len(result.data)} queries.")
+        return result.data
+        
+    except Exception as e:
+        logger.exception(f"Error listing queries for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
+            detail="Failed to list user queries.",
+        ) from e
 
-    # Return object state post-flush, pre-commit for the request
-    # Rely on the ORM instance state after flush for the response
-    return db_query
+
+@router.get("/user-queries/{query_id}", response_model=dict)
+async def get_user_query(
+    query_id: str,
+    current_user: User = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase_with_auth),
+):
+    """
+    Get a specific user query by ID using Supabase client.
+    
+    Only returns queries that belong to the authenticated user.
+    """
+    logger.info(f"User {current_user.id} requesting query ID: {query_id}")
+    
+    try:
+        result = supabase.table("user_queries").select("*").eq("id", query_id).eq("user_id", current_user.id).execute()
+        
+        if not result.data:
+            logger.warning(
+                f"User {current_user.id} requested non-existent query ID {query_id}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User query not found"
+            )
+        
+        logger.info(f"Returning query ID {query_id} to user {current_user.id}")
+        return result.data[0]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error getting query {query_id} for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
+            detail="Failed to get user query.",
+        ) from e
+
+
+@router.delete("/user-queries/{query_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user_query(
+    query_id: str,
+    current_user: User = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase_with_auth),
+):
+    """
+    Delete a user query using Supabase client.
+    
+    Only allows deletion of queries that belong to the authenticated user.
+    """
+    logger.info(f"User {current_user.id} deleting query ID: {query_id}")
+    
+    try:
+        # First check if the query exists and belongs to the user
+        existing = supabase.table("user_queries").select("id").eq("id", query_id).eq("user_id", current_user.id).execute()
+        
+        if not existing.data:
+            logger.warning(
+                f"User {current_user.id} tried to delete non-existent query ID {query_id}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User query not found"
+            )
+        
+        # Delete the query
+        result = supabase.table("user_queries").delete().eq("id", query_id).eq("user_id", current_user.id).execute()
+        
+        if not result.data:
+            raise HTTPException(
+                status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete user query"
+            )
+        
+        logger.info(f"User {current_user.id} successfully deleted query ID {query_id}")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error deleting query {query_id} for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete user query.",
+        ) from e

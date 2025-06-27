@@ -1,72 +1,145 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+import os
+from contextlib import asynccontextmanager
 
-from app.api.endpoints import (
-    monitoring,
-    source_discovery,
-    user_queries,
-)  # Corrected import
+from fastapi import FastAPI, Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 
-# from app.api import alerts # Old router, to be replaced
-# from app.core.database import init_db # Old DB init, to be replaced
-from app.core.config import get_settings  # Import get_settings instead of settings
-from app.core.logging_config import setup_logging  # Corrected import
+from app.api.endpoints import monitoring, source_discovery, user_queries
+from app.core.config import get_settings
+from app.core.logging_config import setup_logging
+from app.core.supabase_client import get_supabase_client
+
+
+class CORSOptionsMiddleware(BaseHTTPMiddleware):
+    """Custom middleware to handle CORS requests, especially OPTIONS preflight."""
+    
+    def __init__(self, app, cors_origins):
+        super().__init__(app)
+        self.cors_origins = cors_origins
+    
+    async def dispatch(self, request: Request, call_next):
+        origin = request.headers.get("origin")
+        
+        # Determine allowed origin
+        allowed_origin = None
+        if origin and str(origin) in [str(o) for o in self.cors_origins]:
+            allowed_origin = origin
+        elif self.cors_origins:
+            allowed_origin = str(self.cors_origins[0])  # Default to first allowed origin
+        
+        if request.method == "OPTIONS":
+            # Handle preflight requests immediately - bypass authentication
+            headers = {
+                "Access-Control-Allow-Origin": allowed_origin or "*",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, Origin, X-Requested-With",
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Max-Age": "86400",  # Cache preflight for 24 hours
+            }
+            return Response(status_code=200, headers=headers)
+        
+        # Process the actual request
+        response = await call_next(request)
+        
+        # Add CORS headers to actual responses
+        if allowed_origin:
+            response.headers["Access-Control-Allow-Origin"] = allowed_origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        
+        return response
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler."""
+    # Startup
+    print("🚀 Starting Torale API...")
+    
+    # Test Supabase connection
+    try:
+        supabase = get_supabase_client()
+        # Simple test query to verify connection
+        result = supabase.table("user_queries").select("count", count="exact").execute()
+        print(f"✅ Supabase connected successfully! Query count: {result.count}")
+    except Exception as e:
+        print(f"❌ Supabase connection failed: {e}")
+        # Don't fail startup - let the app start and handle errors per request
+    
+    yield
+    
+    # Shutdown
+    print("🛑 Shutting down Torale API...")
+
 
 app = FastAPI(
-    title=get_settings().PROJECT_NAME,  # Use get_settings() here
-    version="0.2.0",  # Updated version for next-gen
-    description=(
-        "Next-generation alerting service API with AI-powered source discovery "
-        "and change detection."
-    ),
+    title="Torale API",
+    description="A content monitoring and alerting system",
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
-# Setup logging before including routers or defining startup events
-# that might log, ensures logs from startup are captured correctly.
-sys_settings = get_settings()  # Call get_settings() here
-setup_logging(log_level=sys_settings.LOG_LEVEL)
+# Setup logging
+settings = get_settings()
+setup_logging(log_level=settings.LOG_LEVEL)
 
-# Configure CORS
-if sys_settings.CORS_ORIGINS:  # Use the instance
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[str(origin) for origin in sys_settings.CORS_ORIGINS],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# Configure CORS with custom middleware that handles authentication properly
+app.add_middleware(CORSOptionsMiddleware, cors_origins=settings.CORS_ORIGINS or [])
 
-# Create database tables on startup (for development; use Alembic for production)
-# @app.on_event("startup")
-# async def on_startup(): # Make the function asynchronous
-#     # This creates tables if they don\'t exist.
-#     # For production, Alembic migrations are preferred.
-#     logging.info("Creating database tables if they don\'t exist...")
-#     async with engine.begin() as conn: # Use async context manager for engine
-#         await conn.run_sync(Base.metadata.create_all) # Use run_sync for create_all
-#     logging.info("Database tables checked/created.")
-# await init_db() # Replaced old init_db
-
-# Include new routers
+# Include routers
 app.include_router(
-    source_discovery.router, prefix=sys_settings.API_V1_STR, tags=["Source Discovery"]
-)  # Use the instance
+    monitoring.router,
+    prefix=settings.API_V1_STR,
+    tags=["monitoring"],
+)
+
 app.include_router(
-    monitoring.router, prefix=sys_settings.API_V1_STR, tags=["Monitoring & Alerts"]
-)  # Use the instance
+    source_discovery.router,
+    prefix=settings.API_V1_STR,
+    tags=["source-discovery"],
+)
+
 app.include_router(
     user_queries.router,
-    prefix=f"{sys_settings.API_V1_STR}/user-queries",
-    tags=["User Queries"],
-)  # Add new router
-# app.include_router(alerts.router, prefix="/api/v1", tags=["alerts"]) # Old router
+    prefix=settings.API_V1_STR,
+    tags=["user-queries"],
+)
 
 
 @app.get("/")
 async def root():
-    return {"message": f"Welcome to {sys_settings.PROJECT_NAME} API v0.2.0"}
+    return {"message": f"Welcome to {settings.PROJECT_NAME} API"}
 
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {"status": "healthy", "service": "torale-api"}
+
+
+@app.get("/supabase-test")
+async def test_supabase():
+    """Test Supabase connection."""
+    try:
+        supabase = get_supabase_client()
+        result = supabase.table("user_queries").select("count", count="exact").execute()
+        return {
+            "status": "supabase_connected",
+            "test_result": "success",
+            "data_count": result.count
+        }
+    except Exception as e:
+        return {
+            "status": "supabase_error",
+            "test_result": "failed",
+            "error": str(e)
+        }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_config=None,  # Use our custom logging config
+    )

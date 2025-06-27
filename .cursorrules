@@ -26,7 +26,7 @@
 - Group related endpoints in routers
 
 ### Database & Models
-- Use SQLAlchemy declarative models with type hints
+- Use supabase libraries
 - Keep database logic in repository/service classes
 - Use Alembic for database migrations
 - Always use connection pooling and proper session management

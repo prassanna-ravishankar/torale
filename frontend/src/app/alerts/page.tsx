@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import axiosInstance from '@/lib/axiosInstance';
 
 // Define the expected structure for a ChangeAlert (ChangeAlertSchema from backend)
@@ -37,9 +39,20 @@ const fetchAlerts = async (params: FetchAlertsParams): Promise<ChangeAlertSchema
 
 export default function AlertsPage() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  
   // Basic filtering state examples (can be expanded)
   const [filterAcknowledged, setFilterAcknowledged] = useState<boolean | undefined>(undefined);
   // TODO: Add state for monitored_source_id filter, skip, limit, sorting
+
+  // Check authentication and redirect if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      toast.error('Please sign in to view alerts');
+      router.push('/auth');
+    }
+  }, [user, authLoading, router]);
 
   const {
     data: alerts,
@@ -49,6 +62,7 @@ export default function AlertsPage() {
   } = useQuery<ChangeAlertSchema[], Error>({
     queryKey: ['alerts', { acknowledged: filterAcknowledged }], // Query key includes filters
     queryFn: () => fetchAlerts({ is_acknowledged: filterAcknowledged }),
+    enabled: !!user, // Only run query if user is authenticated
     // keepPreviousData: true, // Useful for pagination/filtering to keep data while new is fetched
   });
 
@@ -83,7 +97,29 @@ export default function AlertsPage() {
     );
   }
 
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
+        <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-teal-500 border-r-transparent"></div>
+        <p className="ml-4 text-gray-700 text-lg">Checking authentication...</p>
+      </div>
+    );
+  }
+
+  // Don't render anything if not authenticated (redirect will happen)
+  if (!user) {
+    return null;
+  }
+
   if (isError && error) {
+    // Better error handling for authentication errors
+    if (error.message.includes('403') || error.message.includes('Not authenticated')) {
+      toast.error('Please sign in to view alerts');
+      router.push('/auth');
+      return null;
+    }
+    
     toast.error(error.message || 'Failed to load alerts.');
     return (
       <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 text-center">

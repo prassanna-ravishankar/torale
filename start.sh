@@ -13,7 +13,7 @@ cd backend
 # Ensure uv is available and pyproject.toml is configured for a run command, or use direct uvicorn invocation.
 # Example: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 # Using a placeholder run command. Replace with your actual command if different.
-(uv run uvicorn app.main:app --reload --port 8000) & # Run in background
+(uv run python -m uvicorn app.main:app --reload --port 8000) & # Run in background
 BACKEND_PID=$!
 echo "✅ Backend server started in background (PID: $BACKEND_PID). Output will be in this terminal if not redirected."
 cd ..

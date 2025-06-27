@@ -10,7 +10,12 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Torale"
 
     # Database Settings
-    DATABASE_URL: str = "sqlite+aiosqlite:///./torale.db"
+    DATABASE_URL: str
+    
+    # Supabase Settings
+    SUPABASE_URL: str
+    SUPABASE_SERVICE_KEY: str
+    SUPABASE_JWT_SECRET: str
 
     # Email Settings
     SENDGRID_API_KEY: str
