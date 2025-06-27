@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api.endpoints import monitoring, source_discovery, user_queries
+from app.api.endpoints import monitoring, notifications, source_discovery, user_queries
 from app.core.config import get_settings
 from app.core.logging_config import setup_logging
 from app.core.supabase_client import get_supabase_client
@@ -102,6 +102,12 @@ app.include_router(
     user_queries.router,
     prefix=settings.API_V1_STR,
     tags=["user-queries"],
+)
+
+app.include_router(
+    notifications.router,
+    prefix=settings.API_V1_STR + "/notifications",
+    tags=["notifications"],
 )
 
 

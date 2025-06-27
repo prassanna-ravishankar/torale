@@ -23,7 +23,6 @@ class Settings(BaseSettings):
     
     # Microservices URLs
     DISCOVERY_SERVICE_URL: Optional[str] = None
-    NOTIFICATION_SERVICE_URL: Optional[str] = None
 
     # AI Provider API Keys - these should be loaded from .env
     OPENAI_API_KEY: Optional[str] = None

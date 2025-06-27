@@ -7,41 +7,48 @@ This document outlines the microservices architecture for Torale, integrating Su
 ## Architecture Diagram
 
 ```
-┌─────────────────┐     ┌─────────────────┐
-│   Next.js App   │────▶│  API Gateway    │
-│  (Supabase SDK) │     │   (FastAPI)     │
-└─────────────────┘     └────────┬────────┘
-                                 │
-                    ┌────────────┼────────────┐
-                    │            │            │
-              ┌─────▼─────┐ ┌───▼────┐ ┌────▼──────┐
-              │ Discovery │ │Content │ │Notification│
-              │ Service   │ │Processor│ │ Service   │
-              └─────┬─────┘ └───┬────┘ └────┬──────┘
-                    │           │           │
-                    └───────────┼───────────┘
-                                │
-                         ┌──────▼──────┐
-                         │  Supabase   │
-                         │  - Auth     │
-                         │  - Database │
-                         │  - Realtime │
-                         │  - Storage  │
-                         │  - Functions│
-                         └─────────────┘
+┌─────────────────┐     ┌─────────────────────────────────┐
+│   Next.js App   │────▶│        Main Backend             │
+│  (Supabase SDK) │     │        (FastAPI)                │
+└─────────────────┘     │  ┌─────────────────────────────┐│
+                        │  │ • User Queries              ││
+                        │  │ • Content Processing        ││
+                        │  │ • Change Detection          ││
+              ┌─────────┼──┤ • Notifications (Integrated)││
+              │         │  │ • Monitoring & Alerts       ││
+              │         │  └─────────────────────────────┘│
+              │         └─────────────┬───────────────────┘
+              │                       │
+        ┌─────▼─────┐                 │
+        │ Discovery │                 │
+        │ Service   │                 │
+        │ :8001     │                 │
+        └─────┬─────┘                 │
+              │                       │
+              └───────────┬───────────┘
+                          │
+                   ┌──────▼──────┐
+                   │  Supabase   │
+                   │  - Auth     │
+                   │  - Database │
+                   │  - Realtime │
+                   │  - Functions│
+                   │  - RLS      │
+                   └─────────────┘
 ```
 
 ## Service Breakdown
 
-### 1. API Gateway Service (FastAPI)
-**Repository**: `backend/` (enhanced)
+### 1. Main Backend Service (FastAPI)
+**Repository**: `backend/` 
 **Responsibilities**:
 - Authentication & authorization via Supabase JWT
-- Request routing and orchestration
 - User query management
+- Content processing and ingestion
+- Change detection and alerts
+- **Integrated notification system** with email delivery
+- Background task processing
 - Monitored source CRUD operations
-- Change alert management
-- Rate limiting and request validation
 
 **Key Changes**:
 - ✅ Supabase JWT verification middleware
@@ -53,9 +60,14 @@ This document outlines the microservices architecture for Torale, integrating Su
 - `user_queries`
 - `monitored_sources` 
 - `change_alerts`
+- `scraped_contents`
+- `content_embeddings`
+- `notification_preferences`
+- `notification_logs`
 
-### 2. Discovery Service (Stateless)
-**Repository**: `services/discovery/` (to be extracted)
+### 2. Discovery Service (Microservice) ✅
+**Repository**: `discovery-service/` 
+**Status**: **Deployed and operational**
 **Responsibilities**:
 - Natural language query refinement
 - URL identification from queries
@@ -63,10 +75,11 @@ This document outlines the microservices architecture for Torale, integrating Su
 - Stateless computation service
 
 **Key Features**:
-- No database dependencies
-- Horizontal scaling
-- AI provider switching
-- Cache-friendly responses
+- ✅ No database dependencies
+- ✅ Independent Docker container (`:8001`)
+- ✅ AI provider abstraction (Perplexity primary, OpenAI fallback)
+- ✅ Cache-friendly responses
+- ✅ Horizontal scaling ready
 
 **API Interface**:
 ```
@@ -75,51 +88,30 @@ POST /discover-sources/
 - Output: list of monitorable URLs
 ```
 
-### 3. Content Processing Service
-**Repository**: `services/content-processor/` (to be extracted)
-**Responsibilities**:
-- Web scraping and content extraction
-- Content preprocessing and cleaning
-- Embedding generation via OpenAI
-- Content deduplication
+### 3. Integrated Notification System 📧
+**Repository**: `backend/app/services/notification_*`
+**Status**: **Integrated in main backend** (not a separate microservice)
+**Approach**: Database-first with Python processing
 
-**Database Tables Owned**:
-- `scraped_contents`
-- `content_embeddings`
-
-**Key Features**:
-- Background job processing
-- Vector similarity operations
-- Content storage optimization
-- Error handling and retries
-
-### 4. Change Detection Service
-**Repository**: `services/change-detector/` (to be extracted)
-**Responsibilities**:
-- Embedding comparison for changes
-- Semantic change analysis
-- Alert generation logic
-- Change severity assessment
+**Components**:
+- **NotificationService**: Email delivery via SendGrid
+- **NotificationProcessor**: Background task processing 
+- **Database Functions**: Queue management and statistics
+- **API Endpoints**: User preferences and logs
 
 **Key Features**:
-- pgvector similarity queries
-- Configurable thresholds
-- AI-powered change summarization
-- Event-driven processing
+- ✅ Email notifications with HTML templates
+- ✅ User preference management
+- ✅ Background processing with retry logic
+- ✅ Comprehensive delivery logging
+- ✅ Real-time queue monitoring
+- ✅ Supabase database integration
 
-### 5. Notification Service
-**Repository**: `services/notifications/` (to be extracted)
-**Responsibilities**:
-- Email notifications via SendGrid
-- Webhook delivery
-- Notification preferences
-- Delivery status tracking
-
-**Key Features**:
-- Multiple delivery channels
-- Template management
-- Retry logic with exponential backoff
-- User preference handling
+**Why Integrated Instead of Microservice**:
+- Better performance (no network calls)
+- Simpler deployment and maintenance  
+- Leverages Supabase database capabilities
+- Easier debugging and error handling
 
 ## Database Architecture
 
@@ -131,7 +123,11 @@ user_queries (user_id, raw_query, status, config_hints_json)
 monitored_sources (user_id, user_query_id, url, status, config)
 scraped_contents (monitored_source_id, content, embeddings)
 content_embeddings (scraped_content_id, vector, model_name)
-change_alerts (user_id, monitored_source_id, summary, details)
+change_alerts (user_id, monitored_source_id, summary, details, notification_sent)
+
+-- Notification tables
+notification_preferences (user_id, email_enabled, email_frequency, browser_enabled)
+notification_logs (alert_id, user_email, notification_type, status, sent_at)
 ```
 
 ### Row Level Security (RLS)
@@ -158,24 +154,36 @@ change_alerts (user_id, monitored_source_id, summary, details)
 - Secure API key management
 - CORS configuration
 
-## Migration Path
+## Current Architecture Status
 
-### Phase 1: Supabase Integration ✅
-- [x] Database schema migration
-- [x] Authentication system
-- [x] Updated models and endpoints
-- [x] RLS policies implementation
+### ✅ Completed Milestones
 
-### Phase 2: Service Extraction (Next)
-1. **Extract Discovery Service**
-   - Containerize source discovery logic
-   - Create REST API interface
-   - Add service-to-service auth
+#### Milestone 1: Discovery Service Extraction ✅
+- [x] **Discovery Service** extracted to separate microservice
+- [x] Independent Docker container at `:8001`
+- [x] AI provider abstraction (Perplexity/OpenAI)
+- [x] Stateless API interface
+- [x] Docker Compose orchestration
 
-2. **Extract Notification Service**
-   - Implement message queue (Redis/SQS)
-   - Create notification worker
-   - Add delivery tracking
+#### Database Integration ✅
+- [x] Supabase PostgreSQL schema
+- [x] Row Level Security (RLS) policies
+- [x] JWT authentication system
+- [x] Vector search with pgvector
+
+#### Notification System ✅
+- [x] **Integrated notification system** (not microservice)
+- [x] Email delivery via SendGrid
+- [x] Background processing with retries
+- [x] User preference management
+- [x] Database functions for queue management
+
+### 🎯 Current Architecture Decision
+
+**Hybrid Approach**: 
+- **Discovery Service**: True microservice (successful decomposition)
+- **Notification System**: Integrated backend service (better for this use case)
+- **Main Backend**: Handles all other services as monolith
 
 ### Phase 3: Background Processing
 1. **Replace FastAPI BackgroundTasks**

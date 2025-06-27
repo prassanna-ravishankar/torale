@@ -1,14 +1,14 @@
 import logging
-from typing import Union
 
 from fastapi import Depends, HTTPException
+from supabase import Client
 
-from app.clients.notification_client import NotificationClient
+from app.api.deps import get_supabase_with_auth
 from app.core.config import Settings, get_settings
 from app.services.ai_integrations.interface import AIModelInterface
 from app.services.ai_integrations.openai_client import OpenAIClient
 from app.services.ai_integrations.perplexity_client import PerplexityClient
-from app.services.notification_service import NotificationService
+from app.services.notification_service import SupabaseNotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -123,17 +123,11 @@ async def get_source_discovery_ai_model(
 
 
 async def get_notification_service(
-    s: Settings = Depends(get_settings),
-) -> Union[NotificationClient, NotificationService]:
-    """
-    Provides notification capability - either via microservice or legacy service.
-    
-    Returns NotificationClient if NOTIFICATION_SERVICE_URL is configured,
-    otherwise falls back to the legacy NotificationService.
-    """
-    if s.NOTIFICATION_SERVICE_URL:
-        logger.info(f"Using notification microservice at {s.NOTIFICATION_SERVICE_URL}")
-        return NotificationClient(base_url=s.NOTIFICATION_SERVICE_URL)
-    else:
-        logger.info("Using legacy notification service (monolith)")
-        return NotificationService(api_key=s.SENDGRID_API_KEY)
+    supabase: Client = Depends(get_supabase_with_auth),
+    settings: Settings = Depends(get_settings),
+) -> SupabaseNotificationService:
+    """Provides notification service using Supabase."""
+    return SupabaseNotificationService(
+        supabase_client=supabase,
+        sendgrid_api_key=settings.SENDGRID_API_KEY
+    )

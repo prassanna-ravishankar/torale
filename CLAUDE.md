@@ -40,19 +40,19 @@ npm run coverage
 
 ### Full Stack Development
 ```bash
-# From project root - starts both services
+# From project root - starts main backend + discovery service
 ./start.sh
 ```
 
-### Microservices (Python/FastAPI)
+### Discovery Service (Microservice)
 ```bash
-# Development (any Python microservice)
-cd <service-name>
-uv run python -m uvicorn app.main:app --reload --port <port>
+# Development
+cd discovery-service
+uv run python -m uvicorn main:app --reload --port 8001
 
 # Testing
 uv run pytest
-uv run pytest --cov=app --cov-report=term-missing
+uv run pytest --cov=. --cov-report=term-missing
 
 # Linting and Formatting
 uv run ruff check .
