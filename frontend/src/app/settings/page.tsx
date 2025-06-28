@@ -2,7 +2,7 @@
 
 import { NotificationPreferences } from "@/components/NotificationPreferences";
 import { useAuth } from "@/contexts/AuthContext";
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
 import { useState, useEffect } from "react";
 
 export default function SettingsPage() {
@@ -28,7 +28,6 @@ export default function SettingsPage() {
 
     try {
       // Update user profile via Supabase Auth
-      const supabase = createClient();
       const { error } = await supabase.auth.updateUser({
         data: { full_name: profileName }
       });

@@ -28,6 +28,26 @@ A natural language-powered alerting service that monitors websites for meaningfu
 
 ## Quick Start
 
+### Using Just (Recommended)
+
+If you have [just](https://github.com/casey/just) installed:
+
+```bash
+# See all available commands
+just
+
+# Quick setup
+just setup
+
+# Start everything with Docker
+just up
+
+# Check service health
+just health
+```
+
+### Manual Setup
+
 ### Prerequisites
 
 - Python 3.12+
@@ -60,12 +80,23 @@ This starts:
 - Backend API (port 8000) - API gateway & orchestration
 - Frontend (port 3000) - User interface
 
-### Option 2: Docker Compose (Production-like)
+### Option 2: Docker Compose (Full Stack - Recommended)
 
 ```bash
-# Build and start all services
+# Copy and configure environment variables
+cp .env.example .env
+# Edit .env with your API keys and Supabase credentials
+
+# Build and start all services (including frontend)
 docker-compose up --build
 ```
+
+This starts the entire stack:
+- Frontend (http://localhost:3000)
+- Backend API Gateway (http://localhost:8000)
+- Discovery Service (http://localhost:8001)
+- Content Monitoring Service (http://localhost:8002)
+- Notification Service (http://localhost:8003)
 
 ### Option 3: Legacy Monolith Mode
 

@@ -30,13 +30,13 @@ structlog.configure(
 )
 
 # Configure standard logging
+settings = get_settings()
 logging.basicConfig(
     format="%(message)s",
     stream=sys.stdout,
-    level=logging.INFO,
+    level=getattr(logging, getattr(settings, 'LOG_LEVEL', 'INFO').upper()),
 )
 
-settings = get_settings()
 logger = structlog.get_logger()
 
 

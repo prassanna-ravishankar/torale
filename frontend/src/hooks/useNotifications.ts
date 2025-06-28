@@ -1,5 +1,6 @@
 'use client'
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import axiosInstance from '@/lib/axiosInstance'
@@ -11,7 +12,7 @@ export interface NotificationAlert {
   user_id: string
   detected_at: string
   change_summary: string
-  change_details: Record<string, any>
+  change_details: Record<string, unknown>
   is_acknowledged: boolean
   notification_sent: boolean
   notification_sent_at?: string
@@ -58,7 +59,7 @@ export function useNotifications() {
         }
 
         // Fetch alerts
-        const { data: alertsData, error: alertsError } = await supabase
+        const { data: alertsData, error: alertsError } = await (supabase as any)
           .from('change_alerts')
           .select('*')
           .eq('user_id', user.id)
@@ -102,7 +103,7 @@ export function useNotifications() {
       if (!user) return
 
       // Subscribe to changes in change_alerts table for the current user
-      const alertsChannel = supabase
+      const alertsChannel = (supabase as any)
         .channel('change_alerts')
         .on(
           'postgres_changes',
@@ -112,7 +113,7 @@ export function useNotifications() {
             table: 'change_alerts',
             filter: `user_id=eq.${user.id}`
           },
-          (payload) => {
+          (payload: any) => {
             console.log('New alert received:', payload)
             const newAlert = payload.new as NotificationAlert
             
@@ -145,7 +146,7 @@ export function useNotifications() {
             table: 'change_alerts',
             filter: `user_id=eq.${user.id}`
           },
-          (payload) => {
+          (payload: any) => {
             console.log('Alert updated:', payload)
             const updatedAlert = payload.new as NotificationAlert
             
@@ -165,10 +166,10 @@ export function useNotifications() {
 
     return () => {
       if (channel) {
-        supabase.removeChannel(channel)
+        (supabase as any).removeChannel(channel)
       }
     }
-  }, [loading, preferences])
+  }, [loading, preferences, channel])
 
   // Request browser notification permission
   const requestNotificationPermission = async () => {
@@ -202,7 +203,7 @@ export function useNotifications() {
   // Acknowledge an alert
   const acknowledgeAlert = async (alertId: string) => {
     try {
-      const { data, error } = await supabase
+      const { error } = await (supabase as any)
         .from('change_alerts')
         .update({ 
           is_acknowledged: true,

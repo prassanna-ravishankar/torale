@@ -27,7 +27,7 @@ export function NotificationPreferences() {
   const handleFrequencyChange = async (frequency: string) => {
     setSaving(true)
     await updatePreferences({
-      email_frequency: frequency as any
+      email_frequency: frequency as 'immediate' | 'hourly' | 'daily' | 'disabled'
     })
     setSaving(false)
   }

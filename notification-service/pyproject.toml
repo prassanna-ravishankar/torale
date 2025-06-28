@@ -22,6 +22,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "structlog>=23.2.0",
     "aiohttp>=3.9.1",
+    "email-validator>=2.1.0",
 ]
 
 [project.optional-dependencies]

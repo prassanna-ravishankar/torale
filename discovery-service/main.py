@@ -33,7 +33,7 @@ settings = get_settings()
 logging.basicConfig(
     format="%(message)s",
     stream=sys.stdout,
-    level=settings.LOG_LEVEL.upper(),
+    level=settings.log_level.upper(),
 )
 
 logger = structlog.get_logger()
@@ -43,14 +43,14 @@ logger = structlog.get_logger()
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     cors_origins = (
-        [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
-        if settings.CORS_ORIGINS
+        [origin.strip() for origin in settings.cors_origins.split(",")]
+        if settings.cors_origins
         else []
     )
     logger.info(
         "discovery_service_started",
-        port=settings.SERVICE_PORT,
-        ai_provider=settings.AI_PROVIDER,
+        port=settings.service_port,
+        ai_provider=settings.ai_provider,
         cors_origins=cors_origins,
     )
     yield
@@ -67,8 +67,8 @@ app = FastAPI(
 
 # Configure CORS
 cors_origins = (
-    [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
-    if settings.CORS_ORIGINS
+    [origin.strip() for origin in settings.cors_origins.split(",")]
+    if settings.cors_origins
     else []
 )
 app.add_middleware(
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=settings.SERVICE_PORT,
+        port=settings.service_port,
         reload=True,
-        log_level=settings.LOG_LEVEL.lower(),
+        log_level=settings.log_level.lower(),
     )

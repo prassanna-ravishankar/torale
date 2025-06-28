@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Torale Content Monitoring Service"
     VERSION: str = "1.0.0"
     DEBUG: bool = False
+    LOG_LEVEL: str = "INFO"
     
     # Supabase configuration
     SUPABASE_URL: str = Field(..., description="Supabase project URL")
