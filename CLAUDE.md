@@ -78,6 +78,24 @@ uv run ruff format .
 
 # Docker build
 docker build -t content-monitoring-service .
+```
+
+### Notification Service (Microservice)
+```bash
+# Development
+cd notification-service
+uv run python -m uvicorn main:app --reload --port 8003
+
+# Testing
+uv run pytest
+uv run pytest --cov=. --cov-report=term-missing
+
+# Linting and Formatting
+uv run ruff check .
+uv run ruff format .
+
+# Docker build
+docker build -t notification-service .
 
 # Run all microservices
 docker-compose up
@@ -88,29 +106,37 @@ docker-compose up
 ## Architecture Overview
 
 ### Selective Microservices Architecture
-Torale uses a selective microservice approach, extracting services where it provides clear benefits:
+Torale uses a selective microservice approach with **four independent services**:
 
 **Microservices:**
-- **Discovery Service** (`:8001`): Stateless query processing and source identification
-- **Content Monitoring Service** (`:8002`): Heavy computational work for content processing
+- **Discovery Service** (`:8001`): Natural language → URL discovery using Perplexity AI
+- **Content Monitoring Service** (`:8002`): Web scraping, embeddings, and change detection
+- **Notification Service** (`:8003`): Email delivery, template management, multi-channel alerts
 
 **Main Backend (`:8000`):**
-- **API Layer** (`/api/endpoints/`): Orchestrates microservices and handles CRUD operations
-- **Services Layer** (`/services/`): Integrated notification system and user management
-- **Repository Layer**: Database operations using Supabase
-- **Schemas** (`/schemas/`): Pydantic models for validation and serialization
+- **API Gateway** (`/api/endpoints/`): Orchestrates microservices and handles CRUD operations
+- **User Management**: Authentication, authorization, and user data
+- **Service Coordination**: Routes requests to appropriate microservices
+- **Database Operations**: Direct Supabase operations for user-related data
+
+**Frontend (`:3000`):**
+- **Next.js 15 App**: React 19 with TypeScript and Tailwind CSS
+- **Server Components**: Default for pages, client components when needed
+- **Real-time Updates**: Supabase Realtime subscriptions for live alerts
 
 **Architecture Benefits:**
-- **Service Isolation**: Heavy processing doesn't affect main application
-- **Independent Scaling**: Scale content processing and discovery independently  
-- **Technology Flexibility**: Each service can use optimal technology stack
-- **Deployment Simplicity**: Critical services (auth, notifications) remain integrated
+- ✅ **Service Isolation**: Each service can fail independently
+- ✅ **Independent Scaling**: Scale AI processing, content monitoring, and notifications separately
+- ✅ **Technology Flexibility**: Each service optimized for its specific workload
+- ✅ **Development Velocity**: Teams can work on services independently
+- ✅ **Resource Optimization**: Right-size compute/memory per service type
 
 Key design patterns:
 - Async/await throughout for I/O operations
-- Service-to-service communication via HTTP APIs
+- HTTP REST for service-to-service communication
 - Shared database with service-specific table ownership
-- Integrated notification processing for better performance
+- Circuit breaker pattern for service resilience
+- Structured logging with correlation IDs
 
 ### Frontend Architecture
 The frontend uses Next.js 15 with App Router and follows modern React patterns:

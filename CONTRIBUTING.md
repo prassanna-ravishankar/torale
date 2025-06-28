@@ -1,126 +1,188 @@
-# Contributing to `torale`
+# Contributing to Torale
 
-Contributions are welcome, and they are greatly appreciated!
-Every little bit helps, and credit will always be given.
+Thank you for your interest in contributing to Torale! This document provides guidelines for contributing to the project.
 
-You can contribute in many ways:
+## 🚀 Quick Start
 
-# Types of Contributions
+1. **Fork the repository** and clone your fork
+2. **Set up development environment**: See [SETUP.md](./SETUP.md) for detailed instructions
+3. **Create a feature branch**: `git checkout -b feature/your-feature-name`
+4. **Make your changes** following our code standards
+5. **Test thoroughly**: Ensure all tests pass and add new tests for your changes
+6. **Submit a pull request** with a clear description
 
-## Report Bugs
+## 📋 Before You Start
 
-Report bugs at https://github.com/prassanna-ravishankar/torale/issues
+- **Check existing issues**: Look for related issues or create one to discuss your planned changes
+- **Read the documentation**: Familiarize yourself with [DEVELOPMENT.md](./DEVELOPMENT.md) for code standards and workflows
+- **Start small**: For your first contribution, consider tackling a "good first issue"
 
-If you are reporting a bug, please include:
+## 🛠️ Development Setup
 
-- Your operating system name and version.
-- Any details about your local setup that might be helpful in troubleshooting.
-- Detailed steps to reproduce the bug.
-
-## Fix Bugs
-
-Look through the GitHub issues for bugs.
-Anything tagged with "bug" and "help wanted" is open to whoever wants to implement a fix for it.
-
-## Implement Features
-
-Look through the GitHub issues for features.
-Anything tagged with "enhancement" and "help wanted" is open to whoever wants to implement it.
-
-## Write Documentation
-
-torale could always use more documentation, whether as part of the official docs, in docstrings, or even on the web in blog posts, articles, and such.
-
-## Submit Feedback
-
-The best way to send feedback is to file an issue at https://github.com/prassanna-ravishankar/torale/issues.
-
-If you are proposing a new feature:
-
-- Explain in detail how it would work.
-- Keep the scope as narrow as possible, to make it easier to implement.
-- Remember that this is a volunteer-driven project, and that contributions
-  are welcome :)
-
-# Get Started!
-
-Ready to contribute? Here's how to set up `torale` for local development.
-Please note this documentation assumes you already have `uv` and `Git` installed and ready to go.
-
-1. Fork the `torale` repo on GitHub.
-
-2. Clone your fork locally:
+See [SETUP.md](./SETUP.md) for comprehensive setup instructions. Quick summary:
 
 ```bash
-cd <directory_in_which_repo_should_be_created>
-    git clone git@github.com:YOUR_NAME/torale.git
+# Setup environment
+cp .env.example .env  # Configure your API keys
+just setup            # Install dependencies
+
+# Start development
+just dev              # All services with hot reload
+
+# Run tests
+just test             # All services
 ```
 
-3. Now we need to install the environment. Navigate into the directory
+## 📝 Code Standards
 
-```bash
-    cd torale
-```
+### General Principles
 
-Then, install and activate the environment with:
+- **Keep it simple**: Prefer clear, readable code over clever solutions
+- **Test everything**: Write tests for new functionality and bug fixes
+- **Document changes**: Update relevant documentation
+- **Follow existing patterns**: Maintain consistency with the existing codebase
 
-```bash
-uv sync
-```
+### Python (Backend & Services)
 
-4. Install pre-commit to run linters/formatters at commit time:
+- Use type hints everywhere
+- Follow PEP 8 style guidelines (enforced by ruff)
+- Write docstrings for public functions
+- Use async/await for I/O operations
+- Handle errors gracefully with appropriate HTTP status codes
 
-```bash
-uv run pre-commit install
-```
+### TypeScript/React (Frontend)
 
-5. Create a branch for local development:
+- Use strict TypeScript configuration
+- Prefer functional components with hooks
+- Follow React best practices
+- Use semantic HTML and accessibility best practices
+- Keep components small and focused
 
-```bash
-git checkout -b name-of-your-bugfix-or-feature
-```
+### Testing
 
-Now you can make your changes locally.
+- Write unit tests for business logic
+- Add integration tests for API endpoints
+- Include frontend component tests
+- Ensure tests are deterministic and isolated
+- Aim for meaningful test coverage, not just high percentages
 
-6. Don't forget to add test cases for your added functionality to the `tests` directory.
+## 🔄 Pull Request Process
 
-7. When you're done making changes, check that your changes pass the formatting tests.
+### Before Submitting
 
-```bash
-make check
-```
+1. **Ensure all tests pass**:
+   ```bash
+   just test
+   just lint
+   ```
 
-Now, validate that all unit tests are passing:
+2. **Test your changes manually**:
+   - Start the full development environment
+   - Test the user workflow your changes affect
+   - Verify no regressions in existing functionality
 
-```bash
-make test
-```
+3. **Update documentation** if needed:
+   - Update README.md for new features
+   - Add/update API documentation
+   - Update SETUP.md for new dependencies
 
-9. Before raising a pull request you should also run tox.
-   This will run the tests across different versions of Python:
+### PR Guidelines
 
-```bash
-tox
-```
+**Title**: Use a clear, descriptive title that explains what the PR does
 
-This requires you to have multiple versions of python installed.
-This step is also triggered in the CI/CD pipeline, so you could also choose to skip this step locally.
+**Description**: Include:
+- Summary of changes made
+- Issue number (if applicable): "Fixes #123"
+- Testing instructions for reviewers
+- Screenshots for UI changes
+- Breaking changes (if any)
 
-10. Commit your changes and push your branch to GitHub:
+**Size**: Keep PRs focused and reasonably sized. Large PRs are harder to review and more likely to have issues.
 
-```bash
-git add .
-git commit -m "Your detailed description of your changes."
-git push origin name-of-your-bugfix-or-feature
-```
+### Review Process
 
-11. Submit a pull request through the GitHub website.
+- At least one approval required from a maintainer
+- All CI checks must pass
+- Address review feedback promptly
+- Keep discussions constructive and focused on the code
 
-# Pull Request Guidelines
+## 🐛 Bug Reports
 
-Before you submit a pull request, check that it meets these guidelines:
+When reporting bugs, please include:
 
-1. The pull request should include tests.
+- **Clear description** of the issue
+- **Steps to reproduce** the problem
+- **Expected vs actual behavior**
+- **Environment details** (OS, browser, Node/Python versions)
+- **Screenshots or error logs** if applicable
 
-2. If the pull request adds functionality, the docs should be updated.
-   Put your new functionality into a function with a docstring, and add the feature to the list in `README.md`.
+Use the bug report template in GitHub Issues.
+
+## 💡 Feature Requests
+
+For new features, please:
+
+- **Check existing issues** to avoid duplicates
+- **Describe the use case** and why the feature would be valuable
+- **Propose a solution** if you have ideas
+- **Consider the scope** - start with an MVP approach
+
+Use the feature request template in GitHub Issues.
+
+## 🔍 Code Review Guidelines
+
+### For Authors
+
+- **Write clear commit messages** using conventional commits format
+- **Test thoroughly** before requesting review
+- **Provide context** in the PR description
+- **Respond to feedback** promptly and professionally
+- **Keep PRs up to date** with the main branch
+
+### For Reviewers
+
+- **Be constructive** and helpful in feedback
+- **Focus on the code**, not the person
+- **Suggest improvements** rather than just pointing out problems
+- **Approve promptly** when changes are satisfactory
+- **Test the changes** if significant functionality is affected
+
+## 🏷️ Issue Labels
+
+We use these labels to categorize issues:
+
+- **good first issue**: Great for new contributors
+- **bug**: Something isn't working
+- **enhancement**: New feature or improvement
+- **documentation**: Documentation improvements
+- **help wanted**: Extra attention needed
+- **priority: high/medium/low**: Issue priority
+- **area: frontend/backend/discovery/monitoring**: Component affected
+
+## 🚀 Release Process
+
+Releases are managed by maintainers:
+
+1. Version bump following semantic versioning
+2. Update CHANGELOG.md
+3. Create GitHub release with release notes
+4. Deploy to production infrastructure
+
+## 📞 Getting Help
+
+- **GitHub Discussions**: For questions and general discussion
+- **GitHub Issues**: For bug reports and feature requests
+- **Code questions**: Comment on relevant PRs or create a discussion
+
+## 📄 License
+
+By contributing to Torale, you agree that your contributions will be licensed under the MIT License.
+
+## 🎉 Recognition
+
+Contributors are recognized in:
+- README.md contributors section
+- Release notes for significant contributions
+- GitHub's contributor graph
+
+Thank you for contributing to Torale! 🛰️
