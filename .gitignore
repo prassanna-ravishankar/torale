@@ -39,6 +39,8 @@ ambi_alert.db
 
 # other stuff
 .mcp.json
+.env
+.env*
 
 # Python
 __pycache__/
