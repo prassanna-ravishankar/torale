@@ -10,6 +10,7 @@ const navigation = [
   { name: "Discover", href: "/discover", icon: "🔍" },
   { name: "Sources", href: "/sources", icon: "📊" },
   { name: "Alerts", href: "/alerts", icon: "🔔" },
+  { name: "Settings", href: "/settings", icon: "⚙️" },
 ];
 
 export default function Navigation() {

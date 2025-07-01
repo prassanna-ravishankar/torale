@@ -19,6 +19,7 @@ dependencies = [
     "supabase>=2.0.0",
     "python-jose[cryptography]>=3.3.0",
     "httpx>=0.26.0",
+    "structlog>=24.0.0",
 ]
 
 [project.optional-dependencies]

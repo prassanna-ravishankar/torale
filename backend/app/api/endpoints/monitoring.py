@@ -421,3 +421,127 @@ async def acknowledge_change_alert(
             status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
             detail="Failed to acknowledge change alert.",
         ) from e
+
+
+# --- Content Processing Endpoints (calls Content Monitoring Service) ---
+
+@router.post("/process-source/{source_id}", response_model=dict)
+async def process_monitored_source(
+    source_id: str,
+    current_user: User = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase_with_auth),
+):
+    """
+    Trigger content processing for a monitored source via Content Monitoring Service.
+    
+    This will:
+    1. Scrape content from the source URL
+    2. Generate embeddings
+    3. Detect changes compared to previous content
+    4. Create alerts if significant changes are found
+    """
+    logger.info(f"User {current_user.id} requesting processing for source {source_id}")
+    
+    try:
+        # Verify the source belongs to the user
+        source_query = supabase.table("monitored_sources").select("*").eq("id", source_id).eq("user_id", current_user.id).eq("is_deleted", False).execute()
+        
+        if not source_query.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Monitored source not found"
+            )
+        
+        # Call Content Monitoring Service
+        import aiohttp
+        import os
+        
+        monitoring_service_url = os.getenv("CONTENT_MONITORING_SERVICE_URL", "http://localhost:8002")
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{monitoring_service_url}/api/v1/process-source/{source_id}") as response:
+                if response.status == 200:
+                    result = await response.json()
+                    logger.info(f"Content processing completed for source {source_id}: {result['status']}")
+                    return result
+                else:
+                    error_text = await response.text()
+                    logger.error(f"Content Monitoring Service error for source {source_id}: {response.status} - {error_text}")
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail=f"Content processing service error: {response.status}"
+                    )
+                    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error processing source {source_id} for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
+            detail="Failed to process monitored source.",
+        ) from e
+
+
+@router.post("/process-batch", response_model=dict)
+async def process_multiple_sources(
+    source_ids: list[str],
+    current_user: User = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase_with_auth),
+):
+    """
+    Trigger batch processing for multiple monitored sources via Content Monitoring Service.
+    
+    Only processes sources that belong to the authenticated user.
+    """
+    logger.info(f"User {current_user.id} requesting batch processing for {len(source_ids)} sources")
+    
+    if len(source_ids) > 10:  # Reasonable batch limit
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Batch size cannot exceed 10 sources"
+        )
+    
+    try:
+        # Verify all sources belong to the user
+        sources_query = supabase.table("monitored_sources").select("id").eq("user_id", current_user.id).eq("is_deleted", False).in_("id", source_ids).execute()
+        
+        verified_ids = [s["id"] for s in sources_query.data]
+        invalid_ids = set(source_ids) - set(verified_ids)
+        
+        if invalid_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid or unauthorized source IDs: {list(invalid_ids)}"
+            )
+        
+        # Call Content Monitoring Service
+        import aiohttp
+        import os
+        
+        monitoring_service_url = os.getenv("CONTENT_MONITORING_SERVICE_URL", "http://localhost:8002")
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{monitoring_service_url}/api/v1/process-batch",
+                json=verified_ids
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    logger.info(f"Batch processing completed for user {current_user.id}: {result['summary']}")
+                    return result
+                else:
+                    error_text = await response.text()
+                    logger.error(f"Content Monitoring Service batch error: {response.status} - {error_text}")
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail=f"Content processing service error: {response.status}"
+                    )
+                    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error processing batch for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
+            detail="Failed to process sources batch.",
+        ) from e

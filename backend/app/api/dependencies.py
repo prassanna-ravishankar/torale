@@ -1,7 +1,9 @@
 import logging
 
 from fastapi import Depends, HTTPException
+from supabase import Client
 
+from app.api.deps import get_supabase_with_auth
 from app.core.config import Settings, get_settings
 from app.services.ai_integrations.interface import AIModelInterface
 from app.services.ai_integrations.openai_client import OpenAIClient
@@ -117,3 +119,5 @@ async def get_source_discovery_ai_model(
         status_code=503,
         detail="Source discovery service not configured (no suitable AI provider).",
     )
+
+

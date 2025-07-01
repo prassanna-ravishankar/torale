@@ -52,6 +52,7 @@ export default function Home() {
         <div className="relative z-10 text-center max-w-5xl mx-auto">
           <div className="mb-8">
             <div className="flex items-center justify-center mb-6">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/torale-logo.svg" alt="Torale" className="w-16 h-16 mr-3" />
               <span className="text-2xl font-bold gradient-text font-space-grotesk">Torale</span>
             </div>
@@ -93,7 +94,7 @@ export default function Home() {
                 <div className="mb-2">$ Tell me when OpenAI updates their research page</div>
                 <div className="text-gray-400 mb-2">✓ Monitoring openai.com/research</div>
                 <div className="text-gray-400 mb-2">✓ AI-powered change detection active</div>
-                <div className="text-blue-400">🔔 Alert: New paper published - "GPT-5: Scaling Laws"</div>
+                <div className="text-blue-400">🔔 Alert: New paper published - &ldquo;GPT-5: Scaling Laws&rdquo;</div>
               </div>
             </div>
           </div>

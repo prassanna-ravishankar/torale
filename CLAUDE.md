@@ -11,14 +11,14 @@ cd backend
 uv run python -m uvicorn app.main:app --reload --port 8000
 
 # Testing
-pytest
-pytest --cov=app --cov-report=term-missing
+uv run pytest
+uv run pytest --cov=app --cov-report=term-missing
 
 # Linting and Formatting
-ruff check .
-ruff format .
-black .
-mypy .
+uv run ruff check .
+uv run ruff format .
+uv run black .
+uv run mypy .
 ```
 
 ### Frontend (TypeScript/Next.js)
@@ -40,26 +40,103 @@ npm run coverage
 
 ### Full Stack Development
 ```bash
-# From project root - starts both services
+# From project root - starts main backend + discovery service
 ./start.sh
+```
+
+### Discovery Service (Microservice)
+```bash
+# Development
+cd discovery-service
+uv run python -m uvicorn main:app --reload --port 8001
+
+# Testing
+uv run pytest
+uv run pytest --cov=. --cov-report=term-missing
+
+# Linting and Formatting
+uv run ruff check .
+uv run ruff format .
+
+# Docker build
+docker build -t discovery-service .
+```
+
+### Content Monitoring Service (Microservice)
+```bash
+# Development
+cd content-monitoring-service
+uv run python -m uvicorn main:app --reload --port 8002
+
+# Testing
+uv run pytest
+uv run pytest --cov=. --cov-report=term-missing
+
+# Linting and Formatting
+uv run ruff check .
+uv run ruff format .
+
+# Docker build
+docker build -t content-monitoring-service .
+```
+
+### Notification Service (Microservice)
+```bash
+# Development
+cd notification-service
+uv run python -m uvicorn main:app --reload --port 8003
+
+# Testing
+uv run pytest
+uv run pytest --cov=. --cov-report=term-missing
+
+# Linting and Formatting
+uv run ruff check .
+uv run ruff format .
+
+# Docker build
+docker build -t notification-service .
+
+# Run all microservices
+docker-compose up
+# or
+./start-microservices.sh
 ```
 
 ## Architecture Overview
 
-### Backend Architecture
-The backend follows a layered architecture with clear separation of concerns:
+### Selective Microservices Architecture
+Torale uses a selective microservice approach with **four independent services**:
 
-- **API Layer** (`/api/endpoints/`): Thin route handlers that delegate to services
-- **Services Layer** (`/services/`): Business logic including AI integrations, change detection, content ingestion, and notifications
-- **Repository Layer**: Database operations using Supabase
-- **Schemas** (`/schemas/`): Pydantic models for validation and serialization
-- **Dependency Injection**: AI models and services injected as dependencies
+**Microservices:**
+- **Discovery Service** (`:8001`): Natural language → URL discovery using Perplexity AI
+- **Content Monitoring Service** (`:8002`): Web scraping, embeddings, and change detection
+- **Notification Service** (`:8003`): Email delivery, template management, multi-channel alerts
+
+**Main Backend (`:8000`):**
+- **API Gateway** (`/api/endpoints/`): Orchestrates microservices and handles CRUD operations
+- **User Management**: Authentication, authorization, and user data
+- **Service Coordination**: Routes requests to appropriate microservices
+- **Database Operations**: Direct Supabase operations for user-related data
+
+**Frontend (`:3000`):**
+- **Next.js 15 App**: React 19 with TypeScript and Tailwind CSS
+- **Server Components**: Default for pages, client components when needed
+- **Real-time Updates**: Supabase Realtime subscriptions for live alerts
+
+**Architecture Benefits:**
+- ✅ **Service Isolation**: Each service can fail independently
+- ✅ **Independent Scaling**: Scale AI processing, content monitoring, and notifications separately
+- ✅ **Technology Flexibility**: Each service optimized for its specific workload
+- ✅ **Development Velocity**: Teams can work on services independently
+- ✅ **Resource Optimization**: Right-size compute/memory per service type
 
 Key design patterns:
 - Async/await throughout for I/O operations
-- Abstract AI model interface with multiple implementations (OpenAI, Perplexity)
-- Background tasks for long-running operations
-- Embeddings-based semantic change detection
+- HTTP REST for service-to-service communication
+- Shared database with service-specific table ownership
+- Circuit breaker pattern for service resilience
+- Structured logging with correlation IDs
 
 ### Frontend Architecture
 The frontend uses Next.js 15 with App Router and follows modern React patterns:
@@ -96,13 +173,14 @@ Uses Supabase (PostgreSQL) with these core tables:
 - **Security**: Input validation, sanitization, proper auth
 
 ### Key Dependencies
-- **Backend**: FastAPI, Pydantic, Supabase, OpenAI, Perplexity, BeautifulSoup4, SendGrid
+- **Backend**: FastAPI, Pydantic, Supabase, OpenAI, Perplexity, BeautifulSoup4
+- **Notifications**: NotificationAPI Python SDK for multi-channel notifications
 - **Frontend**: Next.js 15, React 19, Supabase Auth, TanStack Query, Tailwind CSS
 - **Development**: uv (Python), pytest, ruff, black, ESLint, Vitest
 
 ### Environment Variables
 Backend `.env`:
-- `SENDGRID_API_KEY`
+- `NOTIFICATIONAPI_CLIENT_ID` / `NOTIFICATIONAPI_CLIENT_SECRET`
 - `DATABASE_URL`
 - AI model API keys
 

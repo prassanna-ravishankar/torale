@@ -197,7 +197,7 @@ export default function DiscoverPage() {
             </div>
             <h3 className="text-xl font-semibold text-gray-600 mb-3">No Sources Found</h3>
             <p className="text-gray-500 mb-6 max-w-md mx-auto">
-              We couldn't find any relevant sources for your query. Try rephrasing or being more specific.
+              We couldn&apos;t find any relevant sources for your query. Try rephrasing or being more specific.
             </p>
             <button
               onClick={() => {
@@ -235,7 +235,7 @@ export default function DiscoverPage() {
                   <div className="flex items-center">
                     <span className="text-lg mr-3 group-hover:scale-110 transition-transform duration-300">💭</span>
                     <span className="text-gray-700 group-hover:text-indigo-600 transition-colors duration-300">
-                      "{example}"
+                      &ldquo;{example}&rdquo;
                     </span>
                   </div>
                 </button>

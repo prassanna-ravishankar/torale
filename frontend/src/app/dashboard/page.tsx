@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Dashboard() {
-  const { user, session, loading, signOut } = useAuth();
+  const { user, session, loading } = useAuth();
   const [userName, setUserName] = useState<string>("");
   const [sessionStatus, setSessionStatus] = useState<string>("checking");
 
@@ -50,10 +50,6 @@ export default function Dashboard() {
     }
   }, [user, session, loading]);
 
-  const handleSignOut = async () => {
-    await signOut();
-    window.location.href = "/auth";
-  };
 
   if (loading) {
     return (
