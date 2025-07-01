@@ -17,7 +17,7 @@ dependencies = [
     "email-validator>=2.0.0",
     "sendgrid>=6.10.0",
     "supabase>=2.0.0",
-    "python-jose[cryptography]>=3.3.0",
+    "python-jose>=3.3.0",
     "httpx>=0.26.0",
     "structlog>=24.0.0",
 ]

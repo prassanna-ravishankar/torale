@@ -18,26 +18,50 @@ This Terraform configuration deploys the Torale application to Google Cloud Plat
 3. `gcloud` CLI configured with appropriate permissions
 4. GitHub repository connected to Cloud Build (for CI/CD)
 
+## ⚠️ Important: Bootstrap Process Required
+
+**DO NOT run `terraform apply` directly!** This deployment has a chicken-and-egg problem where Cloud Run services reference Docker images that don't exist yet.
+
 ## Setup Instructions
 
-1. **Initialize Terraform**:
+1. **Create your variables file**:
    ```bash
    cd terraform
-   terraform init
-   ```
-
-2. **Create your variables file**:
-   ```bash
    cp terraform.tfvars.example terraform.tfvars
    # Edit terraform.tfvars with your actual values
    ```
 
-3. **Plan the deployment**:
+2. **Run the bootstrap script**:
    ```bash
-   terraform plan
+   ./bootstrap.sh
    ```
 
-4. **Apply the configuration**:
+   This script will:
+   - Deploy basic infrastructure (APIs, Artifact Registry, networking)
+   - Build and push Docker images locally
+   - Deploy Cloud Run services
+   
+   Note: Cloud Build trigger creation is skipped initially (requires manual GitHub App setup).
+
+### Manual Alternative
+
+If you prefer manual control:
+
+1. **Deploy infrastructure only**:
+   ```bash
+   terraform init
+   terraform apply -target=google_project_service.required_apis -target=google_artifact_registry_repository.docker_repo
+   ```
+
+2. **Build and push images manually**:
+   ```bash
+   # Configure Docker for Artifact Registry
+   gcloud auth configure-docker us-central1-docker.pkg.dev
+   
+   # Build and push each service...
+   ```
+
+3. **Deploy Cloud Run services**:
    ```bash
    terraform apply
    ```
@@ -84,9 +108,32 @@ After deployment, Terraform will output:
 - VPC connector has minimal fixed cost (~$0.05/hour)
 - Artifact Registry has generous free tier
 
+## Setting Up CI/CD (After Initial Deployment)
+
+The bootstrap process skips Cloud Build trigger creation because it requires a manual GitHub App connection. To set up automated deployments:
+
+1. **Connect GitHub Repository**:
+   - Go to [Cloud Build Triggers](https://console.cloud.google.com/cloud-build/triggers) in GCP Console
+   - Click "Create Trigger" → "Connect Repository"
+   - Choose "GitHub (Cloud Build GitHub App)" and follow the OAuth flow
+   - Select your repository (`your-username/torale`)
+
+2. **Enable the Trigger in Terraform**:
+   ```bash
+   # Edit terraform.tfvars
+   create_github_trigger = true
+   
+   # Apply the change
+   terraform apply
+   ```
+
+3. **Verify Setup**:
+   - Make a commit to the `main` branch
+   - Check Cloud Build history for automatic builds
+
 ## Next Steps
 
-1. Build and push Docker images to Artifact Registry
-2. Set up Cloud Build for continuous deployment
-3. Configure custom domain (optional)
-4. Set up monitoring and alerting
+1. Set up CI/CD using the instructions above
+2. Configure custom domain (optional)
+3. Set up monitoring and alerting
+4. Test your application

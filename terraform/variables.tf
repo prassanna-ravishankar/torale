@@ -93,3 +93,9 @@ variable "github_repo" {
   description = "GitHub repository name"
   type        = string
 }
+
+variable "create_github_trigger" {
+  description = "Whether to create the GitHub-based Cloud Build trigger (requires GitHub App connection)"
+  type        = bool
+  default     = false
+}

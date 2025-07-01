@@ -53,12 +53,20 @@ resource "google_project_iam_member" "cloudbuild_run_admin" {
   project = var.project_id
   role    = "roles/run.admin"
   member  = "serviceAccount:${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
+  
+  depends_on = [
+    time_sleep.wait_for_cloudbuild_sa
+  ]
 }
 
 resource "google_project_iam_member" "cloudbuild_sa_user" {
   project = var.project_id
   role    = "roles/iam.serviceAccountUser"
   member  = "serviceAccount:${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
+  
+  depends_on = [
+    time_sleep.wait_for_cloudbuild_sa
+  ]
 }
 
 resource "google_artifact_registry_repository_iam_member" "cloudbuild_push" {
@@ -66,4 +74,9 @@ resource "google_artifact_registry_repository_iam_member" "cloudbuild_push" {
   location   = google_artifact_registry_repository.docker_repo.location
   role       = "roles/artifactregistry.writer"
   member     = "serviceAccount:${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
+  
+  depends_on = [
+    time_sleep.wait_for_cloudbuild_sa,
+    google_artifact_registry_repository.docker_repo
+  ]
 }

@@ -6,6 +6,9 @@ region     = "us-central1"
 github_owner = "your-github-username"
 github_repo  = "torale"
 
+# Cloud Build Trigger (set to true after setting up GitHub App connection)
+create_github_trigger = false
+
 # Supabase Configuration
 supabase_url      = "https://your-project.supabase.co"
 supabase_anon_key = "your-supabase-anon-key"

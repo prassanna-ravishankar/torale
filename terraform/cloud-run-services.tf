@@ -138,7 +138,7 @@ resource "google_cloud_run_v2_service" "main_backend" {
     percent = 100
   }
   
-  ingress = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+  ingress = "INGRESS_TRAFFIC_ALL"
   
   depends_on = [google_project_service.required_apis]
 }
@@ -164,9 +164,47 @@ resource "google_cloud_run_v2_service" "discovery" {
       }
       
       env {
+        name  = "SUPABASE_URL"
+        value = var.supabase_url
+      }
+      
+      env {
+        name  = "SUPABASE_SERVICE_KEY"
+        value = var.supabase_anon_key
+      }
+      
+      env {
         name  = "PERPLEXITY_API_KEY"
         value = var.perplexity_api_key
       }
+      
+      env {
+        name  = "OPENAI_API_KEY"
+        value = var.openai_api_key
+      }
+      
+# Temporarily disabled for debugging
+      # startup_probe {
+      #   http_get {
+      #     path = "/health"
+      #     port = 8001
+      #   }
+      #   initial_delay_seconds = 10
+      #   timeout_seconds = 3
+      #   period_seconds = 3
+      #   failure_threshold = 10
+      # }
+      # 
+      # liveness_probe {
+      #   http_get {
+      #     path = "/health"
+      #     port = 8001
+      #   }
+      #   initial_delay_seconds = 30
+      #   timeout_seconds = 3
+      #   period_seconds = 30
+      #   failure_threshold = 3
+      # }
       
       resources {
         limits = {
@@ -213,9 +251,42 @@ resource "google_cloud_run_v2_service" "monitoring" {
       }
       
       env {
+        name  = "SUPABASE_URL"
+        value = var.supabase_url
+      }
+      
+      env {
+        name  = "SUPABASE_SERVICE_KEY"
+        value = var.supabase_anon_key
+      }
+      
+      env {
         name  = "OPENAI_API_KEY"
         value = var.openai_api_key
       }
+      
+# Temporarily disabled for debugging
+      # startup_probe {
+      #   http_get {
+      #     path = "/api/v1/health"
+      #     port = 8002
+      #   }
+      #   initial_delay_seconds = 10
+      #   timeout_seconds = 3
+      #   period_seconds = 3
+      #   failure_threshold = 10
+      # }
+      # 
+      # liveness_probe {
+      #   http_get {
+      #     path = "/api/v1/health"
+      #     port = 8002
+      #   }
+      #   initial_delay_seconds = 30
+      #   timeout_seconds = 3
+      #   period_seconds = 30
+      #   failure_threshold = 3
+      # }
       
       resources {
         limits = {
@@ -262,6 +333,16 @@ resource "google_cloud_run_v2_service" "notification" {
       }
       
       env {
+        name  = "SUPABASE_URL"
+        value = var.supabase_url
+      }
+      
+      env {
+        name  = "SUPABASE_SERVICE_KEY"
+        value = var.supabase_anon_key
+      }
+      
+      env {
         name  = "NOTIFICATIONAPI_CLIENT_ID"
         value = var.notificationapi_client_id
       }
@@ -270,6 +351,29 @@ resource "google_cloud_run_v2_service" "notification" {
         name  = "NOTIFICATIONAPI_CLIENT_SECRET"
         value = var.notificationapi_client_secret
       }
+      
+# Temporarily disabled for debugging
+      # startup_probe {
+      #   http_get {
+      #     path = "/health"
+      #     port = 8003
+      #   }
+      #   initial_delay_seconds = 10
+      #   timeout_seconds = 3
+      #   period_seconds = 3
+      #   failure_threshold = 10
+      # }
+      # 
+      # liveness_probe {
+      #   http_get {
+      #     path = "/health"
+      #     port = 8003
+      #   }
+      #   initial_delay_seconds = 30
+      #   timeout_seconds = 3
+      #   period_seconds = 30
+      #   failure_threshold = 3
+      # }
       
       resources {
         limits = {
@@ -299,6 +403,14 @@ resource "google_cloud_run_v2_service" "notification" {
 resource "google_cloud_run_service_iam_member" "frontend_public" {
   service  = google_cloud_run_v2_service.frontend.name
   location = google_cloud_run_v2_service.frontend.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+# Make main backend service publicly accessible
+resource "google_cloud_run_service_iam_member" "main_backend_public" {
+  service  = google_cloud_run_v2_service.main_backend.name
+  location = google_cloud_run_v2_service.main_backend.location
   role     = "roles/run.invoker"
   member   = "allUsers"
 }

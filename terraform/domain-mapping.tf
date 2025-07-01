@@ -9,6 +9,7 @@ resource "google_cloud_run_domain_mapping" "frontend_domain" {
   }
   
   metadata {
+    namespace = var.project_id
     annotations = {
       "run.googleapis.com/launch-stage" = "GA"
     }

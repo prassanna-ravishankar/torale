@@ -32,3 +32,8 @@ output "vpc_connector_id" {
   description = "ID of the VPC Access Connector"
   value       = google_vpc_access_connector.connector.id
 }
+
+output "region" {
+  description = "GCP region where resources are deployed"
+  value       = var.region
+}
