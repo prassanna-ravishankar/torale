@@ -22,6 +22,7 @@ class NotificationPreferencesResponse(BaseModel):
 
 class SendNotificationRequest(BaseModel):
     """Request model for sending a notification."""
+    user_id: str
     user_email: EmailStr
     query: str
     target_url: str

@@ -1,47 +1,63 @@
 # Notification Service
 
-Microservice for handling all notification-related functionality in Torale, including email notifications, preference management, and background processing.
+Microservice for handling all notification functionality in Torale using NotificationAPI for multi-channel delivery.
 
 ## Overview
 
 The Notification Service is responsible for:
-- Sending email notifications via SendGrid
-- Managing user notification preferences
-- Background processing of pending notifications with retry logic
-- Maintaining notification logs and statistics
-- Providing APIs for notification management
+- Sending multi-channel notifications via NotificationAPI (email, SMS, push, webhooks)
+- User identification and preference management through NotificationAPI
+- Integration with Torale's monitoring system to send change alerts
+- Template-based notification delivery with merge tags
+
+## Key Features
+
+- **Multi-Channel Support**: Email, SMS, push notifications, webhooks via NotificationAPI
+- **Template Management**: Uses NotificationAPI's template system for consistent messaging
+- **User Management**: Automatic user identification and preference synchronization
+- **Scalable Delivery**: Leverages NotificationAPI's infrastructure for reliable delivery
+- **Analytics**: Built-in delivery tracking and analytics through NotificationAPI dashboard
 
 ## API Endpoints
 
 ### Send Notification
-- `POST /api/v1/notify` - Send an email notification
-- `POST /api/v1/notify/manual` - Manually trigger notification for an alert
-- `POST /api/v1/process/{alert_id}` - Process a specific alert notification
-
-### Preferences Management
-- `GET /api/v1/preferences/{user_id}` - Get user notification preferences
-- `PUT /api/v1/preferences/{user_id}` - Update user notification preferences
-
-### Monitoring & Logs
-- `GET /api/v1/stats/{user_id}` - Get notification statistics for a user
-- `GET /api/v1/logs/{user_email}` - Get notification logs
-- `GET /api/v1/queue/status` - Get notification queue status
-
-### Alert Management
-- `POST /api/v1/alerts/{alert_id}/mark-notified` - Mark an alert as notified
+- `POST /api/v1/notify` - Send a notification using NotificationAPI
+- `POST /api/v1/change-alert` - Send a change alert notification
 
 ### Health & Info
 - `GET /health` - Health check endpoint
 - `GET /` - Service information
 
+## NotificationAPI Integration
+
+### Templates Required
+
+Set up these notification templates in your NotificationAPI dashboard:
+
+1. **torale_alert** - For content change notifications
+   - **Parameters**: 
+     - `{{query}}` - User's monitoring query
+     - `{{target_url}}` - URL being monitored
+     - `{{content}}` - Summary of changes detected
+     - `{{alert_id}}` - Unique alert identifier
+     - `{{dashboardLink}}` - Link to user dashboard
+
+### User Identification
+
+The service automatically identifies users to NotificationAPI with their email addresses, enabling:
+- Email delivery to the correct address
+- User preference management through NotificationAPI's UI
+- Delivery tracking and analytics per user
+
 ## Running Locally
 
 1. Create a `.env` file:
 ```env
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_key
-SENDGRID_API_KEY=your_sendgrid_api_key
+NOTIFICATIONAPI_CLIENT_ID=your_client_id
+NOTIFICATIONAPI_CLIENT_SECRET=your_client_secret
 LOG_LEVEL=INFO
+HOST=0.0.0.0
+PORT=8003
 ```
 
 2. Install dependencies:
@@ -65,30 +81,68 @@ docker run -p 8003:8003 --env-file .env notification-service
 ## Architecture
 
 The service consists of:
-- **SupabaseNotificationService**: Core notification logic
-- **NotificationProcessor**: Background processor for queue management
+- **NotificationApiService**: Core notification logic using NotificationAPI
+- **NotificationApiHttpClient**: HTTP client for NotificationAPI integration
 - **FastAPI Application**: REST API endpoints
-- **Supabase Integration**: Database operations and auth
+- **Template System**: Uses NotificationAPI's template management
 
-## Background Processing
+## Migration from SendGrid
 
-The service runs three background tasks:
-1. **Pending Notifications**: Processes unnotified alerts every 30 seconds
-2. **Retry Failed**: Retries failed notifications (up to 3 attempts) every 5 minutes
-3. **Cleanup**: Removes logs older than 30 days once daily
+This service has been migrated from a custom SendGrid implementation to NotificationAPI:
+
+### Benefits of NotificationAPI
+- **Multi-Channel**: Support for email, SMS, push notifications, webhooks
+- **Template Management**: Visual template editor with version control
+- **Analytics**: Built-in delivery tracking and engagement metrics
+- **User Preferences**: Hosted preference center for users
+- **Scalability**: Enterprise-grade delivery infrastructure
+- **Compliance**: Built-in unsubscribe and compliance features
+
+### Legacy Methods
+Some methods are deprecated and now handled by NotificationAPI:
+- User preference management (use NotificationAPI's preference center)
+- Notification logs (available in NotificationAPI dashboard)
+- Delivery statistics (available in NotificationAPI analytics)
 
 ## Integration
 
 The notification service integrates with:
-- **Supabase**: Database and authentication
-- **SendGrid**: Email delivery
+- **NotificationAPI**: Multi-channel notification delivery
 - **Main Backend**: Receives notification requests via HTTP
+- **Content Monitoring Service**: Sends change alerts when content changes detected
 
 ## Environment Variables
 
-- `SUPABASE_URL`: Supabase project URL
-- `SUPABASE_KEY`: Supabase service role key
-- `SENDGRID_API_KEY`: SendGrid API key for email sending
+- `NOTIFICATIONAPI_CLIENT_ID`: NotificationAPI client ID
+- `NOTIFICATIONAPI_CLIENT_SECRET`: NotificationAPI client secret
 - `LOG_LEVEL`: Logging level (default: INFO)
 - `HOST`: Service host (default: 0.0.0.0)
 - `PORT`: Service port (default: 8003)
+
+## Setting Up NotificationAPI
+
+1. **Create Account**: Sign up at [notificationapi.com](https://www.notificationapi.com)
+2. **Get Credentials**: Navigate to Settings to get your client ID and secret
+3. **Create Templates**: Set up notification templates with the required merge tags
+4. **Configure Channels**: Enable and configure your preferred notification channels
+5. **Customize Branding**: Update templates with your brand colors and messaging
+
+## Testing
+
+```bash
+# Run tests
+uv run pytest
+
+# Run with coverage
+uv run pytest --cov=. --cov-report=term-missing
+
+# Linting
+uv run ruff check .
+uv run ruff format .
+```
+
+## API Documentation
+
+When the service is running, visit:
+- http://localhost:8003/docs - Interactive API documentation
+- http://localhost:8003/health - Health check endpoint
