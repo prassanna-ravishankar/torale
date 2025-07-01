@@ -28,11 +28,6 @@ output "artifact_registry_url" {
   value       = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_repo.repository_id}"
 }
 
-output "vpc_connector_id" {
-  description = "ID of the VPC Access Connector"
-  value       = google_vpc_access_connector.connector.id
-}
-
 output "region" {
   description = "GCP region where resources are deployed"
   value       = var.region

@@ -32,11 +32,6 @@ resource "google_cloud_run_v2_service" "frontend" {
   template {
     service_account = google_service_account.frontend.email
     
-    vpc_access {
-      connector = google_vpc_access_connector.connector.id
-      egress    = "PRIVATE_RANGES_ONLY"
-    }
-    
     containers {
       image = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_repo.repository_id}/frontend:latest"
       
@@ -78,10 +73,7 @@ resource "google_cloud_run_v2_service" "frontend" {
     percent = 100
   }
   
-  depends_on = [
-    google_project_service.required_apis,
-    google_vpc_access_connector.connector
-  ]
+  depends_on = [google_project_service.required_apis]
 }
 
 # Main Backend Service (Internal)
@@ -225,7 +217,7 @@ resource "google_cloud_run_v2_service" "discovery" {
     percent = 100
   }
   
-  ingress = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+  ingress = "INGRESS_TRAFFIC_ALL"
   
   depends_on = [google_project_service.required_apis]
 }
@@ -307,7 +299,7 @@ resource "google_cloud_run_v2_service" "monitoring" {
     percent = 100
   }
   
-  ingress = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+  ingress = "INGRESS_TRAFFIC_ALL"
   
   depends_on = [google_project_service.required_apis]
 }
@@ -394,7 +386,7 @@ resource "google_cloud_run_v2_service" "notification" {
     percent = 100
   }
   
-  ingress = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+  ingress = "INGRESS_TRAFFIC_ALL"
   
   depends_on = [google_project_service.required_apis]
 }
@@ -413,4 +405,26 @@ resource "google_cloud_run_service_iam_member" "main_backend_public" {
   location = google_cloud_run_v2_service.main_backend.location
   role     = "roles/run.invoker"
   member   = "allUsers"
+}
+
+# IAM policies for microservices - only main backend can invoke them
+resource "google_cloud_run_service_iam_member" "discovery_backend_access" {
+  service  = google_cloud_run_v2_service.discovery.name
+  location = google_cloud_run_v2_service.discovery.location
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.main_backend.email}"
+}
+
+resource "google_cloud_run_service_iam_member" "monitoring_backend_access" {
+  service  = google_cloud_run_v2_service.monitoring.name
+  location = google_cloud_run_v2_service.monitoring.location
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.main_backend.email}"
+}
+
+resource "google_cloud_run_service_iam_member" "notification_backend_access" {
+  service  = google_cloud_run_v2_service.notification.name
+  location = google_cloud_run_v2_service.notification.location
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.main_backend.email}"
 }

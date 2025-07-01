@@ -35,10 +35,7 @@ terraform plan -target=google_project_service.required_apis \
                -target=time_sleep.wait_for_cloudbuild_sa \
                -target=google_project_iam_member.cloudbuild_run_admin \
                -target=google_project_iam_member.cloudbuild_sa_user \
-               -target=google_artifact_registry_repository_iam_member.cloudbuild_push \
-               -target=google_compute_network.vpc \
-               -target=google_compute_subnetwork.vpc_connector_subnet \
-               -target=google_vpc_access_connector.connector
+               -target=google_artifact_registry_repository_iam_member.cloudbuild_push
 
 read -p "🤔 Do you want to apply the basic infrastructure? (y/N): " -n 1 -r
 echo
@@ -49,9 +46,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
                    -target=google_project_iam_member.cloudbuild_run_admin \
                    -target=google_project_iam_member.cloudbuild_sa_user \
                    -target=google_artifact_registry_repository_iam_member.cloudbuild_push \
-                   -target=google_compute_network.vpc \
-                   -target=google_compute_subnetwork.vpc_connector_subnet \
-                   -target=google_vpc_access_connector.connector \
                    -auto-approve
 else
     echo "❌ Aborted by user"
