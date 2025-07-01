@@ -1,0 +1,108 @@
+steps:
+  # Build Frontend
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--platform=linux/amd64'
+      - '-t'
+      - '${_REGISTRY_URL}/frontend:${SHORT_SHA}'
+      - '-t'
+      - '${_REGISTRY_URL}/frontend:latest'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_SUPABASE_URL=${_SUPABASE_URL}'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_SUPABASE_ANON_KEY=${_SUPABASE_ANON_KEY}'
+      - '-f'
+      - 'frontend/Dockerfile.production'
+      - './frontend'
+    id: 'build-frontend'
+
+  # Build Main Backend
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--platform=linux/amd64'
+      - '-t'
+      - '${_REGISTRY_URL}/backend:${SHORT_SHA}'
+      - '-t'
+      - '${_REGISTRY_URL}/backend:latest'
+      - '-f'
+      - 'backend/Dockerfile'
+      - './backend'
+    id: 'build-backend'
+
+  # Build Discovery Service
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--platform=linux/amd64'
+      - '-t'
+      - '${_REGISTRY_URL}/discovery-service:${SHORT_SHA}'
+      - '-t'
+      - '${_REGISTRY_URL}/discovery-service:latest'
+      - '-f'
+      - 'discovery-service/Dockerfile'
+      - './discovery-service'
+    id: 'build-discovery'
+
+  # Build Content Monitoring Service
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--platform=linux/amd64'
+      - '-t'
+      - '${_REGISTRY_URL}/content-monitoring-service:${SHORT_SHA}'
+      - '-t'
+      - '${_REGISTRY_URL}/content-monitoring-service:latest'
+      - '-f'
+      - 'content-monitoring-service/Dockerfile'
+      - './content-monitoring-service'
+    id: 'build-monitoring'
+
+  # Build Notification Service
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--platform=linux/amd64'
+      - '-t'
+      - '${_REGISTRY_URL}/notification-service:${SHORT_SHA}'
+      - '-t'
+      - '${_REGISTRY_URL}/notification-service:latest'
+      - '-f'
+      - 'notification-service/Dockerfile'
+      - './notification-service'
+    id: 'build-notification'
+
+  # Push all images
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGISTRY_URL}/frontend']
+    waitFor: ['build-frontend']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGISTRY_URL}/backend']
+    waitFor: ['build-backend']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGISTRY_URL}/discovery-service']
+    waitFor: ['build-discovery']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGISTRY_URL}/content-monitoring-service']
+    waitFor: ['build-monitoring']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGISTRY_URL}/notification-service']
+    waitFor: ['build-notification']
+
+  # Note: Cloud Run services are managed by Terraform
+  # This build only creates and pushes Docker images
+
+timeout: 1800s
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  substitutionOption: 'ALLOW_LOOSE'
+
+substitutions:
+  _REGISTRY_URL: 'us-central1-docker.pkg.dev/${PROJECT_ID}/torale-docker'
+  _REGION: 'us-central1'

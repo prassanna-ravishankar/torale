@@ -86,3 +86,13 @@ htmlcov/
 
 # uv
 uv.lock
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.tfplan
+tfplan
+infrastructure-outputs.json
