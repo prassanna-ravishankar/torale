@@ -12,7 +12,7 @@ Torale uses a **selective microservices architecture** with clear service bounda
 - **Main Backend** (`:8000`): FastAPI gateway handling auth, user management, orchestration  
 - **Discovery Service** (`:8001`): AI-powered natural language → URL discovery
 - **Content Monitoring Service** (`:8002`): Web scraping, embeddings, change detection
-- **Notification Service** (`:8003`): Email delivery, template management, multi-channel alerts
+- **Notification Service** (`:8003`): Multi-channel notifications via NotificationAPI (email, SMS, push, webhooks)
 
 ### Communication Patterns
 

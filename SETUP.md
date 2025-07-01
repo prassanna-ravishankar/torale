@@ -78,15 +78,22 @@ OPENAI_API_KEY=sk-your-openai-api-key
 PERPLEXITY_API_KEY=pplx-your-perplexity-key
 ```
 
-#### 4. SendGrid (Email Notifications)
-- Sign up at [sendgrid.com](https://sendgrid.com)
-- Create an API key with Full Access permissions
+#### 4. NotificationAPI (Multi-Channel Notifications)
+- Sign up at [notificationapi.com](https://www.notificationapi.com)
+- Create a new project in your dashboard
+- Navigate to Settings to get your credentials
 - Add to `.env`:
 
 ```bash
-SENDGRID_API_KEY=SG.your-sendgrid-api-key
-ALERT_FROM_EMAIL=noreply@yourdomain.com  # Your verified sender email
+NOTIFICATIONAPI_CLIENT_ID=your-client-id
+NOTIFICATIONAPI_CLIENT_SECRET=your-client-secret
 ```
+
+**NotificationAPI Setup:**
+1. Create notification templates in your NotificationAPI dashboard
+2. Set up a template with ID `change-alert` for monitoring alerts
+3. Configure your preferred channels (email, SMS, push notifications, webhooks)
+4. Customize email templates and branding as needed
 
 ### Database Setup
 
@@ -137,7 +144,7 @@ docker-compose down
 - Backend API (FastAPI) 
 - Discovery Service (AI processing)
 - Content Monitoring Service (scraping & analysis)
-- Notification Service (email delivery)
+- Notification Service (multi-channel notifications via NotificationAPI)
 
 ### Option 2: Individual Services (Development)
 

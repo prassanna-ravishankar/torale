@@ -63,10 +63,10 @@ Torale uses a **selective microservices architecture** with three main services:
 
 ### Service Responsibilities
 
-- **Main Backend** (`:8000`): User management, API gateway, notifications, service coordination
+- **Main Backend** (`:8000`): User management, API gateway, service coordination
 - **Discovery Service** (`:8001`): Natural language → URL discovery using Perplexity AI
 - **Content Monitoring Service** (`:8002`): Web scraping, embedding generation, change detection
-- **Notification Service** (`:8003`): Email delivery, template management, multi-channel alerts
+- **Notification Service** (`:8003`): Multi-channel notifications via NotificationAPI (email, SMS, push, webhooks)
 
 ## 🚀 Quick Start
 
@@ -142,7 +142,7 @@ See [SETUP.md](./SETUP.md) for detailed setup instructions including API key con
 - OpenAI GPT-4 for embeddings & analysis
 - Perplexity API for source discovery
 - Supabase (PostgreSQL + pgvector)
-- SendGrid for email delivery
+- NotificationAPI for multi-channel notifications
 
 **Development & Deployment**
 - Docker & docker-compose
@@ -156,7 +156,7 @@ See [SETUP.md](./SETUP.md) for detailed setup instructions including API key con
 - Supabase project (free tier available)
 - OpenAI API key (for embeddings)
 - Perplexity API key (for source discovery)
-- SendGrid API key (for email notifications)
+- NotificationAPI account (for multi-channel notifications)
 
 **Development Tools:**
 - Python 3.12+ with [uv](https://github.com/astral-sh/uv)

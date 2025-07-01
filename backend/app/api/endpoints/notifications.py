@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr
 
 from app.api.deps import get_current_user, User
 from app.clients.notification_client import NotificationServiceClient
-from app.core.config import settings
+from app.core.config import get_settings
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ async def get_notification_preferences(
     current_user: User = Depends(get_current_user),
 ):
     """Get current user's notification preferences."""
-    client = NotificationServiceClient(settings.NOTIFICATION_SERVICE_URL)
+    client = NotificationServiceClient(get_settings().NOTIFICATION_SERVICE_URL)
     try:
         preferences = await client.get_notification_preferences(current_user.id)
         
@@ -71,7 +71,7 @@ async def update_notification_preferences(
     current_user: User = Depends(get_current_user),
 ):
     """Update user's notification preferences."""
-    client = NotificationServiceClient(settings.NOTIFICATION_SERVICE_URL)
+    client = NotificationServiceClient(get_settings().NOTIFICATION_SERVICE_URL)
     try:
         success = await client.update_notification_preferences(
             user_id=current_user.id,
@@ -108,7 +108,7 @@ async def get_notification_stats(
     current_user: User = Depends(get_current_user),
 ):
     """Get notification statistics for the current user."""
-    client = NotificationServiceClient(settings.NOTIFICATION_SERVICE_URL)
+    client = NotificationServiceClient(get_settings().NOTIFICATION_SERVICE_URL)
     try:
         stats = await client.get_notification_stats(current_user.id)
         return stats
@@ -131,7 +131,7 @@ async def get_notification_logs(
     current_user: User = Depends(get_current_user),
 ):
     """Get notification logs for the current user."""
-    client = NotificationServiceClient(settings.NOTIFICATION_SERVICE_URL)
+    client = NotificationServiceClient(get_settings().NOTIFICATION_SERVICE_URL)
     try:
         logs = await client.get_notification_logs(
             user_email=current_user.email,
@@ -157,7 +157,7 @@ async def send_notification(
     current_user: User = Depends(get_current_user),
 ):
     """Manually send or resend a notification for a specific alert."""
-    client = NotificationServiceClient(settings.NOTIFICATION_SERVICE_URL)
+    client = NotificationServiceClient(get_settings().NOTIFICATION_SERVICE_URL)
     try:
         # Process the notification via the notification service
         result = await client.process_alert_notification(request.alert_id)
@@ -182,7 +182,7 @@ async def get_queue_status(
     current_user: User = Depends(get_current_user),
 ):
     """Get the current status of the notification queue (admin endpoint)."""
-    client = NotificationServiceClient(settings.NOTIFICATION_SERVICE_URL)
+    client = NotificationServiceClient(get_settings().NOTIFICATION_SERVICE_URL)
     try:
         status = await client.get_queue_status()
         return status
@@ -204,7 +204,7 @@ async def trigger_queue_processing(
     """Manually trigger processing of pending notifications (admin endpoint)."""
     # This endpoint is now primarily informational since the notification service
     # handles its own queue processing automatically
-    client = NotificationServiceClient(settings.NOTIFICATION_SERVICE_URL)
+    client = NotificationServiceClient(get_settings().NOTIFICATION_SERVICE_URL)
     try:
         status = await client.get_queue_status()
         

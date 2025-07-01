@@ -85,6 +85,7 @@ app = FastAPI(
 )
 
 # Configure CORS with custom middleware that handles authentication properly
+logger.info("cors_configuration", cors_origins=settings.CORS_ORIGINS)
 app.add_middleware(CORSOptionsMiddleware, cors_origins=settings.CORS_ORIGINS or [])
 
 # Include routers

@@ -173,13 +173,14 @@ Uses Supabase (PostgreSQL) with these core tables:
 - **Security**: Input validation, sanitization, proper auth
 
 ### Key Dependencies
-- **Backend**: FastAPI, Pydantic, Supabase, OpenAI, Perplexity, BeautifulSoup4, SendGrid
+- **Backend**: FastAPI, Pydantic, Supabase, OpenAI, Perplexity, BeautifulSoup4
+- **Notifications**: NotificationAPI Python SDK for multi-channel notifications
 - **Frontend**: Next.js 15, React 19, Supabase Auth, TanStack Query, Tailwind CSS
 - **Development**: uv (Python), pytest, ruff, black, ESLint, Vitest
 
 ### Environment Variables
 Backend `.env`:
-- `SENDGRID_API_KEY`
+- `NOTIFICATIONAPI_CLIENT_ID` / `NOTIFICATIONAPI_CLIENT_SECRET`
 - `DATABASE_URL`
 - AI model API keys
 

@@ -10,7 +10,7 @@ services:
       - LOG_LEVEL=INFO
       - CORS_ORIGINS=http://localhost:8000,http://localhost:3000
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -27,7 +27,7 @@ services:
       - DEFAULT_SIMILARITY_THRESHOLD=0.85
       - DEBUG=false
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/api/v1/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/api/v1/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -37,12 +37,11 @@ services:
     ports:
       - "8003:8003"
     environment:
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_SERVICE_KEY}
-      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - NOTIFICATIONAPI_CLIENT_ID=${NOTIFICATIONAPI_CLIENT_ID}
+      - NOTIFICATIONAPI_CLIENT_SECRET=${NOTIFICATIONAPI_CLIENT_SECRET}
       - LOG_LEVEL=INFO
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -56,12 +55,15 @@ services:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
       - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET}
-      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - NOTIFICATIONAPI_CLIENT_ID=${NOTIFICATIONAPI_CLIENT_ID}
+      - NOTIFICATIONAPI_CLIENT_SECRET=${NOTIFICATIONAPI_CLIENT_SECRET}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
       - DISCOVERY_SERVICE_URL=http://discovery-service:8001
       - CONTENT_MONITORING_SERVICE_URL=http://content-monitoring-service:8002
       - NOTIFICATION_SERVICE_URL=http://notification-service:8003
+# Temporarily disabled to use hardcoded CORS origins
+      # - CORS_ORIGINS=${CORS_ORIGINS}
     depends_on:
       discovery-service:
         condition: service_healthy
@@ -78,10 +80,13 @@ services:
       args:
         - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
         - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        - NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:8000/api/v1
     ports:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:8000/api/v1
+      - NEXT_PUBLIC_SITE_URL=http://localhost:3000
     depends_on:
       - backend
