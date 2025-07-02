@@ -1,16 +1,23 @@
 #!/bin/bash
 
-# Quick deployment script for fast iteration
-# This skips VPC and other slow infrastructure setup
+# Quick deployment script for fast iteration using modular infrastructure
+# This deploys services using the new module structure
 
 set -e
 
-echo "🚀 Quick Deploy - Fast iteration mode..."
+echo "🚀 Quick Deploy - Fast iteration mode (Modular Infrastructure)..."
+
+# Navigate to the dev environment directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEV_DIR="$SCRIPT_DIR/../../terraform/environments/dev"
+PROJECT_ROOT="$SCRIPT_DIR/../../../"
+
+cd "$DEV_DIR"
 
 # Check if terraform.tfvars exists
 if [ ! -f "terraform.tfvars" ]; then
-    echo "❌ Error: terraform.tfvars file not found"
-    echo "💡 Create it by copying terraform.tfvars.example and filling in your values"
+    echo "❌ Error: terraform.tfvars file not found in $DEV_DIR"
+    echo "💡 Create it by copying from shared/terraform.tfvars.example and filling in your values"
     exit 1
 fi
 
@@ -27,8 +34,8 @@ echo "📋 Project ID: $PROJECT_ID"
 echo "🔍 Checking if basic infrastructure exists..."
 terraform init > /dev/null
 
-if ! terraform show | grep -q "google_artifact_registry_repository.docker_repo"; then
-    echo "❌ Error: Artifact Registry not found. Run ./bootstrap.sh first to create basic infrastructure."
+if ! terraform show | grep -q "module.artifact_registry"; then
+    echo "❌ Error: Artifact Registry module not found. Run terraform apply first to create basic infrastructure."
     exit 1
 fi
 
@@ -50,7 +57,7 @@ if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
 fi
 
 # Navigate to project root
-cd ..
+cd "$PROJECT_ROOT"
 
 echo "🐳 Building and pushing Docker images..."
 
@@ -80,27 +87,13 @@ echo "📧 Building notification service..."
 docker build --platform=linux/amd64 -t $REGISTRY_URL/notification-service:latest -f notification-service/Dockerfile ./notification-service
 docker push $REGISTRY_URL/notification-service:latest
 
-# Navigate back to terraform directory
-cd terraform
+# Navigate back to dev environment directory
+cd "$DEV_DIR"
 
-# Deploy only Cloud Run services (skip VPC and other infrastructure)
+# Deploy Cloud Run services using the modular structure
 echo "☁️  Deploying Cloud Run services..."
 terraform apply \
-  -target=google_service_account.frontend \
-  -target=google_service_account.main_backend \
-  -target=google_service_account.discovery \
-  -target=google_service_account.monitoring \
-  -target=google_service_account.notification \
-  -target=google_cloud_run_v2_service.frontend \
-  -target=google_cloud_run_v2_service.main_backend \
-  -target=google_cloud_run_v2_service.discovery \
-  -target=google_cloud_run_v2_service.monitoring \
-  -target=google_cloud_run_v2_service.notification \
-  -target=google_cloud_run_service_iam_member.frontend_public \
-  -target=google_cloud_run_service_iam_member.frontend_invoke_main_backend \
-  -target=google_cloud_run_service_iam_member.backend_invoke_discovery \
-  -target=google_cloud_run_service_iam_member.backend_invoke_monitoring \
-  -target=google_cloud_run_service_iam_member.backend_invoke_notification \
+  -target=module.cloud_run \
   -auto-approve
 
 echo "✅ Quick deploy complete!"

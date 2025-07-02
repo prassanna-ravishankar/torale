@@ -2,7 +2,7 @@
 **/.terraform/*
 
 # gcp
-terraform-credentials.json
+**/*terraform-credentials.json
 
 # .tfstate files
 *.tfstate

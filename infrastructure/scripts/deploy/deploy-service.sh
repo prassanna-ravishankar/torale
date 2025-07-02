@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Deploy a single service for ultra-fast iteration
+# Deploy a single service for ultra-fast iteration using modular infrastructure
 # Usage: ./deploy-service.sh [frontend|backend|discovery|monitoring|notification]
 
 set -e
@@ -28,7 +28,14 @@ case $SERVICE in
         ;;
 esac
 
-echo "🚀 Deploying single service: $SERVICE"
+echo "🚀 Deploying single service: $SERVICE (Modular Infrastructure)"
+
+# Navigate to the correct directories
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEV_DIR="$SCRIPT_DIR/../../terraform/environments/dev"
+PROJECT_ROOT="$SCRIPT_DIR/../../../"
+
+cd "$DEV_DIR"
 
 # Get registry URL
 REGISTRY_URL=$(terraform output -raw artifact_registry_url)
@@ -36,12 +43,12 @@ REGISTRY_URL=$(terraform output -raw artifact_registry_url)
 # Configure Docker auth
 gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
-cd ..
+cd "$PROJECT_ROOT"
 
 case $SERVICE in
     frontend)
-        SUPABASE_URL=$(grep '^supabase_url' terraform/terraform.tfvars | cut -d'"' -f2)
-        SUPABASE_ANON_KEY=$(grep '^supabase_anon_key' terraform/terraform.tfvars | cut -d'"' -f2)
+        SUPABASE_URL=$(grep '^supabase_url' $DEV_DIR/terraform.tfvars | cut -d'"' -f2)
+        SUPABASE_ANON_KEY=$(grep '^supabase_anon_key' $DEV_DIR/terraform.tfvars | cut -d'"' -f2)
         
         echo "🌐 Building frontend..."
         docker build --platform=linux/amd64 -t $REGISTRY_URL/frontend:latest \
@@ -50,8 +57,8 @@ case $SERVICE in
           -f frontend/Dockerfile.production ./frontend
         docker push $REGISTRY_URL/frontend:latest
         
-        cd terraform
-        terraform apply -target=google_cloud_run_v2_service.frontend -auto-approve
+        cd "$DEV_DIR"
+        terraform apply -target=module.cloud_run.google_cloud_run_v2_service.frontend -auto-approve
         ;;
     
     backend)
@@ -59,8 +66,8 @@ case $SERVICE in
         docker build --platform=linux/amd64 -t $REGISTRY_URL/backend:latest -f backend/Dockerfile ./backend
         docker push $REGISTRY_URL/backend:latest
         
-        cd terraform
-        terraform apply -target=google_cloud_run_v2_service.main_backend -auto-approve
+        cd "$DEV_DIR"
+        terraform apply -target=module.cloud_run.google_cloud_run_v2_service.main_backend -auto-approve
         ;;
     
     discovery)
@@ -68,8 +75,8 @@ case $SERVICE in
         docker build --platform=linux/amd64 -t $REGISTRY_URL/discovery-service:latest -f discovery-service/Dockerfile ./discovery-service
         docker push $REGISTRY_URL/discovery-service:latest
         
-        cd terraform
-        terraform apply -target=google_cloud_run_v2_service.discovery -auto-approve
+        cd "$DEV_DIR"
+        terraform apply -target=module.cloud_run.google_cloud_run_v2_service.discovery -auto-approve
         ;;
     
     monitoring)
@@ -77,8 +84,8 @@ case $SERVICE in
         docker build --platform=linux/amd64 -t $REGISTRY_URL/content-monitoring-service:latest -f content-monitoring-service/Dockerfile ./content-monitoring-service
         docker push $REGISTRY_URL/content-monitoring-service:latest
         
-        cd terraform
-        terraform apply -target=google_cloud_run_v2_service.monitoring -auto-approve
+        cd "$DEV_DIR"
+        terraform apply -target=module.cloud_run.google_cloud_run_v2_service.monitoring -auto-approve
         ;;
     
     notification)
@@ -86,8 +93,8 @@ case $SERVICE in
         docker build --platform=linux/amd64 -t $REGISTRY_URL/notification-service:latest -f notification-service/Dockerfile ./notification-service
         docker push $REGISTRY_URL/notification-service:latest
         
-        cd terraform
-        terraform apply -target=google_cloud_run_v2_service.notification -auto-approve
+        cd "$DEV_DIR"
+        terraform apply -target=module.cloud_run.google_cloud_run_v2_service.notification -auto-approve
         ;;
 esac
 

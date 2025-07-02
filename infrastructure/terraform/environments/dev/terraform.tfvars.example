@@ -1,0 +1,32 @@
+# Project Configuration
+project_id = "your-gcp-project-id"
+project_name = "torale"
+region = "us-central1"
+artifact_registry_location = "us-central1"
+
+# Database Configuration (from Supabase)
+database_url = "postgres://username:password@host:port/database"
+supabase_url = "https://your-project.supabase.co"
+supabase_anon_key = "your-supabase-anon-key"
+
+# AI API Keys
+openai_api_key = "sk-your-openai-api-key"
+perplexity_api_key = "pplx-your-perplexity-api-key"
+
+# Notification Service Configuration
+notificationapi_client_id = "your-notificationapi-client-id"
+notificationapi_client_secret = "your-notificationapi-client-secret"
+
+# Cloud Run Scaling
+min_instances = 0
+max_instances = 100
+
+# GitHub Configuration for Cloud Build (optional)
+create_github_trigger = false
+github_owner = ""
+github_repo = ""
+
+# Cloudflare Configuration (optional)
+enable_cloudflare = false
+cloudflare_api_token = ""
+domain = "" 

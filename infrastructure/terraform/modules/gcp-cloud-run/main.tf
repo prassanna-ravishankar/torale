@@ -1,42 +1,16 @@
-# Service accounts for each service
-resource "google_service_account" "frontend" {
-  account_id   = "${var.project_name}-frontend"
-  display_name = "Frontend Service Account"
-}
-
-resource "google_service_account" "main_backend" {
-  account_id   = "${var.project_name}-main-backend"
-  display_name = "Main Backend Service Account"
-}
-
-resource "google_service_account" "discovery" {
-  account_id   = "${var.project_name}-discovery"
-  display_name = "Discovery Service Account"
-}
-
-resource "google_service_account" "monitoring" {
-  account_id   = "${var.project_name}-monitoring"
-  display_name = "Content Monitoring Service Account"
-}
-
-resource "google_service_account" "notification" {
-  account_id   = "${var.project_name}-notification"
-  display_name = "Notification Service Account"
-}
-
 # Frontend Service (Public)
 resource "google_cloud_run_v2_service" "frontend" {
   name     = "${var.project_name}-frontend"
   location = var.region
   
   template {
-    service_account = google_service_account.frontend.email
+    service_account = var.service_account_emails.frontend
     
     containers {
-      image = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_repo.repository_id}/frontend:latest"
+      image = "${var.artifact_registry_url}/frontend:latest"
       
       ports {
-        container_port = 3000
+        container_port = var.frontend_port
       }
       
       env {
@@ -56,8 +30,8 @@ resource "google_cloud_run_v2_service" "frontend" {
       
       resources {
         limits = {
-          cpu    = "2"
-          memory = "2Gi"
+          cpu    = var.frontend_resources.cpu
+          memory = var.frontend_resources.memory
         }
       }
     }
@@ -73,27 +47,37 @@ resource "google_cloud_run_v2_service" "frontend" {
     percent = 100
   }
   
-  depends_on = [google_project_service.required_apis]
+  depends_on = [var.required_apis]
 }
 
-# Main Backend Service (Internal)
+# Main Backend Service (Public)
 resource "google_cloud_run_v2_service" "main_backend" {
   name     = "${var.project_name}-main-backend"
   location = var.region
   
   template {
-    service_account = google_service_account.main_backend.email
+    service_account = var.service_account_emails["main-backend"]
     
     containers {
-      image = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_repo.repository_id}/backend:latest"
+      image = "${var.artifact_registry_url}/backend:latest"
       
       ports {
-        container_port = 8000
+        container_port = var.backend_port
       }
       
       env {
         name  = "DATABASE_URL"
         value = var.database_url
+      }
+      
+      env {
+        name  = "SUPABASE_URL"
+        value = var.supabase_url
+      }
+      
+      env {
+        name  = "SUPABASE_SERVICE_KEY"
+        value = var.supabase_anon_key
       }
       
       env {
@@ -113,8 +97,8 @@ resource "google_cloud_run_v2_service" "main_backend" {
       
       resources {
         limits = {
-          cpu    = "2"
-          memory = "2Gi"
+          cpu    = var.backend_resources.cpu
+          memory = var.backend_resources.memory
         }
       }
     }
@@ -132,22 +116,22 @@ resource "google_cloud_run_v2_service" "main_backend" {
   
   ingress = "INGRESS_TRAFFIC_ALL"
   
-  depends_on = [google_project_service.required_apis]
+  depends_on = [var.required_apis]
 }
 
-# Discovery Service (Internal)
+# Discovery Service (IAM-protected)
 resource "google_cloud_run_v2_service" "discovery" {
   name     = "${var.project_name}-discovery"
   location = var.region
   
   template {
-    service_account = google_service_account.discovery.email
+    service_account = var.service_account_emails.discovery
     
     containers {
-      image = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_repo.repository_id}/discovery-service:latest"
+      image = "${var.artifact_registry_url}/discovery-service:latest"
       
       ports {
-        container_port = 8001
+        container_port = var.discovery_port
       }
       
       env {
@@ -175,33 +159,10 @@ resource "google_cloud_run_v2_service" "discovery" {
         value = var.openai_api_key
       }
       
-# Temporarily disabled for debugging
-      # startup_probe {
-      #   http_get {
-      #     path = "/health"
-      #     port = 8001
-      #   }
-      #   initial_delay_seconds = 10
-      #   timeout_seconds = 3
-      #   period_seconds = 3
-      #   failure_threshold = 10
-      # }
-      # 
-      # liveness_probe {
-      #   http_get {
-      #     path = "/health"
-      #     port = 8001
-      #   }
-      #   initial_delay_seconds = 30
-      #   timeout_seconds = 3
-      #   period_seconds = 30
-      #   failure_threshold = 3
-      # }
-      
       resources {
         limits = {
-          cpu    = "1"
-          memory = "1Gi"
+          cpu    = var.microservice_resources.cpu
+          memory = var.microservice_resources.memory
         }
       }
     }
@@ -219,22 +180,22 @@ resource "google_cloud_run_v2_service" "discovery" {
   
   ingress = "INGRESS_TRAFFIC_ALL"
   
-  depends_on = [google_project_service.required_apis]
+  depends_on = [var.required_apis]
 }
 
-# Content Monitoring Service (Internal)
+# Content Monitoring Service (IAM-protected)
 resource "google_cloud_run_v2_service" "monitoring" {
   name     = "${var.project_name}-monitoring"
   location = var.region
   
   template {
-    service_account = google_service_account.monitoring.email
+    service_account = var.service_account_emails.monitoring
     
     containers {
-      image = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_repo.repository_id}/content-monitoring-service:latest"
+      image = "${var.artifact_registry_url}/content-monitoring-service:latest"
       
       ports {
-        container_port = 8002
+        container_port = var.monitoring_port
       }
       
       env {
@@ -257,33 +218,10 @@ resource "google_cloud_run_v2_service" "monitoring" {
         value = var.openai_api_key
       }
       
-# Temporarily disabled for debugging
-      # startup_probe {
-      #   http_get {
-      #     path = "/api/v1/health"
-      #     port = 8002
-      #   }
-      #   initial_delay_seconds = 10
-      #   timeout_seconds = 3
-      #   period_seconds = 3
-      #   failure_threshold = 10
-      # }
-      # 
-      # liveness_probe {
-      #   http_get {
-      #     path = "/api/v1/health"
-      #     port = 8002
-      #   }
-      #   initial_delay_seconds = 30
-      #   timeout_seconds = 3
-      #   period_seconds = 30
-      #   failure_threshold = 3
-      # }
-      
       resources {
         limits = {
-          cpu    = "2"
-          memory = "2Gi"
+          cpu    = var.microservice_resources.cpu
+          memory = var.microservice_resources.memory
         }
       }
     }
@@ -301,22 +239,22 @@ resource "google_cloud_run_v2_service" "monitoring" {
   
   ingress = "INGRESS_TRAFFIC_ALL"
   
-  depends_on = [google_project_service.required_apis]
+  depends_on = [var.required_apis]
 }
 
-# Notification Service (Internal)
+# Notification Service (IAM-protected)
 resource "google_cloud_run_v2_service" "notification" {
   name     = "${var.project_name}-notification"
   location = var.region
   
   template {
-    service_account = google_service_account.notification.email
+    service_account = var.service_account_emails.notification
     
     containers {
-      image = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_repo.repository_id}/notification-service:latest"
+      image = "${var.artifact_registry_url}/notification-service:latest"
       
       ports {
-        container_port = 8003
+        container_port = var.notification_port
       }
       
       env {
@@ -344,33 +282,10 @@ resource "google_cloud_run_v2_service" "notification" {
         value = var.notificationapi_client_secret
       }
       
-# Temporarily disabled for debugging
-      # startup_probe {
-      #   http_get {
-      #     path = "/health"
-      #     port = 8003
-      #   }
-      #   initial_delay_seconds = 10
-      #   timeout_seconds = 3
-      #   period_seconds = 3
-      #   failure_threshold = 10
-      # }
-      # 
-      # liveness_probe {
-      #   http_get {
-      #     path = "/health"
-      #     port = 8003
-      #   }
-      #   initial_delay_seconds = 30
-      #   timeout_seconds = 3
-      #   period_seconds = 30
-      #   failure_threshold = 3
-      # }
-      
       resources {
         limits = {
-          cpu    = "1"
-          memory = "1Gi"
+          cpu    = var.microservice_resources.cpu
+          memory = var.microservice_resources.memory
         }
       }
     }
@@ -388,10 +303,10 @@ resource "google_cloud_run_v2_service" "notification" {
   
   ingress = "INGRESS_TRAFFIC_ALL"
   
-  depends_on = [google_project_service.required_apis]
+  depends_on = [var.required_apis]
 }
 
-# Make frontend service publicly accessible
+# IAM: Make frontend service publicly accessible
 resource "google_cloud_run_service_iam_member" "frontend_public" {
   service  = google_cloud_run_v2_service.frontend.name
   location = google_cloud_run_v2_service.frontend.location
@@ -399,7 +314,7 @@ resource "google_cloud_run_service_iam_member" "frontend_public" {
   member   = "allUsers"
 }
 
-# Make main backend service publicly accessible
+# IAM: Make main backend service publicly accessible
 resource "google_cloud_run_service_iam_member" "main_backend_public" {
   service  = google_cloud_run_v2_service.main_backend.name
   location = google_cloud_run_v2_service.main_backend.location
@@ -407,24 +322,65 @@ resource "google_cloud_run_service_iam_member" "main_backend_public" {
   member   = "allUsers"
 }
 
-# IAM policies for microservices - only main backend can invoke them
+# IAM: Allow frontend to invoke main backend
+resource "google_cloud_run_service_iam_member" "frontend_invoke_main_backend" {
+  service  = google_cloud_run_v2_service.main_backend.name
+  location = google_cloud_run_v2_service.main_backend.location
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.service_account_emails.frontend}"
+}
+
+# IAM: Allow main backend to invoke microservices
 resource "google_cloud_run_service_iam_member" "discovery_backend_access" {
   service  = google_cloud_run_v2_service.discovery.name
   location = google_cloud_run_v2_service.discovery.location
   role     = "roles/run.invoker"
-  member   = "serviceAccount:${google_service_account.main_backend.email}"
+  member   = "serviceAccount:${var.service_account_emails["main-backend"]}"
 }
 
 resource "google_cloud_run_service_iam_member" "monitoring_backend_access" {
   service  = google_cloud_run_v2_service.monitoring.name
   location = google_cloud_run_v2_service.monitoring.location
   role     = "roles/run.invoker"
-  member   = "serviceAccount:${google_service_account.main_backend.email}"
+  member   = "serviceAccount:${var.service_account_emails["main-backend"]}"
 }
 
 resource "google_cloud_run_service_iam_member" "notification_backend_access" {
   service  = google_cloud_run_v2_service.notification.name
   location = google_cloud_run_v2_service.notification.location
   role     = "roles/run.invoker"
-  member   = "serviceAccount:${google_service_account.main_backend.email}"
+  member   = "serviceAccount:${var.service_account_emails["main-backend"]}"
 }
+
+# Domain Mappings for Custom Domains
+resource "google_cloud_run_domain_mapping" "frontend" {
+  count    = var.enable_custom_domains ? 1 : 0
+  location = var.region
+  name     = var.frontend_custom_domain
+
+  metadata {
+    namespace = var.project_id
+  }
+
+  spec {
+    route_name = google_cloud_run_v2_service.frontend.name
+  }
+
+  depends_on = [google_cloud_run_v2_service.frontend]
+}
+
+resource "google_cloud_run_domain_mapping" "main_backend" {
+  count    = var.enable_custom_domains ? 1 : 0
+  location = var.region
+  name     = var.backend_custom_domain
+
+  metadata {
+    namespace = var.project_id
+  }
+
+  spec {
+    route_name = google_cloud_run_v2_service.main_backend.name
+  }
+
+  depends_on = [google_cloud_run_v2_service.main_backend]
+} 
