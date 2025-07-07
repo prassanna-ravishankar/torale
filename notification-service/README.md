@@ -18,15 +18,96 @@ The Notification Service is responsible for:
 - **Scalable Delivery**: Leverages NotificationAPI's infrastructure for reliable delivery
 - **Analytics**: Built-in delivery tracking and analytics through NotificationAPI dashboard
 
+## Service Contract (API)
+
+The Notification Service centralizes the sending of notifications for the Torale application. It leverages NotificationAPI for multi-channel delivery (email, SMS, push, etc.) and template management. Its primary role is to receive requests to notify users about detected changes or other important events.
+
+All API endpoints are prefixed with `/api/v1`, unless specified otherwise.
+
+### Send Change Alert Notification
+
+*   **POST `/api/v1/notify`** (Note: The `api/notifications.py` defines this as the primary send endpoint, the README's mention of `/api/v1/change-alert` might be an alias or older concept not present in the current router.)
+    *   **Function:** Triggers a notification (typically a change alert) to a user via NotificationAPI. This endpoint is usually called by other backend services (e.g., the main Backend or Content Monitoring Service) when an event requiring user notification occurs.
+    *   **Request Body (`SendNotificationRequest` schema):**
+        *   Content-Type: `application/json`
+        ```json
+        {
+          "user_id": "user-uuid-123", // Crucial for NotificationAPI user identification
+          "user_email": "user@example.com",
+          "query": "Updates on Project X",
+          "target_url": "https://example.com/project-x-updates",
+          "content": "A new entry titled 'Milestone Reached' was posted.",
+          "alert_id": "alert-uuid-abc" // Optional, for tracking
+        }
+        ```
+    *   **Response Body (`SendNotificationResponse` schema, 200 OK):**
+        ```json
+        {
+          "success": true,
+          "message": "Notification triggered successfully",
+          "alert_id": "alert-uuid-abc"
+        }
+        ```
+    *   **Error Responses:**
+        *   `400 Bad Request`: If `user_id` is missing or other required fields are invalid.
+            ```json
+            {
+              "detail": "user_id is required for NotificationAPI"
+            }
+            ```
+        *   `500 Internal Server Error`: If there's an issue communicating with NotificationAPI or an unexpected internal error.
+            ```json
+            {
+              "detail": "Failed to send notification: <error_message>"
+            }
+            ```
+        *   `503 Service Unavailable`: If the `notification_service` instance is not initialized.
+
+### Notification Preferences (Deprecated)
+
+The following endpoints related to managing notification preferences directly through this service are **deprecated**. User preferences are now expected to be managed via NotificationAPI's own UI components or SDK, which the main frontend application would integrate.
+
+*   **GET `/api/v1/preferences/{user_id}`** (Deprecated)
+    *   **Response (410 Gone):**
+        ```json
+        {
+            "message": "Notification preferences are now managed via NotificationAPI's UI components.",
+            "user_id": "user-uuid-123"
+        }
+        ```
+*   **PUT `/api/v1/preferences/{user_id}`** (Deprecated)
+    *   **Response (410 Gone):** (Similar to the GET deprecated response)
+
+### Health Check & Service Information
+
+*   **GET `/health`** (Path defined in `main.py`)
+    *   **Function:** Standard health check endpoint.
+    *   **Request Body:** None.
+    *   **Response Body (200 OK):**
+        ```json
+        {
+          "status": "healthy",
+          "service": "notification-service",
+          "version": "0.2.0", // Example version
+          "timestamp": "2023-10-27T12:00:00.000Z"
+        }
+        ```
+*   **GET `/`** (Path defined in `main.py`, provides basic service info - not part of the formal contract but useful for discovery)
+    *   **Function:** Returns basic information about the service.
+    *   **Response Body (200 OK):** (Details may vary, typically info like service name, version)
+
+
 ## API Endpoints
 
+_This section is maintained for historical context but the **Service Contract (API)** section above provides the canonical details._
+
 ### Send Notification
-- `POST /api/v1/notify` - Send a notification using NotificationAPI
-- `POST /api/v1/change-alert` - Send a change alert notification
+- `POST /api/v1/notify` - Send a notification using NotificationAPI. (Primary endpoint)
+- `POST /api/v1/change-alert` - (Likely deprecated or an internal concept not directly exposed as a unique route in current code)
 
 ### Health & Info
-- `GET /health` - Health check endpoint
-- `GET /` - Service information
+- `GET /health` - Health check endpoint.
+- `GET /` - Service information.
 
 ## NotificationAPI Integration
 

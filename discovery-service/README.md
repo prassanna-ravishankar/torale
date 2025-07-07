@@ -40,29 +40,70 @@ curl -X POST http://localhost:8001/api/v1/discover \
 - Container orchestration
 - Multi-environment deployment
 
-## 📡 API
+## 📡 Service Contract (API)
 
-### `POST /api/v1/discover`
-**Input:**
-```json
-{"raw_query": "Python programming news"}
-```
+The Discovery Service is a specialized microservice that translates raw natural language queries into a list of relevant, monitorable URLs. It utilizes AI providers (like Perplexity or OpenAI) to find stable web pages (blogs, news sections, changelogs, etc.) that are likely to be updated when new information related to the query appears.
 
-**Output:**
-```json
-{
-  "monitorable_urls": [
-    "https://www.python.org/blogs/",
-    "https://pythonweekly.com/",
-    "https://realpython.com/",
-    "https://planet.python.org/",
-    "https://pypi.org/project/pycodersweekly/"
-  ]
-}
-```
+All API endpoints are prefixed with `/api/v1`.
 
-### `GET /health`
-Service health check for load balancers.
+### Discover Sources
+
+*   **POST `/api/v1/discover`**
+    *   **Function:** Takes a natural language query and returns a list of suggested monitorable URLs.
+    *   **Request Body:**
+        *   Content-Type: `application/json`
+        ```json
+        {
+          "raw_query": "Latest advancements in quantum computing by Google"
+        }
+        ```
+        *   Constraints: `raw_query` must be between 1 and 500 characters.
+    *   **Response Body (200 OK):**
+        *   Content-Type: `application/json`
+        ```json
+        {
+          "monitorable_urls": [
+            "https://ai.googleblog.com/",
+            "https://quantumai.google/research",
+            "https://cloud.google.com/blog/products/ai-machine-learning"
+          ]
+        }
+        ```
+        *   If no relevant URLs are found, it returns an empty list: `{"monitorable_urls": []}`.
+    *   **Error Responses:**
+        *   `422 Unprocessable Entity`: If the request body is invalid (e.g., `raw_query` is missing or too long).
+            ```json
+            {
+              "detail": [
+                {
+                  "loc": ["body", "raw_query"],
+                  "msg": "ensure this value has at least 1 characters",
+                  "type": "value_error.any_str.min_length",
+                  "ctx": {"limit_value": 1}
+                }
+              ]
+            }
+            ```
+        *   `500 Internal ServerError`: If an unexpected error occurs during the discovery process (e.g., issue with the AI provider).
+            ```json
+            {
+              "detail": "An error occurred while discovering sources: <error_message>"
+            }
+            ```
+
+### Health Check
+
+*   **GET `/health`** (Note: path is `/health`, not `/api/v1/health` as per `main.py`)
+    *   **Function:** Standard health check endpoint. Useful for load balancers and service monitoring.
+    *   **Request Body:** None.
+    *   **Response Body (200 OK):**
+        *   Content-Type: `application/json`
+        ```json
+        {
+          "status": "healthy",
+          "service": "discovery-service"
+        }
+        ```
 
 ## 🚀 Deployment
 
