@@ -1,0 +1,79 @@
+steps:
+  # Build API image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/torale-api:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/torale-api:latest'
+      - '-f'
+      - 'Dockerfile'
+      - '.'
+  
+  # Build Worker image with different entrypoint
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/torale-worker:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/torale-worker:latest'
+      - '--build-arg'
+      - 'ENTRYPOINT=python -m torale.workers.worker'
+      - '-f'
+      - 'Dockerfile'
+      - '.'
+  
+  # Push images to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/torale-api:$COMMIT_SHA']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/torale-api:latest']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/torale-worker:$COMMIT_SHA']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/torale-worker:latest']
+  
+  # Deploy API to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'torale-api'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/torale-api:$COMMIT_SHA'
+      - '--region'
+      - '$_REGION'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'SUPABASE_URL=$_SUPABASE_URL,SUPABASE_ANON_KEY=$_SUPABASE_ANON_KEY,SUPABASE_SERVICE_KEY=$_SUPABASE_SERVICE_KEY,TEMPORAL_HOST=$_TEMPORAL_HOST'
+  
+  # Deploy Worker to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'torale-worker'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/torale-worker:$COMMIT_SHA'
+      - '--region'
+      - '$_REGION'
+      - '--platform'
+      - 'managed'
+      - '--no-allow-unauthenticated'
+      - '--set-env-vars'
+      - 'SUPABASE_URL=$_SUPABASE_URL,SUPABASE_SERVICE_KEY=$_SUPABASE_SERVICE_KEY,TEMPORAL_HOST=$_TEMPORAL_HOST,OPENAI_API_KEY=$_OPENAI_API_KEY,ANTHROPIC_API_KEY=$_ANTHROPIC_API_KEY'
+
+substitutions:
+  _REGION: us-central1
+
+options:
+  logging: CLOUD_LOGGING_ONLY
