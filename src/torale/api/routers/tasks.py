@@ -10,6 +10,24 @@ from torale.core.models import Task, TaskCreate, TaskExecution, TaskUpdate
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
+def parse_task_row(row) -> dict:
+    """Parse a task row from the database, converting JSON strings to dicts"""
+    task_dict = dict(row)
+    # Parse config if it's a string
+    if isinstance(task_dict.get("config"), str):
+        task_dict["config"] = json.loads(task_dict["config"])
+    return task_dict
+
+
+def parse_execution_row(row) -> dict:
+    """Parse an execution row from the database, converting JSON strings to dicts"""
+    exec_dict = dict(row)
+    # Parse result if it's a string
+    if isinstance(exec_dict.get("result"), str):
+        exec_dict["result"] = json.loads(exec_dict["result"])
+    return exec_dict
+
+
 @router.post("/", response_model=Task)
 async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depends(get_db)):
     query = """
@@ -34,7 +52,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
             detail="Failed to create task",
         )
 
-    return Task(**dict(row))
+    return Task(**parse_task_row(row))
 
 
 @router.get("/", response_model=list[Task])
@@ -58,7 +76,7 @@ async def list_tasks(
         """
         rows = await db.fetch_all(query, user.id)
 
-    return [Task(**dict(row)) for row in rows]
+    return [Task(**parse_task_row(row)) for row in rows]
 
 
 @router.get("/{task_id}", response_model=Task)
@@ -77,7 +95,7 @@ async def get_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_
             detail="Task not found",
         )
 
-    return Task(**dict(row))
+    return Task(**parse_task_row(row))
 
 
 @router.put("/{task_id}", response_model=Task)
@@ -103,7 +121,7 @@ async def update_task(
     update_data = task_update.model_dump(exclude_unset=True)
 
     if not update_data:
-        return Task(**dict(existing))
+        return Task(**parse_task_row(existing))
 
     # Build dynamic UPDATE query
     set_clauses = []
@@ -137,7 +155,7 @@ async def update_task(
             detail="Failed to update task",
         )
 
-    return Task(**dict(row))
+    return Task(**parse_task_row(row))
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -192,7 +210,7 @@ async def execute_task(task_id: UUID, user: CurrentUser, db: Database = Depends(
 
     # TODO: Trigger Temporal workflow for actual execution
 
-    return TaskExecution(**dict(row))
+    return TaskExecution(**parse_execution_row(row))
 
 
 @router.get("/{task_id}/executions", response_model=list[TaskExecution])
@@ -224,4 +242,4 @@ async def get_task_executions(
 
     rows = await db.fetch_all(executions_query, task_id, limit)
 
-    return [TaskExecution(**dict(row)) for row in rows]
+    return [TaskExecution(**parse_execution_row(row)) for row in rows]
