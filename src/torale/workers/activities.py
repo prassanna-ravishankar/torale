@@ -28,6 +28,24 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
         if not task:
             raise ValueError(f"Task {task_id} not found")
 
+        # Parse config if it's a JSON string
+        config = task["config"]
+        if isinstance(config, str):
+            config = json.loads(config)
+
+        # Create execution record if not provided (scheduled execution)
+        if not execution_id:
+            row = await conn.fetchrow(
+                """
+                INSERT INTO task_executions (task_id, status)
+                VALUES ($1, $2)
+                RETURNING id
+                """,
+                UUID(task_id),
+                TaskStatus.PENDING.value,
+            )
+            execution_id = str(row["id"])
+
         # Update execution status to running
         await conn.execute(
             """
@@ -44,7 +62,7 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
         try:
             if task["executor_type"] == "llm_text":
                 executor = LLMTextExecutor()
-                executor_result = await executor.execute(task["config"])
+                executor_result = await executor.execute(config)
             else:
                 raise ValueError(f"Unsupported executor type: {task['executor_type']}")
 
