@@ -16,7 +16,7 @@ BLUE = "\033[94m"
 RESET = "\033[0m"
 
 
-async def test_executor(name: str, model: str, test_prompt: str = "Reply with exactly: Hello World") -> bool:
+async def run_executor_test(name: str, model: str, test_prompt: str = "Reply with exactly: Hello World") -> bool:
     """Test a single executor with the given model"""
     from torale.executors.llm_text import LLMTextExecutor
     
@@ -59,21 +59,21 @@ async def test_all_executors():
     
     # Test OpenAI
     if os.getenv("OPENAI_API_KEY"):
-        results["OpenAI"] = await test_executor("OpenAI", "gpt-3.5-turbo")
+        results["OpenAI"] = await run_executor_test("OpenAI", "gpt-3.5-turbo")
     else:
         print(f"{YELLOW}⚠ OpenAI skipped (no API key){RESET}")
         results["OpenAI"] = None
-    
+
     # Test Anthropic
     if os.getenv("ANTHROPIC_API_KEY"):
-        results["Anthropic"] = await test_executor("Anthropic", "claude-3-haiku-20240307")
+        results["Anthropic"] = await run_executor_test("Anthropic", "claude-3-haiku-20240307")
     else:
         print(f"{YELLOW}⚠ Anthropic skipped (no API key){RESET}")
         results["Anthropic"] = None
-    
+
     # Test Google Gemini
     if os.getenv("GOOGLE_API_KEY"):
-        results["Gemini"] = await test_executor("Gemini", "gemini-2.0-flash-exp")
+        results["Gemini"] = await run_executor_test("Gemini", "gemini-2.0-flash-exp")
     else:
         print(f"{YELLOW}⚠ Gemini skipped (no API key){RESET}")
         results["Gemini"] = None

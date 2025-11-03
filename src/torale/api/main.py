@@ -4,7 +4,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from torale.api.routers import tasks
-from torale.api.users import User, auth_backend, current_active_user, fastapi_users
+from torale.api.users import (
+    UserCreate,
+    UserRead,
+    UserUpdate,
+    auth_backend,
+    current_active_user,
+    fastapi_users,
+)
 from torale.core.config import settings
 from torale.core.database import db
 
@@ -39,7 +46,10 @@ app.include_router(
     fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"]
 )
 app.include_router(
-    fastapi_users.get_register_router(User, User), prefix="/auth", tags=["auth"]
+    fastapi_users.get_register_router(UserRead, UserCreate), prefix="/auth", tags=["auth"]
+)
+app.include_router(
+    fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"]
 )
 
 # API routes
