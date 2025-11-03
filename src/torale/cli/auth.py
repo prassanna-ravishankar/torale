@@ -29,6 +29,39 @@ def load_config() -> dict:
 
 
 @auth_app.command()
+def register(
+    email: str = typer.Option(..., prompt=True),
+    password: str = typer.Option(..., prompt=True, hide_input=True, confirmation_prompt=True),
+    api_url: str = typer.Option("http://localhost:8000", help="API URL"),
+):
+    """Register a new account"""
+    print(f"[cyan]Registering account at {api_url}...[/cyan]")
+
+    try:
+        with httpx.Client() as client:
+            response = client.post(
+                f"{api_url}/auth/register",
+                json={
+                    "email": email,
+                    "password": password,
+                },
+            )
+
+            if response.status_code == 201:
+                print("[green]✓ Account created successfully![/green]")
+                print("[cyan]You can now login with: torale auth login[/cyan]")
+            else:
+                error_detail = response.json().get("detail", "Registration failed")
+                print(f"[red]✗ Registration failed: {error_detail}[/red]")
+                raise typer.Exit(1)
+
+    except httpx.RequestError as e:
+        print(f"[red]✗ Connection error: {str(e)}[/red]")
+        print("[yellow]Make sure the API server is running.[/yellow]")
+        raise typer.Exit(1)
+
+
+@auth_app.command()
 def login(
     email: str = typer.Option(..., prompt=True),
     password: str = typer.Option(..., prompt=True, hide_input=True),
@@ -36,34 +69,36 @@ def login(
 ):
     """Login to Torale"""
     print(f"[cyan]Logging in to {api_url}...[/cyan]")
-    
-    # For now, we'll use Supabase auth directly
-    # In production, this would go through our API
-    from torale.core.config import settings
-    from supabase import create_client
-    
+
     try:
-        supabase = create_client(settings.supabase_url, settings.supabase_anon_key)
-        response = supabase.auth.sign_in_with_password({
-            "email": email,
-            "password": password,
-        })
-        
-        if response.session:
-            config_data = {
-                "email": email,
-                "access_token": response.session.access_token,
-                "refresh_token": response.session.refresh_token,
-                "api_url": api_url,
-            }
-            save_config(config_data)
-            print("[green]✓ Successfully logged in![/green]")
-        else:
-            print("[red]✗ Login failed. Please check your credentials.[/red]")
-            raise typer.Exit(1)
-            
-    except Exception as e:
-        print(f"[red]✗ Login failed: {str(e)}[/red]")
+        with httpx.Client() as client:
+            # FastAPI-Users login endpoint expects form data
+            response = client.post(
+                f"{api_url}/auth/jwt/login",
+                data={
+                    "username": email,  # FastAPI-Users uses 'username' field
+                    "password": password,
+                },
+            )
+
+            if response.status_code == 200:
+                auth_data = response.json()
+                config_data = {
+                    "email": email,
+                    "access_token": auth_data["access_token"],
+                    "token_type": auth_data["token_type"],
+                    "api_url": api_url,
+                }
+                save_config(config_data)
+                print("[green]✓ Successfully logged in![/green]")
+            else:
+                error_detail = response.json().get("detail", "Login failed")
+                print(f"[red]✗ Login failed: {error_detail}[/red]")
+                raise typer.Exit(1)
+
+    except httpx.RequestError as e:
+        print(f"[red]✗ Connection error: {str(e)}[/red]")
+        print("[yellow]Make sure the API server is running.[/yellow]")
         raise typer.Exit(1)
 
 

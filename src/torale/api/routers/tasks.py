@@ -1,200 +1,227 @@
+import json
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from torale.api.auth import CurrentUser
-from torale.core.database import get_supabase_client
+from torale.core.database import Database, get_db
 from torale.core.models import Task, TaskCreate, TaskExecution, TaskUpdate
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
 @router.post("/", response_model=Task)
-async def create_task(task: TaskCreate, user: CurrentUser):
-    supabase = get_supabase_client()
-    
-    data = {
-        **task.model_dump(),
-        "user_id": user["id"],
-    }
-    
-    response = supabase.table("tasks").insert(data).execute()
-    
-    if not response.data:
+async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depends(get_db)):
+    query = """
+        INSERT INTO tasks (user_id, name, schedule, executor_type, config, is_active)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, user_id, name, schedule, executor_type, config, is_active, created_at, updated_at
+    """
+
+    row = await db.fetch_one(
+        query,
+        user.id,
+        task.name,
+        task.schedule,
+        task.executor_type,
+        json.dumps(task.config),
+        task.is_active,
+    )
+
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to create task",
         )
-    
-    return Task(**response.data[0])
+
+    return Task(**dict(row))
 
 
 @router.get("/", response_model=list[Task])
-async def list_tasks(user: CurrentUser, is_active: bool | None = None):
-    supabase = get_supabase_client()
-    
-    query = supabase.table("tasks").select("*").eq("user_id", user["id"])
-    
+async def list_tasks(
+    user: CurrentUser, is_active: bool | None = None, db: Database = Depends(get_db)
+):
     if is_active is not None:
-        query = query.eq("is_active", is_active)
-    
-    response = query.order("created_at", desc=True).execute()
-    
-    return [Task(**task) for task in response.data]
+        query = """
+            SELECT id, user_id, name, schedule, executor_type, config, is_active, created_at, updated_at
+            FROM tasks
+            WHERE user_id = $1 AND is_active = $2
+            ORDER BY created_at DESC
+        """
+        rows = await db.fetch_all(query, user.id, is_active)
+    else:
+        query = """
+            SELECT id, user_id, name, schedule, executor_type, config, is_active, created_at, updated_at
+            FROM tasks
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+        """
+        rows = await db.fetch_all(query, user.id)
+
+    return [Task(**dict(row)) for row in rows]
 
 
 @router.get("/{task_id}", response_model=Task)
-async def get_task(task_id: UUID, user: CurrentUser):
-    supabase = get_supabase_client()
-    
-    response = (
-        supabase.table("tasks")
-        .select("*")
-        .eq("id", str(task_id))
-        .eq("user_id", user["id"])
-        .single()
-        .execute()
-    )
-    
-    if not response.data:
+async def get_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
+    query = """
+        SELECT id, user_id, name, schedule, executor_type, config, is_active, created_at, updated_at
+        FROM tasks
+        WHERE id = $1 AND user_id = $2
+    """
+
+    row = await db.fetch_one(query, task_id, user.id)
+
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",
         )
-    
-    return Task(**response.data)
+
+    return Task(**dict(row))
 
 
 @router.put("/{task_id}", response_model=Task)
-async def update_task(task_id: UUID, task_update: TaskUpdate, user: CurrentUser):
-    supabase = get_supabase_client()
-    
+async def update_task(
+    task_id: UUID, task_update: TaskUpdate, user: CurrentUser, db: Database = Depends(get_db)
+):
     # First verify the task belongs to the user
-    existing = (
-        supabase.table("tasks")
-        .select("*")
-        .eq("id", str(task_id))
-        .eq("user_id", user["id"])
-        .single()
-        .execute()
-    )
-    
-    if not existing.data:
+    existing_query = """
+        SELECT id, user_id, name, schedule, executor_type, config, is_active, created_at, updated_at
+        FROM tasks
+        WHERE id = $1 AND user_id = $2
+    """
+
+    existing = await db.fetch_one(existing_query, task_id, user.id)
+
+    if not existing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",
         )
-    
+
     # Update only provided fields
     update_data = task_update.model_dump(exclude_unset=True)
-    
+
     if not update_data:
-        return Task(**existing.data)
-    
-    response = (
-        supabase.table("tasks")
-        .update(update_data)
-        .eq("id", str(task_id))
-        .execute()
-    )
-    
-    if not response.data:
+        return Task(**dict(existing))
+
+    # Build dynamic UPDATE query
+    set_clauses = []
+    params = []
+    param_num = 1
+
+    for field, value in update_data.items():
+        if field == "config":
+            set_clauses.append(f"{field} = ${param_num}")
+            params.append(json.dumps(value))
+        else:
+            set_clauses.append(f"{field} = ${param_num}")
+            params.append(value)
+        param_num += 1
+
+    params.append(task_id)
+    params.append(user.id)
+
+    query = f"""
+        UPDATE tasks
+        SET {", ".join(set_clauses)}
+        WHERE id = ${param_num} AND user_id = ${param_num + 1}
+        RETURNING id, user_id, name, schedule, executor_type, config, is_active, created_at, updated_at
+    """
+
+    row = await db.fetch_one(query, *params)
+
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to update task",
         )
-    
-    return Task(**response.data[0])
+
+    return Task(**dict(row))
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_task(task_id: UUID, user: CurrentUser):
-    supabase = get_supabase_client()
-    
-    response = (
-        supabase.table("tasks")
-        .delete()
-        .eq("id", str(task_id))
-        .eq("user_id", user["id"])
-        .execute()
-    )
-    
-    if not response.data:
+async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
+    query = """
+        DELETE FROM tasks
+        WHERE id = $1 AND user_id = $2
+        RETURNING id
+    """
+
+    row = await db.fetch_one(query, task_id, user.id)
+
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",
         )
-    
+
     return None
 
 
 @router.post("/{task_id}/execute", response_model=TaskExecution)
-async def execute_task(task_id: UUID, user: CurrentUser):
-    supabase = get_supabase_client()
-    
+async def execute_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
     # Verify task exists and belongs to user
-    task_response = (
-        supabase.table("tasks")
-        .select("*")
-        .eq("id", str(task_id))
-        .eq("user_id", user["id"])
-        .single()
-        .execute()
-    )
-    
-    if not task_response.data:
+    task_query = """
+        SELECT id FROM tasks
+        WHERE id = $1 AND user_id = $2
+    """
+
+    task = await db.fetch_one(task_query, task_id, user.id)
+
+    if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",
         )
-    
+
     # Create execution record
-    execution_data = {
-        "task_id": str(task_id),
-        "status": "pending",
-    }
-    
-    response = supabase.table("task_executions").insert(execution_data).execute()
-    
-    if not response.data:
+    execution_query = """
+        INSERT INTO task_executions (task_id, status)
+        VALUES ($1, $2)
+        RETURNING id, task_id, status, started_at, completed_at, result, error_message, created_at
+    """
+
+    row = await db.fetch_one(execution_query, task_id, "pending")
+
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to create execution",
         )
-    
+
     # TODO: Trigger Temporal workflow for actual execution
-    
-    return TaskExecution(**response.data[0])
+
+    return TaskExecution(**dict(row))
 
 
 @router.get("/{task_id}/executions", response_model=list[TaskExecution])
-async def get_task_executions(task_id: UUID, user: CurrentUser, limit: int = 100):
-    supabase = get_supabase_client()
-    
+async def get_task_executions(
+    task_id: UUID, user: CurrentUser, limit: int = 100, db: Database = Depends(get_db)
+):
     # Verify task belongs to user
-    task_response = (
-        supabase.table("tasks")
-        .select("id")
-        .eq("id", str(task_id))
-        .eq("user_id", user["id"])
-        .single()
-        .execute()
-    )
-    
-    if not task_response.data:
+    task_query = """
+        SELECT id FROM tasks
+        WHERE id = $1 AND user_id = $2
+    """
+
+    task = await db.fetch_one(task_query, task_id, user.id)
+
+    if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",
         )
-    
+
     # Get executions
-    response = (
-        supabase.table("task_executions")
-        .select("*")
-        .eq("task_id", str(task_id))
-        .order("started_at", desc=True)
-        .limit(limit)
-        .execute()
-    )
-    
-    return [TaskExecution(**execution) for execution in response.data]
+    executions_query = """
+        SELECT id, task_id, status, started_at, completed_at, result, error_message, created_at
+        FROM task_executions
+        WHERE task_id = $1
+        ORDER BY started_at DESC
+        LIMIT $2
+    """
+
+    rows = await db.fetch_all(executions_query, task_id, limit)
+
+    return [TaskExecution(**dict(row)) for row in rows]
