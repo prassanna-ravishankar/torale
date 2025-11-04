@@ -57,101 +57,83 @@ def check_environment():
 async def test_imports():
     """Test that all modules can be imported"""
     print(f"\n{BLUE}Testing imports...{RESET}")
-    
+
     try:
         from torale.core import config
         from torale.core import models
-        from torale.executors.llm_text import LLMTextExecutor
+        from torale.executors.grounded_search import GroundedSearchExecutor
         from torale.api.main import app
         print(f"{GREEN}✓ All imports successful{RESET}")
         return True
     except ImportError as e:
         print(f"{RED}✗ Import failed: {e}{RESET}")
         print(f"{YELLOW}  Run: uv sync{RESET}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
 async def test_config():
     """Test configuration loading"""
     print(f"\n{BLUE}Testing configuration...{RESET}")
-    
+
     try:
         from torale.core.config import settings
-        
-        # Check critical settings
-        if not settings.supabase_url.startswith("http"):
-            print(f"{YELLOW}⚠ Supabase URL not configured{RESET}")
+
+        # Check database URL
+        if settings.database_url:
+            print(f"{GREEN}✓ Database URL configured{RESET}")
         else:
-            print(f"{GREEN}✓ Supabase URL configured{RESET}")
-        
+            print(f"{YELLOW}⚠ Database URL not configured{RESET}")
+
         # Show which LLMs are configured
-        llms = []
-        if settings.openai_api_key:
-            llms.append("OpenAI")
-        if settings.anthropic_api_key:
-            llms.append("Anthropic")
         if settings.google_api_key:
-            llms.append("Gemini")
-        
-        if llms:
-            print(f"{GREEN}✓ LLMs configured: {', '.join(llms)}{RESET}")
+            print(f"{GREEN}✓ Google API key configured (required){RESET}")
         else:
-            print(f"{YELLOW}⚠ No LLMs configured{RESET}")
-        
+            print(f"{YELLOW}⚠ Google API key not configured (required for grounded search){RESET}")
+
         return True
     except Exception as e:
         print(f"{RED}✗ Config error: {e}{RESET}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
 async def test_executor_init():
     """Test that executor can be initialized"""
     print(f"\n{BLUE}Testing executor initialization...{RESET}")
-    
+
+    if not os.getenv("GOOGLE_API_KEY"):
+        print(f"{YELLOW}⚠ Grounded search executor skipped (no GOOGLE_API_KEY){RESET}")
+        print(f"{YELLOW}  Add GOOGLE_API_KEY to .env to test{RESET}")
+        return True
+
     try:
-        from torale.executors.llm_text import LLMTextExecutor
-        
-        executor = LLMTextExecutor()
-        
-        # Check which clients were initialized
-        clients = []
-        if executor.openai_client:
-            clients.append("OpenAI")
-        if executor.anthropic_client:
-            clients.append("Anthropic")
-        if executor.google_client:
-            clients.append("Gemini")
-        
-        if clients:
-            print(f"{GREEN}✓ Clients initialized: {', '.join(clients)}{RESET}")
-            
-            # Try a quick execution with first available client
-            test_model = None
-            if executor.openai_client:
-                test_model = "gpt-3.5-turbo"
-            elif executor.google_client:
-                test_model = "gemini-2.0-flash-exp"
-            elif executor.anthropic_client:
-                test_model = "claude-3-haiku-20240307"
-            
-            if test_model:
-                print(f"{BLUE}  Running quick test with {test_model}...{RESET}")
-                result = await executor.execute({
-                    "prompt": "Say 'test'",
-                    "model": test_model,
-                    "max_tokens": 5
-                })
-                
-                if result.get("success"):
-                    print(f"{GREEN}  ✓ Execution successful!{RESET}")
-                else:
-                    print(f"{YELLOW}  ⚠ Execution failed: {result.get('error')}{RESET}")
+        from torale.executors.grounded_search import GroundedSearchExecutor
+
+        executor = GroundedSearchExecutor()
+        print(f"{GREEN}✓ Grounded search executor initialized{RESET}")
+
+        # Try a quick execution
+        print(f"{BLUE}  Running quick test...{RESET}")
+        result = await executor.execute({
+            "search_query": "What is 1+1?",
+            "condition_description": "A numerical answer is provided",
+            "model": "gemini-2.0-flash-exp"
+        })
+
+        if result.get("success"):
+            print(f"{GREEN}  ✓ Grounded search execution successful!{RESET}")
+            print(f"{GREEN}    Condition met: {result.get('condition_met')}{RESET}")
         else:
-            print(f"{YELLOW}⚠ No LLM clients initialized (check API keys){RESET}")
-        
+            print(f"{YELLOW}  ⚠ Execution failed: {result.get('error')}{RESET}")
+
         return True
     except Exception as e:
         print(f"{RED}✗ Executor init failed: {e}{RESET}")
+        import traceback
+        traceback.print_exc()
         return False
 
 

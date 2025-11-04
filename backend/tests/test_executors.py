@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Simple integration tests for LLM executors - run before full deployment"""
+"""Simple integration tests for grounded search executor - run before full deployment"""
 
 import asyncio
 import os
@@ -16,121 +16,95 @@ BLUE = "\033[94m"
 RESET = "\033[0m"
 
 
-async def run_executor_test(name: str, model: str, test_prompt: str = "Reply with exactly: Hello World") -> bool:
-    """Test a single executor with the given model"""
-    from torale.executors.llm_text import LLMTextExecutor
-    
-    print(f"\n{BLUE}Testing {name} ({model})...{RESET}")
-    
+async def test_grounded_search():
+    """Test grounded search executor with Gemini"""
+    print(f"\n{BLUE}Testing Grounded Search Executor...{RESET}")
+
+    if not os.getenv("GOOGLE_API_KEY"):
+        print(f"{YELLOW}⚠ Gemini skipped (no API key){RESET}")
+        return None
+
     try:
-        executor = LLMTextExecutor()
-        
+        from torale.executors.grounded_search import GroundedSearchExecutor
+
+        executor = GroundedSearchExecutor()
+
         config = {
-            "prompt": test_prompt,
-            "model": model,
-            "max_tokens": 20,
-            "temperature": 0.1  # Low temperature for consistent results
+            "search_query": "What is 2+2?",
+            "condition_description": "A numerical answer is provided",
+            "model": "gemini-2.0-flash-exp"
         }
-        
+
         result = await executor.execute(config)
-        
+
         if result.get("success"):
-            content = result.get("content", "").strip()
-            print(f"{GREEN}✓ {name} working!{RESET}")
-            print(f"  Response: {content[:50]}...")
+            answer = result.get("answer", "")
+            condition_met = result.get("condition_met", False)
+            sources = result.get("grounding_sources", [])
+
+            print(f"{GREEN}✓ Grounded search working!{RESET}")
+            print(f"  Answer: {answer[:100]}...")
+            print(f"  Condition met: {condition_met}")
+            print(f"  Sources found: {len(sources)}")
             return True
         else:
             error = result.get("error", "Unknown error")
-            print(f"{RED}✗ {name} failed: {error}{RESET}")
+            print(f"{RED}✗ Grounded search failed: {error}{RESET}")
             return False
-            
+
     except Exception as e:
-        print(f"{RED}✗ {name} error: {str(e)}{RESET}")
+        print(f"{RED}✗ Grounded search error: {str(e)}{RESET}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
 async def test_all_executors():
-    """Test all configured executors"""
+    """Test grounded search executor"""
     print(f"{BLUE}={'='*60}{RESET}")
-    print(f"{BLUE}LLM Executor Integration Tests{RESET}")
+    print(f"{BLUE}Grounded Search Executor Tests{RESET}")
     print(f"{BLUE}={'='*60}{RESET}")
-    
-    results = {}
-    
-    # Test OpenAI
-    if os.getenv("OPENAI_API_KEY"):
-        results["OpenAI"] = await run_executor_test("OpenAI", "gpt-3.5-turbo")
-    else:
-        print(f"{YELLOW}⚠ OpenAI skipped (no API key){RESET}")
-        results["OpenAI"] = None
 
-    # Test Anthropic
-    if os.getenv("ANTHROPIC_API_KEY"):
-        results["Anthropic"] = await run_executor_test("Anthropic", "claude-3-haiku-20240307")
-    else:
-        print(f"{YELLOW}⚠ Anthropic skipped (no API key){RESET}")
-        results["Anthropic"] = None
+    result = await test_grounded_search()
 
-    # Test Google Gemini
-    if os.getenv("GOOGLE_API_KEY"):
-        results["Gemini"] = await run_executor_test("Gemini", "gemini-2.0-flash-exp")
-    else:
-        print(f"{YELLOW}⚠ Gemini skipped (no API key){RESET}")
-        results["Gemini"] = None
-    
     # Summary
     print(f"\n{BLUE}{'='*60}{RESET}")
     print(f"{BLUE}Test Summary:{RESET}")
-    print(f"{BLUE}{'='*60}{RESET}")
-    
-    total = len([r for r in results.values() if r is not None])
-    passed = len([r for r in results.values() if r is True])
-    
-    for provider, result in results.items():
-        if result is True:
-            print(f"  {GREEN}✓ {provider}{RESET}")
-        elif result is False:
-            print(f"  {RED}✗ {provider}{RESET}")
-        else:
-            print(f"  {YELLOW}⊘ {provider} (not configured){RESET}")
-    
-    if total > 0:
-        print(f"\n{BLUE}Results: {passed}/{total} providers working{RESET}")
-        if passed == total:
-            print(f"{GREEN}🎉 All configured providers working!{RESET}")
-        elif passed > 0:
-            print(f"{YELLOW}⚠ Some providers need attention{RESET}")
-        else:
-            print(f"{RED}❌ No providers working - check API keys{RESET}")
+    print(f"{BLUE}={'='*60}{RESET}")
+
+    if result is True:
+        print(f"  {GREEN}✓ Grounded Search{RESET}")
+        print(f"\n{GREEN}🎉 Grounded search executor working!{RESET}")
+        return True
+    elif result is False:
+        print(f"  {RED}✗ Grounded Search{RESET}")
+        print(f"\n{RED}❌ Grounded search executor failed{RESET}")
+        return False
     else:
-        print(f"\n{YELLOW}No providers configured - add API keys to .env{RESET}")
-    
-    return passed == total if total > 0 else False
+        print(f"  {YELLOW}⊘ Grounded Search (not configured){RESET}")
+        print(f"\n{YELLOW}Configure GOOGLE_API_KEY in .env to test{RESET}")
+        return False
 
 
 async def test_error_handling():
     """Test that executor handles errors gracefully"""
-    from torale.executors.llm_text import LLMTextExecutor
-    
     print(f"\n{BLUE}Testing error handling...{RESET}")
-    
-    executor = LLMTextExecutor()
-    
-    # Test with invalid model
-    result = await executor.execute({
-        "prompt": "Test",
-        "model": "invalid-model-xyz",
-        "max_tokens": 10
-    })
-    
-    assert result["success"] is False, "Should fail with invalid model"
-    assert "error" in result, "Should include error message"
-    print(f"{GREEN}✓ Error handling works correctly{RESET}")
-    
-    # Test with missing config
+
+    if not os.getenv("GOOGLE_API_KEY"):
+        print(f"{YELLOW}⚠ Error handling test skipped (no API key){RESET}")
+        return
+
+    from torale.executors.grounded_search import GroundedSearchExecutor
+
+    executor = GroundedSearchExecutor()
+
+    # Test with missing required fields
     try:
-        result = await executor.execute({"prompt": "Test"})  # Missing model
-        assert result["success"] is False, "Should fail with missing model"
+        result = await executor.execute({
+            "model": "gemini-2.0-flash-exp"
+            # Missing search_query and condition_description
+        })
+        assert result["success"] is False, "Should fail with missing fields"
         print(f"{GREEN}✓ Config validation works{RESET}")
     except ValueError:
         print(f"{GREEN}✓ Config validation works (raises error){RESET}")

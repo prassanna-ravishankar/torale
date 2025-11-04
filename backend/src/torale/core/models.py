@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class ExecutorType(str, Enum):
@@ -52,6 +52,8 @@ class TaskUpdate(BaseModel):
 
 
 class Task(TaskBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     user_id: UUID
     created_at: datetime
@@ -61,9 +63,6 @@ class Task(TaskBase):
     condition_met: bool = False
     last_known_state: dict | None = None
     last_notified_at: datetime | None = None
-
-    class Config:
-        from_attributes = True
 
 
 class TaskExecutionBase(BaseModel):
@@ -79,10 +78,9 @@ class TaskExecutionBase(BaseModel):
 
 
 class TaskExecution(TaskExecutionBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     started_at: datetime
     completed_at: datetime | None = None
     created_at: datetime | None = None
-
-    class Config:
-        from_attributes = True

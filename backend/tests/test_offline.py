@@ -16,75 +16,87 @@ RESET = "\033[0m"
 def test_models():
     """Test that data models work correctly"""
     print(f"{BLUE}Testing data models...{RESET}")
-    
-    from torale.core.models import Task, TaskCreate, ExecutorType, TaskStatus
+
+    from torale.core.models import Task, TaskCreate, ExecutorType, TaskStatus, NotifyBehavior
     from uuid import uuid4
     from datetime import datetime
-    
+
     # Test TaskCreate
     task_create = TaskCreate(
         name="Test Task",
         schedule="0 9 * * *",
-        executor_type=ExecutorType.LLM_TEXT,
-        config={"prompt": "test", "model": "gpt-3.5-turbo"},
+        executor_type=ExecutorType.LLM_GROUNDED_SEARCH,
+        search_query="What is 2+2?",
+        condition_description="A numerical answer is provided",
+        config={"model": "gemini-2.0-flash-exp"},
         is_active=True
     )
     assert task_create.name == "Test Task"
     print(f"{GREEN}✓ TaskCreate model works{RESET}")
-    
+
     # Test Task
     task = Task(
         id=uuid4(),
         user_id=uuid4(),
         name="Test Task",
         schedule="0 9 * * *",
-        executor_type=ExecutorType.LLM_TEXT,
-        config={"prompt": "test"},
+        executor_type=ExecutorType.LLM_GROUNDED_SEARCH,
+        search_query="test query",
+        condition_description="test condition",
+        config={"model": "gemini-2.0-flash-exp"},
         is_active=True,
         created_at=datetime.now()
     )
     assert task.name == "Test Task"
     print(f"{GREEN}✓ Task model works{RESET}")
-    
+
     # Test enums
-    assert ExecutorType.LLM_TEXT == "llm_text"
+    assert ExecutorType.LLM_GROUNDED_SEARCH == "llm_grounded_search"
     assert TaskStatus.PENDING == "pending"
+    assert NotifyBehavior.ONCE == "once"
     print(f"{GREEN}✓ Enums work correctly{RESET}")
-    
+
     return True
 
 
 def test_executor_validation():
     """Test executor validation without making API calls"""
     print(f"\n{BLUE}Testing executor validation...{RESET}")
-    
-    from torale.executors.llm_text import LLMTextExecutor
-    
-    executor = LLMTextExecutor()
-    
+
+    # Skip if no GOOGLE_API_KEY (GroundedSearchExecutor requires it)
+    import os
+    if not os.getenv("GOOGLE_API_KEY"):
+        print(f"{GREEN}✓ Executor validation (skipped - no API key){RESET}")
+        return True
+
+    from torale.executors.grounded_search import GroundedSearchExecutor
+
+    executor = GroundedSearchExecutor()
+
     # Valid config
     valid_config = {
-        "prompt": "Test prompt",
-        "model": "gpt-3.5-turbo",
-        "max_tokens": 100
+        "search_query": "Test query",
+        "condition_description": "Test condition",
+        "model": "gemini-2.0-flash-exp"
     }
     assert executor.validate_config(valid_config) == True
     print(f"{GREEN}✓ Valid config passes{RESET}")
-    
-    # Invalid config (missing prompt)
+
+    # Invalid config (missing search_query)
     invalid_config = {
-        "model": "gpt-3.5-turbo"
+        "condition_description": "Test",
+        "model": "gemini-2.0-flash-exp"
     }
     assert executor.validate_config(invalid_config) == False
     print(f"{GREEN}✓ Invalid config rejected{RESET}")
-    
-    # Invalid config (missing model)
+
+    # Invalid config (missing condition_description)
     invalid_config2 = {
-        "prompt": "Test"
+        "search_query": "Test"
     }
     assert executor.validate_config(invalid_config2) == False
-    print(f"{GREEN}✓ Missing model rejected{RESET}")
-    
+    print(f"{GREEN}✓ Missing condition rejected{RESET}")
+
     return True
 
 
