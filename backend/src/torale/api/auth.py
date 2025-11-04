@@ -1,8 +1,11 @@
+"""Authentication utilities and type aliases."""
+
 from typing import Annotated
 
 from fastapi import Depends
 
-from torale.api.users import User, current_active_user
+from torale.api.clerk_auth import ClerkUser, get_current_user
 
 # Type alias for dependency injection
-CurrentUser = Annotated[User, Depends(current_active_user)]
+# This maintains compatibility with existing code while using Clerk
+CurrentUser = Annotated[ClerkUser, Depends(get_current_user)]
