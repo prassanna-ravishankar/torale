@@ -63,7 +63,7 @@ test-grounded:
 # Run unit tests with pytest
 test-unit:
     @echo "Running unit tests..."
-    cd backend && uv run pytest
+    cd backend && uv run --with pytest --with pytest-asyncio --with pytest-cov pytest
 
 # Run all e2e tests
 test-all-e2e: test-e2e test-schedule test-grounded
