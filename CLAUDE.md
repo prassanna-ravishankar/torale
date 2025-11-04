@@ -292,17 +292,28 @@ GET    /api/v1/tasks/{id}/notifications # Filtered: condition_met = true only
 
 ### CLI Commands
 ```bash
-torale auth login
+# Authentication
+torale auth set-api-key              # Configure API key from web dashboard
+torale auth status                   # Check authentication status
+torale auth logout                   # Remove credentials
+
+# Task management
 torale task create \
   --query "When is the next iPhone release?" \
   --condition "A specific date has been announced" \
   --schedule "0 9 * * *" \
   --notify-behavior once
 
-torale task list
+torale task list [--active]
+torale task get <task-id>
+torale task update <task-id> [--name NAME] [--schedule CRON] [--active/--inactive]
+torale task delete <task-id> [--yes]
 torale task execute <task-id>       # Test search query manually
-torale notifications <task-id>      # View alerts when condition was met
-torale logs <task-id>               # Full execution history
+torale task logs <task-id>          # Full execution history
+
+# Local development without auth
+export TORALE_NOAUTH=1
+torale task list
 ```
 
 ## Development Conventions
@@ -414,30 +425,33 @@ CLOUD_RUN_REGION=us-central1
 
 ### ✅ Completed
 - **Infrastructure**: PostgreSQL + Temporal + Docker Compose setup
-- **Authentication**: FastAPI-Users with JWT tokens
+- **Authentication**: Clerk (OAuth + email/password) with API key support for CLI
 - **Core API**: Task CRUD with Temporal schedule management
 - **Temporal Integration**: Automatic cron-based execution
 - **Worker Framework**: Activities and workflows for task execution
 - **Database Migrations**: Alembic migration system
-
-### 🚧 In Progress: Grounded Search Migration
-- **Database Schema**: Add grounded search fields (search_query, condition_description, notify_behavior, etc.)
-- **GroundedSearchExecutor**: Replace llm_text with grounded search + condition evaluation
-- **State Tracking**: Implement last_known_state comparison logic
+- **Grounded Search**: Google Search via Gemini with condition evaluation
+- **State Tracking**: last_known_state comparison and change detection
 - **Notification System**: In-app notifications endpoint
-- **Testing**: E2E tests for monitoring use cases
+- **CLI**: Full CLI with API key authentication and no-auth dev mode
+- **Frontend**: React dashboard with Clerk authentication
+
+### 🚧 In Progress
+- **Enhanced UI**: Grounding source display and historical state comparison
+- **Testing**: Additional E2E tests for monitoring use cases
 
 ### 📋 Future Work
 - **External Notifications**: NotificationAPI integration for email/SMS
-- **CLI Enhancement**: Update CLI for monitoring task creation
+- **Browser Automation**: Monitor dynamic websites (Playwright integration)
 - **Multi-step Workflows**: Chain multiple conditions together
-- **Production Deployment**: Cloud Run deployment with auto-scaling
-- **Observability**: Monitoring, alerting, and logging infrastructure
+- **Production Features**: Rate limiting, usage analytics, team collaboration
+- **Observability**: Enhanced monitoring, alerting, and logging
 
 ## Security Requirements
-- All API endpoints require JWT authentication (FastAPI-Users)
+- All API endpoints require authentication (Clerk JWT or API key)
 - User isolation enforced via application-level WHERE clauses
 - API keys (Google, OpenAI, Anthropic) stored securely in environment
+- CLI API keys hashed with SHA256, never stored in plain text
 - Rate limiting on API endpoints
 - Input validation on all user data
 - SQL injection prevention via parameterized queries (asyncpg)
