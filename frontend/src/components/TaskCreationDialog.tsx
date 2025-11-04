@@ -198,12 +198,10 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
 
           <Alert>
             <Info className="h-4 w-4" />
-            <div className="ml-2">
-              <p className="text-sm">
-                The AI will search the web, analyze results, and notify you when your
-                condition is met. All findings include source links for verification.
-              </p>
-            </div>
+            <p className="text-sm">
+              The AI will search the web, analyze results, and notify you when your
+              condition is met. All findings include source links for verification.
+            </p>
           </Alert>
 
           {error && <Alert variant="destructive">{error}</Alert>}
