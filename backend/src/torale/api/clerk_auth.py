@@ -4,6 +4,7 @@ import hashlib
 import uuid
 from typing import Optional
 
+from clerk_backend_api import Clerk
 from clerk_backend_api.security import verify_token
 from clerk_backend_api.security.types import VerifyTokenOptions, TokenVerificationError
 from fastapi import Depends, HTTPException, Security, status
@@ -15,6 +16,11 @@ from torale.core.config import settings
 
 # Security scheme for Bearer token
 security = HTTPBearer()
+
+# Initialize Clerk client
+clerk_client = None
+if settings.clerk_secret_key:
+    clerk_client = Clerk(bearer_auth=settings.clerk_secret_key)
 
 
 class ClerkUser:
@@ -70,22 +76,46 @@ async def verify_clerk_token(
 
         clerk_user_id = jwt_payload["sub"]
 
-        # Extract email from JWT payload
-        # Clerk JWT includes email in the payload
-        primary_email = jwt_payload.get("email")
-        email_verified = jwt_payload.get("email_verified", False)
-
-        if not primary_email:
+        # Fetch user data from Clerk API to get email
+        # JWT payload doesn't include email by default
+        if not clerk_client:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User has no email address in token",
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Clerk client not initialized",
             )
 
-        return ClerkUser(
-            clerk_user_id=clerk_user_id,
-            email=primary_email,
-            email_verified=email_verified,
-        )
+        try:
+            user_response = clerk_client.users.get(user_id=clerk_user_id)
+            user_data = user_response.data
+
+            # Get primary email
+            primary_email = None
+            email_verified = False
+
+            if user_data.email_addresses:
+                for email_obj in user_data.email_addresses:
+                    if email_obj.id == user_data.primary_email_address_id:
+                        primary_email = email_obj.email_address
+                        email_verified = email_obj.verification.status == "verified"
+                        break
+
+            if not primary_email:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="User has no email address",
+                )
+
+            return ClerkUser(
+                clerk_user_id=clerk_user_id,
+                email=primary_email,
+                email_verified=email_verified,
+            )
+        except Exception as e:
+            print(f"Failed to fetch user from Clerk API: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to fetch user data: {str(e)}",
+            )
 
     except TokenVerificationError as e:
         print(f"Clerk token verification failed: {e}")
