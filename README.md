@@ -46,22 +46,38 @@ docker compose ps
 ```
 
 ### 4. Create Your First Monitoring Task
+
+**Option A: Using the Web Interface** (Recommended)
 ```bash
-# Register an account
-curl -X POST http://localhost:8000/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"you@example.com","password":"yourpassword"}'
+# Start frontend
+cd frontend && npm run dev
 
-# Login
-curl -X POST http://localhost:8000/auth/jwt/login \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=you@example.com&password=yourpassword"
+# Navigate to http://localhost:3000
+# Sign in with Clerk (Google/GitHub OAuth or email/password)
+# Create tasks via the dashboard UI
+```
 
-# Copy the access_token from response
+**Option B: Using the CLI**
+```bash
+# Generate API key in web dashboard first (http://localhost:3000)
+# Then configure CLI:
+torale auth set-api-key
 
 # Create monitoring task
+torale task create "iPhone Release Monitor" \
+  --schedule "0 9 * * *" \
+  --prompt "Search for iPhone release date announcements"
+
+# Or for local development without auth:
+export TORALE_NOAUTH=1
+torale task list
+```
+
+**Option C: Using the API directly**
+```bash
+# Use your API key from the web dashboard
 curl -X POST http://localhost:8000/api/v1/tasks \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Authorization: Bearer sk_your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "iPhone Release Monitor",
@@ -78,13 +94,14 @@ curl -X POST http://localhost:8000/api/v1/tasks \
 
 ### 5. Check Notifications
 ```bash
-# View notifications (executions where condition was met)
-curl http://localhost:8000/api/v1/tasks/TASK_ID/notifications \
-  -H "Authorization: Bearer YOUR_TOKEN"
+# Using CLI
+torale notifications TASK_ID
 
-# View full execution history
-curl http://localhost:8000/api/v1/tasks/TASK_ID/executions \
-  -H "Authorization: Bearer YOUR_TOKEN"
+# Or view in web dashboard at http://localhost:3000
+
+# Or via API with your API key
+curl http://localhost:8000/api/v1/tasks/TASK_ID/notifications \
+  -H "Authorization: Bearer sk_your_api_key_here"
 ```
 
 ## Frontend
@@ -96,24 +113,29 @@ The Torale frontend is a React + TypeScript application built with Vite.
 # Install frontend dependencies
 cd frontend && npm install
 
+# Create frontend environment file
+cat > frontend/.env << EOF
+VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+VITE_API_BASE_URL=http://localhost:8000
+EOF
+
 # Start development server
 npm run dev
-
-# Or use justfile
-just dev-frontend
 ```
 
 ### Features
-- **Authentication**: JWT-based login and registration
+- **Authentication**: Clerk (Google/GitHub OAuth + email/password)
 - **Dashboard**: View and manage all monitoring tasks
 - **Task Creation**: Create new monitoring tasks with search queries and conditions
 - **Task Details**: View execution history, notifications, and state changes
+- **API Key Management**: Generate API keys for CLI access
 - **Real-time Updates**: Auto-refresh execution status
 - **Toast Notifications**: User feedback for all actions
 
 ### Tech Stack
 - React 18 + TypeScript
 - Vite (build tool)
+- Clerk (authentication)
 - React Router (routing)
 - Tailwind CSS (styling)
 - shadcn/ui (component library)
@@ -123,12 +145,13 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 
 ## Architecture
 
-- **API**: FastAPI with JWT authentication (FastAPI-Users)
+- **API**: FastAPI with Clerk authentication + API keys
 - **Database**: PostgreSQL 16 with state tracking
 - **Workers**: Temporal workflows for scheduled execution
 - **Executor**: Grounded search + LLM condition evaluation
 - **Scheduler**: Temporal cron schedules
 - **Search**: Google Search via Gemini grounding
+- **CLI**: Python typer with API key authentication
 
 ## Features
 
@@ -142,13 +165,16 @@ Access the frontend at http://localhost:3000 after starting the dev server.
   - `always`: Notify every time condition is met
   - `track_state`: Notify only when state changes
 - In-app notifications endpoint
-- JWT authentication
+- Clerk authentication (OAuth + email/password)
+- API key authentication for CLI
+- CLI for task management
 - Temporal schedule management
+- Frontend dashboard with task management
 
 ### 🚧 In Progress
-- CLI enhancements for monitoring tasks
 - Enhanced grounding source display
 - Historical state comparison UI
+- External notifications (email/SMS)
 
 ### 📋 Future Roadmap
 - External notifications (email/SMS via NotificationAPI)
@@ -244,10 +270,17 @@ Use standard cron expressions:
 
 ## API Endpoints
 
+### Authentication
 ```
-POST   /auth/register                      # Create account
-POST   /auth/jwt/login                     # Get JWT token
+POST   /auth/sync-user                     # Sync Clerk user to database (auto-called)
+GET    /auth/me                            # Get current user info
+POST   /auth/api-keys                      # Generate API key for CLI
+GET    /auth/api-keys                      # List user's API keys
+DELETE /auth/api-keys/{id}                 # Revoke API key
+```
 
+### Tasks
+```
 POST   /api/v1/tasks                       # Create monitoring task
 GET    /api/v1/tasks                       # List tasks
 GET    /api/v1/tasks/{id}                  # Get task details
@@ -258,14 +291,38 @@ GET    /api/v1/tasks/{id}/executions       # Full execution history
 GET    /api/v1/tasks/{id}/notifications    # Filtered: condition_met = true
 ```
 
+## CLI Commands
+
+```bash
+# Authentication
+torale auth set-api-key                    # Configure API key
+torale auth status                         # Check auth status
+torale auth logout                         # Remove credentials
+
+# Tasks
+torale task create NAME --schedule CRON --prompt PROMPT
+torale task list [--active]
+torale task get TASK_ID
+torale task update TASK_ID [--name NAME] [--schedule CRON] [--active/--inactive]
+torale task delete TASK_ID [--yes]
+torale task execute TASK_ID               # Manual execution
+torale task logs TASK_ID [--limit N]      # View execution logs
+
+# Development mode (no auth required)
+export TORALE_NOAUTH=1
+torale task list
+```
+
 ## Environment Variables
 
+### Backend (.env)
 ```bash
 # Database
 DATABASE_URL=postgresql://torale:torale@localhost:5432/torale
 
-# Authentication
-SECRET_KEY=your-secret-key-for-jwt
+# Clerk Authentication
+CLERK_SECRET_KEY=sk_test_...              # Backend: Verify Clerk tokens
+CLERK_PUBLISHABLE_KEY=pk_test_...         # Backend: Initialize Clerk client
 
 # Temporal
 TEMPORAL_HOST=localhost:7233
@@ -273,6 +330,13 @@ TEMPORAL_NAMESPACE=default
 
 # AI (Gemini required for grounded search)
 GOOGLE_API_KEY=your-gemini-api-key
+```
+
+### Frontend (frontend/.env)
+```bash
+# Clerk
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...    # Frontend: Initialize ClerkProvider
+VITE_API_BASE_URL=http://localhost:8000   # Frontend: API endpoint
 ```
 
 ## Contributing
