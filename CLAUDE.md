@@ -18,15 +18,16 @@ Torale is a **grounded search monitoring platform** for AI-powered conditional a
 
 ### Tech Stack
 - **Backend**: Python FastAPI
+- **Frontend**: React 18 + TypeScript + Vite
 - **Database**: PostgreSQL 16 (self-hosted)
-- **Authentication**: FastAPI-Users (JWT-based)
+- **Authentication**: Clerk (OAuth + Email/Password with Google & GitHub)
 - **Scheduling**: Temporal workflows with cron schedules
 - **Infrastructure**: Google Cloud Run + Cloud Build (deployment)
 - **AI**: Google Gemini with grounded search (primary), OpenAI/Anthropic (fallback)
 - **Search**: Google Search API via Gemini grounding
 - **Notifications**: In-app (database-stored), future: NotificationAPI
-- **CLI**: Python typer
-- **Package Management**: UV
+- **CLI**: Python typer with API key authentication
+- **Package Management**: UV (backend), npm (frontend)
 - **Local Development**: Docker Compose (PostgreSQL + Temporal + API + Workers)
 
 ### System Design
@@ -80,9 +81,32 @@ torale/
 
 ## Database Schema
 ```sql
+-- Clerk-authenticated users
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL UNIQUE,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- API keys for CLI authentication
+CREATE TABLE api_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  key_prefix TEXT NOT NULL,  -- Display prefix like "sk_...abc123"
+  key_hash TEXT NOT NULL UNIQUE,  -- SHA256 hash of actual key
+  name TEXT NOT NULL,  -- User-defined name like "CLI Key"
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  last_used_at TIMESTAMP WITH TIME ZONE,
+  is_active BOOLEAN NOT NULL DEFAULT true
+);
+
+-- Monitoring tasks
 CREATE TABLE tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   schedule TEXT NOT NULL, -- cron expression
   executor_type TEXT NOT NULL DEFAULT 'llm_grounded_search',
@@ -166,7 +190,62 @@ The `GroundedSearchExecutor` performs:
 }
 ```
 
+## Authentication Architecture
+
+### Clerk Integration
+Torale uses **Clerk** for authentication, providing OAuth (Google, GitHub) and email/password login with a pre-built UI and secure session management.
+
+#### Backend Authentication
+- **Session Verification**: `clerk_auth.py` verifies Clerk JWT tokens on every API request
+- **User Sync**: `/auth/sync-user` endpoint creates/updates local user records on first login
+- **User Model**: Simplified to store only `clerk_user_id` and `email` (no passwords)
+- **API Key Auth**: Separate authentication system for CLI access via hashed API keys
+
+#### Frontend Authentication
+- **ClerkProvider**: Wraps entire app in `main.tsx` with publishable key
+- **Sign In/Up**: Clerk's pre-built `<SignIn />` and `<SignUp />` components at `/sign-in` and `/sign-up`
+- **Protected Routes**: Use Clerk's `useAuth()` hook to check authentication status
+- **User Info**: Access via Clerk's `useUser()` hook and `<UserButton />` component
+- **API Calls**: Clerk tokens automatically injected via `api.setTokenGetter(getToken)`
+
+#### CLI Authentication
+- **API Keys**: Users generate API keys in web dashboard (`/auth/api-keys`)
+- **Key Format**: `sk_[32-char random string]` with SHA256 hash stored in database
+- **Usage**: CLI accepts `--api-key` flag or reads from config file
+- **Security**: Keys are hashed, never stored in plain text, can be revoked
+
+### Authentication Flow
+
+1. **Web App Login**:
+   - User navigates to `/sign-in` or `/sign-up`
+   - Clerk handles OAuth or email/password authentication
+   - Clerk redirects to dashboard on success
+   - Frontend calls `/auth/sync-user` to create/update local user record
+   - Clerk token automatically included in all API requests
+
+2. **CLI Authentication**:
+   - User generates API key in web dashboard
+   - Key displayed once, user saves it securely
+   - CLI sends API key in Authorization header
+   - Backend verifies key hash and authorizes request
+
+### Security Benefits
+- No passwords stored locally (Clerk handles all password management)
+- OAuth reduces password fatigue and improves security
+- Clerk handles 2FA, email verification, password reset
+- API keys provide secure CLI access without exposing user credentials
+- Tokens automatically expire and refresh
+
 ## API Design
+
+### Authentication Endpoints
+```
+POST   /auth/sync-user                  # Sync Clerk user to database (auto-called on login)
+GET    /auth/me                         # Get current user info
+POST   /auth/api-keys                   # Generate new API key for CLI
+GET    /auth/api-keys                   # List user's API keys
+DELETE /auth/api-keys/{id}              # Revoke API key
+```
 
 ### REST Endpoints
 ```
@@ -277,8 +356,11 @@ cd backend && uv run python -m torale.workers
 # Database
 DATABASE_URL=postgresql://torale:torale@localhost:5432/torale
 
-# Authentication
-SECRET_KEY=your-secret-key-for-jwt
+# Clerk Authentication
+CLERK_SECRET_KEY=sk_test_...                # Backend: Verify Clerk tokens
+CLERK_PUBLISHABLE_KEY=pk_test_...           # Backend: Initialize Clerk client
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...      # Frontend: Initialize ClerkProvider
+VITE_API_BASE_URL=http://localhost:8000     # Frontend: API endpoint
 
 # Temporal
 TEMPORAL_HOST=localhost:7233
