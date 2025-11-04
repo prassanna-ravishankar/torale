@@ -180,12 +180,39 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 
 ### Local Development
 ```bash
-docker compose up -d
+just dev        # Start all services via docker-compose
+just dev-all    # Include frontend dev server
 ```
 
-### Google Cloud Run
+### Production (GKE ClusterKit)
+
+**Prerequisites:** gcloud CLI, kubectl, helm, helmfile
+
 ```bash
-./deploy.sh
+# One-time setup
+just k8s-auth       # Get cluster credentials
+just k8s-setup      # Create Cloud SQL + IAM
+just k8s-secrets    # Create K8s secrets from .env
+
+# Deploy
+just k8s-deploy-all # Deploy Temporal + Torale
+
+# Manage
+just k8s-status     # Check deployment status
+just k8s-logs-api   # View API logs
+just k8s-logs-workers # View worker logs
+```
+
+**Access:**
+- Frontend: https://torale.ai
+- API: https://api.torale.ai
+- Temporal UI: `just k8s-port-forward-temporal` → http://localhost:8080
+
+See [docs/k8s-deployment.md](docs/k8s-deployment.md) for detailed guide.
+
+### Legacy Cloud Run
+```bash
+just deploy-cloud-run
 ```
 
 ## How Grounded Search Works
