@@ -1,7 +1,7 @@
 import json
+import os
 from pathlib import Path
 
-import httpx
 import typer
 from rich import print
 
@@ -28,97 +28,60 @@ def load_config() -> dict:
         return json.load(f)
 
 
-@auth_app.command()
-def register(
-    email: str = typer.Option(..., prompt=True),
-    password: str = typer.Option(..., prompt=True, hide_input=True, confirmation_prompt=True),
+@auth_app.command("set-api-key")
+def set_api_key(
+    api_key: str = typer.Option(..., prompt=True, hide_input=True),
     api_url: str = typer.Option("http://localhost:8000", help="API URL"),
 ):
-    """Register a new account"""
-    print(f"[cyan]Registering account at {api_url}...[/cyan]")
+    """Set your API key for CLI authentication
 
-    try:
-        with httpx.Client() as client:
-            response = client.post(
-                f"{api_url}/auth/register",
-                json={
-                    "email": email,
-                    "password": password,
-                },
-            )
-
-            if response.status_code == 201:
-                print("[green]✓ Account created successfully![/green]")
-                print("[cyan]You can now login with: torale auth login[/cyan]")
-            else:
-                error_detail = response.json().get("detail", "Registration failed")
-                print(f"[red]✗ Registration failed: {error_detail}[/red]")
-                raise typer.Exit(1)
-
-    except httpx.RequestError as e:
-        print(f"[red]✗ Connection error: {str(e)}[/red]")
-        print("[yellow]Make sure the API server is running.[/yellow]")
+    Generate an API key from the web dashboard at https://torale.ai
+    then use this command to save it locally.
+    """
+    if not api_key.startswith("sk_"):
+        print("[red]✗ Invalid API key format. API keys should start with 'sk_'[/red]")
         raise typer.Exit(1)
 
-
-@auth_app.command()
-def login(
-    email: str = typer.Option(..., prompt=True),
-    password: str = typer.Option(..., prompt=True, hide_input=True),
-    api_url: str = typer.Option("http://localhost:8000", help="API URL"),
-):
-    """Login to Torale"""
-    print(f"[cyan]Logging in to {api_url}...[/cyan]")
-
-    try:
-        with httpx.Client() as client:
-            # FastAPI-Users login endpoint expects form data
-            response = client.post(
-                f"{api_url}/auth/jwt/login",
-                data={
-                    "username": email,  # FastAPI-Users uses 'username' field
-                    "password": password,
-                },
-            )
-
-            if response.status_code == 200:
-                auth_data = response.json()
-                config_data = {
-                    "email": email,
-                    "access_token": auth_data["access_token"],
-                    "token_type": auth_data["token_type"],
-                    "api_url": api_url,
-                }
-                save_config(config_data)
-                print("[green]✓ Successfully logged in![/green]")
-            else:
-                error_detail = response.json().get("detail", "Login failed")
-                print(f"[red]✗ Login failed: {error_detail}[/red]")
-                raise typer.Exit(1)
-
-    except httpx.RequestError as e:
-        print(f"[red]✗ Connection error: {str(e)}[/red]")
-        print("[yellow]Make sure the API server is running.[/yellow]")
-        raise typer.Exit(1)
+    config_data = {
+        "api_key": api_key,
+        "api_url": api_url,
+    }
+    save_config(config_data)
+    print("[green]✓ API key saved successfully![/green]")
+    print(f"[cyan]API URL: {api_url}[/cyan]")
 
 
 @auth_app.command()
 def logout():
-    """Logout from Torale"""
+    """Clear stored credentials"""
     config_file = get_config_file()
     if config_file.exists():
         config_file.unlink()
-        print("[green]✓ Successfully logged out![/green]")
+        print("[green]✓ Credentials cleared![/green]")
     else:
-        print("[yellow]Not logged in.[/yellow]")
+        print("[yellow]No credentials stored.[/yellow]")
 
 
 @auth_app.command()
 def status():
     """Check authentication status"""
+    # Check for noauth mode
+    if os.getenv("TORALE_NOAUTH") == "1":
+        print("[yellow]⚠ Running in NOAUTH mode (TORALE_NOAUTH=1)[/yellow]")
+        print("[yellow]Authentication is disabled for local development.[/yellow]")
+        return
+
     config = load_config()
-    if config:
-        print(f"[green]✓ Logged in as: {config.get('email')}[/green]")
+    if config.get("api_key"):
+        print(f"[green]✓ Authenticated with API key[/green]")
+        key_prefix = config["api_key"][:10] + "..."
+        print(f"[cyan]API Key: {key_prefix}[/cyan]")
         print(f"[cyan]API URL: {config.get('api_url')}[/cyan]")
     else:
-        print("[yellow]Not logged in. Run 'torale auth login' to authenticate.[/yellow]")
+        print("[yellow]Not authenticated.[/yellow]")
+        print("[cyan]To authenticate:[/cyan]")
+        print("  1. Generate an API key at https://torale.ai")
+        print("  2. Run: torale auth set-api-key")
+        print()
+        print("[cyan]For local development without auth:[/cyan]")
+        print("  export TORALE_NOAUTH=1")

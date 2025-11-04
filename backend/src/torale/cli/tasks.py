@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Optional
 from uuid import UUID
 
@@ -15,13 +16,39 @@ task_app = typer.Typer()
 
 
 def get_client() -> httpx.Client:
+    """Get HTTP client with authentication headers.
+
+    Authentication modes (in order of precedence):
+    1. TORALE_NOAUTH=1 - Skip authentication (local dev only)
+    2. API key from config file
+    """
+    # Check for noauth mode
+    if os.getenv("TORALE_NOAUTH") == "1":
+        api_url = os.getenv("TORALE_API_URL", "http://localhost:8000")
+        return httpx.Client(base_url=api_url)
+
+    # Load config for API key
     config = load_config()
     if not config:
-        print("[red]✗ Not authenticated. Please run 'torale auth login' first.[/red]")
+        print("[red]✗ Not authenticated.[/red]")
+        print("[cyan]To authenticate:[/cyan]")
+        print("  1. Generate an API key at https://torale.ai")
+        print("  2. Run: torale auth set-api-key")
+        print()
+        print("[cyan]For local development without auth:[/cyan]")
+        print("  export TORALE_NOAUTH=1")
         raise typer.Exit(1)
-    
-    headers = {"Authorization": f"Bearer {config['access_token']}"}
-    return httpx.Client(base_url=config["api_url"], headers=headers)
+
+    # Check for API key
+    api_key = config.get("api_key")
+    if not api_key:
+        print("[red]✗ No API key found in config.[/red]")
+        print("[cyan]Run: torale auth set-api-key[/cyan]")
+        raise typer.Exit(1)
+
+    headers = {"Authorization": f"Bearer {api_key}"}
+    api_url = config.get("api_url", "http://localhost:8000")
+    return httpx.Client(base_url=api_url, headers=headers)
 
 
 @task_app.command("create")

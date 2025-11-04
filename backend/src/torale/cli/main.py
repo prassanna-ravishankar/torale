@@ -31,23 +31,24 @@ def version():
 def config():
     """Show current configuration"""
     config_file = Path.home() / ".torale" / "config.json"
-    
+
     if not config_file.exists():
-        print("[yellow]No configuration found. Please run 'torale auth login' first.[/yellow]")
+        print("[yellow]No configuration found. Please run 'torale auth set-api-key' first.[/yellow]")
         raise typer.Exit(1)
-    
+
     with open(config_file) as f:
         config_data = json.load(f)
-    
+
     table = Table(title="Torale Configuration")
     table.add_column("Setting", style="cyan")
     table.add_column("Value", style="green")
-    
+
     for key, value in config_data.items():
-        if key == "access_token":
-            value = value[:20] + "..." if len(value) > 20 else value
+        if key == "api_key":
+            # Only show prefix of API key
+            value = value[:15] + "..." if len(value) > 15 else value
         table.add_row(key, str(value))
-    
+
     console.print(table)
 
 
