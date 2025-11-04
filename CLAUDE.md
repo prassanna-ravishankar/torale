@@ -19,10 +19,10 @@ Torale is a **grounded search monitoring platform** for AI-powered conditional a
 ### Tech Stack
 - **Backend**: Python FastAPI
 - **Frontend**: React 18 + TypeScript + Vite
-- **Database**: PostgreSQL 16 (self-hosted)
+- **Database**: Cloud SQL PostgreSQL 16 (managed)
 - **Authentication**: Clerk (OAuth + Email/Password with Google & GitHub)
 - **Scheduling**: Temporal workflows with cron schedules
-- **Infrastructure**: Google Cloud Run + Cloud Build (deployment)
+- **Infrastructure**: GKE Autopilot (ClusterKit) + Cloud Build + Helm
 - **AI**: Google Gemini with grounded search (primary), OpenAI/Anthropic (fallback)
 - **Search**: Google Search API via Gemini grounding
 - **Notifications**: In-app (database-stored), future: NotificationAPI
@@ -32,16 +32,15 @@ Torale is a **grounded search monitoring platform** for AI-powered conditional a
 
 ### System Design
 ```
-CLI Client ──► Cloud Run API ──► PostgreSQL
-                     │             (Auth + DB + State Tracking)
-                     ▼
-            Temporal Schedules (Cron-based execution)
-                     │
-                     ▼
-            Cloud Run Workers ──► Gemini + Google Search
-            (Task execution)   └──► In-app Notifications
-                     │
-                     └──► State comparison & condition evaluation
+User ──► Frontend (torale.ai)
+              ↓
+         API (api.torale.ai) ──► Cloud SQL PostgreSQL
+              ↓                   (Auth + DB + State)
+         Temporal (GKE self-hosted)
+              ↓
+         Workers ──► Gemini + Google Search
+              └──► In-app Notifications
+                   State comparison & condition evaluation
 ```
 
 ### Core Components
@@ -50,6 +49,24 @@ CLI Client ──► Cloud Run API ──► PostgreSQL
 3. **Executors**: Grounded search executor with condition evaluation
 4. **CLI**: Command-line interface for creating and managing monitoring tasks
 5. **State Tracker**: Compares current search results with historical state to detect changes
+
+## Deployment Architecture
+
+### Production (GKE ClusterKit)
+- **Cluster**: GKE Autopilot (clusterkit) in us-central1
+- **Cost Optimization**: Spot pods (60-91% savings)
+- **Database**: Cloud SQL PostgreSQL (managed, zonal for cost)
+- **Orchestration**: Helm + Helmfile
+- **Temporal**: Self-hosted via official Helm charts (can switch to Temporal Cloud via env var)
+- **Ingress**: GCE Load Balancer + GKE Managed Certificates (auto SSL)
+- **Domains**: api.torale.ai (API), torale.ai (Frontend)
+
+### Components
+1. **API Deployment**: FastAPI with Cloud SQL Proxy sidecar + init container for migrations
+2. **Worker Deployment**: Temporal workers with Cloud SQL Proxy sidecar
+3. **Frontend Deployment**: nginx serving React SPA (multi-stage Docker build)
+4. **Temporal Stack**: 3 Helm releases (temporal, admin-tools, UI)
+5. **HPA**: Auto-scale API/Workers based on CPU (min 2, max 10 replicas)
 
 ## Project Structure
 ```
@@ -67,13 +84,27 @@ torale/
 │   ├── pyproject.toml
 │   ├── alembic.ini
 │   └── Dockerfile
-├── frontend/             # Frontend (to be added)
+├── frontend/             # React + TypeScript + Vite
+│   ├── src/              # React components
+│   ├── Dockerfile        # Multi-stage build
+│   └── nginx.conf        # nginx config
+├── helm/                 # Kubernetes Helm charts
+│   └── torale/          # Main app chart
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/
+├── scripts/              # Setup and management scripts
+│   ├── k8s-setup-cloudsql.sh
+│   ├── k8s-create-secrets.sh
+│   └── k8s-check-status.sh
 ├── docs/                 # Documentation
-│   └── TEST_TEMPORAL.md
+│   ├── TEST_TEMPORAL.md
+│   └── k8s-deployment.md # K8s deployment guide
+├── helmfile.yaml         # Multi-chart orchestration
 ├── justfile              # Task runner (just dev, just test, etc.)
-├── docker-compose.yml    # Orchestration
-├── cloudbuild.yaml       # Cloud Build config
-├── deploy.sh             # Deployment script
+├── docker-compose.yml    # Local development
+├── cloudbuild.yaml       # Cloud Build config (GKE deployment)
+├── deploy.sh             # Legacy Cloud Run deployment
 ├── .env / .env.example
 ├── CLAUDE.md
 └── README.md
@@ -324,17 +355,17 @@ torale logs <task-id>               # Full execution history
 # List all available commands
 just
 
-# Start all services
-just dev
+# Local Development
+just dev           # Docker Compose
+just test          # Run tests
+just migrate       # Database migrations
+just logs          # View logs
 
-# Run tests
-just test
-
-# Database migrations
-just migrate
-
-# View logs
-just logs
+# Production Deployment (GKE)
+just k8s-setup     # One-time setup
+just k8s-deploy-all # Deploy to cluster
+just k8s-status    # Check status
+just k8s-logs-api  # View logs
 ```
 
 ### Local Development Setup
