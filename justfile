@@ -210,10 +210,91 @@ install-all: install install-frontend
 
 # === Deployment ===
 
-# Deploy to Google Cloud Run
-deploy:
+# Deploy to Google Cloud Run (legacy)
+deploy-cloud-run:
     ./deploy.sh
 
 # Build for production
 build-prod:
     docker build -f backend/Dockerfile -t torale-api ./backend
+
+# === Kubernetes (GKE ClusterKit) ===
+
+# Get cluster credentials
+k8s-auth:
+    gcloud container clusters get-credentials clusterkit \
+      --region us-central1 --project baldmaninc
+
+# One-time setup: Create Cloud SQL instance and IAM
+k8s-setup:
+    ./scripts/k8s-setup-cloudsql.sh
+
+# Create Kubernetes secrets from .env
+k8s-secrets:
+    ./scripts/k8s-create-secrets.sh
+
+# Deploy Temporal to cluster
+k8s-deploy-temporal:
+    helmfile sync --selector tier=temporal
+
+# Deploy Torale application
+k8s-deploy-app:
+    helmfile sync --selector tier=app
+
+# Deploy everything (Temporal + Torale)
+k8s-deploy-all:
+    helmfile sync
+
+# Check deployment status
+k8s-status:
+    ./scripts/k8s-check-status.sh
+
+# View API logs in k8s
+k8s-logs-api:
+    kubectl logs -n production -l app.kubernetes.io/component=api -f --tail=100
+
+# View worker logs in k8s
+k8s-logs-workers:
+    kubectl logs -n production -l app.kubernetes.io/component=worker -f --tail=100
+
+# View frontend logs in k8s
+k8s-logs-frontend:
+    kubectl logs -n production -l app.kubernetes.io/component=frontend -f --tail=100
+
+# View Temporal logs
+k8s-logs-temporal:
+    kubectl logs -n temporal -l app.kubernetes.io/name=temporal -f --tail=100
+
+# Port-forward API to localhost:8000
+k8s-port-forward-api:
+    kubectl port-forward -n production svc/torale-api 8000:80
+
+# Port-forward Temporal UI to localhost:8080
+k8s-port-forward-temporal:
+    kubectl port-forward -n temporal svc/temporal-ui 8080:8080
+
+# Get all pods status
+k8s-pods:
+    @echo "Torale Pods:"
+    @kubectl get pods -n production
+    @echo ""
+    @echo "Temporal Pods:"
+    @kubectl get pods -n temporal
+
+# Restart API deployment
+k8s-restart-api:
+    kubectl rollout restart deployment/torale-api -n production
+
+# Restart worker deployment
+k8s-restart-workers:
+    kubectl rollout restart deployment/torale-worker -n production
+
+# Restart frontend deployment
+k8s-restart-frontend:
+    kubectl rollout restart deployment/torale-frontend -n production
+
+# Delete everything (dangerous!)
+k8s-destroy:
+    @echo "⚠️  This will delete all Kubernetes resources. Press Ctrl+C to cancel..."
+    @sleep 5
+    helmfile destroy
