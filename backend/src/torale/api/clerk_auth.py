@@ -4,16 +4,14 @@ import hashlib
 import uuid
 from typing import Optional
 
+from clerk_backend_api.security import verify_token
+from clerk_backend_api.security.types import VerifyTokenOptions, TokenVerificationError
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.core.config import settings
-
-# Initialize Clerk client (JWT verification not yet implemented)
-# TODO: Implement proper Clerk JWT verification
-clerk = None
 
 # Security scheme for Bearer token
 security = HTTPBearer()
@@ -48,7 +46,7 @@ async def verify_clerk_token(
     Raises:
         HTTPException: If token is invalid, expired, or user not found
     """
-    if not clerk:
+    if not settings.clerk_secret_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Clerk authentication not configured",
@@ -58,8 +56,10 @@ async def verify_clerk_token(
 
     try:
         # Verify the JWT token with Clerk
-        # clerk.verify_token() validates the JWT signature and expiration
-        jwt_payload = clerk.verify_token(token)
+        verify_options = VerifyTokenOptions(
+            secret_key=settings.clerk_secret_key,
+        )
+        jwt_payload = verify_token(token, verify_options)
 
         if not jwt_payload or "sub" not in jwt_payload:
             raise HTTPException(
@@ -70,32 +70,15 @@ async def verify_clerk_token(
 
         clerk_user_id = jwt_payload["sub"]
 
-        # Get full user information from Clerk
-        user_response = clerk.users.get(user_id=clerk_user_id)
-
-        if not user_response:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        # Extract email from primary email address
-        primary_email = None
-        email_verified = False
-
-        if hasattr(user_response, "email_addresses") and user_response.email_addresses:
-            for email_obj in user_response.email_addresses:
-                # Find the primary email
-                if hasattr(email_obj, "id") and email_obj.id == user_response.primary_email_address_id:
-                    primary_email = email_obj.email_address
-                    email_verified = getattr(email_obj, "verification", {}).get("status") == "verified"
-                    break
+        # Extract email from JWT payload
+        # Clerk JWT includes email in the payload
+        primary_email = jwt_payload.get("email")
+        email_verified = jwt_payload.get("email_verified", False)
 
         if not primary_email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User has no email address",
+                detail="User has no email address in token",
             )
 
         return ClerkUser(
@@ -104,6 +87,13 @@ async def verify_clerk_token(
             email_verified=email_verified,
         )
 
+    except TokenVerificationError as e:
+        print(f"Clerk token verification failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Token verification failed: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     except HTTPException:
         raise
     except Exception as e:
