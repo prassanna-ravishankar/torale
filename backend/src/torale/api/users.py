@@ -7,7 +7,7 @@ from sqlalchemy import Boolean, Column, String, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 from torale.core.config import settings
 
@@ -46,7 +46,7 @@ class UserRead(BaseModel):
 
     id: uuid.UUID
     clerk_user_id: str
-    email: EmailStr
+    email: str
     is_active: bool
     created_at: datetime
 
@@ -58,4 +58,4 @@ class UserCreate(BaseModel):
     """Data required to create a new user."""
 
     clerk_user_id: str
-    email: EmailStr
+    email: str
