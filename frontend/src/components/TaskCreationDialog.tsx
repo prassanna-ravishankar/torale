@@ -65,6 +65,10 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
         schedule,
         notify_behavior: notifyBehavior,
         executor_type: "llm_grounded_search",
+        config: {
+          model: "gemini-2.0-flash-exp",
+          search_provider: "google"
+        },
         is_active: true,
       });
 
