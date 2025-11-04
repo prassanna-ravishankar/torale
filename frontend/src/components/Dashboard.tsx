@@ -35,6 +35,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   }
 
   useEffect(() => {
+    // Sync user with backend on first load (creates user record if needed)
+    api.syncUser().catch(error => {
+      console.error('Failed to sync user:', error)
+      // Don't show error to user - sync will retry on next API call
+    })
+
     loadTasks();
   }, []);
 
