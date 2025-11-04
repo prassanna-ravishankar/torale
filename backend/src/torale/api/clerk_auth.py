@@ -177,7 +177,6 @@ async def verify_api_key(
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Security(security),
-    session: Optional[AsyncSession] = None,
 ) -> ClerkUser:
     """
     Get current authenticated user from either Clerk token or API key.
@@ -198,17 +197,13 @@ async def get_current_user(
     # Check if it's an API key (starts with 'sk_')
     if token.startswith("sk_"):
         # Need session for API key verification
-        if session is None:
-            from torale.api.users import get_async_session
+        from torale.api.users import get_async_session
 
-            async for s in get_async_session():
-                session = s
-                try:
-                    return await verify_api_key(credentials, session)
-                finally:
-                    await session.close()
-
-        return await verify_api_key(credentials, session)
+        async for session in get_async_session():
+            try:
+                return await verify_api_key(credentials, session)
+            finally:
+                await session.close()
 
     # Otherwise try Clerk JWT
     return await verify_clerk_token(credentials)
