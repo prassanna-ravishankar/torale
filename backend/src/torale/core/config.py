@@ -6,8 +6,8 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql://torale:torale@localhost:5432/torale"
 
-    clerk_secret_key: str
-    clerk_publishable_key: str
+    clerk_secret_key: str = ""
+    clerk_publishable_key: str = ""
 
     temporal_host: str = "localhost:7233"
     temporal_namespace: str = "default"
