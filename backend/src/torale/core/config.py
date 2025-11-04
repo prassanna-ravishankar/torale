@@ -5,7 +5,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     database_url: str = "postgresql://torale:torale@localhost:5432/torale"
-    secret_key: str
+
+    clerk_secret_key: str
+    clerk_publishable_key: str
 
     temporal_host: str = "localhost:7233"
     temporal_namespace: str = "default"
