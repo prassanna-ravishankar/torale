@@ -1,0 +1,150 @@
+# Helmfile for deploying Torale and its dependencies
+# Install helmfile: https://github.com/helmfile/helmfile
+
+repositories:
+  # Temporal official Helm charts
+  - name: temporalio
+    url: https://go.temporal.io/helm-charts
+
+releases:
+  # ============================================
+  # Temporal Stack
+  # ============================================
+
+  # Main Temporal service
+  - name: temporal
+    namespace: temporal
+    chart: temporalio/temporal
+    version: 0.43.0
+    labels:
+      tier: temporal
+      component: server
+    values:
+      - server:
+          replicaCount: 1
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          # Cost optimization: Use Spot pods
+          nodeSelector:
+            cloud.google.com/gke-spot: "true"
+          tolerations:
+            - key: cloud.google.com/gke-spot
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
+
+        # Use embedded PostgreSQL for dev (switch to Cloud SQL for production)
+        cassandra:
+          enabled: false
+
+        mysql:
+          enabled: false
+
+        postgresql:
+          enabled: true
+          auth:
+            username: temporal
+            password: temporal
+            database: temporal
+          primary:
+            persistence:
+              enabled: true
+              size: 10Gi
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+            nodeSelector:
+              cloud.google.com/gke-spot: "true"
+            tolerations:
+              - key: cloud.google.com/gke-spot
+                operator: Equal
+                value: "true"
+                effect: NoSchedule
+
+  # Temporal Admin Tools
+  - name: temporal-admin-tools
+    namespace: temporal
+    chart: temporalio/temporal-admin-tools
+    version: 0.43.0
+    labels:
+      tier: temporal
+      component: admin-tools
+    needs:
+      - temporal/temporal
+    values:
+      - resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        nodeSelector:
+          cloud.google.com/gke-spot: "true"
+        tolerations:
+          - key: cloud.google.com/gke-spot
+            operator: Equal
+            value: "true"
+            effect: NoSchedule
+
+  # Temporal UI
+  - name: temporal-ui
+    namespace: temporal
+    chart: temporalio/temporal-ui
+    version: 0.43.0
+    labels:
+      tier: temporal
+      component: ui
+    needs:
+      - temporal/temporal
+    values:
+      - server:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          nodeSelector:
+            cloud.google.com/gke-spot: "true"
+          tolerations:
+            - key: cloud.google.com/gke-spot
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
+
+  # ============================================
+  # Torale Application
+  # ============================================
+
+  - name: torale
+    namespace: production
+    chart: ./helm/torale
+    labels:
+      tier: app
+      component: torale
+    needs:
+      - temporal/temporal
+    values:
+      # Load production overrides if they exist
+      - helm/torale/values-production.yaml
+    # Only apply if production values exist
+    missingFileHandler: Warn
+
+# Helmfile settings
+helmDefaults:
+  createNamespace: true
+  wait: true
+  timeout: 600
+  force: false
+  atomic: true
