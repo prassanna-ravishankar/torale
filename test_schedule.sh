@@ -27,18 +27,19 @@ TOKEN=$(echo $LOGIN_RESPONSE | jq -r '.access_token')
 echo "✓ Logged in"
 
 # 3. Create task with schedule "every minute"
-echo "3. Creating task with schedule '* * * * *' (every minute)..."
+echo "3. Creating grounded search task with schedule '* * * * *' (every minute)..."
 TASK_RESPONSE=$(curl -sL -X POST "$API_URL/api/v1/tasks" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Scheduled Test Task",
     "schedule": "* * * * *",
-    "executor_type": "llm_text",
+    "executor_type": "llm_grounded_search",
+    "search_query": "What is 1+1?",
+    "condition_description": "A numerical answer is provided",
+    "notify_behavior": "always",
     "config": {
-      "model": "gemini-2.0-flash-exp",
-      "prompt": "Write a one-line joke",
-      "max_tokens": 50
+      "model": "gemini-2.0-flash-exp"
     },
     "is_active": true
   }')

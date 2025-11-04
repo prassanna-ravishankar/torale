@@ -27,18 +27,19 @@ TOKEN=$(echo $LOGIN_RESPONSE | jq -r '.access_token')
 echo "✓ Logged in (token: ${TOKEN:0:20}...)"
 
 # 3. Create task
-echo "3. Creating task..."
+echo "3. Creating grounded search task..."
 TASK_RESPONSE=$(curl -sL -X POST "$API_URL/api/v1/tasks" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "E2E Test Task",
     "schedule": "0 9 * * *",
-    "executor_type": "llm_text",
+    "executor_type": "llm_grounded_search",
+    "search_query": "What is 2+2?",
+    "condition_description": "A numerical answer is provided",
+    "notify_behavior": "always",
     "config": {
-      "model": "gemini-2.0-flash-exp",
-      "prompt": "Write a haiku about testing",
-      "max_tokens": 100
+      "model": "gemini-2.0-flash-exp"
     }
   }')
 
