@@ -4,15 +4,15 @@ import hashlib
 import uuid
 from typing import Optional
 
-from clerk_backend_sdk import Clerk
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.core.config import settings
 
-# Initialize Clerk client
-clerk = Clerk(bearer_auth=settings.clerk_secret_key) if settings.clerk_secret_key else None
+# Initialize Clerk client (JWT verification not yet implemented)
+# TODO: Implement proper Clerk JWT verification
+clerk = None
 
 # Security scheme for Bearer token
 security = HTTPBearer()
