@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "torale.fullname" . }}-config
+  labels:
+    {{- include "torale.labels" . | nindent 4 }}
+data:
+  # Database configuration (non-sensitive)
+  DB_HOST: {{ .Values.database.host | quote }}
+  DB_PORT: {{ .Values.database.port | quote }}
+  DB_NAME: {{ .Values.database.name | quote }}
+  DB_USER: {{ .Values.database.user | quote }}
+
+  # Temporal configuration
+  TEMPORAL_HOST: {{ .Values.temporal.host | quote }}
+  TEMPORAL_NAMESPACE: {{ .Values.temporal.namespace | quote }}
+
+  # API configuration
+  API_URL: {{ printf "https://%s" .Values.domains.api | quote }}
+  FRONTEND_URL: {{ printf "https://%s" .Values.domains.frontend | quote }}

@@ -6,6 +6,7 @@ import { TaskDetail } from '@/components/TaskDetail'
 import { Header } from '@/components/Header'
 import { Toaster } from '@/components/ui/sonner'
 import { Loader2 } from 'lucide-react'
+import { useApiSetup } from '@/hooks/useApi'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoaded, userId } = useClerkAuth()
@@ -64,6 +65,9 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const navigate = useNavigate()
+
+  // Initialize API client with Clerk authentication
+  useApiSetup()
 
   const handleTaskClick = (taskId: string) => {
     navigate(`/tasks/${taskId}`)
