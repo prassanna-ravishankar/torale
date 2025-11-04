@@ -87,6 +87,40 @@ curl http://localhost:8000/api/v1/tasks/TASK_ID/executions \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
+## Frontend
+
+The Torale frontend is a React + TypeScript application built with Vite.
+
+### Setup
+```bash
+# Install frontend dependencies
+cd frontend && npm install
+
+# Start development server
+npm run dev
+
+# Or use justfile
+just dev-frontend
+```
+
+### Features
+- **Authentication**: JWT-based login and registration
+- **Dashboard**: View and manage all monitoring tasks
+- **Task Creation**: Create new monitoring tasks with search queries and conditions
+- **Task Details**: View execution history, notifications, and state changes
+- **Real-time Updates**: Auto-refresh execution status
+- **Toast Notifications**: User feedback for all actions
+
+### Tech Stack
+- React 18 + TypeScript
+- Vite (build tool)
+- React Router (routing)
+- Tailwind CSS (styling)
+- shadcn/ui (component library)
+- Sonner (toast notifications)
+
+Access the frontend at http://localhost:3000 after starting the dev server.
+
 ## Architecture
 
 - **API**: FastAPI with JWT authentication (FastAPI-Users)

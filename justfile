@@ -24,6 +24,16 @@ dev-api:
 dev-workers:
     docker compose up workers
 
+# Start frontend development server
+dev-frontend:
+    cd frontend && npm run dev
+
+# Start all services + frontend
+dev-all:
+    #!/usr/bin/env bash
+    docker compose up -d
+    cd frontend && npm run dev
+
 # View logs for all services
 logs:
     docker compose logs -f
@@ -89,6 +99,14 @@ build:
 # Build without cache
 build-clean:
     docker compose build --no-cache
+
+# Build frontend for production
+build-frontend:
+    cd frontend && npm run build
+
+# Preview frontend production build
+preview-frontend:
+    cd frontend && npm run preview
 
 # Show service status
 ps:
@@ -175,13 +193,20 @@ check: lint typecheck
 
 # === Installation ===
 
-# Install dependencies
+# Install backend dependencies
 install:
     cd backend && uv sync
 
-# Install dependencies (dev mode)
+# Install backend dependencies (dev mode)
 install-dev:
     cd backend && uv sync --dev
+
+# Install frontend dependencies
+install-frontend:
+    cd frontend && npm install
+
+# Install all dependencies (backend + frontend)
+install-all: install install-frontend
 
 # === Deployment ===
 
