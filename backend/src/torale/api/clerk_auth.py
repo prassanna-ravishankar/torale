@@ -85,18 +85,19 @@ async def verify_clerk_token(
             )
 
         try:
-            user_response = clerk_client.users.get(user_id=clerk_user_id)
-            user_data = user_response.data
+            # Fetch user directly - response is the User object
+            user = clerk_client.users.get(user_id=clerk_user_id)
 
             # Get primary email
             primary_email = None
             email_verified = False
 
-            if user_data.email_addresses:
-                for email_obj in user_data.email_addresses:
-                    if email_obj.id == user_data.primary_email_address_id:
+            if user and user.email_addresses:
+                for email_obj in user.email_addresses:
+                    if email_obj.id == user.primary_email_address_id:
                         primary_email = email_obj.email_address
-                        email_verified = email_obj.verification.status == "verified"
+                        # Check if verification exists and has status
+                        email_verified = bool(email_obj.verification)
                         break
 
             if not primary_email:
@@ -110,6 +111,8 @@ async def verify_clerk_token(
                 email=primary_email,
                 email_verified=email_verified,
             )
+        except HTTPException:
+            raise
         except Exception as e:
             print(f"Failed to fetch user from Clerk API: {e}")
             raise HTTPException(
