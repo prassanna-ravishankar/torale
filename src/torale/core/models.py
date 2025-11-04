@@ -6,11 +6,13 @@ from pydantic import BaseModel, Field
 
 
 class ExecutorType(str, Enum):
-    LLM_TEXT = "llm_text"
-    LLM_WEB_SEARCH = "llm_web_search"
-    LLM_BROWSER = "llm_browser"
-    WEBHOOK = "webhook"
-    API_CALL = "api_call"
+    LLM_GROUNDED_SEARCH = "llm_grounded_search"
+
+
+class NotifyBehavior(str, Enum):
+    ONCE = "once"  # Notify once and auto-disable task
+    ALWAYS = "always"  # Notify every time condition is met
+    TRACK_STATE = "track_state"  # Notify only when state changes
 
 
 class TaskStatus(str, Enum):
@@ -23,13 +25,20 @@ class TaskStatus(str, Enum):
 class TaskBase(BaseModel):
     name: str
     schedule: str
-    executor_type: ExecutorType = ExecutorType.LLM_TEXT
+    executor_type: ExecutorType = ExecutorType.LLM_GROUNDED_SEARCH
     config: dict
     is_active: bool = True
 
+    # Grounded search fields
+    search_query: str | None = None
+    condition_description: str | None = None
+    notify_behavior: NotifyBehavior = NotifyBehavior.ONCE
+
 
 class TaskCreate(TaskBase):
-    pass
+    """Create task - requires search_query and condition for grounded search"""
+    search_query: str  # Make required for creation
+    condition_description: str  # Make required for creation
 
 
 class TaskUpdate(BaseModel):
@@ -37,12 +46,21 @@ class TaskUpdate(BaseModel):
     schedule: str | None = None
     config: dict | None = None
     is_active: bool | None = None
+    search_query: str | None = None
+    condition_description: str | None = None
+    notify_behavior: NotifyBehavior | None = None
 
 
 class Task(TaskBase):
     id: UUID
     user_id: UUID
     created_at: datetime
+    updated_at: datetime | None = None
+
+    # Grounded search state tracking
+    condition_met: bool = False
+    last_known_state: dict | None = None
+    last_notified_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -54,11 +72,17 @@ class TaskExecutionBase(BaseModel):
     result: dict | None = None
     error_message: str | None = None
 
+    # Grounded search execution fields
+    condition_met: bool | None = None
+    change_summary: str | None = None
+    grounding_sources: list[dict] | None = None
+
 
 class TaskExecution(TaskExecutionBase):
     id: UUID
     started_at: datetime
     completed_at: datetime | None = None
+    created_at: datetime | None = None
 
     class Config:
         from_attributes = True
