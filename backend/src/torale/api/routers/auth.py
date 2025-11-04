@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select, update
+from sqlalchemy import select, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.api.clerk_auth import ClerkUser, get_current_user
@@ -144,10 +144,10 @@ async def create_api_key(
     }
 
     await session.execute(
-        """
+        text("""
         INSERT INTO api_keys (id, user_id, key_prefix, key_hash, name, created_at, is_active)
         VALUES (:id, :user_id, :key_prefix, :key_hash, :name, :created_at, :is_active)
-        """,
+        """),
         api_key_data,
     )
     await session.commit()
@@ -176,12 +176,12 @@ async def list_api_keys(
 
     # Get API keys
     result = await session.execute(
-        """
+        text("""
         SELECT id, user_id, key_prefix, name, created_at, last_used_at, is_active
         FROM api_keys
         WHERE user_id = :user_id
         ORDER BY created_at DESC
-        """,
+        """),
         {"user_id": user.id},
     )
 
@@ -223,11 +223,11 @@ async def revoke_api_key(
 
     # Deactivate key
     result = await session.execute(
-        """
+        text("""
         UPDATE api_keys
         SET is_active = false
         WHERE id = :key_id AND user_id = :user_id
-        """,
+        """),
         {"key_id": key_id, "user_id": user.id},
     )
     await session.commit()

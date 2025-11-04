@@ -6,6 +6,7 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.core.config import settings
@@ -137,12 +138,12 @@ async def verify_api_key(
 
     # Look up API key in database
     result = await session.execute(
-        """
+        text("""
         SELECT ak.user_id, ak.id as key_id, u.clerk_user_id, u.email
         FROM api_keys ak
         JOIN users u ON ak.user_id = u.id
         WHERE ak.key_hash = :key_hash AND ak.is_active = true
-        """,
+        """),
         {"key_hash": key_hash},
     )
     row = result.first()
@@ -158,11 +159,11 @@ async def verify_api_key(
 
     # Update last_used_at timestamp (don't wait for commit)
     await session.execute(
-        """
+        text("""
         UPDATE api_keys
         SET last_used_at = NOW()
         WHERE id = :key_id
-        """,
+        """),
         {"key_id": key_id},
     )
     await session.commit()
