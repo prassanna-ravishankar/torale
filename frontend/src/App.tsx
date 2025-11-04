@@ -1,8 +1,6 @@
 import React from 'react'
 import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
-import { LoginForm } from '@/components/LoginForm'
-import { RegisterForm } from '@/components/RegisterForm'
+import { SignedIn, SignedOut, SignIn, SignUp, useAuth as useClerkAuth } from '@clerk/clerk-react'
 import { Dashboard } from '@/components/Dashboard'
 import { TaskDetail } from '@/components/TaskDetail'
 import { Header } from '@/components/Header'
@@ -10,9 +8,9 @@ import { Toaster } from '@/components/ui/sonner'
 import { Loader2 } from 'lucide-react'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth()
+  const { isLoaded, userId } = useClerkAuth()
 
-  if (isLoading) {
+  if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -20,8 +18,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />
+  if (!userId) {
+    return <Navigate to="/sign-in" replace />
   }
 
   return <>{children}</>
@@ -47,9 +45,9 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 function AuthRedirect({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth()
+  const { isLoaded, userId } = useClerkAuth()
 
-  if (isLoading) {
+  if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -57,7 +55,7 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (user) {
+  if (userId) {
     return <Navigate to="/" replace />
   }
 
@@ -79,21 +77,21 @@ export default function App() {
     <>
       <Routes>
         <Route
-          path="/login"
+          path="/sign-in/*"
           element={
             <AuthRedirect>
               <AuthLayout>
-                <LoginForm onSwitchToRegister={() => navigate('/register')} />
+                <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" />
               </AuthLayout>
             </AuthRedirect>
           }
         />
         <Route
-          path="/register"
+          path="/sign-up/*"
           element={
             <AuthRedirect>
               <AuthLayout>
-                <RegisterForm onSwitchToLogin={() => navigate('/login')} />
+                <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" />
               </AuthLayout>
             </AuthRedirect>
           }

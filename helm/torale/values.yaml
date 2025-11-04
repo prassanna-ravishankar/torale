@@ -1,0 +1,217 @@
+# Default values for torale
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  projectId: baldmaninc
+  region: us-central1
+
+# Domain configuration
+domains:
+  frontend: torale.ai
+  api: api.torale.ai
+
+# Image configuration
+image:
+  registry: gcr.io
+  repository: baldmaninc
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+
+# API deployment
+api:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    name: torale-api
+
+  # Cost optimization: Use Spot pods
+  nodeSelector:
+    cloud.google.com/gke-spot: "true"
+
+  tolerations:
+    - key: cloud.google.com/gke-spot
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+
+  # Right-size resources for cost optimization
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Health checks
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8000
+
+  # Horizontal Pod Autoscaler
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+# Worker deployment
+worker:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    name: torale-worker
+
+  # Cost optimization: Use Spot pods
+  nodeSelector:
+    cloud.google.com/gke-spot: "true"
+
+  tolerations:
+    - key: cloud.google.com/gke-spot
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+
+  # Right-size resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Horizontal Pod Autoscaler
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+# Frontend deployment
+frontend:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    name: torale-frontend
+
+  # Cost optimization: Use Spot pods
+  nodeSelector:
+    cloud.google.com/gke-spot: "true"
+
+  tolerations:
+    - key: cloud.google.com/gke-spot
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+
+  # Lightweight resources for nginx
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+
+  # Horizontal Pod Autoscaler
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+# Database configuration (Cloud SQL)
+database:
+  # Cloud SQL instance connection name
+  connectionName: "baldmaninc:us-central1:torale-db"
+  host: "127.0.0.1"  # Cloud SQL Proxy
+  port: 5432
+  name: torale
+  user: torale
+  # Password should be set in secrets
+
+# Cloud SQL Proxy sidecar configuration
+cloudsql:
+  enabled: true
+  image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Temporal configuration
+temporal:
+  # Can be overridden to point to Temporal Cloud
+  host: temporal.temporal.svc.cluster.local:7233
+  namespace: default
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: gce
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    networking.gke.io/managed-certificates: "torale-cert"
+    networking.gke.io/v1beta1.FrontendConfig: "ssl-redirect"
+
+  # SSL/TLS configuration
+  tls:
+    enabled: true
+    certificateName: torale-cert
+
+# GKE Managed Certificate
+certificate:
+  enabled: true
+  name: torale-cert
+
+# ConfigMap for non-sensitive configuration
+config:
+  # Will be populated from values
+
+# Secrets (should be created separately via kubectl)
+secrets:
+  # Reference to existing secret name
+  name: torale-secrets
+  # Keys expected in the secret:
+  # - GOOGLE_API_KEY
+  # - SECRET_KEY
+  # - DB_PASSWORD
+  # - OPENAI_API_KEY (optional)
+  # - ANTHROPIC_API_KEY (optional)
+  # - NOTIFICATION_API_KEY (optional)
+
+# Service Account (for Workload Identity)
+serviceAccount:
+  create: true
+  name: torale-sa
+  annotations:
+    iam.gke.io/gcp-service-account: cloudsql-proxy@baldmaninc.iam.gserviceaccount.com
