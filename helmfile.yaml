@@ -11,133 +11,118 @@ repositories:
 
 releases:
   # ============================================
-  # Temporal Stack
+  # Temporal Stack - DISABLED (Using Temporal Cloud)
   # ============================================
-
-  # PostgreSQL for Temporal
-  - name: temporal-postgresql
-    namespace: temporal
-    chart: bitnami/postgresql
-    labels:
-      tier: temporal
-      component: database
-    values:
-      - auth:
-          username: temporal
-          password: temporal
-          database: temporal
-        primary:
-          persistence:
-            enabled: true
-            size: 10Gi
-          resources:
-            requests:
-              cpu: 100m
-              memory: 256Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
-          nodeSelector:
-            cloud.google.com/gke-spot: "true"
-          tolerations:
-            - key: cloud.google.com/gke-spot
-              operator: Equal
-              value: "true"
-              effect: NoSchedule
-          # Create visibility database on startup
-          initdb:
-            scripts:
-              create-visibility-db.sql: |
-                CREATE DATABASE temporal_visibility;
-
-  # Main Temporal service
-  - name: temporal
-    namespace: temporal
-    chart: temporalio/temporal
-    version: 0.43.0
-    labels:
-      tier: temporal
-      component: server
-    needs:
-      - temporal/temporal-postgresql
-    values:
-      - server:
-          replicaCount: 1
-          resources:
-            requests:
-              cpu: 200m
-              memory: 512Mi
-            limits:
-              cpu: 1000m
-              memory: 1Gi
-          # Cost optimization: Use Spot pods
-          nodeSelector:
-            cloud.google.com/gke-spot: "true"
-          tolerations:
-            - key: cloud.google.com/gke-spot
-              operator: Equal
-              value: "true"
-              effect: NoSchedule
-          # Configure persistence to use PostgreSQL
-          config:
-            persistence:
-              default:
-                driver: "sql"
-                sql:
-                  driver: "postgres12"
-                  host: temporal-postgresql
-                  port: 5432
-                  database: temporal
-                  user: temporal
-                  password: temporal
-                  maxConns: 20
-                  maxConnLifetime: "1h"
-              visibility:
-                driver: "sql"
-                sql:
-                  driver: "postgres12"
-                  host: temporal-postgresql
-                  port: 5432
-                  database: temporal_visibility
-                  user: temporal
-                  password: temporal
-                  maxConns: 10
-                  maxConnLifetime: "1h"
-
-        # Disable Cassandra and MySQL
-        cassandra:
-          enabled: false
-
-        mysql:
-          enabled: false
-
-        # Disable Elasticsearch (not supported in GKE Autopilot)
-        elasticsearch:
-          enabled: false
-
-        # Disable optional monitoring components to reduce resource usage
-        prometheus:
-          enabled: false
-
-        grafana:
-          enabled: false
+  # Uncomment the releases below to deploy self-hosted Temporal instead
+  #
+  # - name: temporal-postgresql
+  #   namespace: temporal
+  #   chart: bitnami/postgresql
+  #   labels:
+  #     tier: temporal
+  #     component: database
+  #   values:
+  #     - auth:
+  #         username: temporal
+  #         password: temporal
+  #         database: temporal
+  #       primary:
+  #         persistence:
+  #           enabled: true
+  #           size: 10Gi
+  #         resources:
+  #           requests:
+  #             cpu: 100m
+  #             memory: 256Mi
+  #           limits:
+  #             cpu: 500m
+  #             memory: 512Mi
+  #         nodeSelector:
+  #           cloud.google.com/gke-spot: "true"
+  #         tolerations:
+  #           - key: cloud.google.com/gke-spot
+  #             operator: Equal
+  #             value: "true"
+  #             effect: NoSchedule
+  #         initdb:
+  #           scripts:
+  #             create-visibility-db.sql: |
+  #               CREATE DATABASE temporal_visibility;
+  #
+  # - name: temporal
+  #   namespace: temporal
+  #   chart: temporalio/temporal
+  #   version: 0.43.0
+  #   labels:
+  #     tier: temporal
+  #     component: server
+  #   needs:
+  #     - temporal/temporal-postgresql
+  #   values:
+  #     - server:
+  #         replicaCount: 1
+  #         resources:
+  #           requests:
+  #             cpu: 200m
+  #             memory: 512Mi
+  #           limits:
+  #             cpu: 1000m
+  #             memory: 1Gi
+  #         nodeSelector:
+  #           cloud.google.com/gke-spot: "true"
+  #         tolerations:
+  #           - key: cloud.google.com/gke-spot
+  #             operator: Equal
+  #             value: "true"
+  #             effect: NoSchedule
+  #         config:
+  #           persistence:
+  #             default:
+  #               driver: "sql"
+  #               sql:
+  #                 driver: "postgres12"
+  #                 host: temporal-postgresql
+  #                 port: 5432
+  #                 database: temporal
+  #                 user: temporal
+  #                 password: temporal
+  #                 maxConns: 20
+  #                 maxConnLifetime: "1h"
+  #             visibility:
+  #               driver: "sql"
+  #               sql:
+  #                 driver: "postgres12"
+  #                 host: temporal-postgresql
+  #                 port: 5432
+  #                 database: temporal_visibility
+  #                 user: temporal
+  #                 password: temporal
+  #                 maxConns: 10
+  #                 maxConnLifetime: "1h"
+  #       cassandra:
+  #         enabled: false
+  #       mysql:
+  #         enabled: false
+  #       elasticsearch:
+  #         enabled: false
+  #       prometheus:
+  #         enabled: false
+  #       grafana:
+  #         enabled: false
 
   # ============================================
   # Torale Application
   # ============================================
 
   - name: torale
-    namespace: production
+    namespace: torale
     chart: ./helm/torale
     labels:
       tier: app
       component: torale
-    needs:
-      - temporal/temporal
     values:
-      # Load production overrides if they exist
+      # Load production overrides
       - helm/torale/values-production.yaml
-    # Only apply if production values exist
     missingFileHandler: Warn
 
 # Helmfile settings

@@ -14,7 +14,7 @@ domains:
 # Image configuration
 image:
   registry: gcr.io
-  repository: baldmaninc
+  repository: baldmaninc/torale
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"

@@ -84,3 +84,31 @@ class TaskExecution(TaskExecutionBase):
     started_at: datetime
     completed_at: datetime | None = None
     created_at: datetime | None = None
+
+
+# Task Template Models
+class TaskTemplateBase(BaseModel):
+    name: str
+    description: str
+    category: str
+    icon: str | None = None
+    search_query: str
+    condition_description: str
+    schedule: str
+    notify_behavior: NotifyBehavior = NotifyBehavior.TRACK_STATE
+    config: dict = {"model": "gemini-2.0-flash-exp"}
+
+
+class TaskTemplateCreate(TaskTemplateBase):
+    """Create template"""
+    pass
+
+
+class TaskTemplate(TaskTemplateBase):
+    """Template read from database"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    is_active: bool = True
+    created_at: datetime
+    updated_at: datetime | None = None

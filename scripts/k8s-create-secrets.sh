@@ -6,7 +6,7 @@ echo "Torale - Kubernetes Secrets Setup"
 echo "==============================================="
 echo ""
 
-K8S_NAMESPACE="production"
+K8S_NAMESPACE="torale"
 SECRET_NAME="torale-secrets"
 
 # Check if .env exists
@@ -51,6 +51,8 @@ echo ""
 prompt_if_missing "GOOGLE_API_KEY" "Enter your Google AI API key (required):" "true"
 prompt_if_missing "SECRET_KEY" "Enter your JWT secret key (generate with: openssl rand -hex 32):" "true"
 prompt_if_missing "DB_PASSWORD" "Enter your database password:" "true"
+prompt_if_missing "CLERK_SECRET_KEY" "Enter your Clerk secret key (required):" "true"
+prompt_if_missing "TEMPORAL_API_KEY" "Enter your Temporal API key (required for Temporal Cloud):" "true"
 
 # Optional secrets
 if [ -z "$OPENAI_API_KEY" ]; then
@@ -87,6 +89,8 @@ kubectl create secret generic "$SECRET_NAME" \
     --from-literal=GOOGLE_API_KEY="$GOOGLE_API_KEY" \
     --from-literal=SECRET_KEY="$SECRET_KEY" \
     --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+    --from-literal=CLERK_SECRET_KEY="$CLERK_SECRET_KEY" \
+    --from-literal=TEMPORAL_API_KEY="$TEMPORAL_API_KEY" \
     --from-literal=OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
     --from-literal=ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
     --from-literal=NOTIFICATION_API_KEY="${NOTIFICATION_API_KEY:-}"

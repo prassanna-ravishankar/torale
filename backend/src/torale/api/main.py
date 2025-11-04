@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from torale.api.routers import tasks, auth
+from torale.api.routers import tasks, auth, templates
 from torale.core.config import settings
 from torale.core.database import db
 
@@ -38,6 +38,7 @@ app.include_router(auth.router, prefix="/auth", tags=["auth"])
 
 # API routes
 app.include_router(tasks.router, prefix="/api/v1")
+app.include_router(templates.router, prefix="/api/v1")
 
 
 @app.get("/health")

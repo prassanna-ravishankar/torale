@@ -100,8 +100,8 @@ build:
 build-clean:
     docker compose build --no-cache
 
-# Build frontend for production
-build-frontend:
+# Build frontend static files (npm build)
+build-frontend-static:
     cd frontend && npm run build
 
 # Preview frontend production build
@@ -218,6 +218,23 @@ deploy-cloud-run:
 build-prod:
     docker build -f backend/Dockerfile -t torale-api ./backend
 
+# Build frontend production image
+build-frontend:
+    docker build -f frontend/Dockerfile -t torale-frontend ./frontend
+
+# Push images to GCR
+k8s-push: build build-frontend
+    #!/usr/bin/env bash
+    set -e
+    echo "Tagging and pushing images to GCR..."
+    docker tag torale-api gcr.io/baldmaninc/torale/api:latest
+    docker tag torale-api gcr.io/baldmaninc/torale/worker:latest
+    docker tag torale-frontend gcr.io/baldmaninc/torale/frontend:latest
+    docker push gcr.io/baldmaninc/torale/api:latest
+    docker push gcr.io/baldmaninc/torale/worker:latest
+    docker push gcr.io/baldmaninc/torale/frontend:latest
+    echo "✓ All images pushed successfully!"
+
 # === Kubernetes (GKE ClusterKit) ===
 
 # Get cluster credentials
@@ -251,15 +268,15 @@ k8s-status:
 
 # View API logs in k8s
 k8s-logs-api:
-    kubectl logs -n production -l app.kubernetes.io/component=api -f --tail=100
+    kubectl logs -n torale -l app.kubernetes.io/component=api -f --tail=100
 
 # View worker logs in k8s
 k8s-logs-workers:
-    kubectl logs -n production -l app.kubernetes.io/component=worker -f --tail=100
+    kubectl logs -n torale -l app.kubernetes.io/component=worker -f --tail=100
 
 # View frontend logs in k8s
 k8s-logs-frontend:
-    kubectl logs -n production -l app.kubernetes.io/component=frontend -f --tail=100
+    kubectl logs -n torale -l app.kubernetes.io/component=frontend -f --tail=100
 
 # View Temporal logs
 k8s-logs-temporal:
@@ -267,7 +284,7 @@ k8s-logs-temporal:
 
 # Port-forward API to localhost:8000
 k8s-port-forward-api:
-    kubectl port-forward -n production svc/torale-api 8000:80
+    kubectl port-forward -n torale svc/torale-api 8000:80
 
 # Port-forward Temporal UI to localhost:8080
 k8s-port-forward-temporal:
@@ -276,22 +293,22 @@ k8s-port-forward-temporal:
 # Get all pods status
 k8s-pods:
     @echo "Torale Pods:"
-    @kubectl get pods -n production
+    @kubectl get pods -n torale
     @echo ""
     @echo "Temporal Pods:"
     @kubectl get pods -n temporal
 
 # Restart API deployment
 k8s-restart-api:
-    kubectl rollout restart deployment/torale-api -n production
+    kubectl rollout restart deployment/torale-api -n torale
 
 # Restart worker deployment
 k8s-restart-workers:
-    kubectl rollout restart deployment/torale-worker -n production
+    kubectl rollout restart deployment/torale-worker -n torale
 
 # Restart frontend deployment
 k8s-restart-frontend:
-    kubectl rollout restart deployment/torale-frontend -n production
+    kubectl rollout restart deployment/torale-frontend -n torale
 
 # Delete everything (dangerous!)
 k8s-destroy:

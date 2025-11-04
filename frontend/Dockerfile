@@ -8,8 +8,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including devDependencies for build)
+# Remove node_modules and package-lock to ensure clean install for target platform
+RUN rm -rf node_modules package-lock.json && npm install
 
 # Copy source code
 COPY . .

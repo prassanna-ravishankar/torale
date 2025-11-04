@@ -10,6 +10,7 @@ export interface Task {
   search_query: string;
   condition_description: string;
   notify_behavior: NotifyBehavior;
+  config: Record<string, any>;
   is_active: boolean;
   condition_met: boolean;
   last_known_state: Record<string, any> | null;
