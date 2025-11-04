@@ -53,17 +53,29 @@ CLI Client ──► Cloud Run API ──► PostgreSQL
 ## Project Structure
 ```
 torale/
-├── pyproject.toml
-├── docker-compose.yml      # Local Temporal only
-├── cloudbuild.yaml
-├── Dockerfile
-├── src/torale/
-│   ├── api/               # FastAPI app
-│   ├── workers/           # Temporal workers
-│   ├── executors/         # Task executors
-│   ├── cli/               # CLI commands
-│   └── core/              # Shared utilities
-└── tests/
+├── backend/               # Backend services
+│   ├── src/torale/
+│   │   ├── api/          # FastAPI app
+│   │   ├── workers/      # Temporal workers
+│   │   ├── executors/    # Task executors
+│   │   ├── cli/          # CLI commands
+│   │   └── core/         # Shared utilities
+│   ├── alembic/          # Database migrations
+│   ├── tests/            # Unit/integration tests
+│   ├── scripts/          # Test & utility scripts
+│   ├── pyproject.toml
+│   ├── alembic.ini
+│   └── Dockerfile
+├── frontend/             # Frontend (to be added)
+├── docs/                 # Documentation
+│   └── TEST_TEMPORAL.md
+├── justfile              # Task runner (just dev, just test, etc.)
+├── docker-compose.yml    # Orchestration
+├── cloudbuild.yaml       # Cloud Build config
+├── deploy.sh             # Deployment script
+├── .env / .env.example
+├── CLAUDE.md
+└── README.md
 ```
 
 ## Database Schema
@@ -228,19 +240,36 @@ torale logs <task-id>               # Full execution history
 
 ## Development Workflow
 
+### Quick Start with Justfile
+```bash
+# List all available commands
+just
+
+# Start all services
+just dev
+
+# Run tests
+just test
+
+# Database migrations
+just migrate
+
+# View logs
+just logs
+```
+
 ### Local Development Setup
 ```bash
 # Install dependencies
-uv sync
+cd backend && uv sync
 
-# Start Temporal locally
-docker compose up -d temporal
+# Start all services (recommended)
+just dev
 
-# Start API server
-uv run uvicorn torale.api:app --reload
-
-# Start workers
-uv run python -m torale.workers
+# Or start services individually
+docker compose up -d postgres temporal
+cd backend && uv run uvicorn torale.api.main:app --reload
+cd backend && uv run python -m torale.workers
 ```
 
 ### Environment Variables

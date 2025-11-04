@@ -8,9 +8,9 @@ steps:
       - '-t'
       - 'gcr.io/$PROJECT_ID/torale-api:latest'
       - '-f'
-      - 'Dockerfile'
-      - '.'
-  
+      - 'backend/Dockerfile'
+      - 'backend'
+
   # Build Worker image with different entrypoint
   - name: 'gcr.io/cloud-builders/docker'
     args:
@@ -22,8 +22,8 @@ steps:
       - '--build-arg'
       - 'ENTRYPOINT=python -m torale.workers.worker'
       - '-f'
-      - 'Dockerfile'
-      - '.'
+      - 'backend/Dockerfile'
+      - 'backend'
   
   # Push images to Container Registry
   - name: 'gcr.io/cloud-builders/docker'

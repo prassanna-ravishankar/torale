@@ -48,7 +48,7 @@ services:
       retries: 5
 
   api:
-    build: .
+    build: ./backend
     ports:
       - "8000:8000"
     environment:
@@ -66,10 +66,10 @@ services:
     entrypoint: ["/app/docker-entrypoint.sh"]
     command: ["uvicorn", "torale.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
     volumes:
-      - ./src:/app/src
+      - ./backend/src:/app/src
 
   workers:
-    build: .
+    build: ./backend
     environment:
       - DATABASE_URL=postgresql://torale:torale@postgres:5432/torale
       - SECRET_KEY=${SECRET_KEY}
@@ -85,7 +85,7 @@ services:
       - api
     command: ["python", "-m", "torale.workers"]
     volumes:
-      - ./src:/app/src
+      - ./backend/src:/app/src
 
 volumes:
   temporal-postgres-data:
