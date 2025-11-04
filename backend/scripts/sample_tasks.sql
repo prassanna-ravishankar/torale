@@ -1,5 +1,6 @@
 -- Sample monitoring tasks for November 2025
--- User: test@cli.local
+-- Usage: Replace :user_id with the actual user UUID
+--   e.g., psql -v user_id="'your-uuid-here'" -f sample_tasks.sql
 
 INSERT INTO tasks (
     id,
@@ -17,7 +18,7 @@ INSERT INTO tasks (
 -- 1. Tech Product Launch Monitor
 (
     gen_random_uuid(),
-    'a0000000-0000-0000-0000-000000000001',
+    :user_id,
     'RTX 5090 Release Date',
     '0 9 * * *',  -- Daily at 9 AM
     'llm_grounded_search',
@@ -31,7 +32,7 @@ INSERT INTO tasks (
 -- 2. Concert Ticket Availability
 (
     gen_random_uuid(),
-    'a0000000-0000-0000-0000-000000000001',
+    :user_id,
     'Taylor Swift Eras Tour 2025',
     '0 */4 * * *',  -- Every 4 hours
     'llm_grounded_search',
@@ -45,7 +46,7 @@ INSERT INTO tasks (
 -- 3. AI Model Release
 (
     gen_random_uuid(),
-    'a0000000-0000-0000-0000-000000000001',
+    :user_id,
     'GPT-5 Launch Announcement',
     '0 8 * * *',  -- Daily at 8 AM
     'llm_grounded_search',
@@ -59,7 +60,7 @@ INSERT INTO tasks (
 -- 4. Gaming Console Restock
 (
     gen_random_uuid(),
-    'a0000000-0000-0000-0000-000000000001',
+    :user_id,
     'PS5 Pro Stock at Best Buy',
     '0 */2 * * *',  -- Every 2 hours
     'llm_grounded_search',
@@ -73,7 +74,7 @@ INSERT INTO tasks (
 -- 5. Summer Program Registration
 (
     gen_random_uuid(),
-    'a0000000-0000-0000-0000-000000000001',
+    :user_id,
     'Community Pool Summer Pass 2026',
     '0 10 * * 1',  -- Weekly on Monday at 10 AM
     'llm_grounded_search',
@@ -87,7 +88,7 @@ INSERT INTO tasks (
 -- 6. Software Framework Release
 (
     gen_random_uuid(),
-    'a0000000-0000-0000-0000-000000000001',
+    :user_id,
     'React 19 Stable Release',
     '0 12 * * *',  -- Daily at noon
     'llm_grounded_search',
