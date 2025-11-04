@@ -19,6 +19,9 @@ def parse_task_row(row) -> dict:
     # Parse config if it's a string
     if isinstance(task_dict.get("config"), str):
         task_dict["config"] = json.loads(task_dict["config"])
+    # Parse last_known_state if it's a string
+    if isinstance(task_dict.get("last_known_state"), str):
+        task_dict["last_known_state"] = json.loads(task_dict["last_known_state"]) if task_dict["last_known_state"] else None
     return task_dict
 
 
@@ -27,7 +30,10 @@ def parse_execution_row(row) -> dict:
     exec_dict = dict(row)
     # Parse result if it's a string
     if isinstance(exec_dict.get("result"), str):
-        exec_dict["result"] = json.loads(exec_dict["result"])
+        exec_dict["result"] = json.loads(exec_dict["result"]) if exec_dict["result"] else None
+    # Parse grounding_sources if it's a string
+    if isinstance(exec_dict.get("grounding_sources"), str):
+        exec_dict["grounding_sources"] = json.loads(exec_dict["grounding_sources"]) if exec_dict["grounding_sources"] else None
     return exec_dict
 
 
@@ -35,9 +41,12 @@ def parse_execution_row(row) -> dict:
 async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depends(get_db)):
     # Create task in database
     query = """
-        INSERT INTO tasks (user_id, name, schedule, executor_type, config, is_active)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING id, user_id, name, schedule, executor_type, config, is_active, created_at, updated_at
+        INSERT INTO tasks (
+            user_id, name, schedule, executor_type, config, is_active,
+            search_query, condition_description, notify_behavior
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING *
     """
 
     row = await db.fetch_one(
@@ -48,6 +57,9 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         task.executor_type,
         json.dumps(task.config),
         task.is_active,
+        task.search_query,
+        task.condition_description,
+        task.notify_behavior,
     )
 
     if not row:
@@ -96,7 +108,7 @@ async def list_tasks(
 ):
     if is_active is not None:
         query = """
-            SELECT id, user_id, name, schedule, executor_type, config, is_active, created_at, updated_at
+            SELECT *
             FROM tasks
             WHERE user_id = $1 AND is_active = $2
             ORDER BY created_at DESC
@@ -104,7 +116,7 @@ async def list_tasks(
         rows = await db.fetch_all(query, user.id, is_active)
     else:
         query = """
-            SELECT id, user_id, name, schedule, executor_type, config, is_active, created_at, updated_at
+            SELECT *
             FROM tasks
             WHERE user_id = $1
             ORDER BY created_at DESC
@@ -117,7 +129,7 @@ async def list_tasks(
 @router.get("/{task_id}", response_model=Task)
 async def get_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
     query = """
-        SELECT id, user_id, name, schedule, executor_type, config, is_active, created_at, updated_at
+        SELECT *
         FROM tasks
         WHERE id = $1 AND user_id = $2
     """
@@ -139,7 +151,7 @@ async def update_task(
 ):
     # First verify the task belongs to the user
     existing_query = """
-        SELECT id, user_id, name, schedule, executor_type, config, is_active, created_at, updated_at
+        SELECT *
         FROM tasks
         WHERE id = $1 AND user_id = $2
     """
@@ -167,6 +179,10 @@ async def update_task(
         if field == "config":
             set_clauses.append(f"{field} = ${param_num}")
             params.append(json.dumps(value))
+        elif field == "notify_behavior":
+            # Convert enum to string value
+            set_clauses.append(f"{field} = ${param_num}")
+            params.append(value.value if hasattr(value, 'value') else value)
         else:
             set_clauses.append(f"{field} = ${param_num}")
             params.append(value)
@@ -179,7 +195,7 @@ async def update_task(
         UPDATE tasks
         SET {", ".join(set_clauses)}
         WHERE id = ${param_num} AND user_id = ${param_num + 1}
-        RETURNING id, user_id, name, schedule, executor_type, config, is_active, created_at, updated_at
+        RETURNING *
     """
 
     row = await db.fetch_one(query, *params)
@@ -340,7 +356,7 @@ async def get_task_executions(
 
     # Get executions
     executions_query = """
-        SELECT id, task_id, status, started_at, completed_at, result, error_message, created_at
+        SELECT *
         FROM task_executions
         WHERE task_id = $1
         ORDER BY started_at DESC
@@ -348,5 +364,41 @@ async def get_task_executions(
     """
 
     rows = await db.fetch_all(executions_query, task_id, limit)
+
+    return [TaskExecution(**parse_execution_row(row)) for row in rows]
+
+
+@router.get("/{task_id}/notifications", response_model=list[TaskExecution])
+async def get_task_notifications(
+    task_id: UUID, user: CurrentUser, limit: int = 100, db: Database = Depends(get_db)
+):
+    """
+    Get task executions where the condition was met (notifications).
+    This filters executions to only show when the monitoring condition triggered.
+    """
+    # Verify task belongs to user
+    task_query = """
+        SELECT id FROM tasks
+        WHERE id = $1 AND user_id = $2
+    """
+
+    task = await db.fetch_one(task_query, task_id, user.id)
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    # Get executions where condition_met is true
+    notifications_query = """
+        SELECT *
+        FROM task_executions
+        WHERE task_id = $1 AND condition_met = true
+        ORDER BY started_at DESC
+        LIMIT $2
+    """
+
+    rows = await db.fetch_all(notifications_query, task_id, limit)
 
     return [TaskExecution(**parse_execution_row(row)) for row in rows]
