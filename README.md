@@ -158,6 +158,11 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 - Template marketplace
 - Team/organization support
 
+## Known Issues
+
+### Frontend
+- **Alert Component Layout**: The info panel in the task creation dialog has alignment issues with the icon and text. The shadcn/ui Alert component's grid layout may need adjustment for proper spacing.
+
 ## Testing
 
 ```bash
