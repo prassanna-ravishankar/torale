@@ -25,7 +25,7 @@ def get_client() -> httpx.Client:
     # Check for noauth mode
     if os.getenv("TORALE_NOAUTH") == "1":
         api_url = os.getenv("TORALE_API_URL", "http://localhost:8000")
-        return httpx.Client(base_url=api_url)
+        return httpx.Client(base_url=api_url, follow_redirects=True)
 
     # Load config for API key
     config = load_config()
@@ -48,7 +48,7 @@ def get_client() -> httpx.Client:
 
     headers = {"Authorization": f"Bearer {api_key}"}
     api_url = config.get("api_url", "http://localhost:8000")
-    return httpx.Client(base_url=api_url, headers=headers)
+    return httpx.Client(base_url=api_url, headers=headers, follow_redirects=True)
 
 
 @task_app.command("create")
