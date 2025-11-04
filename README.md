@@ -1,8 +1,23 @@
 # Torale
 
-Platform-agnostic background task manager for AI-powered automation.
+**Grounded search monitoring platform** for AI-powered conditional automation.
 
-Create scheduled tasks like "Write me a blog post every morning at 6 AM about climate tech" or "Check the weather and send me a summary every day at 7 AM."
+Monitor the web for specific conditions using Google Search + LLM analysis, then get notified when they're met.
+
+## Use Cases
+
+- **Product Launches**: "Tell me when the next iPhone release date is announced"
+- **Availability Monitoring**: "Notify me when swimming pool memberships open for summer"
+- **Stock Alerts**: "Alert me when PS5 is back in stock at Best Buy"
+- **Event Tracking**: "Let me know when GPT-5 launch date is confirmed"
+- **Price Monitoring**: "Tell me when iPhone 15 price drops below $500"
+
+## How It Works
+
+1. **Create a monitoring task** with a search query and condition
+2. **Torale runs scheduled searches** via Google Search (grounded via Gemini)
+3. **LLM evaluates** if your condition is met based on search results
+4. **You get notified** when condition triggers (once, always, or on state change)
 
 ## Quick Start
 
@@ -17,77 +32,191 @@ uv sync
 cp .env.example .env
 ```
 Edit `.env` with your API keys:
-- **Supabase**: Create project at https://supabase.com, get URL/keys from Settings > API
-- **OpenAI**: Get key from https://platform.openai.com/api-keys
-- **Anthropic**: Get key from https://console.anthropic.com/settings/keys
-- **Google**: Get key from https://aistudio.google.com/app/apikey
+- **Google AI**: Get key from https://aistudio.google.com/app/apikey (required)
+- **Database**: PostgreSQL connection string (local default works)
+- **Secret Key**: Generate with `openssl rand -hex 32`
 
-### 3. Set up Database
-Run the migration in `supabase/migrations/001_initial_schema.sql` in your Supabase SQL editor.
-
-### 4. Start Local Services
+### 3. Start Services
 ```bash
-# Start Temporal
+# Start all services (PostgreSQL + Temporal + API + Workers)
 docker compose up -d
 
-# Start API
-uv run python run_api.py
-
-# Start worker (in another terminal)
-uv run python run_worker.py
+# Check status
+docker compose ps
 ```
 
-### 5. Use CLI
+### 4. Create Your First Monitoring Task
 ```bash
+# Register an account
+curl -X POST http://localhost:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","password":"yourpassword"}'
+
 # Login
-uv run torale auth login
+curl -X POST http://localhost:8000/auth/jwt/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=you@example.com&password=yourpassword"
 
-# Create a task
-uv run torale task create "Daily summary" \
-  --schedule "0 9 * * *" \
-  --prompt "Summarize today's tech news" \
-  --model "gemini-2.0-flash-exp"
+# Copy the access_token from response
 
-# List tasks
-uv run torale task list
-
-# Execute manually
-uv run torale task execute <task-id>
+# Create monitoring task
+curl -X POST http://localhost:8000/api/v1/tasks \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "iPhone Release Monitor",
+    "schedule": "0 9 * * *",
+    "executor_type": "llm_grounded_search",
+    "search_query": "When is the next iPhone being released?",
+    "condition_description": "A specific release date has been announced",
+    "notify_behavior": "once",
+    "config": {
+      "model": "gemini-2.0-flash-exp"
+    }
+  }'
 ```
 
-## Deploy to GCP
+### 5. Check Notifications
+```bash
+# View notifications (executions where condition was met)
+curl http://localhost:8000/api/v1/tasks/TASK_ID/notifications \
+  -H "Authorization: Bearer YOUR_TOKEN"
 
-1. Set up gcloud CLI and authenticate
-2. Enable required APIs:
-   ```bash
-   gcloud services enable cloudbuild.googleapis.com run.googleapis.com
-   ```
-3. Deploy:
-   ```bash
-   ./deploy.sh
-   ```
+# View full execution history
+curl http://localhost:8000/api/v1/tasks/TASK_ID/executions \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
 
 ## Architecture
 
-- **API**: FastAPI with Supabase auth
-- **Workers**: Temporal workflows for task execution  
-- **Executors**: Pluggable task runners (LLM text generation for MVP)
-- **CLI**: Typer-based command interface
-- **Database**: Supabase (PostgreSQL)
+- **API**: FastAPI with JWT authentication (FastAPI-Users)
+- **Database**: PostgreSQL 16 with state tracking
+- **Workers**: Temporal workflows for scheduled execution
+- **Executor**: Grounded search + LLM condition evaluation
+- **Scheduler**: Temporal cron schedules
+- **Search**: Google Search via Gemini grounding
 
-## MVP Features
+## Features
 
-- ✅ Natural language task creation
-- ✅ Cron-based scheduling
-- ✅ LLM text generation (OpenAI/Anthropic/Google Gemini)
-- ✅ Task management via CLI
-- ✅ User authentication
-- ✅ Cloud deployment
+### ✅ Implemented
+- Grounded search monitoring via Google Search
+- Intelligent condition evaluation (LLM-based)
+- Automatic scheduled execution (cron)
+- State tracking (no duplicate alerts)
+- User-configurable notify behavior:
+  - `once`: Notify once, then auto-disable
+  - `always`: Notify every time condition is met
+  - `track_state`: Notify only when state changes
+- In-app notifications endpoint
+- JWT authentication
+- Temporal schedule management
 
-## Post-MVP Roadmap
+### 🚧 In Progress
+- CLI enhancements for monitoring tasks
+- Enhanced grounding source display
+- Historical state comparison UI
 
-- Web search + LLM analysis
-- Browser automation
-- Webhook integrations
-- Conditional execution
-- Web UI
+### 📋 Future Roadmap
+- External notifications (email/SMS via NotificationAPI)
+- Browser automation for dynamic sites
+- Price tracking with charts
+- Multi-step conditional workflows
+- Template marketplace
+- Team/organization support
+
+## Testing
+
+```bash
+# Run manual execution test
+./test_temporal_e2e.sh
+
+# Run automatic schedule test (waits ~60s for scheduled execution)
+./test_schedule.sh
+
+# Run grounded search test
+./test_grounded_search.sh
+```
+
+## Deployment
+
+### Local Development
+```bash
+docker compose up -d
+```
+
+### Google Cloud Run
+```bash
+./deploy.sh
+```
+
+## How Grounded Search Works
+
+1. **Task Created**: User defines search query + condition to monitor
+2. **Scheduled Execution**: Temporal triggers task based on cron schedule
+3. **Grounded Search**: Gemini performs Google Search with grounding
+4. **LLM Evaluation**: LLM analyzes search results and evaluates condition
+5. **State Comparison**: Compares with `last_known_state` to detect changes
+6. **Notification**: If condition met (and not already notified), creates in-app notification
+7. **Auto-disable** (optional): If `notify_behavior = "once"`, task deactivates after first alert
+
+## Configuration
+
+### Notify Behaviors
+
+- **`once`**: Alert once when condition is first met, then auto-disable task
+- **`always`**: Alert every time condition is met (use with caution)
+- **`track_state`**: Alert only when underlying state changes (smart deduplication)
+
+### Schedule Formats
+
+Use standard cron expressions:
+- `* * * * *`: Every minute (testing only)
+- `0 * * * *`: Every hour
+- `0 9 * * *`: Every day at 9 AM
+- `0 9 * * 1`: Every Monday at 9 AM
+- `0 9 1 * *`: First day of every month at 9 AM
+
+## API Endpoints
+
+```
+POST   /auth/register                      # Create account
+POST   /auth/jwt/login                     # Get JWT token
+
+POST   /api/v1/tasks                       # Create monitoring task
+GET    /api/v1/tasks                       # List tasks
+GET    /api/v1/tasks/{id}                  # Get task details
+PUT    /api/v1/tasks/{id}                  # Update task
+DELETE /api/v1/tasks/{id}                  # Delete task + schedule
+POST   /api/v1/tasks/{id}/execute          # Manual execution (testing)
+GET    /api/v1/tasks/{id}/executions       # Full execution history
+GET    /api/v1/tasks/{id}/notifications    # Filtered: condition_met = true
+```
+
+## Environment Variables
+
+```bash
+# Database
+DATABASE_URL=postgresql://torale:torale@localhost:5432/torale
+
+# Authentication
+SECRET_KEY=your-secret-key-for-jwt
+
+# Temporal
+TEMPORAL_HOST=localhost:7233
+TEMPORAL_NAMESPACE=default
+
+# AI (Gemini required for grounded search)
+GOOGLE_API_KEY=your-gemini-api-key
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
+
+## License
+
+MIT
