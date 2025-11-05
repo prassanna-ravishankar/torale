@@ -27,26 +27,6 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 
-      # Init container to run database migrations
-      initContainers:
-      - name: migrations
-        image: {{ include "torale.api.image" . }}
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
-        command: ["alembic", "upgrade", "head"]
-        env:
-        - name: DATABASE_URL
-          value: {{ include "torale.databaseUrl" . | quote }}
-        - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: {{ .Values.secrets.name }}
-              key: DB_PASSWORD
-        envFrom:
-        - configMapRef:
-            name: {{ include "torale.fullname" . }}-config
-        - secretRef:
-            name: {{ .Values.secrets.name }}
-
       containers:
       # Application container
       - name: api
