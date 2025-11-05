@@ -111,16 +111,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </div>
 
         {task.condition_met && task.last_known_state && (
-          <div className="p-3 bg-muted rounded-md">
-            <p className="text-sm mb-1">Current State:</p>
-            <div className="text-xs text-muted-foreground space-y-1">
-              {Object.entries(task.last_known_state).map(([key, value]) => (
-                <div key={key}>
-                  <span className="font-medium">{key}:</span>{" "}
-                  {typeof value === "object" ? JSON.stringify(value) : String(value)}
-                </div>
-              ))}
-            </div>
+          <div className="p-2.5 bg-muted/50 rounded-md border border-muted">
+            <p className="text-xs text-muted-foreground">
+              📊 State captured - click "View Details" for full information
+            </p>
           </div>
         )}
       </CardContent>
