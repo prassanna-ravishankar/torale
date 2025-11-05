@@ -1,4 +1,4 @@
-import type { Task, TaskExecution, User } from '@/types'
+import type { Task, TaskExecution, TaskTemplate, User } from '@/types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
@@ -55,21 +55,21 @@ class ApiClient {
 
   // Task endpoints
   async getTasks(): Promise<Task[]> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/tasks`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/tasks/`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }
 
   async getTask(id: string): Promise<Task> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/tasks/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/tasks/${id}/`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }
 
   async createTask(task: Partial<Task>): Promise<Task> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/tasks`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/tasks/`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify(task),
@@ -78,7 +78,7 @@ class ApiClient {
   }
 
   async updateTask(id: string, task: Partial<Task>): Promise<Task> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/tasks/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/tasks/${id}/`, {
       method: 'PUT',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify(task),
@@ -87,7 +87,7 @@ class ApiClient {
   }
 
   async deleteTask(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/tasks/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/tasks/${id}/`, {
       method: 'DELETE',
       headers: await this.getAuthHeaders(),
     })
@@ -97,7 +97,7 @@ class ApiClient {
   }
 
   async executeTask(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/tasks/${id}/execute`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/tasks/${id}/execute/`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
     })
@@ -108,16 +108,30 @@ class ApiClient {
 
   // Task execution endpoints
   async getTaskExecutions(taskId: string): Promise<TaskExecution[]> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/tasks/${taskId}/executions`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/tasks/${taskId}/executions/`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }
 
   async getTaskNotifications(taskId: string): Promise<TaskExecution[]> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/tasks/${taskId}/notifications`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/tasks/${taskId}/notifications/`, {
       headers: await this.getAuthHeaders(),
     })
+    return this.handleResponse(response)
+  }
+
+  // Template endpoints
+  async getTemplates(category?: string): Promise<TaskTemplate[]> {
+    const url = category
+      ? `${API_BASE_URL}/api/v1/templates/?category=${encodeURIComponent(category)}`
+      : `${API_BASE_URL}/api/v1/templates/`
+    const response = await fetch(url)
+    return this.handleResponse(response)
+  }
+
+  async getTemplate(id: string): Promise<TaskTemplate> {
+    const response = await fetch(`${API_BASE_URL}/api/v1/templates/${id}`)
     return this.handleResponse(response)
   }
 }

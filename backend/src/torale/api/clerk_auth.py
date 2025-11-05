@@ -106,10 +106,28 @@ async def verify_clerk_token(
                     detail="User has no email address",
                 )
 
+            # Fetch database user_id
+            from torale.api.users import get_async_session
+
+            db_user_id = None
+            async for session in get_async_session():
+                try:
+                    result = await session.execute(
+                        text("SELECT id FROM users WHERE clerk_user_id = :clerk_user_id"),
+                        {"clerk_user_id": clerk_user_id}
+                    )
+                    row = result.first()
+                    if row:
+                        db_user_id = row[0]
+                    break
+                finally:
+                    await session.close()
+
             return ClerkUser(
                 clerk_user_id=clerk_user_id,
                 email=primary_email,
                 email_verified=email_verified,
+                db_user_id=db_user_id,
             )
         except HTTPException:
             raise

@@ -51,3 +51,19 @@ export interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
 }
+
+export interface TaskTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  icon?: string;
+  search_query: string;
+  condition_description: string;
+  schedule: string;
+  notify_behavior: NotifyBehavior;
+  config: Record<string, any>;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string | null;
+}

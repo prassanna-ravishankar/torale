@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,10 +17,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select";
-import type { NotifyBehavior } from "@/types";
+import type { NotifyBehavior, TaskTemplate } from "@/types";
 import api from "@/lib/api";
-import { Loader2, Info } from "lucide-react";
+import { Loader2, Info, Sparkles } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { toast } from 'sonner';
 
@@ -44,6 +46,8 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   onOpenChange,
   onTaskCreated,
 }) => {
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("none");
   const [name, setName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [conditionDescription, setConditionDescription] = useState("");
@@ -51,6 +55,43 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   const [notifyBehavior, setNotifyBehavior] = useState<NotifyBehavior>("track_state");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Fetch templates on mount
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        const data = await api.getTemplates();
+        setTemplates(data);
+      } catch (err) {
+        console.error("Failed to load templates:", err);
+      }
+    };
+    loadTemplates();
+  }, []);
+
+  // Auto-fill form when template is selected
+  const handleTemplateSelect = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+
+    if (!templateId || templateId === "none") {
+      // Clear template - reset form
+      setName("");
+      setSearchQuery("");
+      setConditionDescription("");
+      setSchedule("0 9 * * *");
+      setNotifyBehavior("track_state");
+      return;
+    }
+
+    const template = templates.find(t => t.id === templateId);
+    if (template) {
+      setName(template.name);
+      setSearchQuery(template.search_query);
+      setConditionDescription(template.condition_description);
+      setSchedule(template.schedule);
+      setNotifyBehavior(template.notify_behavior);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +116,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
       toast.success('Task created successfully');
 
       // Reset form
+      setSelectedTemplateId("none");
       setName("");
       setSearchQuery("");
       setConditionDescription("");
@@ -103,6 +145,49 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Template Selection */}
+          {templates.length > 0 && (
+            <div className="space-y-2 pb-4 border-b">
+              <Label htmlFor="template" className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-purple-500" />
+                Start from Template (Optional)
+              </Label>
+              <Select value={selectedTemplateId} onValueChange={handleTemplateSelect}>
+                <SelectTrigger id="template">
+                  <SelectValue placeholder="Create from scratch or choose a template..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Create from scratch</SelectItem>
+                  {(() => {
+                    // Group templates by category
+                    const grouped = templates.reduce((acc, template) => {
+                      if (!acc[template.category]) {
+                        acc[template.category] = [];
+                      }
+                      acc[template.category].push(template);
+                      return acc;
+                    }, {} as Record<string, TaskTemplate[]>);
+
+                    return Object.entries(grouped).map(([category, categoryTemplates]) => (
+                      <SelectGroup key={category}>
+                        <SelectLabel>{category}</SelectLabel>
+                        {categoryTemplates.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.icon && `${template.icon} `}
+                            {template.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ));
+                  })()}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Select a template to auto-fill the form, then customize as needed
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="name">Task Name</Label>
             <Input
