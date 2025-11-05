@@ -191,16 +191,20 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 
 ## Testing
 
+Torale has comprehensive unit, integration, and E2E tests covering Temporal workflows, grounded search, and scheduled execution.
+
 ```bash
-# Run manual execution test
-./test_temporal_e2e.sh
+# Run all tests
+just test
 
-# Run automatic schedule test (waits ~60s for scheduled execution)
-./test_schedule.sh
-
-# Run grounded search test
-./test_grounded_search.sh
+# Run specific test types
+just test-unit          # Unit tests with pytest
+just test-e2e           # E2E Temporal workflow test
+just test-schedule      # Scheduled execution test
+just test-grounded      # Grounded search test
 ```
+
+See [docs/TESTING.md](docs/TESTING.md) for detailed testing guide, including debugging workflows and troubleshooting.
 
 ## Deployment
 

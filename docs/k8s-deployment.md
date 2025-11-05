@@ -74,7 +74,7 @@ torale.ai (frontend - React + nginx)
 api.torale.ai (API - FastAPI)
     ↓
 ├── Cloud SQL PostgreSQL (managed database)
-├── Self-hosted Temporal (via Helm)
+├── Temporal Cloud (managed workflow orchestration)
 └── Workers (Temporal client)
 ```
 
@@ -83,8 +83,27 @@ api.torale.ai (API - FastAPI)
 1. **Frontend**: React SPA served by nginx (Spot pods, auto-scaling)
 2. **API**: FastAPI with Cloud SQL Proxy sidecar + init container for migrations
 3. **Workers**: Temporal workers with Cloud SQL Proxy sidecar
-4. **Temporal**: Self-hosted Temporal server + UI (via official Helm charts)
+4. **Temporal**: Temporal Cloud (managed service) for production
 5. **Database**: Cloud SQL PostgreSQL 16 (managed, zonal for cost)
+
+### Temporal Deployment
+
+**Production uses Temporal Cloud** (managed service):
+- High availability, multi-region
+- No in-cluster Temporal deployment needed
+- Reduces cluster resource costs
+- Professional support and monitoring
+
+**Configuration**:
+- Set `TEMPORAL_HOST` to your Temporal Cloud endpoint (e.g., `your-namespace.tmprl.cloud:7233`)
+- Set `TEMPORAL_NAMESPACE` to your Temporal Cloud namespace
+- These are configured in Kubernetes secrets (see [Create Kubernetes Secrets](#3-create-kubernetes-secrets))
+
+**Self-hosted option** (for development/alternative):
+- Helmfile includes commented-out Temporal stack (lines 18-111 in `helmfile.yaml`)
+- Uncomment to deploy self-hosted Temporal in-cluster
+- Useful for: airgapped environments, custom requirements, or cost optimization at scale
+- Local development uses self-hosted Temporal via docker-compose
 
 ### Cost Optimization
 
