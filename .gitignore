@@ -1,47 +1,3 @@
-.vscode/
-
-# Dependencies
-node_modules/
-.pnp/
-.pnp.js
-
-# Testing
-coverage/
-
-# Next.js
-build/
-dist/
-
-# Misc
-.DS_Store
-*.pem
-
-# Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Local env files
-.env*.local
-.env
-
-# Vercel
-.vercel
-
-# Supabase
-supabase/.temp/
-supabase/.branches/
-
-# Database file (if used locally and not intended for commit)
-ambi_alert.db
-
-!frontend/src/lib/supabaseClient.ts
-
-# other stuff
-.mcp.json
-.env
-.env*
-
 # Python
 __pycache__/
 *.py[cod]
@@ -54,6 +10,7 @@ dist/
 downloads/
 eggs/
 .eggs/
+lib/
 lib64/
 parts/
 sdist/
@@ -70,19 +27,41 @@ ENV/
 env/
 .venv
 
+# UV
+.venv/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
 # IDE
+.vscode/
 .idea/
 *.swp
 *.swo
 *~
+.DS_Store
 
 # Testing
 .coverage
-.pytest_cache/
 htmlcov/
+.pytest_cache/
+.tox/
 
-# Logs
+# Docker
+docker-compose.override.yml
+
+# Temporal
+temporal-data/
+
+# Supabase
+supabase/.temp/
+supabase/functions/.env
+
+# Application
+.torale/
 *.log
-
-# uv
-uv.lock
+# Kubernetes / Helm
+helm/torale/secrets/*.yaml
+.cloud-sql-info

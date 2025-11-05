@@ -1,189 +1,490 @@
-# CLAUDE.md
+# CLAUDE.md - Torale Project Context
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Project Overview
+Torale is a **grounded search monitoring platform** for AI-powered conditional automation. Users create monitoring tasks that watch for specific conditions using Google Search + LLM analysis, then notify when conditions are met.
 
-## Commands
+**Use Cases:**
+- "Tell me when the next iPhone release date is announced"
+- "Notify me when swimming pool memberships open for summer"
+- "Alert me when PS5 is back in stock at Best Buy"
+- "Let me know when GPT-5 launch date is confirmed"
 
-### Backend (Python/FastAPI)
-```bash
-# Development
-cd backend
-uv run python -m uvicorn app.main:app --reload --port 8000
+**Domain**: torale.ai
+**Current Status**: MVP implementation (grounded search monitoring)
+**MVP Goal**: Automated web monitoring with intelligent condition evaluation
+**Future Vision**: Full IFTTT-style platform with multi-step workflows and external integrations
 
-# Testing
-uv run pytest
-uv run pytest --cov=app --cov-report=term-missing
+## Architecture
 
-# Linting and Formatting
-uv run ruff check .
-uv run ruff format .
-uv run black .
-uv run mypy .
+### Tech Stack
+- **Backend**: Python FastAPI
+- **Frontend**: React 18 + TypeScript + Vite
+- **Database**: Cloud SQL PostgreSQL 16 (managed)
+- **Authentication**: Clerk (OAuth + Email/Password with Google & GitHub)
+- **Scheduling**: Temporal workflows with cron schedules
+- **Infrastructure**: GKE Autopilot (ClusterKit) + Cloud Build + Helm
+- **AI**: Google Gemini with grounded search (primary), OpenAI/Anthropic (fallback)
+- **Search**: Google Search API via Gemini grounding
+- **Notifications**: In-app (database-stored), future: NotificationAPI
+- **CLI**: Python typer with API key authentication
+- **Package Management**: UV (backend), npm (frontend)
+- **Local Development**: Docker Compose (PostgreSQL + Temporal + API + Workers)
+
+### System Design
+```
+User ──► Frontend (torale.ai)
+              ↓
+         API (api.torale.ai) ──► Cloud SQL PostgreSQL
+              ↓                   (Auth + DB + State)
+         Temporal (GKE self-hosted)
+              ↓
+         Workers ──► Gemini + Google Search
+              └──► In-app Notifications
+                   State comparison & condition evaluation
 ```
 
-### Frontend (TypeScript/Next.js)
-```bash
-# Development
-cd frontend
-npm run dev
+### Core Components
+1. **API Service**: FastAPI app handling task CRUD operations and notifications endpoint
+2. **Workers**: Temporal workers executing scheduled monitoring tasks
+3. **Executors**: Grounded search executor with condition evaluation
+4. **CLI**: Command-line interface for creating and managing monitoring tasks
+5. **State Tracker**: Compares current search results with historical state to detect changes
 
-# Build and Production
-npm run build
-npm run start
+## Deployment Architecture
 
-# Quality Checks
-npm run lint
-npm run type-check
-npm run test
-npm run coverage
+### Production (GKE ClusterKit)
+- **Cluster**: GKE Autopilot (clusterkit) in us-central1
+- **Cost Optimization**: Spot pods (60-91% savings)
+- **Database**: Cloud SQL PostgreSQL (managed, zonal for cost)
+- **Orchestration**: Helm + Helmfile
+- **Temporal**: Self-hosted via official Helm charts (can switch to Temporal Cloud via env var)
+- **Ingress**: GCE Load Balancer + GKE Managed Certificates (auto SSL)
+- **Domains**: api.torale.ai (API), torale.ai (Frontend)
+
+### Components
+1. **API Deployment**: FastAPI with Cloud SQL Proxy sidecar + init container for migrations
+2. **Worker Deployment**: Temporal workers with Cloud SQL Proxy sidecar
+3. **Frontend Deployment**: nginx serving React SPA (multi-stage Docker build)
+4. **Temporal Stack**: 3 Helm releases (temporal, admin-tools, UI)
+5. **HPA**: Auto-scale API/Workers based on CPU (min 2, max 10 replicas)
+
+## Project Structure
+```
+torale/
+├── backend/               # Backend services
+│   ├── src/torale/
+│   │   ├── api/          # FastAPI app
+│   │   ├── workers/      # Temporal workers
+│   │   ├── executors/    # Task executors
+│   │   ├── cli/          # CLI commands
+│   │   └── core/         # Shared utilities
+│   ├── alembic/          # Database migrations
+│   ├── tests/            # Unit/integration tests
+│   ├── scripts/          # Test & utility scripts
+│   ├── pyproject.toml
+│   ├── alembic.ini
+│   └── Dockerfile
+├── frontend/             # React + TypeScript + Vite
+│   ├── src/              # React components
+│   ├── Dockerfile        # Multi-stage build
+│   └── nginx.conf        # nginx config
+├── helm/                 # Kubernetes Helm charts
+│   └── torale/          # Main app chart
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/
+├── scripts/              # Setup and management scripts
+│   ├── k8s-setup-cloudsql.sh
+│   ├── k8s-create-secrets.sh
+│   └── k8s-check-status.sh
+├── docs/                 # Documentation
+│   ├── TEST_TEMPORAL.md
+│   └── k8s-deployment.md # K8s deployment guide
+├── helmfile.yaml         # Multi-chart orchestration
+├── justfile              # Task runner (just dev, just test, etc.)
+├── docker-compose.yml    # Local development
+├── cloudbuild.yaml       # Cloud Build config (GKE deployment)
+├── deploy.sh             # Legacy Cloud Run deployment
+├── .env / .env.example
+├── CLAUDE.md
+└── README.md
 ```
 
-### Full Stack Development
-```bash
-# From project root - starts main backend + discovery service
-./start.sh
+## Database Schema
+```sql
+-- Clerk-authenticated users
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL UNIQUE,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- API keys for CLI authentication
+CREATE TABLE api_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  key_prefix TEXT NOT NULL,  -- Display prefix like "sk_...abc123"
+  key_hash TEXT NOT NULL UNIQUE,  -- SHA256 hash of actual key
+  name TEXT NOT NULL,  -- User-defined name like "CLI Key"
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  last_used_at TIMESTAMP WITH TIME ZONE,
+  is_active BOOLEAN NOT NULL DEFAULT true
+);
+
+-- Monitoring tasks
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  schedule TEXT NOT NULL, -- cron expression
+  executor_type TEXT NOT NULL DEFAULT 'llm_grounded_search',
+  config JSONB NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+
+  -- Grounded search monitoring fields
+  search_query TEXT,  -- "When is next iPhone release?"
+  condition_description TEXT,  -- "A specific date has been announced"
+  notify_behavior TEXT DEFAULT 'once',  -- 'once', 'always', 'track_state'
+  condition_met BOOLEAN DEFAULT false,
+  last_known_state JSONB,  -- Previous search results for comparison
+  last_notified_at TIMESTAMP WITH TIME ZONE,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE task_executions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID REFERENCES tasks(id),
+  status TEXT NOT NULL, -- 'pending', 'running', 'success', 'failed'
+  started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  completed_at TIMESTAMP WITH TIME ZONE,
+  result JSONB,
+  error_message TEXT,
+
+  -- Grounded search execution fields
+  condition_met BOOLEAN,  -- Was trigger condition met?
+  change_summary TEXT,  -- What changed from last execution?
+  grounding_sources JSONB,  -- Array of source URLs with metadata
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 ```
 
-### Discovery Service (Microservice)
-```bash
-# Development
-cd discovery-service
-uv run python -m uvicorn main:app --reload --port 8001
+## Executor Architecture
 
-# Testing
-uv run pytest
-uv run pytest --cov=. --cov-report=term-missing
+### Key Design Principle
+The executor system uses grounded search to monitor web information and evaluate conditions. The MVP uses `llm_grounded_search` executor which combines Google Search with Gemini's LLM to intelligently detect when monitored conditions are met.
 
-# Linting and Formatting
-uv run ruff check .
-uv run ruff format .
+### Executor Interface
+```python
+class TaskExecutor(ABC):
+    @abstractmethod
+    async def execute(self, config: dict) -> dict:
+        """
+        Execute task and return results with grounding sources
+        """
+        pass
 
-# Docker build
-docker build -t discovery-service .
+    @abstractmethod
+    def validate_config(self, config: dict) -> bool:
+        """
+        Validate task configuration
+        """
+        pass
 ```
 
-### Content Monitoring Service (Microservice)
-```bash
-# Development
-cd content-monitoring-service
-uv run python -m uvicorn main:app --reload --port 8002
+### Grounded Search Executor
+The `GroundedSearchExecutor` performs:
+1. **Grounded Search**: Queries Google Search via Gemini's grounding feature
+2. **Answer Extraction**: LLM synthesizes answer from search results
+3. **Condition Evaluation**: LLM determines if trigger condition is met
+4. **State Comparison**: Compares with `last_known_state` to detect changes
+5. **Source Attribution**: Extracts and stores grounding citations
 
-# Testing
-uv run pytest
-uv run pytest --cov=. --cov-report=term-missing
-
-# Linting and Formatting
-uv run ruff check .
-uv run ruff format .
-
-# Docker build
-docker build -t content-monitoring-service .
+### Task Configuration Format
+```json
+{
+  "name": "iPhone Release Monitor",
+  "schedule": "0 9 * * *",
+  "executor_type": "llm_grounded_search",
+  "search_query": "When is the next iPhone being released?",
+  "condition_description": "A specific release date or month has been officially announced",
+  "notify_behavior": "once",
+  "config": {
+    "model": "gemini-2.0-flash-exp",
+    "search_provider": "google"
+  }
+}
 ```
 
-### Notification Service (Microservice)
-```bash
-# Development
-cd notification-service
-uv run python -m uvicorn main:app --reload --port 8003
+## Authentication Architecture
 
-# Testing
-uv run pytest
-uv run pytest --cov=. --cov-report=term-missing
+### Clerk Integration
+Torale uses **Clerk** for authentication, providing OAuth (Google, GitHub) and email/password login with a pre-built UI and secure session management.
 
-# Linting and Formatting
-uv run ruff check .
-uv run ruff format .
+#### Backend Authentication
+- **Session Verification**: `clerk_auth.py` verifies Clerk JWT tokens on every API request
+- **User Sync**: `/auth/sync-user` endpoint creates/updates local user records on first login
+- **User Model**: Simplified to store only `clerk_user_id` and `email` (no passwords)
+- **API Key Auth**: Separate authentication system for CLI access via hashed API keys
 
-# Docker build
-docker build -t notification-service .
+#### Frontend Authentication
+- **ClerkProvider**: Wraps entire app in `main.tsx` with publishable key
+- **Sign In/Up**: Clerk's pre-built `<SignIn />` and `<SignUp />` components at `/sign-in` and `/sign-up`
+- **Protected Routes**: Use Clerk's `useAuth()` hook to check authentication status
+- **User Info**: Access via Clerk's `useUser()` hook and `<UserButton />` component
+- **API Calls**: Clerk tokens automatically injected via `api.setTokenGetter(getToken)`
 
-# Run all microservices
-docker-compose up
-# or
-./start-microservices.sh
+#### CLI Authentication
+- **API Keys**: Users generate API keys in web dashboard (`/auth/api-keys`)
+- **Key Format**: `sk_[32-char random string]` with SHA256 hash stored in database
+- **Usage**: CLI accepts `--api-key` flag or reads from config file
+- **Security**: Keys are hashed, never stored in plain text, can be revoked
+
+### Authentication Flow
+
+1. **Web App Login**:
+   - User navigates to `/sign-in` or `/sign-up`
+   - Clerk handles OAuth or email/password authentication
+   - Clerk redirects to dashboard on success
+   - Frontend calls `/auth/sync-user` to create/update local user record
+   - Clerk token automatically included in all API requests
+
+2. **CLI Authentication**:
+   - User generates API key in web dashboard
+   - Key displayed once, user saves it securely
+   - CLI sends API key in Authorization header
+   - Backend verifies key hash and authorizes request
+
+### Security Benefits
+- No passwords stored locally (Clerk handles all password management)
+- OAuth reduces password fatigue and improves security
+- Clerk handles 2FA, email verification, password reset
+- API keys provide secure CLI access without exposing user credentials
+- Tokens automatically expire and refresh
+
+## API Design
+
+### Authentication Endpoints
+```
+POST   /auth/sync-user                  # Sync Clerk user to database (auto-called on login)
+GET    /auth/me                         # Get current user info
+POST   /auth/api-keys                   # Generate new API key for CLI
+GET    /auth/api-keys                   # List user's API keys
+DELETE /auth/api-keys/{id}              # Revoke API key
 ```
 
-## Architecture Overview
+### REST Endpoints
+```
+POST   /api/v1/tasks                    # Create monitoring task
+GET    /api/v1/tasks                    # List tasks
+GET    /api/v1/tasks/{id}               # Get task details
+PUT    /api/v1/tasks/{id}               # Update task (query, condition, schedule)
+DELETE /api/v1/tasks/{id}               # Delete task + Temporal schedule
+POST   /api/v1/tasks/{id}/execute       # Manual execution (test query)
+GET    /api/v1/tasks/{id}/executions    # Full execution history
+GET    /api/v1/tasks/{id}/notifications # Filtered: condition_met = true only
+```
 
-### Selective Microservices Architecture
-Torale uses a selective microservice approach with **four independent services**:
+### CLI Commands
+```bash
+# Authentication
+torale auth set-api-key              # Configure API key from web dashboard
+torale auth status                   # Check authentication status
+torale auth logout                   # Remove credentials
 
-**Microservices:**
-- **Discovery Service** (`:8001`): Natural language → URL discovery using Perplexity AI
-- **Content Monitoring Service** (`:8002`): Web scraping, embeddings, and change detection
-- **Notification Service** (`:8003`): Email delivery, template management, multi-channel alerts
+# Task management
+torale task create \
+  --query "When is the next iPhone release?" \
+  --condition "A specific date has been announced" \
+  --schedule "0 9 * * *" \
+  --notify-behavior once
 
-**Main Backend (`:8000`):**
-- **API Gateway** (`/api/endpoints/`): Orchestrates microservices and handles CRUD operations
-- **User Management**: Authentication, authorization, and user data
-- **Service Coordination**: Routes requests to appropriate microservices
-- **Database Operations**: Direct Supabase operations for user-related data
+torale task list [--active]
+torale task get <task-id>
+torale task update <task-id> [--name NAME] [--schedule CRON] [--active/--inactive]
+torale task delete <task-id> [--yes]
+torale task execute <task-id>       # Test search query manually
+torale task logs <task-id>          # Full execution history
 
-**Frontend (`:3000`):**
-- **Next.js 15 App**: React 19 with TypeScript and Tailwind CSS
-- **Server Components**: Default for pages, client components when needed
-- **Real-time Updates**: Supabase Realtime subscriptions for live alerts
+# Local development without auth
+export TORALE_NOAUTH=1
+torale task list
+```
 
-**Architecture Benefits:**
-- ✅ **Service Isolation**: Each service can fail independently
-- ✅ **Independent Scaling**: Scale AI processing, content monitoring, and notifications separately
-- ✅ **Technology Flexibility**: Each service optimized for its specific workload
-- ✅ **Development Velocity**: Teams can work on services independently
-- ✅ **Resource Optimization**: Right-size compute/memory per service type
+## Development Conventions
 
-Key design patterns:
-- Async/await throughout for I/O operations
-- HTTP REST for service-to-service communication
-- Shared database with service-specific table ownership
-- Circuit breaker pattern for service resilience
-- Structured logging with correlation IDs
+### Code Style
+- **Python Philosophy**: Follow the Zen of Python principles
+- **Type Checking**: Use Astral's `ty` instead of mypy
+- **Linting**: Use `ruff` but be practical - ignore rules when there's good reason to violate them
+- **Naming**: Prioritize readability over brevity
 
-### Frontend Architecture
-The frontend uses Next.js 15 with App Router and follows modern React patterns:
+### Git Workflow
+- **Commits**: Keep changes atomic and focused
+- **Commit Messages**: Follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
+  - `feat: add task scheduling API`
+  - `fix: handle temporal connection timeout`
+  - `docs: update CLI usage examples`
 
-- **App Router** (`/app/`): File-based routing with layouts
-- **Server Components**: Default for pages, with client components where needed
-- **State Management**: 
-  - TanStack Query for server state
-  - React Hook Form + Zod for forms
-  - Context for auth state
-- **API Integration**: Axios instance with Supabase JWT interceptor
-- **UI Components**: Tailwind CSS with responsive design
+### Testing
+- **Framework**: pytest for all Python testing
+- **Structure**: Mirror source structure in tests/
+- **Coverage**: Focus on critical paths, don't overtest
 
-Key flows:
-1. **Authentication**: Supabase Auth with middleware protection
-2. **Source Discovery**: Natural language → API → Monitorable URLs
-3. **Monitoring**: Create/edit sources → Background monitoring → Change alerts
-4. **Alerts**: List/detail views with acknowledgment functionality
+### Error Handling
+- **Philosophy**: Don't overindex on error handling
+- **Strategy**: Allow errors to surface to their natural point
+- **Implementation**: Handle errors as and when required, not preemptively
 
-### Database Schema
-Uses Supabase (PostgreSQL) with these core tables:
-- `user_queries`: Natural language queries from users
-- `monitored_sources`: URLs being monitored with intervals
-- `scraped_content`: Raw content from sources
-- `content_embeddings`: Vector embeddings for semantic comparison
-- `change_alerts`: Detected changes requiring user attention
+### Deployment
+- **Environments**: Local → Production (no staging for MVP)
+- **Principle**: Keep deployment simple, add complexity only when needed
 
-### Development Principles (from .cursorrules)
-- **KISS (Keep It Simple, Stupid)**: Prefer simple, clear solutions
-- **Type Safety**: TypeScript strict mode, Python type hints everywhere
-- **Small Functions**: Single responsibility principle
-- **Error Handling**: Meaningful errors, proper HTTP status codes
-- **Testing**: High coverage on critical paths
-- **Security**: Input validation, sanitization, proper auth
+## Design Principles
 
-### Key Dependencies
-- **Backend**: FastAPI, Pydantic, Supabase, OpenAI, Perplexity, BeautifulSoup4
-- **Notifications**: NotificationAPI Python SDK for multi-channel notifications
-- **Frontend**: Next.js 15, React 19, Supabase Auth, TanStack Query, Tailwind CSS
-- **Development**: uv (Python), pytest, ruff, black, ESLint, Vitest
+### Core Philosophy
+1. **KISS (Keep It Simple, Stupid)**: Prefer simple solutions over complex ones
+2. **YAGNI (You Aren't Gonna Need It)**: Avoid overengineering, build only what's needed now
+3. **Readable Code**: Keep files light, create abstractions when they improve readability
+4. **Future-Aware Design**: Keep post-MVP requirements in sight, design interfaces that won't create rework later - but don't build those features now
+
+### Practical Application
+- Design clean interfaces (like the executor pattern) that support future extensions without current complexity
+- Prefer composition over inheritance
+- Write code that's easy to understand and modify
+- Make decisions that minimize future technical debt without over-engineering present solutions
+
+## Development Workflow
+
+### Quick Start with Justfile
+```bash
+# List all available commands
+just
+
+# Local Development
+just dev           # Docker Compose
+just test          # Run tests
+just migrate       # Database migrations
+just logs          # View logs
+
+# Production Deployment (GKE)
+just k8s-setup     # One-time setup
+just k8s-deploy-all # Deploy to cluster
+just k8s-status    # Check status
+just k8s-logs-api  # View logs
+```
+
+### Local Development Setup
+```bash
+# Install dependencies
+cd backend && uv sync
+
+# Start all services (recommended)
+just dev
+
+# Or start services individually
+docker compose up -d postgres temporal
+cd backend && uv run uvicorn torale.api.main:app --reload
+cd backend && uv run python -m torale.workers
+```
 
 ### Environment Variables
-Backend `.env`:
-- `NOTIFICATIONAPI_CLIENT_ID` / `NOTIFICATIONAPI_CLIENT_SECRET`
-- `DATABASE_URL`
-- AI model API keys
+```bash
+# Database
+DATABASE_URL=postgresql://torale:torale@localhost:5432/torale
 
-Frontend `.env.local`:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+# Clerk Authentication
+CLERK_SECRET_KEY=sk_test_...                # Backend: Verify Clerk tokens
+CLERK_PUBLISHABLE_KEY=pk_test_...           # Backend: Initialize Clerk client
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...      # Frontend: Initialize ClerkProvider
+VITE_API_BASE_URL=http://localhost:8000     # Frontend: API endpoint
+
+# Temporal
+TEMPORAL_HOST=localhost:7233
+TEMPORAL_NAMESPACE=default
+
+# AI APIs (Gemini required, others optional)
+GOOGLE_API_KEY=your-gemini-api-key       # Required for grounded search
+OPENAI_API_KEY=                           # Optional fallback
+ANTHROPIC_API_KEY=                        # Optional fallback
+
+# Notifications (future)
+NOTIFICATION_API_KEY=
+
+# Deployment
+GCP_PROJECT_ID=
+CLOUD_RUN_REGION=us-central1
+```
+
+## Implementation Status
+
+### ✅ Completed
+- **Infrastructure**: PostgreSQL + Temporal + Docker Compose setup
+- **Authentication**: Clerk (OAuth + email/password) with API key support for CLI
+- **Core API**: Task CRUD with Temporal schedule management
+- **Temporal Integration**: Automatic cron-based execution
+- **Worker Framework**: Activities and workflows for task execution
+- **Database Migrations**: Alembic migration system
+- **Grounded Search**: Google Search via Gemini with condition evaluation
+- **State Tracking**: last_known_state comparison and change detection
+- **Notification System**: In-app notifications endpoint
+- **CLI**: Full CLI with API key authentication and no-auth dev mode
+- **Frontend**: React dashboard with Clerk authentication
+
+### 🚧 In Progress
+- **Enhanced UI**: Grounding source display and historical state comparison
+- **Testing**: Additional E2E tests for monitoring use cases
+
+### 📋 Future Work
+- **External Notifications**: NotificationAPI integration for email/SMS
+- **Browser Automation**: Monitor dynamic websites (Playwright integration)
+- **Multi-step Workflows**: Chain multiple conditions together
+- **Production Features**: Rate limiting, usage analytics, team collaboration
+- **Observability**: Enhanced monitoring, alerting, and logging
+
+## Security Requirements
+- All API endpoints require authentication (Clerk JWT or API key)
+- User isolation enforced via application-level WHERE clauses
+- API keys (Google, OpenAI, Anthropic) stored securely in environment
+- CLI API keys hashed with SHA256, never stored in plain text
+- Rate limiting on API endpoints
+- Input validation on all user data
+- SQL injection prevention via parameterized queries (asyncpg)
+
+## MVP Success Criteria
+✅ Users can create monitoring tasks via API/CLI
+✅ Tasks execute automatically on cron schedules (Temporal)
+✅ Grounded search queries Google Search via Gemini
+✅ LLM intelligently evaluates if conditions are met
+✅ State tracking prevents duplicate notifications
+✅ In-app notifications viewable via API
+✅ Configurable notify behavior (once/always/track_state)
+✅ System handles errors gracefully with retries
+
+## Post-MVP Roadmap
+
+### Enhanced Monitoring Capabilities
+- **Browser Automation**: Monitor dynamic websites (Playwright integration)
+- **Price Tracking**: Track price changes with historical charts
+- **Availability Monitoring**: Stock alerts, event tickets, reservations
+- **Multi-source Aggregation**: Combine results from multiple searches
+- **Custom Scrapers**: User-defined extraction rules for specific websites
+
+### Notification Enhancements
+- **External Channels**: Email, SMS, Slack, Discord via NotificationAPI
+- **Rich Notifications**: Include images, tables, charts
+- **Digest Mode**: Bundle multiple notifications into daily/weekly summaries
+- **Notification Templates**: User-customizable notification formats
+
+### Advanced Features
+- **Multi-step Workflows**: "When X happens, then check Y, then notify"
+- **Conditional Chains**: Complex logic with AND/OR conditions
+- **Team Collaboration**: Share monitoring tasks across organizations
+- **Template Marketplace**: Pre-built monitoring templates
+- **API Integrations**: Monitor APIs, webhooks, RSS feeds
+- **Historical Analysis**: Trend detection, pattern recognition

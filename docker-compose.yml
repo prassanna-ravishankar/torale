@@ -1,92 +1,96 @@
 services:
-  discovery-service:
-    build: ./discovery-service
+  temporal:
+    image: temporalio/auto-setup:latest
     ports:
-      - "8001:8001"
+      - "7233:7233"
+      - "8233:8233"
     environment:
-      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - AI_PROVIDER=perplexity
-      - LOG_LEVEL=INFO
-      - CORS_ORIGINS=http://localhost:8000,http://localhost:3000
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=temporal-postgres
+    depends_on:
+      - temporal-postgres
 
-  content-monitoring-service:
-    build: ./content-monitoring-service
+  temporal-postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+    volumes:
+      - temporal-postgres-data:/var/lib/postgresql/data
+
+  temporal-ui:
+    image: temporalio/ui:latest
     ports:
-      - "8002:8002"
+      - "8080:8080"
     environment:
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
-      - DEFAULT_SIMILARITY_THRESHOLD=0.85
-      - DEBUG=false
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/api/v1/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    depends_on:
+      - temporal
 
-  notification-service:
-    build: ./notification-service
+  postgres:
+    image: postgres:16
     ports:
-      - "8003:8003"
+      - "5432:5432"
     environment:
-      - NOTIFICATIONAPI_CLIENT_ID=${NOTIFICATIONAPI_CLIENT_ID}
-      - NOTIFICATIONAPI_CLIENT_SECRET=${NOTIFICATIONAPI_CLIENT_SECRET}
-      - LOG_LEVEL=INFO
+      POSTGRES_USER: torale
+      POSTGRES_PASSWORD: torale
+      POSTGRES_DB: torale
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD-SHELL", "pg_isready -U torale"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  backend:
+  api:
     build: ./backend
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-      - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET}
-      - NOTIFICATIONAPI_CLIENT_ID=${NOTIFICATIONAPI_CLIENT_ID}
-      - NOTIFICATIONAPI_CLIENT_SECRET=${NOTIFICATIONAPI_CLIENT_SECRET}
+      - DATABASE_URL=postgresql://torale:torale@postgres:5432/torale
+      - SECRET_KEY=${SECRET_KEY}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - CLERK_PUBLISHABLE_KEY=${CLERK_PUBLISHABLE_KEY}
+      - TEMPORAL_HOST=temporal:7233
+      - TEMPORAL_NAMESPACE=default
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
-      - DISCOVERY_SERVICE_URL=http://discovery-service:8001
-      - CONTENT_MONITORING_SERVICE_URL=http://content-monitoring-service:8002
-      - NOTIFICATION_SERVICE_URL=http://notification-service:8003
-# Temporarily disabled to use hardcoded CORS origins
-      # - CORS_ORIGINS=${CORS_ORIGINS}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - NOTIFICATION_API_KEY=${NOTIFICATION_API_KEY}
     depends_on:
-      discovery-service:
+      postgres:
         condition: service_healthy
-      content-monitoring-service:
-        condition: service_healthy
-      notification-service:
-        condition: service_healthy
+    entrypoint: ["/app/docker-entrypoint.sh"]
+    command: ["uvicorn", "torale.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
     volumes:
-      - ./backend:/app
+      - ./backend/src:/app/src
 
-  frontend:
-    build:
-      context: ./frontend
-      args:
-        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-        - NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:8000/api/v1
-    ports:
-      - "3000:3000"
+  workers:
+    build: ./backend
     environment:
-      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-      - NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:8000/api/v1
-      - NEXT_PUBLIC_SITE_URL=http://localhost:3000
+      - DATABASE_URL=postgresql://torale:torale@postgres:5432/torale
+      - SECRET_KEY=${SECRET_KEY}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - CLERK_PUBLISHABLE_KEY=${CLERK_PUBLISHABLE_KEY}
+      - TEMPORAL_HOST=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - NOTIFICATION_API_KEY=${NOTIFICATION_API_KEY}
     depends_on:
-      - backend
+      - postgres
+      - temporal
+      - api
+    command: ["python", "-m", "torale.workers"]
+    volumes:
+      - ./backend/src:/app/src
+
+volumes:
+  temporal-postgres-data:
+  postgres-data:

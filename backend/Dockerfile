@@ -1,35 +1,38 @@
-FROM python:3.12-slim
+FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
 
 WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    curl \
+    gcc \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv
-RUN pip install uv
+# Enable bytecode compilation
+ENV UV_COMPILE_BYTECODE=1
 
-# Copy dependency files
-COPY pyproject.toml uv.lock README.md ./
+# Copy from the cache instead of linking since it's a mounted volume
+ENV UV_LINK_MODE=copy
 
-# Install dependencies
-RUN uv sync --frozen
+# Install the project's dependencies using the lockfile and settings
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project --no-dev
 
-# Copy source code
-COPY . .
+# Copy source code and install project
+COPY . /app
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
-# Create non-root user
-RUN useradd --create-home --shell /bin/bash app \
-    && chown -R app:app /app
-USER app
+# Make entrypoint executable
+RUN chmod +x docker-entrypoint.sh
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# Place executables in the environment at the front of the path
+ENV PATH="/app/.venv/bin:$PATH"
 
-# Expose port
-EXPOSE 8000
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
 
-# Run the application
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command (can be overridden)
+CMD ["uvicorn", "torale.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

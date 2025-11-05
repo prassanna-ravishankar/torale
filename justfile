@@ -1,264 +1,317 @@
-# Torale Project Management
-# Run `just` or `just --list` to see available commands
+# Torale Task Runner
+# Usage: just <command>
+# Run 'just --list' to see all available commands
 
-# Default recipe - show help
+# Default recipe (runs when you just type 'just')
 default:
     @just --list
 
-# =============================================================================
-# Docker Compose Commands
-# =============================================================================
+# === Development ===
 
-# Build and start all services with Docker Compose
-up: check-env
-    docker compose up --build
-
-# Build and start all services without frontend (for quick backend testing)
-up-backend: check-env
-    docker compose up --build discovery-service content-monitoring-service notification-service backend
+# Start all services (API + Workers + Temporal + PostgreSQL)
+dev:
+    docker compose up
 
 # Start all services in background
-up-detached: check-env
-    docker compose up --build -d
+dev-bg:
+    docker compose up -d
 
-# Stop all services
-down:
-    docker compose down
+# Start only API service
+dev-api:
+    docker compose up api
 
-# Stop all services and remove volumes
-down-clean:
-    docker compose down -v
+# Start only workers service
+dev-workers:
+    docker compose up workers
+
+# Start frontend development server
+dev-frontend:
+    cd frontend && npm run dev
+
+# Start all services + frontend
+dev-all:
+    #!/usr/bin/env bash
+    docker compose up -d
+    cd frontend && npm run dev
 
 # View logs for all services
 logs:
     docker compose logs -f
 
-# View logs for a specific service
+# View logs for specific service (e.g., just logs-service api)
 logs-service service:
     docker compose logs -f {{service}}
 
-# Rebuild specific service
-rebuild service:
-    docker compose build {{service}}
+# Restart all services
+restart:
+    docker compose restart
 
-# =============================================================================
-# Development Commands
-# =============================================================================
+# Restart specific service
+restart-service service:
+    docker compose restart {{service}}
 
-# Start all microservices for development
-dev-services: check-env
-    ./start-microservices.sh
+# === Testing ===
 
-# Start only frontend for development
-dev-frontend:
-    cd frontend && npm run dev
+# Run all tests (e2e + unit)
+test: test-e2e test-unit
 
-# Start only backend for development
-dev-backend: check-env
-    cd backend && uv run python -m uvicorn app.main:app --reload --port 8000
+# Run end-to-end test (manual execution via Temporal)
+test-e2e:
+    @echo "Running Temporal E2E test..."
+    ./backend/scripts/test_temporal_e2e.sh
 
-# =============================================================================
-# Setup Commands
-# =============================================================================
+# Run schedule test (automatic execution)
+test-schedule:
+    @echo "Running schedule test..."
+    ./backend/scripts/test_schedule.sh
 
-# Setup project from scratch
-setup: install-deps check-env
-    @echo "✅ Project setup complete!"
-    @echo "Next steps:"
-    @echo "1. Configure your .env file with API keys"
-    @echo "2. Run 'just up' to start all services"
+# Run grounded search test
+test-grounded:
+    @echo "Running grounded search test..."
+    ./backend/scripts/test_grounded_search.sh
 
-# Install dependencies for all services
-install-deps:
-    @echo "Installing dependencies..."
-    cd backend && uv sync
-    cd discovery-service && uv sync
-    cd content-monitoring-service && uv sync
-    cd notification-service && uv sync
-    cd frontend && npm install
+# Run unit tests with pytest
+test-unit:
+    @echo "Running unit tests..."
+    cd backend && uv run --with pytest --with pytest-asyncio --with pytest-cov pytest
 
-# Generate lockfiles for all Python services
-lock:
-    @echo "Generating lockfiles..."
-    cd backend && uv lock
-    cd discovery-service && uv lock
-    cd content-monitoring-service && uv lock
-    cd notification-service && uv lock
+# Run all e2e tests
+test-all-e2e: test-e2e test-schedule test-grounded
 
-# Fix Docker build issues (regenerate lockfiles and build)
-fix-docker: lock
-    @echo "Fixing Docker build issues..."
+# === Docker ===
+
+# Start all services in background (alias for dev-bg)
+up:
+    docker compose up -d
+
+# Stop all services
+down:
+    docker compose down
+
+# Stop and remove volumes
+down-v:
+    docker compose down -v
+
+# Build/rebuild all services
+build:
+    docker compose build
+
+# Build without cache
+build-clean:
     docker compose build --no-cache
 
-# =============================================================================
-# Testing Commands
-# =============================================================================
+# Build frontend static files (npm build)
+build-frontend-static:
+    cd frontend && npm run build
 
-# Run all tests
-test: test-backend test-frontend
+# Preview frontend production build
+preview-frontend:
+    cd frontend && npm run preview
 
-# Run backend tests
-test-backend:
-    cd backend && uv run pytest
+# Show service status
+ps:
+    docker compose ps
 
-# Run frontend tests
-test-frontend:
-    cd frontend && npm test
+# === Database ===
 
-# Run tests with coverage
-test-coverage:
-    cd backend && uv run pytest --cov=app --cov-report=term-missing
-    cd frontend && npm run coverage
-
-# =============================================================================
-# Code Quality Commands
-# =============================================================================
-
-# Format all code
-format:
-    @echo "Formatting Python code..."
-    cd backend && uv run ruff format .
-    cd discovery-service && uv run ruff format .
-    cd content-monitoring-service && uv run ruff format .
-    cd notification-service && uv run ruff format .
-    @echo "Formatting frontend code..."
-    cd frontend && npm run format
-
-# Lint all code
-lint:
-    @echo "Linting Python code..."
-    cd backend && uv run ruff check .
-    cd discovery-service && uv run ruff check .
-    cd content-monitoring-service && uv run ruff check .
-    cd notification-service && uv run ruff check .
-    @echo "Linting frontend code..."
-    cd frontend && npm run lint
-
-# Type check all code
-typecheck:
-    @echo "Type checking Python code..."
-    cd backend && uv run mypy .
-    cd discovery-service && uv run mypy .
-    cd content-monitoring-service && uv run mypy .
-    cd notification-service && uv run mypy .
-    @echo "Type checking frontend code..."
-    cd frontend && npm run type-check
-
-# Run all quality checks
-check: lint typecheck test
-
-# =============================================================================
-# Health Check Commands
-# =============================================================================
-
-# Check if all services are healthy
-health:
-    @echo "Checking service health..."
-    @curl -s http://localhost:8000/health | jq '.' || echo "❌ Backend unhealthy"
-    @curl -s http://localhost:8001/health | jq '.' || echo "❌ Discovery service unhealthy"
-    @curl -s http://localhost:8002/api/v1/health | jq '.' || echo "❌ Content monitoring unhealthy"
-    @curl -s http://localhost:8003/health | jq '.' || echo "❌ Notification service unhealthy"
-    @curl -s http://localhost:3000 >/dev/null && echo "✅ Frontend healthy" || echo "❌ Frontend unhealthy"
-
-# Test notification service specifically
-test-notifications:
-    ./test-notification.sh
-
-# =============================================================================
-# Database Commands
-# =============================================================================
-
-# Apply database migrations (requires supabase CLI)
+# Run database migrations
 migrate:
-    @echo "Apply migrations manually in Supabase dashboard"
-    @echo "Or use: supabase db push"
+    docker compose exec api alembic upgrade head
 
-# Generate TypeScript types from database
-generate-types:
-    @echo "Generating database types..."
-    @cd frontend && supabase gen types typescript --local > src/types/supabase.ts || echo "Run 'supabase start' first"
+# Rollback one migration
+rollback:
+    docker compose exec api alembic downgrade -1
 
-# =============================================================================
-# Environment Commands
-# =============================================================================
+# Show current migration version
+migrate-status:
+    docker compose exec api alembic current
 
-# Check if required environment variables are set
-check-env:
-    @echo "Checking environment variables..."
-    @test -f .env || (echo "❌ .env file not found. Copy from .env.example" && exit 1)
-    @grep -q "SUPABASE_URL=" .env || (echo "❌ SUPABASE_URL not set" && exit 1)
-    @grep -q "OPENAI_API_KEY=" .env || (echo "❌ OPENAI_API_KEY not set" && exit 1)
-    @grep -q "PERPLEXITY_API_KEY=" .env || (echo "❌ PERPLEXITY_API_KEY not set" && exit 1)
-    @echo "✅ Environment variables look good"
+# Show migration history
+migrate-history:
+    docker compose exec api alembic history
 
-# Copy environment template
-copy-env:
-    cp .env.example .env
-    @echo "✅ Copied .env.example to .env"
-    @echo "📝 Please edit .env with your API keys"
+# Create new migration (requires message, e.g., just migrate-new "add new field")
+migrate-new message:
+    docker compose exec api alembic revision --autogenerate -m "{{message}}"
 
-# =============================================================================
-# Cleanup Commands
-# =============================================================================
+# Connect to PostgreSQL
+psql:
+    docker compose exec postgres psql -U torale -d torale
 
-# Clean all build artifacts
+# Reset database (dangerous! drops all data)
+reset:
+    @echo "⚠️  This will drop all data. Press Ctrl+C to cancel..."
+    @sleep 3
+    docker compose down -v
+    docker compose up -d postgres
+    @sleep 2
+    docker compose exec api alembic upgrade head
+
+# === Maintenance ===
+
+# Clean up Docker resources
 clean:
-    @echo "Cleaning build artifacts..."
-    docker compose down --rmi all --volumes --remove-orphans
-    cd frontend && rm -rf .next node_modules
-    cd backend && rm -rf .venv __pycache__
-    cd discovery-service && rm -rf .venv __pycache__
-    cd content-monitoring-service && rm -rf .venv __pycache__
-    cd notification-service && rm -rf .venv __pycache__
+    docker compose down -v
+    docker system prune -f
 
-# Clean Docker system (use with caution)
-clean-docker:
-    docker system prune -af
-    docker volume prune -f
+# View API logs
+logs-api:
+    docker compose logs -f api
 
-# =============================================================================
-# Utility Commands
-# =============================================================================
+# View worker logs
+logs-workers:
+    docker compose logs -f workers
 
-# Show all service URLs
-urls:
-    @echo "🌐 Service URLs:"
-    @echo "Frontend:              http://localhost:3000"
-    @echo "Backend API:           http://localhost:8000"
-    @echo "Discovery Service:     http://localhost:8001"
-    @echo "Content Monitoring:    http://localhost:8002"
-    @echo "Notification Service:  http://localhost:8003"
+# View all logs related to temporal
+logs-temporal:
+    docker compose logs -f temporal
+
+# Shell into API container
+shell-api:
+    docker compose exec api /bin/bash
+
+# Shell into worker container
+shell-workers:
+    docker compose exec workers /bin/bash
+
+# === Linting and Formatting ===
+
+# Run ruff linter
+lint:
+    cd backend && uv run ruff check .
+
+# Run ruff formatter
+format:
+    cd backend && uv run ruff format .
+
+# Run type checker
+typecheck:
+    cd backend && uv run ty check .
+
+# Run all checks (lint + format + typecheck)
+check: lint typecheck
+
+# === Installation ===
+
+# Install backend dependencies
+install:
+    cd backend && uv sync
+
+# Install backend dependencies (dev mode)
+install-dev:
+    cd backend && uv sync --dev
+
+# Install frontend dependencies
+install-frontend:
+    cd frontend && npm install
+
+# Install all dependencies (backend + frontend)
+install-all: install install-frontend
+
+# === Deployment ===
+
+# Deploy to Google Cloud Run (legacy)
+deploy-cloud-run:
+    ./deploy.sh
+
+# Build for production
+build-prod:
+    docker build -f backend/Dockerfile -t torale-api ./backend
+
+# Build frontend production image
+build-frontend:
+    docker build -f frontend/Dockerfile -t torale-frontend ./frontend
+
+# Push images to GCR (builds with correct platform for GKE)
+k8s-push:
+    #!/usr/bin/env bash
+    set -e
+    echo "Building and pushing images to GCR with linux/amd64 platform..."
+    docker build --platform=linux/amd64 -f backend/Dockerfile -t gcr.io/baldmaninc/torale/api:latest ./backend
+    docker tag gcr.io/baldmaninc/torale/api:latest gcr.io/baldmaninc/torale/worker:latest
+    docker build --platform=linux/amd64 -f frontend/Dockerfile -t gcr.io/baldmaninc/torale/frontend:latest ./frontend
+    docker push gcr.io/baldmaninc/torale/api:latest
+    docker push gcr.io/baldmaninc/torale/worker:latest
+    docker push gcr.io/baldmaninc/torale/frontend:latest
+    echo "✓ All images built and pushed successfully!"
+
+# === Kubernetes (GKE ClusterKit) ===
+
+# Get cluster credentials
+k8s-auth:
+    gcloud container clusters get-credentials clusterkit \
+      --region us-central1 --project baldmaninc
+
+# One-time setup: Create Cloud SQL instance and IAM
+k8s-setup:
+    ./scripts/k8s-setup-cloudsql.sh
+
+# Create Kubernetes secrets from .env
+k8s-secrets:
+    ./scripts/k8s-create-secrets.sh
+
+# Deploy Temporal to cluster
+k8s-deploy-temporal:
+    helmfile sync --selector tier=temporal
+
+# Deploy Torale application
+k8s-deploy-app:
+    helmfile sync --selector tier=app
+
+# Deploy everything (Temporal + Torale)
+k8s-deploy-all:
+    helmfile sync
+
+# Check deployment status
+k8s-status:
+    ./scripts/k8s-check-status.sh
+
+# View API logs in k8s
+k8s-logs-api:
+    kubectl logs -n torale -l app.kubernetes.io/component=api -f --tail=100
+
+# View worker logs in k8s
+k8s-logs-workers:
+    kubectl logs -n torale -l app.kubernetes.io/component=worker -f --tail=100
+
+# View frontend logs in k8s
+k8s-logs-frontend:
+    kubectl logs -n torale -l app.kubernetes.io/component=frontend -f --tail=100
+
+# View Temporal logs
+k8s-logs-temporal:
+    kubectl logs -n temporal -l app.kubernetes.io/name=temporal -f --tail=100
+
+# Port-forward API to localhost:8000
+k8s-port-forward-api:
+    kubectl port-forward -n torale svc/torale-api 8000:80
+
+# Port-forward Temporal UI to localhost:8080
+k8s-port-forward-temporal:
+    kubectl port-forward -n temporal svc/temporal-ui 8080:8080
+
+# Get all pods status
+k8s-pods:
+    @echo "Torale Pods:"
+    @kubectl get pods -n torale
     @echo ""
-    @echo "📚 API Documentation:"
-    @echo "Backend:               http://localhost:8000/docs"
-    @echo "Discovery:             http://localhost:8001/docs"
-    @echo "Content Monitoring:    http://localhost:8002/docs"
-    @echo "Notifications:         http://localhost:8003/docs"
+    @echo "Temporal Pods:"
+    @kubectl get pods -n temporal
 
-# Open all service URLs in browser (macOS)
-open:
-    open http://localhost:3000
-    open http://localhost:8000/docs
-    open http://localhost:8001/docs
-    open http://localhost:8002/docs
-    open http://localhost:8003/docs
+# Restart API deployment
+k8s-restart-api:
+    kubectl rollout restart deployment/torale-api -n torale
 
-# Show project structure
-tree:
-    tree -I 'node_modules|.venv|__pycache__|.git|.next|dist|build'
+# Restart worker deployment
+k8s-restart-workers:
+    kubectl rollout restart deployment/torale-worker -n torale
 
-# =============================================================================
-# CI/CD Commands
-# =============================================================================
+# Restart frontend deployment
+k8s-restart-frontend:
+    kubectl rollout restart deployment/torale-frontend -n torale
 
-# Run CI pipeline locally
-ci: check lock lint typecheck test
-    @echo "✅ CI pipeline passed!"
-
-# Prepare for production deployment
-production-ready: ci
-    @echo "✅ Ready for production deployment"
-    @echo "Don't forget to:"
-    @echo "1. Set production environment variables"
-    @echo "2. Configure domain and SSL"
-    @echo "3. Set up monitoring and logging"
+# Delete everything (dangerous!)
+k8s-destroy:
+    @echo "⚠️  This will delete all Kubernetes resources. Press Ctrl+C to cancel..."
+    @sleep 5
+    helmfile destroy

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: torale
+description: Grounded search monitoring platform for AI-powered conditional automation
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - monitoring
+  - automation
+  - ai
+  - search
+maintainers:
+  - name: Torale Team
+home: https://torale.ai
+sources:
+  - https://github.com/yourusername/torale

@@ -1,0 +1,65 @@
+{{- if .Values.worker.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "torale.fullname" . }}-worker
+  labels:
+    {{- include "torale.worker.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.worker.autoscaling.enabled }}
+  replicas: {{ .Values.worker.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "torale.worker.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "torale.worker.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "torale.serviceAccountName" . }}
+      {{- with .Values.worker.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      containers:
+      # Worker container
+      - name: worker
+        image: {{ include "torale.worker.image" . }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["python", "-m", "torale.workers"]
+        env:
+        - name: DATABASE_URL
+          value: {{ include "torale.databaseUrl" . | quote }}
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.name }}
+              key: DB_PASSWORD
+        envFrom:
+        - configMapRef:
+            name: {{ include "torale.fullname" . }}-config
+        - secretRef:
+            name: {{ .Values.secrets.name }}
+        resources:
+          {{- toYaml .Values.worker.resources | nindent 10 }}
+
+      {{- if .Values.cloudsql.enabled }}
+      # Cloud SQL Proxy sidecar
+      - name: cloud-sql-proxy
+        image: {{ .Values.cloudsql.image }}
+        args:
+        - "--structured-logs"
+        - "--port={{ .Values.database.port }}"
+        - "{{ .Values.database.connectionName }}"
+        securityContext:
+          runAsNonRoot: true
+        resources:
+          {{- toYaml .Values.cloudsql.resources | nindent 10 }}
+      {{- end }}
+{{- end }}

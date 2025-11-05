@@ -1,0 +1,35 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "torale.fullname" . }}
+  labels:
+    {{- include "torale.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+  # Frontend rule (torale.ai)
+  - host: {{ .Values.domains.frontend }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "torale.fullname" . }}-frontend
+            port:
+              number: {{ .Values.frontend.service.port }}
+  # API rule (api.torale.ai)
+  - host: {{ .Values.domains.api }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "torale.fullname" . }}-api
+            port:
+              number: {{ .Values.api.service.port }}
+{{- end }}

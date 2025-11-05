@@ -1,263 +1,356 @@
-# Torale 🛰️
+# Torale
 
-<div align="center">
-  <img src="frontend/public/torale-logo.svg" alt="Torale Logo" width="120" height="120"/>
-  <p><em>Natural language-powered website monitoring with intelligent change detection</em></p>
-</div>
+**Grounded search monitoring platform** for AI-powered conditional automation.
 
-## What is Torale?
+Monitor the web for specific conditions using Google Search + LLM analysis, then get notified when they're met.
 
-Torale is an intelligent alerting service that monitors websites for meaningful changes using natural language queries. Simply describe what you want to monitor in plain English, and Torale will find the right sources and notify you when important changes occur.
+## Use Cases
 
-**Example**: "Tell me when OpenAI updates their research page" → Torale discovers the OpenAI research page, monitors it using semantic embeddings, and emails you when new papers are published.
+- **Product Launches**: "Tell me when the next iPhone release date is announced"
+- **Availability Monitoring**: "Notify me when swimming pool memberships open for summer"
+- **Stock Alerts**: "Alert me when PS5 is back in stock at Best Buy"
+- **Event Tracking**: "Let me know when GPT-5 launch date is confirmed"
+- **Price Monitoring**: "Tell me when iPhone 15 price drops below $500"
 
-## ✨ Key Features
+## How It Works
 
-- 🔍 **Natural Language Queries**: "Tell me when Tesla updates their pricing page"
-- 🎯 **Smart Source Discovery**: Uses Perplexity AI to find authoritative sources
-- 🧠 **Semantic Change Detection**: Embedding-based detection of meaningful changes, not just HTML diffs
-- 📧 **Intelligent Notifications**: Email alerts with AI-generated summaries of what changed
-- 🔐 **Secure Authentication**: Powered by Supabase Auth with RLS
-- ⚡ **Real-time Updates**: Live alerts using Supabase Realtime
-- 🚀 **Microservices Architecture**: Scalable, fault-tolerant service design
+1. **Create a monitoring task** with a search query and condition
+2. **Torale runs scheduled searches** via Google Search (grounded via Gemini)
+3. **LLM evaluates** if your condition is met based on search results
+4. **You get notified** when condition triggers (once, always, or on state change)
 
-## 🏗️ Architecture
+## Quick Start
 
-Torale uses a **selective microservices architecture** with three main services:
-
-```
-┌─────────────────┐     ┌─────────────────────────────────┐
-│   Next.js App   │────▶│        Main Backend             │
-│  (Frontend)     │     │        (FastAPI)                │
-└─────────────────┘     │  ┌─────────────────────────────┐│
-                        │  │ • User Management           ││
-                        │  │ • API Orchestration         ││
-              ┌─────────┼──┤ • Notifications (Integrated)││
-              │         │  │ • Service Coordination      ││
-              │         │  └─────────────────────────────┘│
-              │         └─────────────┬───────────────────┘
-              │                       │
-        ┌─────▼─────┐           ┌─────▼──────────┐
-        │ Discovery │           │Content Monitor │
-        │ Service   │           │    Service     │
-        │ :8001     │           │    :8002       │
-        │           │           │                │
-        │• AI Query │           │• Web Scraping  │
-        │  Processing│          │• Embeddings    │
-        │• Source   │           │• Change        │
-        │  Finding  │           │  Detection     │
-        │• Perplexity│          │• Alert         │
-        │  Integration│         │  Generation    │
-        └─────┬─────┘           └─────┬──────────┘
-              │                       │
-              └───────────┬───────────┘
-                          │
-                   ┌──────▼──────┐
-                   │  Supabase   │
-                   │  - Auth     │
-                   │  - Database │
-                   │  - Realtime │
-                   │  - Functions│
-                   └─────────────┘
-```
-
-### Service Responsibilities
-
-- **Main Backend** (`:8000`): User management, API gateway, service coordination
-- **Discovery Service** (`:8001`): Natural language → URL discovery using Perplexity AI
-- **Content Monitoring Service** (`:8002`): Web scraping, embedding generation, change detection
-- **Notification Service** (`:8003`): Multi-channel notifications via NotificationAPI (email, SMS, push, webhooks)
-
-## 🚀 Quick Start
-
-### Using Docker Compose (Recommended)
-
+### 1. Install Dependencies
 ```bash
-# 1. Copy and configure environment variables
+pip install uv
+uv sync
+```
+
+### 2. Set up Environment
+```bash
 cp .env.example .env
-# Edit .env with your API keys (see SETUP.md for details)
+```
+Edit `.env` with your API keys:
+- **Google AI**: Get key from https://aistudio.google.com/app/apikey (required)
+- **Database**: PostgreSQL connection string (local default works)
+- **Secret Key**: Generate with `openssl rand -hex 32`
 
-# 2. Start the entire stack
-docker-compose up --build
+### 3. Start Services
+```bash
+# Start all services (PostgreSQL + Temporal + API + Workers)
+docker compose up -d
 
-# 3. Access the application
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:8000/docs
+# Check status
+docker compose ps
 ```
 
-### Using Just (Command Runner)
+### 4. Create Your First Monitoring Task
 
-If you have [just](https://github.com/casey/just) installed:
+**Option A: Using the Web Interface** (Recommended)
+```bash
+# Start frontend
+cd frontend && npm run dev
+
+# Navigate to http://localhost:3000
+# Sign in with Clerk (Google/GitHub OAuth or email/password)
+# Create tasks via the dashboard UI
+```
+
+**Option B: Using the CLI**
+```bash
+# Generate API key in web dashboard first (http://localhost:3000)
+# Then configure CLI:
+torale auth set-api-key
+
+# Create monitoring task
+torale task create "iPhone Release Monitor" \
+  --schedule "0 9 * * *" \
+  --prompt "Search for iPhone release date announcements"
+
+# Or for local development without auth:
+export TORALE_NOAUTH=1
+torale task list
+```
+
+**Option C: Using the API directly**
+```bash
+# Use your API key from the web dashboard
+curl -X POST http://localhost:8000/api/v1/tasks \
+  -H "Authorization: Bearer sk_your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "iPhone Release Monitor",
+    "schedule": "0 9 * * *",
+    "executor_type": "llm_grounded_search",
+    "search_query": "When is the next iPhone being released?",
+    "condition_description": "A specific release date has been announced",
+    "notify_behavior": "once",
+    "config": {
+      "model": "gemini-2.0-flash-exp"
+    }
+  }'
+```
+
+### 5. Check Notifications
+```bash
+# Using CLI
+torale notifications TASK_ID
+
+# Or view in web dashboard at http://localhost:3000
+
+# Or via API with your API key
+curl http://localhost:8000/api/v1/tasks/TASK_ID/notifications \
+  -H "Authorization: Bearer sk_your_api_key_here"
+```
+
+## Frontend
+
+The Torale frontend is a React + TypeScript application built with Vite.
+
+### Setup
+```bash
+# Install frontend dependencies
+cd frontend && npm install
+
+# Create frontend environment file
+cat > frontend/.env << EOF
+VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+VITE_API_BASE_URL=http://localhost:8000
+EOF
+
+# Start development server
+npm run dev
+```
+
+### Features
+- **Authentication**: Clerk (Google/GitHub OAuth + email/password)
+- **Dashboard**: View and manage all monitoring tasks
+- **Task Creation**: Create new monitoring tasks with search queries and conditions
+- **Task Details**: View execution history, notifications, and state changes
+- **API Key Management**: Generate API keys for CLI access
+- **Real-time Updates**: Auto-refresh execution status
+- **Toast Notifications**: User feedback for all actions
+
+### Tech Stack
+- React 18 + TypeScript
+- Vite (build tool)
+- Clerk (authentication)
+- React Router (routing)
+- Tailwind CSS (styling)
+- shadcn/ui (component library)
+- Sonner (toast notifications)
+
+Access the frontend at http://localhost:3000 after starting the dev server.
+
+## Architecture
+
+- **API**: FastAPI with Clerk authentication + API keys
+- **Database**: PostgreSQL 16 with state tracking
+- **Workers**: Temporal workflows for scheduled execution
+- **Executor**: Grounded search + LLM condition evaluation
+- **Scheduler**: Temporal cron schedules
+- **Search**: Google Search via Gemini grounding
+- **CLI**: Python typer with API key authentication
+
+## Features
+
+### ✅ Implemented
+- Grounded search monitoring via Google Search
+- Intelligent condition evaluation (LLM-based)
+- Automatic scheduled execution (cron)
+- State tracking (no duplicate alerts)
+- User-configurable notify behavior:
+  - `once`: Notify once, then auto-disable
+  - `always`: Notify every time condition is met
+  - `track_state`: Notify only when state changes
+- In-app notifications endpoint
+- Clerk authentication (OAuth + email/password)
+- API key authentication for CLI
+- CLI for task management
+- Temporal schedule management
+- Frontend dashboard with task management
+
+### 🚧 In Progress
+- Enhanced grounding source display
+- Historical state comparison UI
+- External notifications (email/SMS)
+
+### 📋 Future Roadmap
+- External notifications (email/SMS via NotificationAPI)
+- Browser automation for dynamic sites
+- Price tracking with charts
+- Multi-step conditional workflows
+- Template marketplace
+- Team/organization support
+
+## Known Issues
+
+### Frontend
+- **Alert Component Layout**: The info panel in the task creation dialog has alignment issues with the icon and text. The shadcn/ui Alert component's grid layout may need adjustment for proper spacing.
+
+## Testing
+
+Torale has comprehensive unit, integration, and E2E tests covering Temporal workflows, grounded search, and scheduled execution.
 
 ```bash
-# See all available commands
-just
+# Run all tests
+just test
 
-# Setup and start everything
-just setup
-just up
-
-# Check service health
-just health
-
-# View logs
-just logs
+# Run specific test types
+just test-unit          # Unit tests with pytest
+just test-e2e           # E2E Temporal workflow test
+just test-schedule      # Scheduled execution test
+just test-grounded      # Grounded search test
 ```
 
-### Manual Development Setup
+See [docs/TESTING.md](docs/TESTING.md) for detailed testing guide, including debugging workflows and troubleshooting.
+
+## Deployment
+
+### Local Development
+```bash
+just dev        # Start all services via docker-compose
+just dev-all    # Include frontend dev server
+```
+
+### Production (GKE ClusterKit)
+
+**Prerequisites:** gcloud CLI, kubectl, helm, helmfile
 
 ```bash
-# Backend
-cd backend && uv sync && uv run uvicorn app.main:app --reload --port 8000
+# One-time setup
+just k8s-auth       # Get cluster credentials
+just k8s-setup      # Create Cloud SQL + IAM
+just k8s-secrets    # Create K8s secrets from .env
 
-# Frontend  
-cd frontend && npm install && npm run dev
+# Deploy
+just k8s-deploy-all # Deploy Temporal + Torale
 
-# Microservices
-./start-microservices.sh
-
-# Or individually:
-cd discovery-service && uv run uvicorn main:app --reload --port 8001
-cd content-monitoring-service && uv run uvicorn main:app --reload --port 8002
-cd notification-service && uv run uvicorn main:app --reload --port 8003
+# Manage
+just k8s-status     # Check deployment status
+just k8s-logs-api   # View API logs
+just k8s-logs-workers # View worker logs
 ```
 
-See [SETUP.md](./SETUP.md) for detailed setup instructions including API key configuration.
+**Access:**
+- Frontend: https://torale.ai
+- API: https://api.torale.ai
+- Temporal UI: `just k8s-port-forward-temporal` → http://localhost:8080
 
-## 🛠️ Tech Stack
+See [docs/k8s-deployment.md](docs/k8s-deployment.md) for detailed guide.
 
-**Frontend**
-- Next.js 15 with App Router
-- React 19, TypeScript, Tailwind CSS
-- Supabase Auth & Realtime
-- TanStack Query for state management
+### Legacy Cloud Run
+```bash
+just deploy-cloud-run
+```
 
-**Backend Services**
-- FastAPI with Python 3.12+
-- Pydantic for data validation
-- uv for dependency management
-- Comprehensive async/await usage
+## How Grounded Search Works
 
-**AI & Data**
-- OpenAI GPT-4 for embeddings & analysis
-- Perplexity API for source discovery
-- Supabase (PostgreSQL + pgvector)
-- NotificationAPI for multi-channel notifications
+1. **Task Created**: User defines search query + condition to monitor
+2. **Scheduled Execution**: Temporal triggers task based on cron schedule
+3. **Grounded Search**: Gemini performs Google Search with grounding
+4. **LLM Evaluation**: LLM analyzes search results and evaluates condition
+5. **State Comparison**: Compares with `last_known_state` to detect changes
+6. **Notification**: If condition met (and not already notified), creates in-app notification
+7. **Auto-disable** (optional): If `notify_behavior = "once"`, task deactivates after first alert
 
-**Development & Deployment**
-- Docker & docker-compose
-- Just for task automation
-- Comprehensive test suites (pytest, vitest)
-- GitHub Actions CI/CD ready
+## Configuration
 
-## 📋 Requirements
+### Notify Behaviors
 
-**API Keys Required:**
-- Supabase project (free tier available)
-- OpenAI API key (for embeddings)
-- Perplexity API key (for source discovery)
-- NotificationAPI account (for multi-channel notifications)
+- **`once`**: Alert once when condition is first met, then auto-disable task
+- **`always`**: Alert every time condition is met (use with caution)
+- **`track_state`**: Alert only when underlying state changes (smart deduplication)
 
-**Development Tools:**
-- Python 3.12+ with [uv](https://github.com/astral-sh/uv)
-- Node.js 18+ with npm
-- Docker (optional, for containerized development)
+### Schedule Formats
 
-## 🧪 Development
+Use standard cron expressions:
+- `* * * * *`: Every minute (testing only)
+- `0 * * * *`: Every hour
+- `0 9 * * *`: Every day at 9 AM
+- `0 9 * * 1`: Every Monday at 9 AM
+- `0 9 1 * *`: First day of every month at 9 AM
 
-### Code Quality
+## API Endpoints
+
+### Authentication
+```
+POST   /auth/sync-user                     # Sync Clerk user to database (auto-called)
+GET    /auth/me                            # Get current user info
+POST   /auth/api-keys                      # Generate API key for CLI
+GET    /auth/api-keys                      # List user's API keys
+DELETE /auth/api-keys/{id}                 # Revoke API key
+```
+
+### Tasks
+```
+POST   /api/v1/tasks                       # Create monitoring task
+GET    /api/v1/tasks                       # List tasks
+GET    /api/v1/tasks/{id}                  # Get task details
+PUT    /api/v1/tasks/{id}                  # Update task
+DELETE /api/v1/tasks/{id}                  # Delete task + schedule
+POST   /api/v1/tasks/{id}/execute          # Manual execution (testing)
+GET    /api/v1/tasks/{id}/executions       # Full execution history
+GET    /api/v1/tasks/{id}/notifications    # Filtered: condition_met = true
+```
+
+## CLI Commands
 
 ```bash
-# Backend linting and testing
-cd backend
-uv run ruff check . && uv run ruff format .
-uv run mypy .
-uv run pytest --cov=app --cov-report=term-missing
+# Authentication
+torale auth set-api-key                    # Configure API key
+torale auth status                         # Check auth status
+torale auth logout                         # Remove credentials
 
-# Frontend linting and testing  
-cd frontend
-npm run lint && npm run type-check
-npm run test && npm run coverage
+# Tasks
+torale task create NAME --schedule CRON --prompt PROMPT
+torale task list [--active]
+torale task get TASK_ID
+torale task update TASK_ID [--name NAME] [--schedule CRON] [--active/--inactive]
+torale task delete TASK_ID [--yes]
+torale task execute TASK_ID               # Manual execution
+torale task logs TASK_ID [--limit N]      # View execution logs
 
-# All services
-just test  # Runs tests for all services
-just lint  # Runs linting for all services
+# Development mode (no auth required)
+export TORALE_NOAUTH=1
+torale task list
 ```
 
-### Project Structure
+## Environment Variables
 
+### Backend (.env)
+```bash
+# Database
+DATABASE_URL=postgresql://torale:torale@localhost:5432/torale
+
+# Clerk Authentication
+CLERK_SECRET_KEY=sk_test_...              # Backend: Verify Clerk tokens
+CLERK_PUBLISHABLE_KEY=pk_test_...         # Backend: Initialize Clerk client
+
+# Temporal
+TEMPORAL_HOST=localhost:7233
+TEMPORAL_NAMESPACE=default
+
+# AI (Gemini required for grounded search)
+GOOGLE_API_KEY=your-gemini-api-key
 ```
-torale/
-├── backend/                 # Main FastAPI backend
-├── frontend/                # Next.js application
-├── discovery-service/       # Natural language processing service
-├── content-monitoring-service/ # Web scraping & change detection
-├── notification-service/    # Email & notification delivery
-├── supabase/               # Database migrations & functions
-├── docs/                   # Additional documentation
-├── docker-compose.yml      # Full-stack deployment
-├── justfile               # Task automation
-└── .env                   # Environment configuration
+
+### Frontend (frontend/.env)
+```bash
+# Clerk
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...    # Frontend: Initialize ClerkProvider
+VITE_API_BASE_URL=http://localhost:8000   # Frontend: API endpoint
 ```
 
-## 📊 Project Status
-
-### ✅ Completed Features
-- Core user authentication with Supabase Auth
-- Natural language query processing
-- Intelligent source discovery via AI
-- Semantic change detection using embeddings
-- Email notification system with preferences
-- Real-time alerts via Supabase Realtime
-- Comprehensive microservices architecture
-- Full Docker deployment support
-- Modern, responsive UI with dark mode
-
-### 🚧 Current Development
-- Performance optimizations for large-scale monitoring
-- Advanced notification channels (webhooks, Slack)
-- Improved change detection algorithms
-- Enhanced monitoring dashboard
-
-### 🎯 Roadmap
-- Mobile app development
-- Enterprise features (team accounts, SSO)
-- Advanced analytics and reporting
-- Machine learning for personalized alerts
-- Webhook integrations for third-party services
-
-## 📖 Documentation
-
-- [SETUP.md](./SETUP.md) - Detailed setup instructions
-- [DEVELOPMENT.md](./DEVELOPMENT.md) - Developer workflow and guidelines
-- [CLAUDE.md](./CLAUDE.md) - Claude AI assistant context
-- [API Documentation](http://localhost:8000/docs) - Interactive API docs (when running)
-
-## 🤝 Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes with tests
-4. Ensure all tests pass (`just test`)
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to your branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
 
-## 📄 License
+## License
 
-MIT License - see [LICENSE](./LICENSE) file for details.
-
-## 🆘 Support
-
-- 📧 Email: team@torale.com
-- 🐛 Issues: [GitHub Issues](https://github.com/your-org/torale/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/your-org/torale/discussions)
-
----
-
-<div align="center">
-  <p>Built with ❤️ by the Torale team</p>
-  <p>Turning natural language into intelligent monitoring</p>
-</div>
+MIT

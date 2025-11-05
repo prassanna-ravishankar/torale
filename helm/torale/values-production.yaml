@@ -1,0 +1,77 @@
+# Production values for Torale on GKE ClusterKit
+
+global:
+  projectId: baldmaninc
+  region: us-central1
+
+domains:
+  frontend: torale.ai
+  api: api.torale.ai
+
+# Clerk authentication
+clerk:
+  publishableKey: pk_test_cGxlYXNhbnQtcHJpbWF0ZS04OC5jbGVyay5hY2NvdW50cy5kZXYk
+
+image:
+  tag: latest  # Will be overridden by Cloud Build with commit SHA
+
+# Cloud SQL connection
+database:
+  connectionName: "baldmaninc:us-central1:clusterkit-db"
+  host: "127.0.0.1"
+  port: 5432
+  name: torale
+  user: torale
+
+# Temporal Cloud configuration
+temporal:
+  host: us-central1.gcp.api.temporal.io:7233
+  namespace: quickstart-baldmaninc.g5zzo
+
+# Production resource sizing (minimal for startup)
+api:
+  replicaCount: 1
+  autoscaling:
+    minReplicas: 1
+    maxReplicas: 10
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+worker:
+  replicaCount: 1
+  autoscaling:
+    minReplicas: 1
+    maxReplicas: 10
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+frontend:
+  replicaCount: 1
+  autoscaling:
+    minReplicas: 1
+    maxReplicas: 10
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Ingress configuration
+ingress:
+  enabled: true
+
+# Certificate configuration
+certificate:
+  enabled: true

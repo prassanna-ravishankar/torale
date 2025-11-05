@@ -1,0 +1,134 @@
+# Helmfile for deploying Torale and its dependencies
+# Install helmfile: https://github.com/helmfile/helmfile
+
+repositories:
+  # Temporal official Helm charts
+  - name: temporalio
+    url: https://go.temporal.io/helm-charts
+  # Bitnami for PostgreSQL
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami
+
+releases:
+  # ============================================
+  # Temporal Stack - DISABLED (Using Temporal Cloud)
+  # ============================================
+  # Uncomment the releases below to deploy self-hosted Temporal instead
+  #
+  # - name: temporal-postgresql
+  #   namespace: temporal
+  #   chart: bitnami/postgresql
+  #   labels:
+  #     tier: temporal
+  #     component: database
+  #   values:
+  #     - auth:
+  #         username: temporal
+  #         password: temporal
+  #         database: temporal
+  #       primary:
+  #         persistence:
+  #           enabled: true
+  #           size: 10Gi
+  #         resources:
+  #           requests:
+  #             cpu: 100m
+  #             memory: 256Mi
+  #           limits:
+  #             cpu: 500m
+  #             memory: 512Mi
+  #         nodeSelector:
+  #           cloud.google.com/gke-spot: "true"
+  #         tolerations:
+  #           - key: cloud.google.com/gke-spot
+  #             operator: Equal
+  #             value: "true"
+  #             effect: NoSchedule
+  #         initdb:
+  #           scripts:
+  #             create-visibility-db.sql: |
+  #               CREATE DATABASE temporal_visibility;
+  #
+  # - name: temporal
+  #   namespace: temporal
+  #   chart: temporalio/temporal
+  #   version: 0.43.0
+  #   labels:
+  #     tier: temporal
+  #     component: server
+  #   needs:
+  #     - temporal/temporal-postgresql
+  #   values:
+  #     - server:
+  #         replicaCount: 1
+  #         resources:
+  #           requests:
+  #             cpu: 200m
+  #             memory: 512Mi
+  #           limits:
+  #             cpu: 1000m
+  #             memory: 1Gi
+  #         nodeSelector:
+  #           cloud.google.com/gke-spot: "true"
+  #         tolerations:
+  #           - key: cloud.google.com/gke-spot
+  #             operator: Equal
+  #             value: "true"
+  #             effect: NoSchedule
+  #         config:
+  #           persistence:
+  #             default:
+  #               driver: "sql"
+  #               sql:
+  #                 driver: "postgres12"
+  #                 host: temporal-postgresql
+  #                 port: 5432
+  #                 database: temporal
+  #                 user: temporal
+  #                 password: temporal
+  #                 maxConns: 20
+  #                 maxConnLifetime: "1h"
+  #             visibility:
+  #               driver: "sql"
+  #               sql:
+  #                 driver: "postgres12"
+  #                 host: temporal-postgresql
+  #                 port: 5432
+  #                 database: temporal_visibility
+  #                 user: temporal
+  #                 password: temporal
+  #                 maxConns: 10
+  #                 maxConnLifetime: "1h"
+  #       cassandra:
+  #         enabled: false
+  #       mysql:
+  #         enabled: false
+  #       elasticsearch:
+  #         enabled: false
+  #       prometheus:
+  #         enabled: false
+  #       grafana:
+  #         enabled: false
+
+  # ============================================
+  # Torale Application
+  # ============================================
+
+  - name: torale
+    namespace: torale
+    chart: ./helm/torale
+    labels:
+      tier: app
+      component: torale
+    values:
+      # Load production overrides
+      - helm/torale/values-production.yaml
+    missingFileHandler: Warn
+
+# Helmfile settings
+helmDefaults:
+  createNamespace: true
+  wait: true
+  timeout: 600
+  force: false
+  atomic: true
