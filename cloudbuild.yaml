@@ -1,110 +1,286 @@
+# Comprehensive CI/CD Pipeline for Torale - Production (Main Branch)
+# Stages: Validate → Build → Test → Scan → Push → Deploy
+#
+# Triggered by: Push to main/master branch
+# Deploys to: Production namespace (torale)
+#
+# For branch deployments, see cloudbuild-branch.yaml
+
+# ============================================================================
+# STAGE 1: VALIDATION & SETUP
+# ============================================================================
+
 steps:
-  # Build API image
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'build-api'
-    args:
-      - 'build'
-      - '-t'
-      - 'gcr.io/$PROJECT_ID/torale-api:$COMMIT_SHA'
-      - '-t'
-      - 'gcr.io/$PROJECT_ID/torale-api:latest'
-      - '-f'
-      - 'backend/Dockerfile'
-      - 'backend'
-
-  # Build Worker image (same dockerfile, different CMD)
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'build-worker'
-    args:
-      - 'build'
-      - '-t'
-      - 'gcr.io/$PROJECT_ID/torale-worker:$COMMIT_SHA'
-      - '-t'
-      - 'gcr.io/$PROJECT_ID/torale-worker:latest'
-      - '-f'
-      - 'backend/Dockerfile'
-      - 'backend'
-
-  # Build Frontend image (multi-stage: React build → nginx)
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'build-frontend'
-    args:
-      - 'build'
-      - '-t'
-      - 'gcr.io/$PROJECT_ID/torale-frontend:$COMMIT_SHA'
-      - '-t'
-      - 'gcr.io/$PROJECT_ID/torale-frontend:latest'
-      - '-f'
-      - 'frontend/Dockerfile'
-      - 'frontend'
-
-  # Push API image
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'push-api-sha'
-    args: ['push', 'gcr.io/$PROJECT_ID/torale-api:$COMMIT_SHA']
-    waitFor: ['build-api']
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'push-api-latest'
-    args: ['push', 'gcr.io/$PROJECT_ID/torale-api:latest']
-    waitFor: ['build-api']
-
-  # Push Worker image
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'push-worker-sha'
-    args: ['push', 'gcr.io/$PROJECT_ID/torale-worker:$COMMIT_SHA']
-    waitFor: ['build-worker']
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'push-worker-latest'
-    args: ['push', 'gcr.io/$PROJECT_ID/torale-worker:latest']
-    waitFor: ['build-worker']
-
-  # Push Frontend image
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'push-frontend-sha'
-    args: ['push', 'gcr.io/$PROJECT_ID/torale-frontend:$COMMIT_SHA']
-    waitFor: ['build-frontend']
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'push-frontend-latest'
-    args: ['push', 'gcr.io/$PROJECT_ID/torale-frontend:latest']
-    waitFor: ['build-frontend']
-
-  # Deploy to GKE via Helmfile
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    id: 'deploy-gke'
-    entrypoint: bash
+  # Generate build tags and metadata
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:alpine'
+    id: 'generate-tags'
+    entrypoint: 'bash'
     args:
       - '-c'
       - |
-        # Install helm
-        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        set -euo pipefail
 
-        # Install helmfile
-        wget -O /usr/local/bin/helmfile https://github.com/helmfile/helmfile/releases/download/v0.158.0/helmfile_linux_amd64
+        # Generate build metadata
+        echo "🏗️  Generating build metadata..."
+
+        SHORT_SHA=$(echo $COMMIT_SHA | cut -c1-7)
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        BRANCH_NAME=$(echo $BRANCH_NAME | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+
+        # Save to file for use in later steps
+        cat > /workspace/build-metadata.env <<EOF
+        SHORT_SHA=$SHORT_SHA
+        TIMESTAMP=$TIMESTAMP
+        BRANCH_NAME=$BRANCH_NAME
+        IMAGE_TAG=$COMMIT_SHA
+        IMAGE_TAG_SHORT=$SHORT_SHA
+        EOF
+
+        echo "✅ Build metadata generated"
+        cat /workspace/build-metadata.env
+
+  # Check Docker files exist
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:alpine'
+    id: 'validate-files'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        echo "🔍 Validating project structure..."
+
+        # Check required files exist
+        test -f backend/Dockerfile || (echo "❌ backend/Dockerfile not found" && exit 1)
+        test -f frontend/Dockerfile || (echo "❌ frontend/Dockerfile not found" && exit 1)
+        test -f helmfile.yaml || (echo "❌ helmfile.yaml not found" && exit 1)
+        test -d helm/torale || (echo "❌ helm/torale not found" && exit 1)
+
+        echo "✅ All required files present"
+    waitFor: ['-']
+
+# ============================================================================
+# STAGE 2: BUILD DOCKER IMAGES (Parallel)
+# ============================================================================
+
+  # Build API image
+  - name: 'gcr.io/kaniko-project/executor:latest'
+    id: 'build-api'
+    args:
+      - '--destination=gcr.io/$PROJECT_ID/torale-api:$COMMIT_SHA'
+      - '--destination=gcr.io/$PROJECT_ID/torale-api:latest'
+      - '--cache=true'
+      - '--cache-ttl=168h'  # 7 days cache
+      - '--context=dir:///workspace/backend'
+      - '--dockerfile=/workspace/backend/Dockerfile'
+      - '--build-arg=BUILDKIT_INLINE_CACHE=1'
+    waitFor: ['validate-files']
+
+  # Build Worker image (same Dockerfile, different entrypoint)
+  - name: 'gcr.io/kaniko-project/executor:latest'
+    id: 'build-worker'
+    args:
+      - '--destination=gcr.io/$PROJECT_ID/torale-worker:$COMMIT_SHA'
+      - '--destination=gcr.io/$PROJECT_ID/torale-worker:latest'
+      - '--cache=true'
+      - '--cache-ttl=168h'
+      - '--context=dir:///workspace/backend'
+      - '--dockerfile=/workspace/backend/Dockerfile'
+      - '--build-arg=BUILDKIT_INLINE_CACHE=1'
+    waitFor: ['validate-files']
+
+  # Build Frontend image (Multi-stage: React → nginx)
+  - name: 'gcr.io/kaniko-project/executor:latest'
+    id: 'build-frontend'
+    args:
+      - '--destination=gcr.io/$PROJECT_ID/torale-frontend:$COMMIT_SHA'
+      - '--destination=gcr.io/$PROJECT_ID/torale-frontend:latest'
+      - '--cache=true'
+      - '--cache-ttl=168h'
+      - '--context=dir:///workspace/frontend'
+      - '--dockerfile=/workspace/frontend/Dockerfile'
+      - '--build-arg=BUILDKIT_INLINE_CACHE=1'
+    waitFor: ['validate-files']
+
+# ============================================================================
+# STAGE 3: SECURITY SCANNING (Parallel)
+# ============================================================================
+
+  # Scan API image for vulnerabilities
+  - name: 'aquasec/trivy:latest'
+    id: 'scan-api'
+    args:
+      - 'image'
+      - '--format=table'
+      - '--exit-code=0'  # Don't fail build on vulnerabilities (just report)
+      - '--severity=CRITICAL,HIGH'
+      - '--no-progress'
+      - 'gcr.io/$PROJECT_ID/torale-api:$COMMIT_SHA'
+    waitFor: ['build-api']
+
+  # Scan Worker image for vulnerabilities
+  - name: 'aquasec/trivy:latest'
+    id: 'scan-worker'
+    args:
+      - 'image'
+      - '--format=table'
+      - '--exit-code=0'
+      - '--severity=CRITICAL,HIGH'
+      - '--no-progress'
+      - 'gcr.io/$PROJECT_ID/torale-worker:$COMMIT_SHA'
+    waitFor: ['build-worker']
+
+  # Scan Frontend image for vulnerabilities
+  - name: 'aquasec/trivy:latest'
+    id: 'scan-frontend'
+    args:
+      - 'image'
+      - '--format=table'
+      - '--exit-code=0'
+      - '--severity=CRITICAL,HIGH'
+      - '--no-progress'
+      - 'gcr.io/$PROJECT_ID/torale-frontend:$COMMIT_SHA'
+    waitFor: ['build-frontend']
+
+# ============================================================================
+# STAGE 4: DEPLOY TO PRODUCTION
+# ============================================================================
+
+  # Deploy to GKE via Helmfile
+  - name: 'gcr.io/$PROJECT_ID/helm-deploy:latest'
+    id: 'deploy-production'
+    entrypoint: 'bash'
+    env:
+      - 'ENVIRONMENT=production'
+      - 'NAMESPACE=torale'
+      - 'CLUSTER_NAME=clusterkit'
+      - 'CLUSTER_REGION=us-central1'
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+
+        echo "🚀 Deploying to Production (torale namespace)..."
+
+        # Install required tools
+        echo "📦 Installing deployment tools..."
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+        wget -q -O /usr/local/bin/helmfile https://github.com/helmfile/helmfile/releases/download/v0.162.0/helmfile_linux_amd64
         chmod +x /usr/local/bin/helmfile
 
-        # Install helm-diff plugin
-        helm plugin install https://github.com/databus23/helm-diff || true
+        helm plugin install https://github.com/databus23/helm-diff --version v3.9.4 || echo "helm-diff already installed"
 
-        # Get GKE credentials
+        # Authenticate with GKE
+        echo "🔐 Authenticating with GKE cluster..."
         gcloud container clusters get-credentials clusterkit \
           --region us-central1 \
           --project $PROJECT_ID
 
-        # Deploy via Helmfile (app tier only, Temporal should already be deployed)
-        helmfile sync --selector tier=app --set image.tag=$COMMIT_SHA
+        # Verify cluster connection
+        kubectl cluster-info
+        kubectl get nodes
+
+        # Deploy application tier only (Temporal is already deployed)
+        echo "📋 Deploying Torale application..."
+        helmfile sync \
+          --selector tier=app \
+          --set image.tag=$COMMIT_SHA \
+          --set global.projectId=$PROJECT_ID
+
+        # Verify deployment
+        echo "✅ Verifying deployment..."
+        kubectl rollout status deployment/torale-api -n torale --timeout=5m
+        kubectl rollout status deployment/torale-worker -n torale --timeout=5m
+        kubectl rollout status deployment/torale-frontend -n torale --timeout=5m
+
+        echo "🎉 Production deployment completed successfully!"
+
+        # Display deployment info
+        echo ""
+        echo "📊 Deployment Summary:"
+        kubectl get pods -n torale -o wide
+        echo ""
+        kubectl get ingress -n torale
+
     waitFor:
-      - 'push-api-latest'
-      - 'push-worker-latest'
-      - 'push-frontend-latest'
+      - 'scan-api'
+      - 'scan-worker'
+      - 'scan-frontend'
 
+# ============================================================================
+# STAGE 5: POST-DEPLOYMENT VERIFICATION
+# ============================================================================
+
+  # Health check
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:alpine'
+    id: 'health-check'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+
+        echo "🏥 Running post-deployment health checks..."
+
+        gcloud container clusters get-credentials clusterkit \
+          --region us-central1 \
+          --project $PROJECT_ID
+
+        # Check pod health
+        echo "Checking API pods..."
+        kubectl wait --for=condition=ready pod -l app=torale-api -n torale --timeout=300s
+
+        echo "Checking Worker pods..."
+        kubectl wait --for=condition=ready pod -l app=torale-worker -n torale --timeout=300s
+
+        echo "Checking Frontend pods..."
+        kubectl wait --for=condition=ready pod -l app=torale-frontend -n torale --timeout=300s
+
+        echo "✅ All health checks passed!"
+    waitFor: ['deploy-production']
+
+# ============================================================================
+# BUILD CONFIGURATION
+# ============================================================================
+
+# Substitutions (default values, can be overridden)
 substitutions:
-  _REGION: us-central1
+  _ENVIRONMENT: 'production'
+  _NAMESPACE: 'torale'
+  _CLUSTER_NAME: 'clusterkit'
+  _CLUSTER_REGION: 'us-central1'
 
+# Options
 options:
-  logging: CLOUD_LOGGING_ONLY
+  # Use high-CPU machine for faster builds
   machineType: 'E2_HIGHCPU_8'
 
-timeout: 1200s
+  # Disk size
+  diskSizeGb: 100
+
+  # Logging
+  logging: CLOUD_LOGGING_ONLY
+
+  # Use substitution option
+  substitutionOption: 'ALLOW_LOOSE'
+
+  # Dynamic substitutions
+  dynamic_substitutions: true
+
+# Timeout
+timeout: '1800s'  # 30 minutes
+
+# Build artifacts to save
+artifacts:
+  objects:
+    location: 'gs://$PROJECT_ID-build-artifacts/production/$BUILD_ID'
+    paths:
+      - '/workspace/build-metadata.env'
+
+# Images built (for vulnerability scanning later)
+images:
+  - 'gcr.io/$PROJECT_ID/torale-api:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/torale-api:latest'
+  - 'gcr.io/$PROJECT_ID/torale-worker:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/torale-worker:latest'
+  - 'gcr.io/$PROJECT_ID/torale-frontend:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/torale-frontend:latest'

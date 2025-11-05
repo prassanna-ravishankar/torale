@@ -1,0 +1,28 @@
+# Cloud Build configuration to build and push the helm-deploy custom image
+# This image is used by the main CI/CD pipeline for deployments
+#
+# Run once to build the image:
+#   gcloud builds submit --config=cloudbuild/build-helm-image.yaml cloudbuild/
+
+steps:
+  # Build the helm-deploy image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/helm-deploy:latest'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/helm-deploy:v1'
+      - '-f'
+      - 'helm-deploy.Dockerfile'
+      - '.'
+
+images:
+  - 'gcr.io/$PROJECT_ID/helm-deploy:latest'
+  - 'gcr.io/$PROJECT_ID/helm-deploy:v1'
+
+options:
+  machineType: 'E2_HIGHCPU_4'
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '600s'

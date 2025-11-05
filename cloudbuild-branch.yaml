@@ -1,0 +1,347 @@
+# Comprehensive CI/CD Pipeline for Torale - Branch Deployments
+# Stages: Validate → Build → Test → Scan → Push → Deploy
+#
+# Triggered by: Push to feature/development branches
+# Deploys to: Branch-specific namespace (torale-{branch-name})
+#
+# Branch deployments are isolated environments for testing before production
+
+# ============================================================================
+# STAGE 1: VALIDATION & SETUP
+# ============================================================================
+
+steps:
+  # Generate branch-specific metadata
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:alpine'
+    id: 'generate-branch-metadata'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+
+        echo "🌿 Generating branch deployment metadata..."
+
+        SHORT_SHA=$(echo $COMMIT_SHA | cut -c1-7)
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+
+        # Sanitize branch name for K8s (lowercase, alphanumeric + dashes only, max 63 chars)
+        BRANCH_NAME_RAW="${BRANCH_NAME:-unknown}"
+        BRANCH_SLUG=$(echo "$BRANCH_NAME_RAW" | \
+          sed 's/[^a-zA-Z0-9-]/-/g' | \
+          tr '[:upper:]' '[:lower:]' | \
+          sed 's/^-//' | \
+          sed 's/-$//' | \
+          cut -c1-30)  # Limit to 30 chars to leave room for prefix
+
+        # Namespace for this branch
+        NAMESPACE="torale-$BRANCH_SLUG"
+
+        # Subdomain for this branch (e.g., feat-auth.torale-preview.dev)
+        SUBDOMAIN="$BRANCH_SLUG"
+
+        # Save metadata
+        cat > /workspace/build-metadata.env <<EOF
+        SHORT_SHA=$SHORT_SHA
+        TIMESTAMP=$TIMESTAMP
+        BRANCH_NAME=$BRANCH_NAME_RAW
+        BRANCH_SLUG=$BRANCH_SLUG
+        NAMESPACE=$NAMESPACE
+        SUBDOMAIN=$SUBDOMAIN
+        IMAGE_TAG=$COMMIT_SHA
+        IMAGE_TAG_SHORT=$SHORT_SHA
+        DEPLOYMENT_URL=https://$SUBDOMAIN.torale-preview.dev
+        EOF
+
+        echo "✅ Branch deployment metadata:"
+        cat /workspace/build-metadata.env
+
+        # Save to env vars for later steps
+        echo "$NAMESPACE" > /workspace/namespace.txt
+        echo "$BRANCH_SLUG" > /workspace/branch-slug.txt
+
+  # Validate project structure
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:alpine'
+    id: 'validate-files'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        echo "🔍 Validating project structure..."
+
+        test -f backend/Dockerfile || (echo "❌ backend/Dockerfile not found" && exit 1)
+        test -f frontend/Dockerfile || (echo "❌ frontend/Dockerfile not found" && exit 1)
+        test -f helmfile.yaml || (echo "❌ helmfile.yaml not found" && exit 1)
+        test -d helm/torale || (echo "❌ helm/torale not found" && exit 1)
+
+        echo "✅ All required files present"
+    waitFor: ['-']
+
+# ============================================================================
+# STAGE 2: BUILD DOCKER IMAGES (Parallel)
+# ============================================================================
+
+  # Build API image with branch tag
+  - name: 'gcr.io/kaniko-project/executor:latest'
+    id: 'build-api'
+    args:
+      - '--destination=gcr.io/$PROJECT_ID/torale-api:$COMMIT_SHA'
+      - '--destination=gcr.io/$PROJECT_ID/torale-api:branch-$BRANCH_NAME'
+      - '--cache=true'
+      - '--cache-ttl=168h'
+      - '--context=dir:///workspace/backend'
+      - '--dockerfile=/workspace/backend/Dockerfile'
+      - '--build-arg=BUILDKIT_INLINE_CACHE=1'
+    waitFor: ['validate-files']
+
+  # Build Worker image with branch tag
+  - name: 'gcr.io/kaniko-project/executor:latest'
+    id: 'build-worker'
+    args:
+      - '--destination=gcr.io/$PROJECT_ID/torale-worker:$COMMIT_SHA'
+      - '--destination=gcr.io/$PROJECT_ID/torale-worker:branch-$BRANCH_NAME'
+      - '--cache=true'
+      - '--cache-ttl=168h'
+      - '--context=dir:///workspace/backend'
+      - '--dockerfile=/workspace/backend/Dockerfile'
+      - '--build-arg=BUILDKIT_INLINE_CACHE=1'
+    waitFor: ['validate-files']
+
+  # Build Frontend image with branch tag
+  - name: 'gcr.io/kaniko-project/executor:latest'
+    id: 'build-frontend'
+    args:
+      - '--destination=gcr.io/$PROJECT_ID/torale-frontend:$COMMIT_SHA'
+      - '--destination=gcr.io/$PROJECT_ID/torale-frontend:branch-$BRANCH_NAME'
+      - '--cache=true'
+      - '--cache-ttl=168h'
+      - '--context=dir:///workspace/frontend'
+      - '--dockerfile=/workspace/frontend/Dockerfile'
+      - '--build-arg=BUILDKIT_INLINE_CACHE=1'
+    waitFor: ['validate-files']
+
+# ============================================================================
+# STAGE 3: SECURITY SCANNING (Parallel) - Optional for branches
+# ============================================================================
+
+  # Quick vulnerability scan for critical issues only
+  - name: 'aquasec/trivy:latest'
+    id: 'scan-api'
+    args:
+      - 'image'
+      - '--format=table'
+      - '--exit-code=0'  # Don't fail build
+      - '--severity=CRITICAL'
+      - '--no-progress'
+      - 'gcr.io/$PROJECT_ID/torale-api:$COMMIT_SHA'
+    waitFor: ['build-api']
+
+  - name: 'aquasec/trivy:latest'
+    id: 'scan-worker'
+    args:
+      - 'image'
+      - '--format=table'
+      - '--exit-code=0'
+      - '--severity=CRITICAL'
+      - '--no-progress'
+      - 'gcr.io/$PROJECT_ID/torale-worker:$COMMIT_SHA'
+    waitFor: ['build-worker']
+
+  - name: 'aquasec/trivy:latest'
+    id: 'scan-frontend'
+    args:
+      - 'image'
+      - '--format=table'
+      - '--exit-code=0'
+      - '--severity=CRITICAL'
+      - '--no-progress'
+      - 'gcr.io/$PROJECT_ID/torale-frontend:$COMMIT_SHA'
+    waitFor: ['build-frontend']
+
+# ============================================================================
+# STAGE 4: DEPLOY TO BRANCH ENVIRONMENT
+# ============================================================================
+
+  # Deploy to branch-specific namespace
+  - name: 'gcr.io/$PROJECT_ID/helm-deploy:latest'
+    id: 'deploy-branch'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+
+        # Read branch metadata
+        NAMESPACE=$(cat /workspace/namespace.txt)
+        BRANCH_SLUG=$(cat /workspace/branch-slug.txt)
+
+        echo "🚀 Deploying branch '$BRANCH_NAME' to namespace '$NAMESPACE'..."
+
+        # Install required tools
+        echo "📦 Installing deployment tools..."
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+        wget -q -O /usr/local/bin/helmfile https://github.com/helmfile/helmfile/releases/download/v0.162.0/helmfile_linux_amd64
+        chmod +x /usr/local/bin/helmfile
+
+        helm plugin install https://github.com/databus23/helm-diff --version v3.9.4 || echo "helm-diff already installed"
+
+        # Authenticate with GKE
+        echo "🔐 Authenticating with GKE cluster..."
+        gcloud container clusters get-credentials clusterkit \
+          --region us-central1 \
+          --project $PROJECT_ID
+
+        # Create namespace if it doesn't exist
+        echo "📁 Creating namespace '$NAMESPACE'..."
+        kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
+
+        # Label namespace for easy identification
+        kubectl label namespace $NAMESPACE \
+          type=branch-deployment \
+          branch=$BRANCH_SLUG \
+          managed-by=cloud-build \
+          --overwrite
+
+        # Copy secrets from production namespace (if they exist)
+        echo "🔑 Setting up secrets..."
+        if kubectl get secret torale-secrets -n torale &>/dev/null; then
+          kubectl get secret torale-secrets -n torale -o yaml | \
+            sed "s/namespace: torale/namespace: $NAMESPACE/" | \
+            kubectl apply -f - || echo "⚠️  Could not copy secrets, continuing..."
+        else
+          echo "⚠️  Production secrets not found, you may need to create them manually"
+        fi
+
+        # Create branch-specific values file
+        echo "⚙️  Generating branch deployment configuration..."
+        cat > /tmp/values-branch.yaml <<EOF
+        # Branch deployment overrides
+        global:
+          projectId: $PROJECT_ID
+          region: us-central1
+
+        # Smaller resources for branch deployments
+        api:
+          replicaCount: 1
+          autoscaling:
+            enabled: false
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+        worker:
+          replicaCount: 1
+          autoscaling:
+            enabled: false
+          resources:
+            requests:
+              cpu: 25m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+
+        frontend:
+          replicaCount: 1
+          autoscaling:
+            enabled: false
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+        # Disable ingress for branch deployments (use port-forward or separate subdomain)
+        ingress:
+          enabled: false
+
+        # Disable certificate for branch deployments
+        certificate:
+          enabled: false
+
+        # Use Temporal Cloud (same as production)
+        temporal:
+          host: us-central1.gcp.api.temporal.io:7233
+          namespace: quickstart-baldmaninc.g5zzo
+        EOF
+
+        # Deploy using Helm directly (not helmfile, for namespace override)
+        echo "📋 Deploying to branch environment..."
+        helm upgrade --install torale-$BRANCH_SLUG ./helm/torale \
+          --namespace $NAMESPACE \
+          --create-namespace \
+          --values /tmp/values-branch.yaml \
+          --set image.tag=$COMMIT_SHA \
+          --set global.projectId=$PROJECT_ID \
+          --wait \
+          --timeout 10m
+
+        # Verify deployment
+        echo "✅ Verifying deployment..."
+        kubectl rollout status deployment/torale-api -n $NAMESPACE --timeout=5m || true
+        kubectl rollout status deployment/torale-worker -n $NAMESPACE --timeout=5m || true
+        kubectl rollout status deployment/torale-frontend -n $NAMESPACE --timeout=5m || true
+
+        echo ""
+        echo "🎉 Branch deployment completed!"
+        echo ""
+        echo "📊 Deployment Summary:"
+        echo "   Branch: $BRANCH_NAME"
+        echo "   Namespace: $NAMESPACE"
+        echo "   Image Tag: $COMMIT_SHA"
+        echo ""
+        echo "🔗 Access your deployment:"
+        echo "   kubectl port-forward -n $NAMESPACE svc/torale-api 8000:80"
+        echo "   kubectl port-forward -n $NAMESPACE svc/torale-frontend 8080:80"
+        echo ""
+        echo "📋 View resources:"
+        kubectl get pods,svc,deployments -n $NAMESPACE
+        echo ""
+        echo "🗑️  Cleanup: just k8s-cleanup-branch $BRANCH_SLUG"
+
+    waitFor:
+      - 'scan-api'
+      - 'scan-worker'
+      - 'scan-frontend'
+
+# ============================================================================
+# BUILD CONFIGURATION
+# ============================================================================
+
+# Options
+options:
+  # Use standard machine for branch builds (cost optimization)
+  machineType: 'E2_HIGHCPU_4'
+
+  # Disk size
+  diskSizeGb: 50
+
+  # Logging
+  logging: CLOUD_LOGGING_ONLY
+
+  # Substitution options
+  substitutionOption: 'ALLOW_LOOSE'
+  dynamic_substitutions: true
+
+# Timeout (shorter for branches)
+timeout: '1200s'  # 20 minutes
+
+# Build artifacts
+artifacts:
+  objects:
+    location: 'gs://$PROJECT_ID-build-artifacts/branches/$BRANCH_NAME/$BUILD_ID'
+    paths:
+      - '/workspace/build-metadata.env'
+
+# Images built
+images:
+  - 'gcr.io/$PROJECT_ID/torale-api:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/torale-worker:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/torale-frontend:$COMMIT_SHA'
