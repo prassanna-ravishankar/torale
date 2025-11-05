@@ -11,7 +11,21 @@ from torale.workers.workflows import TaskExecutionWorkflow
 
 
 async def main():
-    client = await Client.connect(settings.temporal_host, namespace=settings.temporal_namespace)
+    # Configure TLS and API key for Temporal Cloud
+    if settings.temporal_api_key:
+        # For Temporal Cloud, use tls=True to enable default system TLS
+        client = await Client.connect(
+            settings.temporal_host,
+            namespace=settings.temporal_namespace,
+            tls=True,
+            api_key=settings.temporal_api_key,
+        )
+    else:
+        # For self-hosted Temporal without TLS
+        client = await Client.connect(
+            settings.temporal_host,
+            namespace=settings.temporal_namespace,
+        )
     
     worker = Worker(
         client,
