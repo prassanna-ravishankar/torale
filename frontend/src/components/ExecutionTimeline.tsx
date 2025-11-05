@@ -1,4 +1,5 @@
 import React from "react";
+import ReactMarkdown from "react-markdown";
 import { TaskExecution } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -105,10 +106,22 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
 
                 {execution.result?.answer && (
                   <div className="mb-3">
-                    <p className="text-sm mb-2">
-                      <span className="font-medium">Answer: </span>
-                      {execution.result.answer}
-                    </p>
+                    <div className="text-sm">
+                      <ReactMarkdown
+                        components={{
+                          p: ({ children }) => <p className="mb-3 leading-relaxed">{children}</p>,
+                          ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1.5">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 space-y-1.5">{children}</ol>,
+                          li: ({ children }) => <li className="text-sm leading-relaxed">{children}</li>,
+                          strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+                          h1: ({ children }) => <h1 className="text-xl font-bold mb-3 mt-4">{children}</h1>,
+                          h2: ({ children }) => <h2 className="text-lg font-semibold mb-2 mt-3">{children}</h2>,
+                          h3: ({ children }) => <h3 className="text-base font-semibold mb-2 mt-2">{children}</h3>,
+                        }}
+                      >
+                        {execution.result.answer}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 )}
 
