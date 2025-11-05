@@ -13,7 +13,7 @@ INSTANCE_NAME="torale-db"
 DATABASE_NAME="torale"
 DB_USER="torale"
 SA_NAME="cloudsql-proxy"
-K8S_NAMESPACE="production"
+K8S_NAMESPACE="torale"
 K8S_SA_NAME="torale-sa"
 
 echo "Project ID: $PROJECT_ID"
