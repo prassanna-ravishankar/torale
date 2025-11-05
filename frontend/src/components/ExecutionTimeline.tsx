@@ -127,15 +127,27 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
 
                 {execution.result?.current_state && (
                   <div className="mb-3 p-3 bg-muted rounded-md">
-                    <p className="text-sm mb-2">Current State:</p>
-                    <div className="text-xs text-muted-foreground space-y-1">
+                    <p className="text-sm font-medium mb-3">Current State:</p>
+                    <div className="text-sm text-muted-foreground space-y-2">
                       {Object.entries(execution.result.current_state).map(
                         ([key, value]) => (
                           <div key={key}>
-                            <span className="font-medium">{key}:</span>{" "}
-                            {typeof value === "object"
-                              ? JSON.stringify(value)
-                              : String(value)}
+                            <span className="font-medium text-foreground">
+                              {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}:
+                            </span>{" "}
+                            {Array.isArray(value) ? (
+                              value.length > 3 ? (
+                                <span className="text-xs">{value.slice(0, 3).join(", ")} and {value.length - 3} more</span>
+                              ) : (
+                                <span className="text-xs">{value.join(", ")}</span>
+                              )
+                            ) : typeof value === "object" && value !== null ? (
+                              <pre className="text-xs mt-1 p-2 bg-background rounded overflow-x-auto">
+                                {JSON.stringify(value, null, 2)}
+                              </pre>
+                            ) : (
+                              <span className="text-xs">{String(value)}</span>
+                            )}
                           </div>
                         )
                       )}
