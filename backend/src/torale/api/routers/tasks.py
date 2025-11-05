@@ -25,6 +25,22 @@ def parse_task_row(row) -> dict:
     return task_dict
 
 
+async def get_temporal_client() -> Client:
+    """Get a Temporal client with proper authentication for Temporal Cloud or local dev."""
+    if settings.temporal_api_key:
+        return await Client.connect(
+            settings.temporal_host,
+            namespace=settings.temporal_namespace,
+            tls=True,
+            api_key=settings.temporal_api_key,
+        )
+    else:
+        return await Client.connect(
+            settings.temporal_host,
+            namespace=settings.temporal_namespace,
+        )
+
+
 def parse_execution_row(row) -> dict:
     """Parse an execution row from the database, converting JSON strings to dicts"""
     exec_dict = dict(row)
@@ -73,7 +89,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
     # Create Temporal schedule for automatic execution
     if task.is_active:
         try:
-            client = await Client.connect(settings.temporal_host, namespace=settings.temporal_namespace)
+            client = await get_temporal_client()
             await client.create_schedule(
                 id=f"schedule-{task_id}",
                 schedule=Schedule(
@@ -209,7 +225,7 @@ async def update_task(
     # Handle schedule pause/unpause if is_active changed
     if "is_active" in update_data and update_data["is_active"] != existing["is_active"]:
         try:
-            client = await Client.connect(settings.temporal_host, namespace=settings.temporal_namespace)
+            client = await get_temporal_client()
             schedule_handle = client.get_schedule_handle(f"schedule-{task_id}")
 
             if update_data["is_active"]:
@@ -250,7 +266,7 @@ async def update_task(
 async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
     # Delete Temporal schedule first (if it exists)
     try:
-        client = await Client.connect(settings.temporal_host, namespace=settings.temporal_namespace)
+        client = await get_temporal_client()
         schedule_handle = client.get_schedule_handle(f"schedule-{task_id}")
         await schedule_handle.delete()
     except Exception:
@@ -308,7 +324,7 @@ async def execute_task(task_id: UUID, user: CurrentUser, db: Database = Depends(
 
     # Trigger Temporal workflow for actual execution
     try:
-        client = await Client.connect(settings.temporal_host, namespace=settings.temporal_namespace)
+        client = await get_temporal_client()
         await client.start_workflow(
             TaskExecutionWorkflow.run,
             TaskExecutionRequest(
