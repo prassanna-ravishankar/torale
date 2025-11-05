@@ -7,3 +7,13 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+// Runtime config injected at deployment time
+interface RuntimeConfig {
+  apiUrl: string
+  clerkPublishableKey: string
+}
+
+interface Window {
+  CONFIG: RuntimeConfig
+}

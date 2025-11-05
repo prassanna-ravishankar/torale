@@ -1,0 +1,15 @@
+{{- if .Values.frontend.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "torale.fullname" . }}-frontend-config
+  labels:
+    {{- include "torale.frontend.labels" . | nindent 4 }}
+data:
+  config.js: |
+    // Runtime configuration injected by Kubernetes
+    window.CONFIG = {
+      apiUrl: 'https://{{ .Values.domains.api }}',
+      clerkPublishableKey: '{{ .Values.clerk.publishableKey }}'
+    };
+{{- end }}

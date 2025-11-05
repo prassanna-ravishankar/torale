@@ -11,6 +11,10 @@ domains:
   frontend: torale.ai
   api: api.torale.ai
 
+# Clerk authentication
+clerk:
+  publishableKey: pk_test_cGxlYXNhbnQtcHJpbWF0ZS04OC5jbGVyay5hY2NvdW50cy5kZXYk
+
 # Image configuration
 image:
   registry: gcr.io

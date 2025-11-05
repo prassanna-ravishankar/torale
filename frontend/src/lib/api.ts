@@ -1,6 +1,7 @@
 import type { Task, TaskExecution, TaskTemplate, User } from '@/types'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+// Read API URL from runtime config (injected by Kubernetes)
+const API_BASE_URL = window.CONFIG?.apiUrl || 'http://localhost:8000'
 
 interface ApiError {
   detail: string
