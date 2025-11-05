@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     temporal_host: str = "localhost:7233"
     temporal_namespace: str = "default"
+    temporal_api_key: str | None = None
 
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
