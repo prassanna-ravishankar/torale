@@ -63,6 +63,5 @@ supabase/functions/.env
 .torale/
 *.log
 # Kubernetes / Helm
-helm/torale/values-production.yaml
 helm/torale/secrets/*.yaml
 .cloud-sql-info
