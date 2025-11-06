@@ -26,10 +26,10 @@ export default function Landing() {
   };
 
   const examples = [
-    "When is the next iPhone release date announced?",
-    "When do swimming pool memberships open for summer?",
+    "When is the iPhone 18 release date announced?",
+    "When do swimming pool memberships open at Lido London?",
     "When is PS5 back in stock at Best Buy?",
-    "When is the GPT-5 launch date confirmed?"
+    "When is the next OpenAI model launch date confirmed?"
   ];
 
   return (
