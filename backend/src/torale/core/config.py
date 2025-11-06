@@ -29,5 +29,8 @@ class Settings(BaseSettings):
     # Development/testing mode - disable authentication
     torale_noauth: bool = False
 
+    # Platform capacity limit for beta
+    max_users: int = 100
+
 
 settings = Settings()
