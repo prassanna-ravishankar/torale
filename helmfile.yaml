@@ -123,6 +123,14 @@ releases:
     values:
       # Load production overrides
       - helm/torale/values-production.yaml
+    # Override image tag from environment (set by CI)
+    set:
+      - name: image.tag
+        value: {{ env "IMAGE_TAG" | default "latest" }}
+      - name: image.repository
+        value: {{ env "GCP_PROJECT_ID" | default "baldmaninc" }}
+      - name: global.projectId
+        value: {{ env "GCP_PROJECT_ID" | default "baldmaninc" }}
     missingFileHandler: Warn
 
 # Helmfile settings
