@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { TaskExecution } from '@/lib/types';
-  import Badge from './ui/Badge.svelte';
-  import Card from './ui/Card.svelte';
+  import Badge from './ui/badge.svelte';
+  import Card from './ui/card.svelte';
   import { CheckCircle2, XCircle, Clock, ExternalLink, AlertCircle } from 'lucide-svelte';
 
   export let executions: TaskExecution[];

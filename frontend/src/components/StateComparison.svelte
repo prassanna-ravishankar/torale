@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { TaskExecution } from '@/lib/types';
-  import Card from './ui/Card.svelte';
+  import Card from './ui/card.svelte';
   import { ArrowRight, Info } from 'lucide-svelte';
 
   export let executions: TaskExecution[];

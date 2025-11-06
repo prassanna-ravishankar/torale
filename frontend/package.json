@@ -11,12 +11,14 @@
   },
   "dependencies": {
     "@clerk/clerk-js": "^5.47.0",
-    "svelte-routing": "^2.13.0",
+    "bits-ui": "^2.14.2",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^2.5.2",
-    "lucide-svelte": "^0.454.0",
     "date-fns": "^3.6.0",
-    "svelte-sonner": "^0.3.28"
+    "lucide-svelte": "^0.454.0",
+    "svelte-routing": "^2.13.0",
+    "svelte-sonner": "^0.3.28",
+    "tailwind-merge": "^3.3.1",
+    "tailwind-variants": "^3.1.1"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^4.0.0",

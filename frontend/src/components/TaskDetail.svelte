@@ -4,10 +4,10 @@
   import { api } from '@/lib/apiClient';
   import type { Task, TaskExecution } from '@/lib/types';
 
-  import Button from './ui/Button.svelte';
-  import Badge from './ui/Badge.svelte';
-  import Switch from './ui/Switch.svelte';
-  import Card from './ui/Card.svelte';
+  import Button from './ui/button.svelte';
+  import Badge from './ui/badge.svelte';
+  import Switch from './ui/switch.svelte';
+  import Card from './ui/card.svelte';
   import Loader from './Loader.svelte';
   import ExecutionTimeline from './ExecutionTimeline.svelte';
   import StateComparison from './StateComparison.svelte';

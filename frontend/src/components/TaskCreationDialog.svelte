@@ -4,12 +4,12 @@
   import { api } from '@/lib/apiClient';
   import type { NotifyBehavior, TaskTemplate } from '@/lib/types';
 
-  import Dialog from './ui/Dialog.svelte';
-  import Button from './ui/Button.svelte';
-  import Input from './ui/Input.svelte';
-  import Label from './ui/Label.svelte';
-  import Textarea from './ui/Textarea.svelte';
-  import Select from './ui/Select.svelte';
+  import Dialog from './ui/dialog.svelte';
+  import Button from './ui/button.svelte';
+  import Input from './ui/input.svelte';
+  import Label from './ui/label.svelte';
+  import Textarea from './ui/textarea.svelte';
+  import Select from './ui/select.svelte';
   import { Loader2, Info, Sparkles } from 'lucide-svelte';
 
   export let open = false;

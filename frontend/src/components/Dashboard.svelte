@@ -6,7 +6,7 @@
 
   import TaskCard from './TaskCard.svelte';
   import TaskCreationDialog from './TaskCreationDialog.svelte';
-  import Button from './ui/Button.svelte';
+  import Button from './ui/button.svelte';
   import Loader from './Loader.svelte';
   import { Plus, Bell, RefreshCw } from 'lucide-svelte';
 

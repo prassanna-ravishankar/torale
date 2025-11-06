@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { Task } from '@/lib/types';
-  import Card from './ui/Card.svelte';
-  import Badge from './ui/Badge.svelte';
-  import Button from './ui/Button.svelte';
-  import Switch from './ui/Switch.svelte';
+  import Card from './ui/card.svelte';
+  import Badge from './ui/badge.svelte';
+  import Button from './ui/button.svelte';
+  import Switch from './ui/switch.svelte';
   import { Clock, Search, ExternalLink, MoreVertical, Trash2, Play } from 'lucide-svelte';
 
   export let task: Task;
