@@ -1,4 +1,10 @@
 services:
+  # ============================================
+  # Temporal Stack (Local Development Only)
+  # ============================================
+  # Production uses Temporal Cloud (us-central1.gcp.api.temporal.io:7233)
+  # Local dev uses self-hosted Temporal to match production workflows
+
   temporal:
     image: temporalio/auto-setup:latest
     ports:
@@ -30,6 +36,11 @@ services:
       - TEMPORAL_CORS_ORIGINS=http://localhost:3000
     depends_on:
       - temporal
+
+  # ============================================
+  # Torale Database (Local Development)
+  # ============================================
+  # Production uses Cloud SQL PostgreSQL 16
 
   postgres:
     image: postgres:16

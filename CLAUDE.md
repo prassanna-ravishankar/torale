@@ -21,14 +21,14 @@ Torale is a **grounded search monitoring platform** for AI-powered conditional a
 - **Frontend**: React 18 + TypeScript + Vite
 - **Database**: Cloud SQL PostgreSQL 16 (managed)
 - **Authentication**: Clerk (OAuth + Email/Password with Google & GitHub)
-- **Scheduling**: Temporal workflows with cron schedules
-- **Infrastructure**: GKE Autopilot (ClusterKit) + Cloud Build + Helm
+- **Scheduling**: Temporal Cloud (production), self-hosted (local dev)
+- **Infrastructure**: GKE Autopilot (clusterkit) + GitHub Actions + Helm
 - **AI**: Google Gemini with grounded search (primary), OpenAI/Anthropic (fallback)
 - **Search**: Google Search API via Gemini grounding
 - **Notifications**: In-app (database-stored), future: NotificationAPI
 - **CLI**: Python typer with API key authentication
 - **Package Management**: UV (backend), npm (frontend)
-- **Local Development**: Docker Compose (PostgreSQL + Temporal + API + Workers)
+- **Local Development**: Docker Compose (PostgreSQL + self-hosted Temporal + API + Workers)
 
 ### System Design
 ```
@@ -36,9 +36,9 @@ User ──► Frontend (torale.ai)
               ↓
          API (api.torale.ai) ──► Cloud SQL PostgreSQL
               ↓                   (Auth + DB + State)
-         Temporal (GKE self-hosted)
+         Temporal Cloud
               ↓
-         Workers ──► Gemini + Google Search
+         Workers (GKE) ──► Gemini + Google Search
               └──► In-app Notifications
                    State comparison & condition evaluation
 ```
@@ -52,12 +52,13 @@ User ──► Frontend (torale.ai)
 
 ## Deployment Architecture
 
-### Production (GKE ClusterKit)
+### Production (GKE)
 - **Cluster**: GKE Autopilot (clusterkit) in us-central1
-- **Cost Optimization**: Spot pods (60-91% savings)
-- **Database**: Cloud SQL PostgreSQL (managed, zonal for cost)
+- **Cost Optimization**: Spot pods (60-91% savings), zonal Cloud SQL
+- **Database**: Cloud SQL PostgreSQL 16 (managed, private IP)
 - **Orchestration**: Helm + Helmfile
-- **Temporal**: Self-hosted via official Helm charts (can switch to Temporal Cloud via env var)
+- **Temporal**: Temporal Cloud (us-central1.gcp.api.temporal.io:7233)
+- **CI/CD**: GitHub Actions with Workload Identity Federation (keyless auth)
 - **Ingress**: GCE Load Balancer + GKE Managed Certificates (auto SSL)
 - **Domains**: api.torale.ai (API), torale.ai (Frontend)
 
@@ -65,8 +66,12 @@ User ──► Frontend (torale.ai)
 1. **API Deployment**: FastAPI with Cloud SQL Proxy sidecar + init container for migrations
 2. **Worker Deployment**: Temporal workers with Cloud SQL Proxy sidecar
 3. **Frontend Deployment**: nginx serving React SPA (multi-stage Docker build)
-4. **Temporal Stack**: 3 Helm releases (temporal, admin-tools, UI)
-5. **HPA**: Auto-scale API/Workers based on CPU (min 2, max 10 replicas)
+4. **HPA**: Auto-scale API/Workers based on CPU (min 2, max 10 replicas)
+
+### Local Development
+- **Database**: PostgreSQL 16 via Docker Compose
+- **Temporal**: Self-hosted via Docker Compose (matches production workflows)
+- **Services**: API + Workers running locally via `just dev`
 
 ## Project Structure
 ```
@@ -103,8 +108,7 @@ torale/
 ├── helmfile.yaml         # Multi-chart orchestration
 ├── justfile              # Task runner (just dev, just test, etc.)
 ├── docker-compose.yml    # Local development
-├── cloudbuild.yaml       # Cloud Build config (GKE deployment)
-├── deploy.sh             # Legacy Cloud Run deployment
+├── .github/workflows/    # GitHub Actions CI/CD
 ├── .env / .env.example
 ├── CLAUDE.md
 └── README.md
@@ -171,6 +175,23 @@ CREATE TABLE task_executions (
   grounding_sources JSONB,  -- Array of source URLs with metadata
 
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Pre-built task templates
+CREATE TABLE task_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  category TEXT NOT NULL,  -- 'product_release', 'price_tracking', 'availability', etc.
+  icon TEXT,  -- Emoji or icon identifier
+  search_query_template TEXT NOT NULL,  -- Template with placeholders like {product}
+  condition_template TEXT NOT NULL,  -- Template for condition description
+  default_schedule TEXT NOT NULL DEFAULT '0 9 * * *',  -- Default cron schedule
+  default_notify_behavior TEXT NOT NULL DEFAULT 'once',
+  config JSONB,  -- Default executor config
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 ```
 
@@ -405,8 +426,11 @@ VITE_CLERK_PUBLISHABLE_KEY=pk_test_...      # Frontend: Initialize ClerkProvider
 VITE_API_BASE_URL=http://localhost:8000     # Frontend: API endpoint
 
 # Temporal
+# Local: localhost:7233
+# Production: us-central1.gcp.api.temporal.io:7233
 TEMPORAL_HOST=localhost:7233
 TEMPORAL_NAMESPACE=default
+TEMPORAL_API_KEY=                         # Required for Temporal Cloud (production)
 
 # AI APIs (Gemini required, others optional)
 GOOGLE_API_KEY=your-gemini-api-key       # Required for grounded search
@@ -416,25 +440,27 @@ ANTHROPIC_API_KEY=                        # Optional fallback
 # Notifications (future)
 NOTIFICATION_API_KEY=
 
-# Deployment
+# GKE Deployment (production only)
 GCP_PROJECT_ID=
-CLOUD_RUN_REGION=us-central1
+GCP_REGION=us-central1
 ```
 
 ## Implementation Status
 
 ### ✅ Completed
-- **Infrastructure**: PostgreSQL + Temporal + Docker Compose setup
+- **Infrastructure**: GKE + Cloud SQL + Temporal Cloud with GitHub Actions CI/CD
 - **Authentication**: Clerk (OAuth + email/password) with API key support for CLI
 - **Core API**: Task CRUD with Temporal schedule management
-- **Temporal Integration**: Automatic cron-based execution
+- **Temporal Integration**: Temporal Cloud with automatic cron-based execution
 - **Worker Framework**: Activities and workflows for task execution
-- **Database Migrations**: Alembic migration system
+- **Database Migrations**: Alembic migration system (consolidated initial schema)
 - **Grounded Search**: Google Search via Gemini with condition evaluation
 - **State Tracking**: last_known_state comparison and change detection
 - **Notification System**: In-app notifications endpoint
+- **Task Templates**: Pre-built templates for common monitoring use cases
 - **CLI**: Full CLI with API key authentication and no-auth dev mode
 - **Frontend**: React dashboard with Clerk authentication
+- **Cost Optimization**: Spot pods (60-91% savings), zonal Cloud SQL
 
 ### 🚧 In Progress
 - **Enhanced UI**: Grounding source display and historical state comparison

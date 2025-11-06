@@ -1,7 +1,14 @@
-"""migrate_users_to_clerk
+"""initial_schema_with_clerk
+
+This is the consolidated initial migration that includes:
+- Clerk authentication (replaces FastAPI-Users)
+- Grounded search fields
+- API keys table
+
+Previous migrations (c9da50682126, 30d7793fb7d2, 7e4bc3017b35) have been consolidated here.
 
 Revision ID: 9ca6877eba15
-Revises: 7e4bc3017b35
+Revises:
 Create Date: 2025-11-04 09:50:25.913930
 
 """
@@ -12,21 +19,20 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "9ca6877eba15"
-down_revision: str | Sequence[str] | None = "7e4bc3017b35"
+down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # WARNING: This migration drops all existing users!
-    # This is intentional for the Clerk migration (clean slate approach).
+    # Enable UUID extension
+    op.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
 
-    # Drop dependent objects first
-    op.execute("DROP TABLE IF EXISTS tasks CASCADE")
+    # Drop any existing tables from previous installations
     op.execute("DROP TABLE IF EXISTS task_executions CASCADE")
-
-    # Drop existing users table
+    op.execute("DROP TABLE IF EXISTS tasks CASCADE")
+    op.execute("DROP TABLE IF EXISTS api_keys CASCADE")
     op.execute("DROP TABLE IF EXISTS users CASCADE")
 
     # Recreate users table with Clerk fields
@@ -115,24 +121,37 @@ def upgrade() -> None:
         ON task_executions(task_id)
     """)
 
+    # Create API keys table for CLI authentication
+    op.execute("""
+        CREATE TABLE api_keys (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            key_prefix TEXT NOT NULL,
+            key_hash TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            last_used_at TIMESTAMP WITH TIME ZONE,
+            is_active BOOLEAN NOT NULL DEFAULT true
+        )
+    """)
+
+    # Create indexes on api_keys
+    op.execute("""
+        CREATE INDEX IF NOT EXISTS idx_api_keys_user_id
+        ON api_keys(user_id)
+    """)
+
+    op.execute("""
+        CREATE INDEX IF NOT EXISTS idx_api_keys_key_hash
+        ON api_keys(key_hash) WHERE is_active = true
+    """)
+
 
 def downgrade() -> None:
     """Downgrade schema."""
-    # This downgrade recreates the old schema structure
-    # Note: All data will be lost
-
+    # Drop all tables
+    op.execute("DROP TABLE IF EXISTS api_keys CASCADE")
     op.execute("DROP TABLE IF EXISTS task_executions CASCADE")
     op.execute("DROP TABLE IF EXISTS tasks CASCADE")
     op.execute("DROP TABLE IF EXISTS users CASCADE")
-
-    # Recreate old users table with password fields
-    op.execute("""
-        CREATE TABLE users (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            email TEXT NOT NULL UNIQUE,
-            hashed_password TEXT NOT NULL,
-            is_active BOOLEAN NOT NULL DEFAULT true,
-            is_superuser BOOLEAN NOT NULL DEFAULT false,
-            is_verified BOOLEAN NOT NULL DEFAULT false
-        )
-    """)
+    op.execute('DROP EXTENSION IF EXISTS "uuid-ossp"')

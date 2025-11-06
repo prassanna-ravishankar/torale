@@ -1,5 +1,12 @@
 """seed_task_templates
 
+Seeds initial task templates for common monitoring use cases.
+
+Migration History:
+- 9ca6877eba15: Initial consolidated schema (Clerk auth + grounded search + API keys)
+- 0c195cb8b608: Add task_templates table
+- 1ccec0168405: This migration (seed templates)
+
 Revision ID: 1ccec0168405
 Revises: 0c195cb8b608
 Create Date: 2025-11-05 22:47:09.086280

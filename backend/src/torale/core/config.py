@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     notification_api_key: str | None = None
 
     gcp_project_id: str | None = None
-    cloud_run_region: str = "us-central1"
+    gcp_region: str = "us-central1"
 
     api_host: str = "0.0.0.0"
     api_port: int = 8000

@@ -145,13 +145,21 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 
 ## Architecture
 
+### Local Development
 - **API**: FastAPI with Clerk authentication + API keys
-- **Database**: PostgreSQL 16 with state tracking
-- **Workers**: Temporal workflows for scheduled execution
+- **Database**: PostgreSQL 16 via Docker Compose
+- **Workers**: Temporal workflows (self-hosted via Docker Compose)
 - **Executor**: Grounded search + LLM condition evaluation
 - **Scheduler**: Temporal cron schedules
 - **Search**: Google Search via Gemini grounding
 - **CLI**: Python typer with API key authentication
+
+### Production (GKE)
+- **Infrastructure**: GKE Autopilot (clusterkit) in us-central1
+- **Database**: Cloud SQL PostgreSQL 16 (managed, zonal)
+- **Orchestration**: Temporal Cloud + GitHub Actions CI/CD
+- **Cost**: Spot pods (60-91% savings), zonal Cloud SQL
+- **Domains**: api.torale.ai (API), torale.ai (Frontend)
 
 ## Features
 
@@ -165,11 +173,13 @@ Access the frontend at http://localhost:3000 after starting the dev server.
   - `always`: Notify every time condition is met
   - `track_state`: Notify only when state changes
 - In-app notifications endpoint
+- Task templates for common use cases
 - Clerk authentication (OAuth + email/password)
 - API key authentication for CLI
 - CLI for task management
-- Temporal schedule management
+- Temporal Cloud integration (production)
 - Frontend dashboard with task management
+- GKE deployment with cost optimization
 
 ### 🚧 In Progress
 - Enhanced grounding source display
