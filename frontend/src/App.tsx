@@ -1,6 +1,6 @@
 import React from 'react'
 import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { SignedIn, SignedOut, SignIn, SignUp, useAuth as useClerkAuth } from '@clerk/clerk-react'
+import { SignIn, SignUp } from '@clerk/clerk-react'
 import { Dashboard } from '@/components/Dashboard'
 import { TaskDetail } from '@/components/TaskDetail'
 import Landing from '@/components/Landing'
@@ -8,9 +8,10 @@ import { Header } from '@/components/Header'
 import { Toaster } from '@/components/ui/sonner'
 import { Loader2 } from 'lucide-react'
 import { useApiSetup } from '@/hooks/useApi'
+import { useAuth } from '@/contexts/AuthContext'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isLoaded, userId } = useClerkAuth()
+  const { isLoaded, isAuthenticated } = useAuth()
 
   if (!isLoaded) {
     return (
@@ -20,7 +21,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!userId) {
+  if (!isAuthenticated) {
     return <Navigate to="/sign-in" replace />
   }
 
@@ -47,7 +48,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 function AuthRedirect({ children }: { children: React.ReactNode }) {
-  const { isLoaded, userId } = useClerkAuth()
+  const { isLoaded, isAuthenticated } = useAuth()
 
   if (!isLoaded) {
     return (
@@ -57,7 +58,7 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (userId) {
+  if (isAuthenticated) {
     return <Navigate to="/" replace />
   }
 
@@ -130,7 +131,7 @@ function TaskDetailRoute({ onBack, onDeleted }: { onBack: () => void; onDeleted:
 }
 
 function HomeRoute({ onTaskClick }: { onTaskClick: (taskId: string) => void }) {
-  const { isLoaded, userId } = useClerkAuth()
+  const { isLoaded, isAuthenticated } = useAuth()
 
   if (!isLoaded) {
     return (
@@ -140,7 +141,7 @@ function HomeRoute({ onTaskClick }: { onTaskClick: (taskId: string) => void }) {
     )
   }
 
-  if (userId) {
+  if (isAuthenticated) {
     return (
       <AppLayout>
         <Dashboard onTaskClick={onTaskClick} />

@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
-import { useAuth } from '@clerk/clerk-react'
+import { useAuth } from '@/contexts/AuthContext'
 import { api } from '@/lib/api'
 
 /**
- * Hook to initialize the API client with Clerk authentication.
+ * Hook to initialize the API client with authentication.
  * Call this once at the app level to set up the token getter.
  */
 export function useApiSetup() {

@@ -8,6 +8,7 @@ import { Plus, Bell, RefreshCw, Loader2 } from 'lucide-react'
 import { Alert } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface DashboardProps {
   onTaskClick: (taskId: string) => void;
@@ -20,6 +21,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   const [activeFilter, setActiveFilter] = useState<"all" | "active" | "triggered">(
     "all"
   );
+  const { syncUser } = useAuth()
 
   const loadTasks = async () => {
     setIsLoading(true)
@@ -36,13 +38,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
 
   useEffect(() => {
     // Sync user with backend on first load (creates user record if needed)
-    api.syncUser().catch(error => {
-      console.error('Failed to sync user:', error)
-      // Don't show error to user - sync will retry on next API call
-    })
+    // Only available in Clerk mode, no-op in no-auth mode
+    if (syncUser) {
+      syncUser().catch(error => {
+        console.error('Failed to sync user:', error)
+        // Don't show error to user - sync will retry on next API call
+      })
+    }
 
     loadTasks();
-  }, []);
+  }, [syncUser]);
 
   const handleToggleTask = async (id: string, isActive: boolean) => {
     try {

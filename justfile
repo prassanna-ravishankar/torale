@@ -9,19 +9,19 @@ default:
 # === Development ===
 
 # Start all services (API + Workers + Temporal + PostgreSQL)
-dev:
+dev: build
     docker compose up
 
 # Start all services in background
-dev-bg:
+dev-bg: build
     docker compose up -d
 
 # Start only API service
-dev-api:
+dev-api: build
     docker compose up api
 
 # Start only workers service
-dev-workers:
+dev-workers: build
     docker compose up workers
 
 # Start frontend development server
@@ -29,10 +29,18 @@ dev-frontend:
     cd frontend && npm run dev
 
 # Start all services + frontend
-dev-all:
+dev-all: build
     #!/usr/bin/env bash
     docker compose up -d
     cd frontend && npm run dev
+
+# Start all services + frontend in no-auth mode
+dev-all-noauth: build
+    #!/usr/bin/env bash
+    export TORALE_NOAUTH=1
+    export VITE_TORALE_NOAUTH=1
+    docker compose up -d
+    cd frontend && VITE_TORALE_NOAUTH=1 npm run dev
 
 # View logs for all services
 logs:
@@ -55,7 +63,7 @@ restart-service service:
 # Run backend unit tests
 test:
     @echo "Running backend unit tests..."
-    cd backend && uv run pytest tests/ -v
+    cd backend && uv run --all-extras pytest tests/ -v
 
 # Run tests with coverage
 test-cov:

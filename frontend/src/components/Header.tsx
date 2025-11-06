@@ -1,9 +1,11 @@
 import React from "react";
-import { UserButton, useUser } from "@clerk/clerk-react";
+import { UserButton } from "@clerk/clerk-react";
 import { Bell } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const Header: React.FC = () => {
-  const { user } = useUser();
+  const { user } = useAuth();
+  const noAuth = import.meta.env.VITE_TORALE_NOAUTH === '1';
 
   return (
     <header className="border-b">
@@ -16,10 +18,11 @@ export const Header: React.FC = () => {
         <div className="flex items-center gap-4">
           {user && (
             <span className="text-sm text-muted-foreground hidden sm:inline">
-              {user.primaryEmailAddress?.emailAddress}
+              {user.email}
+              {noAuth && " (Dev Mode)"}
             </span>
           )}
-          <UserButton afterSignOutUrl="/sign-in" />
+          {!noAuth && <UserButton afterSignOutUrl="/sign-in" />}
         </div>
       </div>
     </header>
