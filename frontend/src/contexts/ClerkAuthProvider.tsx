@@ -36,6 +36,11 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
           return null
         }
       },
+      syncUser: async () => {
+        // Import api client lazily to avoid circular dependency
+        const { api } = await import('@/lib/api')
+        await api.syncUser()
+      },
       signOut: async () => {
         await signOut()
       },

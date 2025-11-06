@@ -19,6 +19,9 @@ export interface AuthContextType {
   // Token management
   getToken: () => Promise<string | null>
 
+  // User sync (only needed for Clerk mode)
+  syncUser?: () => Promise<void>
+
   // Auth actions (only available in Clerk mode)
   signOut?: () => Promise<void>
 }
