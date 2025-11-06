@@ -75,18 +75,11 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          install_components: 'gke-gcloud-auth-plugin'
-
       - name: Get GKE credentials
-        run: |
-          gcloud container clusters get-credentials ${{ env.GKE_CLUSTER }} \
-            --region ${{ env.GKE_REGION }} \
-            --project ${{ env.GCP_PROJECT_ID }}
-        env:
-          USE_GKE_GCLOUD_AUTH_PLUGIN: 'True'
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_REGION }}
 
       - name: Deploy via Helmfile
         uses: helmfile/helmfile-action@v2.0.5
@@ -99,8 +92,6 @@ jobs:
             --set image.tag=${{ env.IMAGE_TAG }} \
             --set image.repository=${{ env.GCP_PROJECT_ID }} \
             --set global.projectId=${{ env.GCP_PROJECT_ID }}
-        env:
-          USE_GKE_GCLOUD_AUTH_PLUGIN: 'True'
 
       - name: Verify deployment
         run: |
