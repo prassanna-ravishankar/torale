@@ -187,6 +187,7 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 - External notifications (email/SMS)
 
 ### 📋 Future Roadmap
+- **Shareable Tasks**: Share monitoring tasks with rich OpenGraph previews
 - External notifications (email/SMS via NotificationAPI)
 - Browser automation for dynamic sites
 - Price tracking with charts
