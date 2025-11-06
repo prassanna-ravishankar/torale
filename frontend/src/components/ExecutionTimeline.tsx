@@ -155,7 +155,7 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
                   </div>
                 )}
 
-                {execution.grounding_sources.length > 0 && (
+                {execution.grounding_sources && execution.grounding_sources.length > 0 && (
                   <div>
                     <p className="text-sm mb-2">Grounding Sources:</p>
                     <div className="space-y-2">
