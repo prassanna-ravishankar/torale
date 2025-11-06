@@ -1,12 +1,41 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@clerk/clerk-react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Bell, Search, Sparkles, ArrowRight, Code, Terminal } from "lucide-react";
 
+const EXAMPLES = [
+  "When is the iPhone 18 release date announced?",
+  "When do swimming pool memberships open at Lido London?",
+  "When is PS5 back in stock at Best Buy?",
+  "When is the next OpenAI model launch date confirmed?"
+];
+
+const HOW_IT_WORKS = [
+  {
+    step: "1",
+    title: "Ask a question",
+    description:
+      "What do you want to know? We search the web for answers.",
+    icon: Search,
+  },
+  {
+    step: "2",
+    title: "Set a condition",
+    description:
+      "When should we notify you? Define what change matters.",
+    icon: Sparkles,
+  },
+  {
+    step: "3",
+    title: "Get notified",
+    description:
+      "We monitor continuously and alert you the moment it happens.",
+    icon: Bell,
+  },
+];
+
 export default function Landing() {
   const navigate = useNavigate();
-  const { isSignedIn } = useAuth();
   const { scrollYProgress } = useScroll();
   const [mounted, setMounted] = useState(false);
 
@@ -16,21 +45,15 @@ export default function Landing() {
 
   useEffect(() => {
     setMounted(true);
-    if (isSignedIn) {
-      navigate("/");
-    }
-  }, [isSignedIn, navigate]);
+  }, []);
 
   const handleGetStarted = () => {
     navigate("/sign-up");
   };
 
-  const examples = [
-    "When is the iPhone 18 release date announced?",
-    "When do swimming pool memberships open at Lido London?",
-    "When is PS5 back in stock at Best Buy?",
-    "When is the next OpenAI model launch date confirmed?"
-  ];
+  const handleSignIn = () => {
+    navigate("/sign-in");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
@@ -47,7 +70,7 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate("/sign-in")}
+              onClick={handleSignIn}
               className="text-sm font-medium hover:text-primary transition-colors"
             >
               Sign in
@@ -144,29 +167,7 @@ export default function Landing() {
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-12">
-            {[
-              {
-                step: "1",
-                title: "Ask a question",
-                description:
-                  "What do you want to know? We search the web for answers.",
-                icon: Search,
-              },
-              {
-                step: "2",
-                title: "Set a condition",
-                description:
-                  "When should we notify you? Define what change matters.",
-                icon: Sparkles,
-              },
-              {
-                step: "3",
-                title: "Get notified",
-                description:
-                  "We monitor continuously and alert you the moment it happens.",
-                icon: Bell,
-              },
-            ].map((item, index) => (
+            {HOW_IT_WORKS.map((item, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 30 }}
@@ -210,14 +211,14 @@ export default function Landing() {
           </motion.div>
 
           <div className="space-y-4">
-            {examples.map((example, index) => (
+            {EXAMPLES.map((example, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, x: -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="p-6 rounded-xl bg-card border hover:border-primary/50 transition-colors cursor-pointer group"
+                className="p-6 rounded-xl bg-card border hover:border-primary/50 transition-colors group"
               >
                 <div className="flex items-center gap-4">
                   <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0"></div>
@@ -336,7 +337,7 @@ export default function Landing() {
               <span>© 2025 Torale. Monitor what matters.</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="https://torale.ai" className="hover:text-foreground transition-colors">
+              <a href="https://torale.ai" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
                 torale.ai
               </a>
             </div>
