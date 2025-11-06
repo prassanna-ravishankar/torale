@@ -51,6 +51,10 @@ def upgrade() -> None:
             server_default=sa.text("NOW()"),
             nullable=False,
         ),
+        sa.CheckConstraint(
+            "notify_behavior IN ('once', 'always', 'track_state')",
+            name="chk_templates_notify_behavior",
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
 

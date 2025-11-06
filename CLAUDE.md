@@ -184,14 +184,15 @@ CREATE TABLE task_templates (
   description TEXT NOT NULL,
   category TEXT NOT NULL,  -- 'product_release', 'price_tracking', 'availability', etc.
   icon TEXT,  -- Emoji or icon identifier
-  search_query_template TEXT NOT NULL,  -- Template with placeholders like {product}
-  condition_template TEXT NOT NULL,  -- Template for condition description
-  default_schedule TEXT NOT NULL DEFAULT '0 9 * * *',  -- Default cron schedule
-  default_notify_behavior TEXT NOT NULL DEFAULT 'once',
-  config JSONB,  -- Default executor config
+  search_query TEXT NOT NULL,  -- Template with placeholders like {product}
+  condition_description TEXT NOT NULL,  -- Template for condition description
+  schedule TEXT NOT NULL DEFAULT '0 9 * * *',  -- Default cron schedule
+  notify_behavior TEXT NOT NULL DEFAULT 'once',
+  config JSONB DEFAULT '{"model": "gemini-2.0-flash-exp"}',  -- Default executor config
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  CHECK (notify_behavior IN ('once', 'always', 'track_state'))
 );
 ```
 
