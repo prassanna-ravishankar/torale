@@ -1,0 +1,68 @@
+# Backend PR checks: lint and test
+# Runs on pull requests to ensure code quality
+
+name: Backend PR Checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-pr.yml'
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: uv sync --all-extras
+
+      - name: Run ruff check
+        working-directory: ./backend
+        run: uv run ruff check .
+
+      - name: Run ruff format check
+        working-directory: ./backend
+        run: uv run ruff format --check .
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: uv sync --all-extras
+
+      - name: Run pytest
+        working-directory: ./backend
+        run: uv run pytest --cov=torale --cov-report=term-missing --cov-report=xml
