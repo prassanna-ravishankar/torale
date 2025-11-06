@@ -32,10 +32,12 @@ Check      API, Worker,         Trivy Scan      Production
 Files      Frontend                              or Branch
 ```
 
-### Workflow File
+### Workflow Files
 
-- **Location**: `.github/workflows/deploy.yml`
-- **Triggers**: Push to `main` or feature branches
+- **Production**: `.github/workflows/production.yml`
+- **Branch**: `.github/workflows/branch.yml`
+- **PR Checks**: `.github/workflows/pr.yml`
+- **Build/Scan**: `.github/workflows/build.yml` (reusable)
 - **Runtime**: ~5-10 minutes
 
 ---
@@ -45,56 +47,60 @@ Files      Frontend                              or Branch
 ### Prerequisites
 
 - GKE cluster (`clusterkit`) running
-- GCP service account with permissions:
-  - `roles/container.developer` (GKE access)
-  - `roles/storage.admin` (GCR push/pull)
+- `gcloud` CLI installed and authenticated
+- GitHub repository
 
-### Step 1: Create GCP Service Account
+### Keyless Authentication
+
+This setup uses **Workload Identity Federation** for keyless authentication - no service account keys needed!
+
+**Benefits:**
+- ✅ No long-lived credentials
+- ✅ No key rotation required
+- ✅ Automatic short-lived tokens via OIDC
+- ✅ More secure than service account keys
+
+### Step 1: Run Setup Script
 
 ```bash
-# Set your project ID
-PROJECT_ID=your-project-id
-
-# Create service account
-gcloud iam service-accounts create github-actions \
-  --display-name="GitHub Actions for Torale" \
-  --project=$PROJECT_ID
-
-# Grant GKE permissions
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-actions@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/container.developer"
-
-# Grant GCR permissions
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-actions@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/storage.admin"
-
-# Create key
-gcloud iam service-accounts keys create github-actions-key.json \
-  --iam-account=github-actions@$PROJECT_ID.iam.gserviceaccount.com
+./scripts/setup-github-wif.sh
 ```
+
+This script will:
+1. Enable required GCP APIs
+2. Create Workload Identity Pool
+3. Create Workload Identity Provider
+4. Create service account with GKE/GCR permissions
+5. Configure Workload Identity binding
+6. Output GitHub secrets to add
+
+**Manual setup** (if you prefer):
+
+See the [setup script](../scripts/setup-github-wif.sh) for the full commands.
 
 ### Step 2: Add GitHub Secrets
 
 Go to your GitHub repository → Settings → Secrets and variables → Actions
 
-Add these secrets:
+Add these **three secrets** (output from setup script):
 
-1. **`GCP_SA_KEY`**
-   ```bash
-   # Copy entire contents of github-actions-key.json
-   cat github-actions-key.json
-   ```
+1. **`GCP_PROJECT_ID`** - Your GCP project ID
+2. **`GCP_SERVICE_ACCOUNT`** - Service account email
+3. **`GCP_WORKLOAD_IDENTITY_PROVIDER`** - WIF provider path
 
-2. **`GCP_PROJECT_ID`**
-   ```
-   your-project-id
-   ```
+**Quick add via GitHub CLI:**
+```bash
+gh secret set GCP_PROJECT_ID --body 'your-project-id'
+gh secret set GCP_SERVICE_ACCOUNT --body 'github-actions@your-project.iam.gserviceaccount.com'
+gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --body 'projects/123/locations/global/...'
+```
 
 ### Step 3: Done!
 
-That's it. Now every push triggers the pipeline.
+That's it! Every push now triggers keyless authenticated deployments.
+
+**Learn more:**
+- [Workload Identity Federation](https://cloud.google.com/blog/products/identity-security/enabling-keyless-authentication-from-github-actions)
 
 ---
 

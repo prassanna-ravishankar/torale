@@ -255,11 +255,17 @@ just dev-all    # Include frontend dev server
 
 Torale uses **GitHub Actions** for automated CI/CD with production and branch deployments.
 
-**Setup (one-time):**
-1. Create GCP service account with GKE/GCR permissions
-2. Add GitHub secrets: `GCP_SA_KEY`, `GCP_PROJECT_ID`
+**Setup (one-time with keyless auth):**
+```bash
+./scripts/setup-github-wif.sh
+```
 
-See [docs/CI-CD.md](docs/CI-CD.md) for setup instructions.
+Then add 3 GitHub secrets (outputted by script):
+- `GCP_PROJECT_ID`
+- `GCP_SERVICE_ACCOUNT`
+- `GCP_WORKLOAD_IDENTITY_PROVIDER`
+
+See [docs/CI-CD.md](docs/CI-CD.md) for detailed setup.
 
 **Automatic deployments:**
 - **Push to `main`** → Production deployment (`torale` namespace)

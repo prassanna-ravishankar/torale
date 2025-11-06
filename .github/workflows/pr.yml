@@ -1,5 +1,6 @@
 # Pull request checks
 # Validates and builds on PR, but doesn't deploy
+# Uses Workload Identity Federation for keyless authentication
 
 name: PR Checks
 
@@ -35,7 +36,8 @@ jobs:
     with:
       push_latest: false
     secrets:
-      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
 
   # Summary

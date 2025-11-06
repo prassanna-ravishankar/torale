@@ -1,6 +1,7 @@
 # Branch deployment workflow
 # Triggers on push to feature branches
 # Deploys to isolated test namespace (torale-{branch-slug})
+# Uses Workload Identity Federation for keyless authentication
 
 name: Branch Deployment
 
@@ -25,7 +26,8 @@ jobs:
     with:
       push_latest: false
     secrets:
-      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
 
   # Deploy to branch namespace
@@ -33,6 +35,11 @@ jobs:
     name: Deploy to Branch
     runs-on: ubuntu-latest
     needs: build
+
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC
+
     environment:
       name: branch-${{ github.ref_name }}
 
@@ -52,11 +59,14 @@ jobs:
 
           echo "Branch: $BRANCH_NAME → Namespace: $NAMESPACE"
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
-        with:
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Get GKE credentials
         run: |

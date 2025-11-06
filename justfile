@@ -210,7 +210,7 @@ list-branches:
 
 # Cleanup specific branch deployment (e.g., just cleanup-branch feat-auth)
 cleanup-branch branch:
-    ./scripts/k8s-cleanup-branch.sh {{branch}}
+    kubectl delete namespace torale-{{branch}} --timeout=5m
 
 # Cleanup all branch deployments older than 7 days
 cleanup-old-branches:
