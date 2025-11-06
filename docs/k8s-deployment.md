@@ -204,9 +204,12 @@ Required secrets:
 - `SECRET_KEY` (required) - JWT secret (generate with `openssl rand -hex 32`)
 - `DB_PASSWORD` (required) - Database password from Cloud SQL setup
 - `CLERK_SECRET_KEY` (required) - Clerk authentication
+- `TEMPORAL_API_KEY` (required for Temporal Cloud) - Get from https://cloud.temporal.io/ (leave empty for self-hosted)
 - `OPENAI_API_KEY` (optional) - Fallback AI provider
 - `ANTHROPIC_API_KEY` (optional) - Fallback AI provider
 - `NOTIFICATION_API_KEY` (optional) - Future notification service
+
+**Important**: If using Temporal Cloud (production default), you MUST provide `TEMPORAL_API_KEY`. Without it, workers will fail with transport errors.
 
 ### 4. Configure Production Values
 
@@ -667,22 +670,44 @@ psql -h localhost -U torale -d torale
 just k8s-logs-workers
 ```
 
+**Common error: "transport error" or "Failed client connect"**
+
+This means workers can't connect to Temporal. Most common cause: missing `TEMPORAL_API_KEY`.
+
+```bash
+# Check if TEMPORAL_API_KEY is set
+kubectl exec deployment/torale-worker -n torale -- env | grep TEMPORAL_API_KEY
+
+# If empty or not set, recreate secrets with the API key:
+# 1. Add TEMPORAL_API_KEY to your .env file
+# 2. Run: just k8s-secrets
+# 3. Restart workers: just k8s-restart-workers
+```
+
 **Check Temporal connection:**
 
 ```bash
-# Port forward Temporal UI
+# Verify TEMPORAL_HOST env var
+kubectl exec deployment/torale-worker -n torale -- env | grep TEMPORAL
+
+# For Temporal Cloud, should show:
+# TEMPORAL_HOST=us-central1.gcp.api.temporal.io:7233 (or similar)
+# TEMPORAL_API_KEY=<your-key>
+
+# For self-hosted, should show:
+# TEMPORAL_HOST=temporal.temporal.svc.cluster.local:7233
+# TEMPORAL_API_KEY= (empty is OK for self-hosted)
+```
+
+**Port forward Temporal UI (self-hosted only):**
+
+```bash
 just k8s-port-forward-temporal
 
 # Visit http://localhost:8080 and check:
 # - Are workers registered?
 # - Are tasks being scheduled?
 # - Are there any workflow errors?
-```
-
-**Verify TEMPORAL_HOST env var:**
-
-```bash
-kubectl exec deployment/torale-worker -n production -- env | grep TEMPORAL
 ```
 
 ### High Costs
