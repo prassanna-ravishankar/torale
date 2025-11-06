@@ -1,0 +1,200 @@
+import { useEffect, useState } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { api } from '@/lib/api'
+import { formatDistanceToNow } from 'date-fns'
+
+interface Workflow {
+  workflow_id: string
+  run_id: string
+  workflow_type: string
+  status: string
+  start_time: string | null
+  close_time: string | null
+  execution_time: string | null
+}
+
+interface Schedule {
+  schedule_id: string
+  spec: string | null
+  paused: boolean
+  next_run: string | null
+  recent_actions: number
+  created_at: string | null
+}
+
+export function TemporalMonitor() {
+  const [workflows, setWorkflows] = useState<Workflow[]>([])
+  const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadTemporalData()
+  }, [])
+
+  const loadTemporalData = async () => {
+    try {
+      setLoading(true)
+      const [workflowsData, schedulesData] = await Promise.all([
+        api.getTemporalWorkflows(),
+        api.getTemporalSchedules(),
+      ])
+      setWorkflows(workflowsData.workflows)
+      setSchedules(schedulesData.schedules)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load Temporal data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Loading Temporal data...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-destructive">Error: {error}</div>
+      </div>
+    )
+  }
+
+  return (
+    <Tabs defaultValue="workflows" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="workflows">Workflows</TabsTrigger>
+        <TabsTrigger value="schedules">Schedules</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="workflows">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Workflows</CardTitle>
+            <CardDescription>Last 24 hours of workflow executions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Workflow ID</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Started</TableHead>
+                  <TableHead>Duration</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {workflows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      No recent workflows
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  workflows.map((workflow) => (
+                    <TableRow key={`${workflow.workflow_id}-${workflow.run_id}`}>
+                      <TableCell className="font-mono text-xs max-w-xs truncate">
+                        {workflow.workflow_id}
+                      </TableCell>
+                      <TableCell className="text-sm">{workflow.workflow_type}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            workflow.status === 'COMPLETED'
+                              ? 'default'
+                              : workflow.status === 'FAILED'
+                                ? 'destructive'
+                                : 'secondary'
+                          }
+                        >
+                          {workflow.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {workflow.start_time
+                          ? formatDistanceToNow(new Date(workflow.start_time), { addSuffix: true })
+                          : '-'}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {workflow.start_time && workflow.close_time
+                          ? `${Math.round(
+                              (new Date(workflow.close_time).getTime() -
+                                new Date(workflow.start_time).getTime()) /
+                                1000,
+                            )}s`
+                          : workflow.status === 'RUNNING'
+                            ? 'In progress'
+                            : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="schedules">
+        <Card>
+          <CardHeader>
+            <CardTitle>Active Schedules</CardTitle>
+            <CardDescription>Temporal schedules managing task executions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Schedule ID</TableHead>
+                  <TableHead>Cron Spec</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Recent Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {schedules.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                      No active schedules
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  schedules.map((schedule) => (
+                    <TableRow key={schedule.schedule_id}>
+                      <TableCell className="font-mono text-xs max-w-xs truncate">
+                        {schedule.schedule_id}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{schedule.spec || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Badge variant={schedule.paused ? 'secondary' : 'default'}>
+                          {schedule.paused ? 'Paused' : 'Running'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{schedule.recent_actions}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
+  )
+}
