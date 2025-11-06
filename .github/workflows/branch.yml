@@ -115,6 +115,7 @@ jobs:
             --namespace ${{ steps.metadata.outputs.namespace }} \
             --create-namespace \
             --set image.tag=${{ env.IMAGE_TAG }} \
+            --set image.repository=${{ env.GCP_PROJECT_ID }} \
             --set global.projectId=${{ env.GCP_PROJECT_ID }} \
             --set api.replicaCount=1 \
             --set api.autoscaling.enabled=false \

@@ -103,6 +103,7 @@ jobs:
           helmfile sync \
             --selector tier=app \
             --set image.tag=${{ env.IMAGE_TAG }} \
+            --set image.repository=${{ env.GCP_PROJECT_ID }} \
             --set global.projectId=${{ env.GCP_PROJECT_ID }}
 
       - name: Verify deployment
