@@ -453,7 +453,7 @@ GCP_REGION=us-central1
 - **Core API**: Task CRUD with Temporal schedule management
 - **Temporal Integration**: Temporal Cloud with automatic cron-based execution
 - **Worker Framework**: Activities and workflows for task execution
-- **Database Migrations**: Alembic migration system (consolidated initial schema)
+- **Database Migrations**: Alembic migration system (incremental migrations)
 - **Grounded Search**: Google Search via Gemini with condition evaluation
 - **State Tracking**: last_known_state comparison and change detection
 - **Notification System**: In-app notifications endpoint
@@ -481,6 +481,41 @@ GCP_REGION=us-central1
 - Rate limiting on API endpoints
 - Input validation on all user data
 - SQL injection prevention via parameterized queries (asyncpg)
+
+## Database Migration Best Practices
+**Philosophy**: Forward-only migrations for production systems
+
+### Core Rules
+1. **Never modify migrations after production deployment** - Once applied, treat as immutable
+2. **Never consolidate migrations in production systems** - Keep linear history
+3. **Never reuse revision IDs** - Each migration must have unique identifier
+4. **Test migrations on local copy before production** - Use `docker compose down -v` for fresh starts
+
+### Migration Workflow
+```bash
+# Create new migration
+docker compose exec api alembic revision --autogenerate -m "description"
+
+# Test locally (fresh start)
+just down-v && just dev-all
+
+# Verify migration applied
+docker compose exec api alembic current
+docker compose exec api alembic history
+
+# Deploy to production (automatic via docker-entrypoint.sh)
+git push origin main
+```
+
+### Current Migration State
+- **Production**: All 6 incremental migrations applied through `1ccec0168405`
+- **Migrations**: c9da50682126 → 30d7793fb7d2 → 7e4bc3017b35 → 9ca6877eba15 → 0c195cb8b608 → 1ccec0168405
+- **Templates**: 6 seeded templates in production
+
+### Troubleshooting
+- **Out of sync?** Never manually edit alembic_version table - use `alembic stamp`
+- **Missing templates?** Run `just down-v && just dev-all` for fresh local start
+- **Production issues?** Check `kubectl logs -n torale deploy/torale-api -c init-migrations`
 
 ## MVP Success Criteria
 ✅ Users can create monitoring tasks via API/CLI

@@ -1,12 +1,5 @@
 """add_task_templates_table
 
-Adds task_templates table for pre-built monitoring templates.
-
-Migration History:
-- 9ca6877eba15: Initial consolidated schema (Clerk auth + grounded search + API keys)
-- 0c195cb8b608: This migration (task templates)
-- 1ccec0168405: Seed initial task templates
-
 Revision ID: 0c195cb8b608
 Revises: 9ca6877eba15
 Create Date: 2025-11-04 23:53:23.980378

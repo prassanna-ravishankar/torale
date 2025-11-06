@@ -63,7 +63,7 @@ restart-service service:
 # Run backend unit tests
 test:
     @echo "Running backend unit tests..."
-    cd backend && uv run pytest tests/ -v
+    cd backend && uv run --all-extras pytest tests/ -v
 
 # Run tests with coverage
 test-cov:
