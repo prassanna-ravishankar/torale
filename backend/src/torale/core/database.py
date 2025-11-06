@@ -1,5 +1,4 @@
 import asyncpg
-from typing import Optional
 
 from torale.core.config import settings
 
@@ -8,7 +7,7 @@ class Database:
     """Database connection pool manager"""
 
     def __init__(self):
-        self.pool: Optional[asyncpg.Pool] = None
+        self.pool: asyncpg.Pool | None = None
 
     async def connect(self):
         """Create database connection pool"""

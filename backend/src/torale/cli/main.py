@@ -24,6 +24,7 @@ app.add_typer(task_app, name="task", help="Task management commands")
 def version():
     """Show version information"""
     from torale import __version__
+
     print(f"[bold cyan]Torale[/bold cyan] version {__version__}")
 
 
@@ -33,7 +34,9 @@ def config():
     config_file = Path.home() / ".torale" / "config.json"
 
     if not config_file.exists():
-        print("[yellow]No configuration found. Please run 'torale auth set-api-key' first.[/yellow]")
+        print(
+            "[yellow]No configuration found. Please run 'torale auth set-api-key' first.[/yellow]"
+        )
         raise typer.Exit(1)
 
     with open(config_file) as f:

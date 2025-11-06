@@ -1,7 +1,5 @@
 import json
 import os
-from typing import Optional
-from uuid import UUID
 
 import httpx
 import typer
@@ -71,18 +69,18 @@ def create_task(
                 "max_tokens": max_tokens,
             },
         }
-        
+
         try:
             response = client.post("/api/v1/tasks", json=task_data)
             response.raise_for_status()
             task = response.json()
-            print(f"[green]✓ Task created successfully![/green]")
+            print("[green]✓ Task created successfully![/green]")
             print(f"[cyan]ID: {task['id']}[/cyan]")
             print(f"[cyan]Name: {task['name']}[/cyan]")
             print(f"[cyan]Schedule: {task['schedule']}[/cyan]")
         except httpx.HTTPStatusError as e:
             print(f"[red]✗ Failed to create task: {e.response.text}[/red]")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
 
 
 @task_app.command("list")
@@ -94,23 +92,23 @@ def list_tasks(
         params = {}
         if active_only:
             params["is_active"] = True
-        
+
         try:
             response = client.get("/api/v1/tasks", params=params)
             response.raise_for_status()
             tasks = response.json()
-            
+
             if not tasks:
                 print("[yellow]No tasks found.[/yellow]")
                 return
-            
+
             table = Table(title="Your Tasks")
             table.add_column("ID", style="cyan", no_wrap=True)
             table.add_column("Name", style="green")
             table.add_column("Schedule", style="yellow")
             table.add_column("Active", style="magenta")
             table.add_column("Created", style="blue")
-            
+
             for task in tasks:
                 table.add_row(
                     task["id"][:8] + "...",
@@ -119,12 +117,12 @@ def list_tasks(
                     "✓" if task["is_active"] else "✗",
                     task["created_at"][:19],
                 )
-            
+
             console.print(table)
-            
+
         except httpx.HTTPStatusError as e:
             print(f"[red]✗ Failed to list tasks: {e.response.text}[/red]")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
 
 
 @task_app.command("get")
@@ -135,28 +133,28 @@ def get_task(task_id: str):
             response = client.get(f"/api/v1/tasks/{task_id}")
             response.raise_for_status()
             task = response.json()
-            
-            print(f"[bold cyan]Task Details[/bold cyan]")
+
+            print("[bold cyan]Task Details[/bold cyan]")
             print(f"[cyan]ID:[/cyan] {task['id']}")
             print(f"[cyan]Name:[/cyan] {task['name']}")
             print(f"[cyan]Schedule:[/cyan] {task['schedule']}")
             print(f"[cyan]Active:[/cyan] {'Yes' if task['is_active'] else 'No'}")
             print(f"[cyan]Executor:[/cyan] {task['executor_type']}")
             print(f"[cyan]Created:[/cyan] {task['created_at']}")
-            print(f"[cyan]Config:[/cyan]")
-            print(json.dumps(task['config'], indent=2))
-            
+            print("[cyan]Config:[/cyan]")
+            print(json.dumps(task["config"], indent=2))
+
         except httpx.HTTPStatusError as e:
             print(f"[red]✗ Failed to get task: {e.response.text}[/red]")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
 
 
 @task_app.command("update")
 def update_task(
     task_id: str,
-    name: Optional[str] = typer.Option(None, "--name", "-n"),
-    schedule: Optional[str] = typer.Option(None, "--schedule", "-s"),
-    active: Optional[bool] = typer.Option(None, "--active/--inactive"),
+    name: str | None = typer.Option(None, "--name", "-n"),
+    schedule: str | None = typer.Option(None, "--schedule", "-s"),
+    active: bool | None = typer.Option(None, "--active/--inactive"),
 ):
     """Update a task"""
     with get_client() as client:
@@ -167,23 +165,23 @@ def update_task(
             update_data["schedule"] = schedule
         if active is not None:
             update_data["is_active"] = active
-        
+
         if not update_data:
             print("[yellow]No updates specified.[/yellow]")
             return
-        
+
         try:
             response = client.put(f"/api/v1/tasks/{task_id}", json=update_data)
             response.raise_for_status()
             task = response.json()
-            print(f"[green]✓ Task updated successfully![/green]")
+            print("[green]✓ Task updated successfully![/green]")
             print(f"[cyan]Name: {task['name']}[/cyan]")
             print(f"[cyan]Schedule: {task['schedule']}[/cyan]")
             print(f"[cyan]Active: {'Yes' if task['is_active'] else 'No'}[/cyan]")
-            
+
         except httpx.HTTPStatusError as e:
             print(f"[red]✗ Failed to update task: {e.response.text}[/red]")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
 
 
 @task_app.command("delete")
@@ -197,16 +195,16 @@ def delete_task(
         if not confirm:
             print("[yellow]Deletion cancelled.[/yellow]")
             return
-    
+
     with get_client() as client:
         try:
             response = client.delete(f"/api/v1/tasks/{task_id}")
             response.raise_for_status()
-            print(f"[green]✓ Task deleted successfully![/green]")
-            
+            print("[green]✓ Task deleted successfully![/green]")
+
         except httpx.HTTPStatusError as e:
             print(f"[red]✗ Failed to delete task: {e.response.text}[/red]")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
 
 
 @task_app.command("execute")
@@ -217,13 +215,13 @@ def execute_task(task_id: str):
             response = client.post(f"/api/v1/tasks/{task_id}/execute")
             response.raise_for_status()
             execution = response.json()
-            print(f"[green]✓ Task execution started![/green]")
+            print("[green]✓ Task execution started![/green]")
             print(f"[cyan]Execution ID: {execution['id']}[/cyan]")
             print(f"[cyan]Status: {execution['status']}[/cyan]")
-            
+
         except httpx.HTTPStatusError as e:
             print(f"[red]✗ Failed to execute task: {e.response.text}[/red]")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
 
 
 @task_app.command("logs")
@@ -237,17 +235,17 @@ def get_logs(
             response = client.get(f"/api/v1/tasks/{task_id}/executions", params={"limit": limit})
             response.raise_for_status()
             executions = response.json()
-            
+
             if not executions:
                 print("[yellow]No executions found.[/yellow]")
                 return
-            
+
             table = Table(title=f"Execution Logs (Task: {task_id[:8]}...)")
             table.add_column("Execution ID", style="cyan", no_wrap=True)
             table.add_column("Status", style="green")
             table.add_column("Started", style="yellow")
             table.add_column("Completed", style="blue")
-            
+
             for execution in executions:
                 status_color = {
                     "success": "green",
@@ -255,16 +253,16 @@ def get_logs(
                     "running": "yellow",
                     "pending": "cyan",
                 }.get(execution["status"], "white")
-                
+
                 table.add_row(
                     execution["id"][:8] + "...",
                     f"[{status_color}]{execution['status']}[/{status_color}]",
                     execution["started_at"][:19] if execution["started_at"] else "-",
                     execution["completed_at"][:19] if execution.get("completed_at") else "-",
                 )
-            
+
             console.print(table)
-            
+
         except httpx.HTTPStatusError as e:
             print(f"[red]✗ Failed to get logs: {e.response.text}[/red]")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e

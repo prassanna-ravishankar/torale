@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import asyncio
+
 from torale.workers.worker import main
 
 if __name__ == "__main__":

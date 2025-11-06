@@ -193,16 +193,53 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 
 Torale has comprehensive unit, integration, and E2E tests covering Temporal workflows, grounded search, and scheduled execution.
 
-```bash
-# Run all tests
-just test
+### Unit Tests
 
-# Run specific test types
-just test-unit          # Unit tests with pytest
-just test-e2e           # E2E Temporal workflow test
-just test-schedule      # Scheduled execution test
-just test-grounded      # Grounded search test
+Run pytest tests without requiring services:
+
+```bash
+just test               # Run backend unit tests
+just test-cov           # Run with coverage report
+just lint               # Run ruff linting
 ```
+
+### E2E Integration Tests
+
+E2E tests require running services (PostgreSQL, Temporal, API, Workers) and support two authentication modes:
+
+**Option 1: No-Auth Mode (Recommended for Development)**
+
+```bash
+# Start services with no-auth mode
+TORALE_NOAUTH=1 just dev-bg
+
+# Run all E2E tests
+TORALE_NOAUTH=1 just test-e2e
+```
+
+This automatically creates a test user and bypasses Clerk authentication for testing.
+
+**Option 2: Clerk Authentication (Production-like)**
+
+```bash
+# Start services normally
+just dev-bg
+
+# Get a Clerk session token:
+# 1. Login at http://localhost:3000
+# 2. Open browser dev tools (F12)
+# 3. Go to Application/Storage → Cookies
+# 4. Copy the __session cookie value
+
+# Run tests with Clerk token
+export CLERK_TEST_TOKEN='your-clerk-session-token'
+just test-e2e
+```
+
+**Available E2E Tests:**
+- `test_temporal_e2e.sh` - Tests Temporal workflow execution
+- `test_schedule.sh` - Tests automatic scheduled task execution
+- `test_grounded_search.sh` - Tests grounded search monitoring functionality
 
 See [docs/TESTING.md](docs/TESTING.md) for detailed testing guide, including debugging workflows and troubleshooting.
 
@@ -334,6 +371,9 @@ TEMPORAL_NAMESPACE=default
 
 # AI (Gemini required for grounded search)
 GOOGLE_API_KEY=your-gemini-api-key
+
+# Development/Testing (optional)
+TORALE_NOAUTH=1                            # Disable auth for local testing (DO NOT USE IN PRODUCTION)
 ```
 
 ### Frontend (frontend/.env)

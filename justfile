@@ -52,31 +52,24 @@ restart-service service:
 
 # === Testing ===
 
-# Run all tests (e2e + unit)
-test: test-e2e test-unit
+# Run backend unit tests
+test:
+    @echo "Running backend unit tests..."
+    cd backend && uv run pytest tests/ -v
 
-# Run end-to-end test (manual execution via Temporal)
+# Run tests with coverage
+test-cov:
+    @echo "Running tests with coverage..."
+    cd backend && uv run pytest tests/ --cov=src/torale --cov-report=term-missing
+
+# Run e2e integration tests (requires services running)
 test-e2e:
-    @echo "Running Temporal E2E test..."
+    @echo "Running E2E tests..."
+    @echo "Note: Set TORALE_NOAUTH=1 for no-auth mode, or CLERK_TEST_TOKEN for Clerk auth"
+    @echo ""
     ./backend/scripts/test_temporal_e2e.sh
-
-# Run schedule test (automatic execution)
-test-schedule:
-    @echo "Running schedule test..."
     ./backend/scripts/test_schedule.sh
-
-# Run grounded search test
-test-grounded:
-    @echo "Running grounded search test..."
     ./backend/scripts/test_grounded_search.sh
-
-# Run unit tests with pytest
-test-unit:
-    @echo "Running unit tests..."
-    cd backend && uv run --with pytest --with pytest-asyncio --with pytest-cov pytest
-
-# Run all e2e tests
-test-all-e2e: test-e2e test-schedule test-grounded
 
 # === Docker ===
 

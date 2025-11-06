@@ -4,11 +4,15 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from temporalio.client import Client, Schedule, ScheduleActionStartWorkflow, ScheduleSpec
 
-from torale.api.auth import CurrentUser
+from torale.api.auth import CurrentUserOrTestUser
 from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.core.models import Task, TaskCreate, TaskExecution, TaskUpdate
 from torale.workers.workflows import TaskExecutionRequest, TaskExecutionWorkflow
+
+# Use CurrentUserOrTestUser for all endpoints to support TORALE_NOAUTH testing mode
+# This is safe since all operations are user-scoped anyway
+CurrentUser = CurrentUserOrTestUser
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -21,7 +25,9 @@ def parse_task_row(row) -> dict:
         task_dict["config"] = json.loads(task_dict["config"])
     # Parse last_known_state if it's a string
     if isinstance(task_dict.get("last_known_state"), str):
-        task_dict["last_known_state"] = json.loads(task_dict["last_known_state"]) if task_dict["last_known_state"] else None
+        task_dict["last_known_state"] = (
+            json.loads(task_dict["last_known_state"]) if task_dict["last_known_state"] else None
+        )
     return task_dict
 
 
@@ -49,7 +55,9 @@ def parse_execution_row(row) -> dict:
         exec_dict["result"] = json.loads(exec_dict["result"]) if exec_dict["result"] else None
     # Parse grounding_sources if it's a string
     if isinstance(exec_dict.get("grounding_sources"), str):
-        exec_dict["grounding_sources"] = json.loads(exec_dict["grounding_sources"]) if exec_dict["grounding_sources"] else None
+        exec_dict["grounding_sources"] = (
+            json.loads(exec_dict["grounding_sources"]) if exec_dict["grounding_sources"] else None
+        )
     return exec_dict
 
 
@@ -113,7 +121,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to create schedule: {str(e)}",
-            )
+            ) from e
 
     return Task(**parse_task_row(row))
 
@@ -198,7 +206,7 @@ async def update_task(
         elif field == "notify_behavior":
             # Convert enum to string value
             set_clauses.append(f"{field} = ${param_num}")
-            params.append(value.value if hasattr(value, 'value') else value)
+            params.append(value.value if hasattr(value, "value") else value)
         else:
             set_clauses.append(f"{field} = ${param_num}")
             params.append(value)
@@ -234,7 +242,7 @@ async def update_task(
             else:
                 # Pause the schedule
                 await schedule_handle.pause()
-        except Exception as e:
+        except Exception:
             # If schedule doesn't exist, we might need to create it
             if update_data["is_active"]:
                 try:
@@ -347,7 +355,7 @@ async def execute_task(task_id: UUID, user: CurrentUser, db: Database = Depends(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to start task execution: {str(e)}",
-        )
+        ) from e
 
     return TaskExecution(**parse_execution_row(row))
 

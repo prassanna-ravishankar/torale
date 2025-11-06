@@ -3,15 +3,15 @@
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select, update, text
+from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.api.clerk_auth import ClerkUser, get_current_user
-from torale.api.users import User, UserCreate, UserRead, get_async_session
+from torale.api.users import User, UserRead, get_async_session
 
 router = APIRouter()
 
@@ -48,7 +48,7 @@ async def sync_user(
                 .where(User.id == existing_user.id)
                 .values(
                     email=clerk_user.email,
-                    updated_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(UTC),
                 )
             )
             await session.commit()
@@ -139,7 +139,7 @@ async def create_api_key(
         "key_prefix": key_prefix,
         "key_hash": key_hash,
         "name": request.name,
-        "created_at": datetime.now(timezone.utc),
+        "created_at": datetime.now(UTC),
         "is_active": True,
     }
 

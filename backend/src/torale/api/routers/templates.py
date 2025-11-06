@@ -21,10 +21,7 @@ def parse_template_row(row) -> dict:
 
 
 @router.get("/", response_model=list[TaskTemplate])
-async def list_templates(
-    category: str | None = None,
-    db: Database = Depends(get_db)
-):
+async def list_templates(category: str | None = None, db: Database = Depends(get_db)):
     """
     List all active task templates.
 
@@ -50,10 +47,7 @@ async def list_templates(
 
 
 @router.get("/{template_id}", response_model=TaskTemplate)
-async def get_template(
-    template_id: UUID,
-    db: Database = Depends(get_db)
-):
+async def get_template(template_id: UUID, db: Database = Depends(get_db)):
     """Get a specific template by ID."""
     query = """
         SELECT * FROM task_templates
@@ -62,9 +56,6 @@ async def get_template(
     row = await db.fetch_one(query, template_id)
 
     if not row:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Template not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
 
     return TaskTemplate(**parse_template_row(row))

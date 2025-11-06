@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict
 
 
 class ExecutorType(str, Enum):
@@ -37,6 +37,7 @@ class TaskBase(BaseModel):
 
 class TaskCreate(TaskBase):
     """Create task - requires search_query and condition for grounded search"""
+
     search_query: str  # Make required for creation
     condition_description: str  # Make required for creation
 
@@ -101,11 +102,13 @@ class TaskTemplateBase(BaseModel):
 
 class TaskTemplateCreate(TaskTemplateBase):
     """Create template"""
+
     pass
 
 
 class TaskTemplate(TaskTemplateBase):
     """Template read from database"""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
