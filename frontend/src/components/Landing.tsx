@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { Bell, Search, Sparkles, ArrowRight } from "lucide-react";
+import { Bell, Search, Sparkles, ArrowRight, Code, Terminal } from "lucide-react";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -227,6 +227,74 @@ export default function Landing() {
                 </div>
               </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Built for Developers */}
+      <section className="py-20 px-6">
+        <div className="container mx-auto max-w-5xl">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-16"
+          >
+            <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full bg-primary/10 text-primary text-sm font-medium">
+              <Sparkles className="h-4 w-4" />
+              Docs coming soon
+            </div>
+            <h2 className="text-3xl md:text-5xl font-bold mb-4">
+              Built for developers too
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              REST API and CLI for programmatic monitoring
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.6 }}
+              className="p-8 rounded-2xl bg-card border"
+            >
+              <div className="mb-4 h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Code className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-2xl font-semibold mb-3">REST API</h3>
+              <p className="text-muted-foreground mb-4">
+                Full-featured API for creating and managing monitoring tasks programmatically
+              </p>
+              <div className="bg-muted/50 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+                <div className="text-muted-foreground">POST /api/v1/tasks</div>
+                <div className="text-muted-foreground">GET /api/v1/tasks</div>
+                <div className="text-muted-foreground">GET /api/v1/tasks/:id/executions</div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="p-8 rounded-2xl bg-card border"
+            >
+              <div className="mb-4 h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Terminal className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-2xl font-semibold mb-3">CLI</h3>
+              <p className="text-muted-foreground mb-4">
+                Manage monitors from your terminal with our command-line interface
+              </p>
+              <div className="bg-muted/50 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+                <div className="text-muted-foreground">$ torale task create \</div>
+                <div className="text-muted-foreground ml-4">--query "..." \</div>
+                <div className="text-muted-foreground ml-4">--condition "..."</div>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
