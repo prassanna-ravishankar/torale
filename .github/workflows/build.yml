@@ -66,17 +66,7 @@ jobs:
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker gcr.io
 
-      # Docker layer caching using GitHub Actions cache
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ matrix.component }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-${{ matrix.component }}-
-            ${{ runner.os }}-buildx-
-
-      # Build image with caching
+      # Build image with GitHub Actions cache backend
       - name: Build image
         id: build
         uses: docker/build-push-action@v5
@@ -87,8 +77,8 @@ jobs:
           load: true   # Load into local Docker for scanning
           tags: |
             gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:${{ env.IMAGE_TAG }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       # Scan image with Trivy
       - name: Run Trivy security scan
@@ -134,9 +124,3 @@ jobs:
             docker tag ${WORKER_IMAGE}:${{ env.IMAGE_TAG }} ${WORKER_IMAGE}:latest
             docker push ${WORKER_IMAGE}:latest
           fi
-
-      # Move cache to avoid unbounded growth
-      - name: Rotate Docker cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
