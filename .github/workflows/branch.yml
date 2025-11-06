@@ -51,7 +51,7 @@ jobs:
         id: metadata
         run: |
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
-          BRANCH_SLUG=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]' | cut -c1-30)
+          BRANCH_SLUG=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]' | cut -c1-30 | sed 's/-*$//')
           NAMESPACE="torale-$BRANCH_SLUG"
 
           echo "branch_slug=$BRANCH_SLUG" >> $GITHUB_OUTPUT

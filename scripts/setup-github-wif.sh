@@ -158,7 +158,7 @@ log_info "Step 5: Granting IAM roles to service account..."
 
 ROLES=(
     "roles/container.developer"
-    "roles/storage.admin"
+    "roles/storage.objectAdmin"
     "roles/iam.serviceAccountUser"
 )
 

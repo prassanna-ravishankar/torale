@@ -315,7 +315,7 @@ kubectl get deployment torale-api -n torale -o yaml | grep image:
 
 **Solution**: Increase timeout in workflow:
 ```yaml
-# .github/workflows/deploy.yml
+# .github/workflows/production.yml or .github/workflows/branch.yml
 kubectl rollout status deployment/torale-api -n torale --timeout=10m
 ```
 
@@ -334,7 +334,7 @@ Via GitHub UI:
 
 Via CLI:
 ```bash
-gh workflow run deploy.yml --ref main
+gh workflow run production.yml --ref main
 ```
 
 ### Rollback Deployment
@@ -371,7 +371,7 @@ env:
 
 ### Workflow Triggers
 
-Edit `.github/workflows/deploy.yml`:
+Edit `.github/workflows/production.yml` or `.github/workflows/branch.yml`:
 
 ```yaml
 on:
@@ -438,7 +438,7 @@ Branch namespaces use sanitized branch names:
 1. **Never commit GCP keys** to git
 2. **Use GitHub secrets** for all sensitive data
 3. **Limit service account permissions** to minimum required
-4. **Rotate service account keys** regularly (every 90 days)
+4. **Regularly review IAM permissions** to ensure they follow the principle of least privilege
 5. **Enable branch protection** on main branch
 6. **Require PR reviews** before merging
 7. **Use Trivy scanning** for vulnerability detection
@@ -463,7 +463,7 @@ kubectl logs -n torale -l app=torale-api -f  # API logs
 # GitHub CLI
 gh run list                     # List workflow runs
 gh run watch                    # Watch current run
-gh workflow run deploy.yml      # Trigger manually
+gh workflow run production.yml  # Trigger manually
 ```
 
 ### Useful Links

@@ -212,7 +212,7 @@ list-branches:
 cleanup-branch branch:
     kubectl delete namespace torale-{{branch}} --timeout=5m
 
-# Cleanup all branch deployments older than 7 days
+# Cleanup all branch deployments older than 7 days (requires jq)
 cleanup-old-branches:
     #!/usr/bin/env bash
     echo "🗑️  Cleaning up branch deployments older than 7 days..."

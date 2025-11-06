@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component: [api, worker, frontend]
+        component: [api, frontend]
 
     steps:
       - name: Checkout
@@ -65,26 +65,45 @@ jobs:
             echo "context=backend" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build image
+      - name: Build and push images
         run: |
-          IMAGE_NAME="gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}"
+          if [ "${{ matrix.component }}" = "frontend" ]; then
+            # Build and push frontend
+            IMAGE_NAME="gcr.io/${{ env.GCP_PROJECT_ID }}/torale-frontend"
+            docker build \
+              -t "${IMAGE_NAME}:${{ env.IMAGE_TAG }}" \
+              -f ${{ steps.context.outputs.dockerfile }} \
+              ${{ steps.context.outputs.context }}
+            docker push "${IMAGE_NAME}:${{ env.IMAGE_TAG }}"
 
-          docker build \
-            -t "${IMAGE_NAME}:${{ env.IMAGE_TAG }}" \
-            -f ${{ steps.context.outputs.dockerfile }} \
-            ${{ steps.context.outputs.context }}
+            if [ "${{ inputs.push_latest }}" = "true" ]; then
+              docker tag "${IMAGE_NAME}:${{ env.IMAGE_TAG }}" "${IMAGE_NAME}:latest"
+              docker push "${IMAGE_NAME}:latest"
+            fi
+          elif [ "${{ matrix.component }}" = "api" ]; then
+            # Build API image once, tag as both api and worker
+            API_IMAGE="gcr.io/${{ env.GCP_PROJECT_ID }}/torale-api"
+            WORKER_IMAGE="gcr.io/${{ env.GCP_PROJECT_ID }}/torale-worker"
 
-      - name: Push SHA tag
-        run: |
-          IMAGE_NAME="gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}"
-          docker push "${IMAGE_NAME}:${{ env.IMAGE_TAG }}"
+            docker build \
+              -t "${API_IMAGE}:${{ env.IMAGE_TAG }}" \
+              -f ${{ steps.context.outputs.dockerfile }} \
+              ${{ steps.context.outputs.context }}
 
-      - name: Push latest tag
-        if: inputs.push_latest
-        run: |
-          IMAGE_NAME="gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}"
-          docker tag "${IMAGE_NAME}:${{ env.IMAGE_TAG }}" "${IMAGE_NAME}:latest"
-          docker push "${IMAGE_NAME}:latest"
+            # Tag as worker
+            docker tag "${API_IMAGE}:${{ env.IMAGE_TAG }}" "${WORKER_IMAGE}:${{ env.IMAGE_TAG }}"
+
+            # Push both tags
+            docker push "${API_IMAGE}:${{ env.IMAGE_TAG }}"
+            docker push "${WORKER_IMAGE}:${{ env.IMAGE_TAG }}"
+
+            if [ "${{ inputs.push_latest }}" = "true" ]; then
+              docker tag "${API_IMAGE}:${{ env.IMAGE_TAG }}" "${API_IMAGE}:latest"
+              docker tag "${WORKER_IMAGE}:${{ env.IMAGE_TAG }}" "${WORKER_IMAGE}:latest"
+              docker push "${API_IMAGE}:latest"
+              docker push "${WORKER_IMAGE}:latest"
+            fi
+          fi
 
   scan:
     name: Scan ${{ matrix.component }}
@@ -98,7 +117,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component: [api, worker, frontend]
+        component: [api, worker, frontend]  # Scan all images including worker
 
     steps:
       - name: Authenticate to Google Cloud
