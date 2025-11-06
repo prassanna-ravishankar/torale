@@ -9,6 +9,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:  # Allow manual triggering
 
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
