@@ -1,4 +1,4 @@
-# Multi-stage build for React frontend
+# Multi-stage build for Svelte frontend
 
 # Stage 1: Build the application
 FROM node:20-alpine AS builder
