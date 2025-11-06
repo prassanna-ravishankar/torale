@@ -18,7 +18,7 @@ clerk:
 # Image configuration
 image:
   registry: gcr.io
-  repository: baldmaninc/torale
+  repository: baldmaninc
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
@@ -29,7 +29,7 @@ api:
   replicaCount: 2
 
   image:
-    name: api
+    name: torale-api
 
   # Cost optimization: Use Spot pods
   nodeSelector:
@@ -83,7 +83,7 @@ worker:
   replicaCount: 2
 
   image:
-    name: worker
+    name: torale-worker
 
   # Cost optimization: Use Spot pods
   nodeSelector:
@@ -117,7 +117,7 @@ frontend:
   replicaCount: 2
 
   image:
-    name: frontend
+    name: torale-frontend
 
   # Cost optimization: Use Spot pods
   nodeSelector:

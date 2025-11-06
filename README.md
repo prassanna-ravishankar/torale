@@ -251,6 +251,47 @@ just dev        # Start all services via docker-compose
 just dev-all    # Include frontend dev server
 ```
 
+### CI/CD (Recommended)
+
+Torale uses **GitHub Actions** for automated CI/CD with production and branch deployments.
+
+**Setup (one-time with keyless auth):**
+```bash
+./scripts/setup-github-wif.sh
+```
+
+Then add 3 GitHub secrets (outputted by script):
+- `GCP_PROJECT_ID`
+- `GCP_SERVICE_ACCOUNT`
+- `GCP_WORKLOAD_IDENTITY_PROVIDER`
+
+See [docs/CI-CD.md](docs/CI-CD.md) for detailed setup.
+
+**Automatic deployments:**
+- **Push to `main`** → Production deployment (`torale` namespace)
+- **Push to `feat/**`, `fix/**`** → Branch deployment (`torale-{branch}` namespace)
+- **Pull Request** → Build and scan only (no deployment)
+
+**Branch management:**
+```bash
+just list-branches              # List all branch deployments
+just cleanup-branch feat-auth   # Delete specific branch
+just cleanup-old-branches       # Delete branches >7 days old
+```
+
+**Workflows:**
+- `.github/workflows/production.yml` - Production deployment
+- `.github/workflows/branch.yml` - Branch deployments
+- `.github/workflows/pr.yml` - PR checks
+- `.github/workflows/build.yml` - Reusable build/scan job
+
+**Features:**
+- ✅ Parallel Docker builds (3x matrix jobs)
+- ✅ Security scanning with Trivy
+- ✅ Automated Helmfile deployment to GKE
+- ✅ Health checks and rollout verification
+- ✅ Isolated branch test environments
+
 ### Production (GKE ClusterKit)
 
 **Prerequisites:** gcloud CLI, kubectl, helm, helmfile
@@ -261,7 +302,7 @@ just k8s-auth       # Get cluster credentials
 just k8s-setup      # Create Cloud SQL + IAM
 just k8s-secrets    # Create K8s secrets from .env
 
-# Deploy
+# Manual deploy (if not using CI/CD)
 just k8s-deploy-all # Deploy Temporal + Torale
 
 # Manage
@@ -276,11 +317,6 @@ just k8s-logs-workers # View worker logs
 - Temporal UI: `just k8s-port-forward-temporal` → http://localhost:8080
 
 See [docs/k8s-deployment.md](docs/k8s-deployment.md) for detailed guide.
-
-### Legacy Cloud Run
-```bash
-just deploy-cloud-run
-```
 
 ## How Grounded Search Works
 

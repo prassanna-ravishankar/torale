@@ -1,0 +1,144 @@
+# Reusable workflow for building and scanning images
+# Called by production and branch deployment workflows
+# Uses Workload Identity Federation for keyless authentication
+
+name: Build and Scan
+
+on:
+  workflow_call:
+    inputs:
+      push_latest:
+        description: 'Push :latest tag'
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      GCP_WORKLOAD_IDENTITY_PROVIDER:
+        required: true
+      GCP_SERVICE_ACCOUNT:
+        required: true
+      GCP_PROJECT_ID:
+        required: true
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build:
+    name: Build ${{ matrix.component }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC
+
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [api, frontend]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+
+      - name: Determine build context
+        id: context
+        run: |
+          if [ "${{ matrix.component }}" = "frontend" ]; then
+            echo "dockerfile=frontend/Dockerfile" >> $GITHUB_OUTPUT
+            echo "context=frontend" >> $GITHUB_OUTPUT
+          else
+            echo "dockerfile=backend/Dockerfile" >> $GITHUB_OUTPUT
+            echo "context=backend" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push images
+        run: |
+          if [ "${{ matrix.component }}" = "frontend" ]; then
+            # Build and push frontend
+            IMAGE_NAME="gcr.io/${{ env.GCP_PROJECT_ID }}/torale-frontend"
+            docker build \
+              -t "${IMAGE_NAME}:${{ env.IMAGE_TAG }}" \
+              -f ${{ steps.context.outputs.dockerfile }} \
+              ${{ steps.context.outputs.context }}
+            docker push "${IMAGE_NAME}:${{ env.IMAGE_TAG }}"
+
+            if [ "${{ inputs.push_latest }}" = "true" ]; then
+              docker tag "${IMAGE_NAME}:${{ env.IMAGE_TAG }}" "${IMAGE_NAME}:latest"
+              docker push "${IMAGE_NAME}:latest"
+            fi
+          elif [ "${{ matrix.component }}" = "api" ]; then
+            # Build API image once, tag as both api and worker
+            API_IMAGE="gcr.io/${{ env.GCP_PROJECT_ID }}/torale-api"
+            WORKER_IMAGE="gcr.io/${{ env.GCP_PROJECT_ID }}/torale-worker"
+
+            docker build \
+              -t "${API_IMAGE}:${{ env.IMAGE_TAG }}" \
+              -f ${{ steps.context.outputs.dockerfile }} \
+              ${{ steps.context.outputs.context }}
+
+            # Tag as worker
+            docker tag "${API_IMAGE}:${{ env.IMAGE_TAG }}" "${WORKER_IMAGE}:${{ env.IMAGE_TAG }}"
+
+            # Push both tags
+            docker push "${API_IMAGE}:${{ env.IMAGE_TAG }}"
+            docker push "${WORKER_IMAGE}:${{ env.IMAGE_TAG }}"
+
+            if [ "${{ inputs.push_latest }}" = "true" ]; then
+              docker tag "${API_IMAGE}:${{ env.IMAGE_TAG }}" "${API_IMAGE}:latest"
+              docker tag "${WORKER_IMAGE}:${{ env.IMAGE_TAG }}" "${WORKER_IMAGE}:latest"
+              docker push "${API_IMAGE}:latest"
+              docker push "${WORKER_IMAGE}:latest"
+            fi
+          fi
+
+  scan:
+    name: Scan ${{ matrix.component }}
+    runs-on: ubuntu-latest
+    needs: build
+
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC
+
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [api, worker, frontend]  # Scan all images including worker
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker
+
+      - name: Pull image
+        run: docker pull gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:${{ env.IMAGE_TAG }}
+
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:${{ env.IMAGE_TAG }}
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'

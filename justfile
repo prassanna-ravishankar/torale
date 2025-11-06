@@ -201,11 +201,30 @@ install-frontend:
 # Install all dependencies (backend + frontend)
 install-all: install install-frontend
 
-# === Deployment ===
+# === CI/CD ===
 
-# Deploy to Google Cloud Run (legacy)
-deploy-cloud-run:
-    ./deploy.sh
+# List all branch deployments (works with any CI/CD)
+list-branches:
+    @echo "Branch Deployments:"
+    @kubectl get namespaces -l type=branch-deployment --no-headers -o custom-columns=":metadata.name,:metadata.labels.branch,:metadata.creationTimestamp"
+
+# Cleanup specific branch deployment (e.g., just cleanup-branch feat-auth)
+cleanup-branch branch:
+    kubectl delete namespace torale-{{branch}} --timeout=5m
+
+# Cleanup all branch deployments older than 7 days (requires jq)
+cleanup-old-branches:
+    #!/usr/bin/env bash
+    echo "🗑️  Cleaning up branch deployments older than 7 days..."
+    kubectl get namespaces -l type=branch-deployment -o json | \
+      jq -r '.items[] | select(.metadata.creationTimestamp | fromdateiso8601 < (now - 604800)) | .metadata.name' | \
+      while read ns; do
+        echo "Deleting old namespace: $ns"
+        kubectl delete namespace "$ns" --timeout=2m || true
+      done
+    echo "✅ Cleanup complete"
+
+# === Deployment ===
 
 # Build for production
 build-prod:
@@ -220,12 +239,12 @@ k8s-push:
     #!/usr/bin/env bash
     set -e
     echo "Building and pushing images to GCR with linux/amd64 platform..."
-    docker build --platform=linux/amd64 -f backend/Dockerfile -t gcr.io/baldmaninc/torale/api:latest ./backend
-    docker tag gcr.io/baldmaninc/torale/api:latest gcr.io/baldmaninc/torale/worker:latest
-    docker build --platform=linux/amd64 -f frontend/Dockerfile -t gcr.io/baldmaninc/torale/frontend:latest ./frontend
-    docker push gcr.io/baldmaninc/torale/api:latest
-    docker push gcr.io/baldmaninc/torale/worker:latest
-    docker push gcr.io/baldmaninc/torale/frontend:latest
+    docker build --platform=linux/amd64 -f backend/Dockerfile -t gcr.io/baldmaninc/torale-api:latest ./backend
+    docker tag gcr.io/baldmaninc/torale-api:latest gcr.io/baldmaninc/torale-worker:latest
+    docker build --platform=linux/amd64 -f frontend/Dockerfile -t gcr.io/baldmaninc/torale-frontend:latest ./frontend
+    docker push gcr.io/baldmaninc/torale-api:latest
+    docker push gcr.io/baldmaninc/torale-worker:latest
+    docker push gcr.io/baldmaninc/torale-frontend:latest
     echo "✓ All images built and pushed successfully!"
 
 # === Kubernetes (GKE ClusterKit) ===
