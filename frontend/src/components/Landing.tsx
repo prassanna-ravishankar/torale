@@ -75,7 +75,7 @@ export default function Landing() {
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full bg-primary/10 text-primary text-sm font-medium">
               <Sparkles className="h-4 w-4" />
-              Free during beta
+              Free till I figure out what this is used for
             </div>
             <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
               Monitor the web.
@@ -246,7 +246,7 @@ export default function Landing() {
             <p className="text-xl text-muted-foreground mb-8">
               Join early users monitoring the web automatically.
               <br />
-              Free during beta.
+              (It's free while I figure this out)
             </p>
             <button
               onClick={handleGetStarted}
