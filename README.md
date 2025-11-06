@@ -253,40 +253,38 @@ just dev-all    # Include frontend dev server
 
 ### CI/CD (Recommended)
 
-Torale has a comprehensive CI/CD pipeline using **Google Cloud Build** with support for automated deployments and branch testing environments.
+Torale uses **GitHub Actions** for automated CI/CD with production and branch deployments.
 
-**One-time setup:**
-```bash
-# Configure Cloud Build triggers and permissions
-just ci-setup
-```
+**Setup (one-time):**
+1. Create GCP service account with GKE/GCR permissions
+2. Add GitHub secrets: `GCP_SA_KEY`, `GCP_PROJECT_ID`
+
+See [docs/CI-CD.md](docs/CI-CD.md) for setup instructions.
 
 **Automatic deployments:**
-- **Push to `main`** → Deploys to production (`torale` namespace)
-- **Push to any branch** → Deploys to isolated test environment (`torale-{branch}` namespace)
+- **Push to `main`** → Production deployment (`torale` namespace)
+- **Push to `feat/**`, `fix/**`** → Branch deployment (`torale-{branch}` namespace)
+- **Pull Request** → Build and scan only (no deployment)
 
-**Manual triggers:**
+**Branch management:**
 ```bash
-just ci-build-prod      # Trigger production build
-just ci-build-branch    # Trigger branch build
-just ci-logs            # View recent builds
+just list-branches              # List all branch deployments
+just cleanup-branch feat-auth   # Delete specific branch
+just cleanup-old-branches       # Delete branches >7 days old
 ```
 
-**Branch deployment management:**
-```bash
-just ci-list-branches           # List all branch deployments
-just ci-cleanup-branch feat-auth # Delete specific branch
-just ci-cleanup-old-branches    # Delete branches >7 days old
-```
+**Workflows:**
+- `.github/workflows/production.yml` - Production deployment
+- `.github/workflows/branch.yml` - Branch deployments
+- `.github/workflows/pr.yml` - PR checks
+- `.github/workflows/build.yml` - Reusable build/scan job
 
-**Pipeline features:**
-- ✅ Parallel Docker builds with Kaniko (layer caching)
+**Features:**
+- ✅ Parallel Docker builds (3x matrix jobs)
 - ✅ Security scanning with Trivy
 - ✅ Automated Helmfile deployment to GKE
 - ✅ Health checks and rollout verification
-- ✅ Cost-optimized with Spot pods and HPA
-
-See [docs/CI-CD.md](docs/CI-CD.md) for detailed CI/CD guide.
+- ✅ Isolated branch test environments
 
 ### Production (GKE ClusterKit)
 

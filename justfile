@@ -203,45 +203,17 @@ install-all: install install-frontend
 
 # === CI/CD ===
 
-# Setup CI/CD (run once): Configure Cloud Build triggers and permissions
-ci-setup:
-    ./scripts/ci-setup.sh
-
-# Build custom helm-deploy image for Cloud Build
-ci-build-helm-image:
-    gcloud builds submit --config=cloudbuild/build-helm-image.yaml cloudbuild/
-
-# Manually trigger production build
-ci-build-prod:
-    gcloud builds submit --config=cloudbuild.yaml
-
-# Manually trigger branch build
-ci-build-branch:
-    gcloud builds submit --config=cloudbuild-branch.yaml
-
-# View recent Cloud Build history
-ci-logs:
-    gcloud builds list --limit=10
-
-# View specific build logs (e.g., just ci-logs-build abc-123)
-ci-logs-build build_id:
-    gcloud builds log {{build_id}} --stream
-
-# List Cloud Build triggers
-ci-triggers:
-    gcloud builds triggers list
-
-# List all branch deployments
-ci-list-branches:
+# List all branch deployments (works with any CI/CD)
+list-branches:
     @echo "Branch Deployments:"
     @kubectl get namespaces -l type=branch-deployment --no-headers -o custom-columns=":metadata.name,:metadata.labels.branch,:metadata.creationTimestamp"
 
-# Cleanup specific branch deployment (e.g., just ci-cleanup-branch feat-auth)
-ci-cleanup-branch branch:
+# Cleanup specific branch deployment (e.g., just cleanup-branch feat-auth)
+cleanup-branch branch:
     ./scripts/k8s-cleanup-branch.sh {{branch}}
 
 # Cleanup all branch deployments older than 7 days
-ci-cleanup-old-branches:
+cleanup-old-branches:
     #!/usr/bin/env bash
     echo "🗑️  Cleaning up branch deployments older than 7 days..."
     kubectl get namespaces -l type=branch-deployment -o json | \

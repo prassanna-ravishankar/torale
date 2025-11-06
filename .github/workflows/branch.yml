@@ -1,0 +1,127 @@
+# Branch deployment workflow
+# Triggers on push to feature branches
+# Deploys to isolated test namespace (torale-{branch-slug})
+
+name: Branch Deployment
+
+on:
+  push:
+    branches:
+      - 'feat/**'
+      - 'fix/**'
+      - 'refactor/**'
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER: clusterkit
+  GKE_REGION: us-central1
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  # Build and scan (reusable workflow)
+  build:
+    name: Build & Scan
+    uses: ./.github/workflows/build.yml
+    with:
+      push_latest: false
+    secrets:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+
+  # Deploy to branch namespace
+  deploy:
+    name: Deploy to Branch
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: branch-${{ github.ref_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate branch metadata
+        id: metadata
+        run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          BRANCH_SLUG=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]' | cut -c1-30)
+          NAMESPACE="torale-$BRANCH_SLUG"
+
+          echo "branch_slug=$BRANCH_SLUG" >> $GITHUB_OUTPUT
+          echo "namespace=$NAMESPACE" >> $GITHUB_OUTPUT
+
+          echo "Branch: $BRANCH_NAME → Namespace: $NAMESPACE"
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Get GKE credentials
+        run: |
+          gcloud container clusters get-credentials ${{ env.GKE_CLUSTER }} \
+            --region ${{ env.GKE_REGION }} \
+            --project ${{ env.GCP_PROJECT_ID }}
+
+      - name: Create and label namespace
+        run: |
+          kubectl create namespace ${{ steps.metadata.outputs.namespace }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          kubectl label namespace ${{ steps.metadata.outputs.namespace }} \
+            type=branch-deployment \
+            branch=${{ steps.metadata.outputs.branch_slug }} \
+            managed-by=github-actions \
+            --overwrite
+
+      - name: Copy production secrets
+        run: |
+          if kubectl get secret torale-secrets -n torale &>/dev/null; then
+            kubectl get secret torale-secrets -n torale -o yaml | \
+              sed "s/namespace: torale/namespace: ${{ steps.metadata.outputs.namespace }}/" | \
+              kubectl apply -f -
+          else
+            echo "⚠️  Production secrets not found, branch deployment may fail"
+          fi
+
+      - name: Install Helm
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Deploy to branch namespace
+        run: |
+          echo "🚀 Deploying to ${{ steps.metadata.outputs.namespace }}..."
+
+          helm upgrade --install torale-${{ steps.metadata.outputs.branch_slug }} ./helm/torale \
+            --namespace ${{ steps.metadata.outputs.namespace }} \
+            --create-namespace \
+            --set image.tag=${{ env.IMAGE_TAG }} \
+            --set global.projectId=${{ env.GCP_PROJECT_ID }} \
+            --set api.replicaCount=1 \
+            --set api.autoscaling.enabled=false \
+            --set worker.replicaCount=1 \
+            --set worker.autoscaling.enabled=false \
+            --set frontend.replicaCount=1 \
+            --set frontend.autoscaling.enabled=false \
+            --set ingress.enabled=false \
+            --set certificate.enabled=false \
+            --wait \
+            --timeout 10m
+
+      - name: Deployment summary
+        run: |
+          echo "🎉 Branch deployment completed!"
+          echo ""
+          echo "📋 Details:"
+          echo "  Branch: ${{ github.ref_name }}"
+          echo "  Namespace: ${{ steps.metadata.outputs.namespace }}"
+          echo "  Image: ${{ env.IMAGE_TAG }}"
+          echo ""
+          echo "🔗 Access:"
+          echo "  kubectl port-forward -n ${{ steps.metadata.outputs.namespace }} svc/torale-api 8000:80"
+          echo "  kubectl port-forward -n ${{ steps.metadata.outputs.namespace }} svc/torale-frontend 8080:80"
+          echo ""
+          kubectl get pods,svc -n ${{ steps.metadata.outputs.namespace }}
+          echo ""
+          echo "🗑️  Cleanup: just cleanup-branch ${{ steps.metadata.outputs.branch_slug }}"
