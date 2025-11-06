@@ -84,20 +84,10 @@ jobs:
             --region ${{ env.GKE_REGION }} \
             --project ${{ env.GCP_PROJECT_ID }}
 
-      - name: Install Helm
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-          helm version
-
       - name: Install Helmfile
-        run: |
-          wget -q https://github.com/helmfile/helmfile/releases/download/v0.162.0/helmfile_linux_amd64 -O /usr/local/bin/helmfile
-          chmod +x /usr/local/bin/helmfile
-          helmfile version
-
-      - name: Install Helm plugins
-        run: |
-          helm plugin install https://github.com/databus23/helm-diff --version v3.9.4 || true
+        uses: helmfile/helmfile-action@v1
+        with:
+          helmfile-version: v0.162.0
 
       - name: Deploy via Helmfile
         run: |
