@@ -1,15 +1,14 @@
 # Production deployment workflow
-# Triggers on push to main branch
-# Deploys to torale namespace
-# Uses Workload Identity Federation for keyless authentication
+# Simplified: Build → Deploy (no separate scan step)
+# Uses GitHub Container Registry (ghcr.io) for native GitHub integration
+# Maintains GKE deployment via Helmfile
 
-name: Production Deployment
+name: Deploy to Production
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:  # Allow manual triggering
+    branches: [main]
+  workflow_dispatch:
 
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -18,42 +17,80 @@ env:
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
-  # Validate project structure
   validate:
     name: Validate
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Validate project structure
+      - name: Validate structure
         run: |
           echo "🔍 Validating project structure..."
-          test -f backend/Dockerfile || (echo "❌ backend/Dockerfile not found" && exit 1)
-          test -f frontend/Dockerfile || (echo "❌ frontend/Dockerfile not found" && exit 1)
-          test -f helmfile.yaml || (echo "❌ helmfile.yaml not found" && exit 1)
-          test -d helm/torale || (echo "❌ helm/torale not found" && exit 1)
-          echo "✅ All required files present"
+          test -f backend/Dockerfile || (echo "❌ backend/Dockerfile missing" && exit 1)
+          test -f frontend/Dockerfile || (echo "❌ frontend/Dockerfile missing" && exit 1)
+          test -f helmfile.yaml || (echo "❌ helmfile.yaml missing" && exit 1)
+          test -d helm/torale || (echo "❌ helm/torale missing" && exit 1)
+          echo "✅ All files present"
 
-  # Build and scan (reusable workflow)
   build:
-    name: Build & Scan
+    name: Build ${{ matrix.component }}
+    runs-on: ubuntu-latest
     needs: validate
-    uses: ./.github/workflows/build.yml
+
     permissions:
       contents: read
-      id-token: write  # Required for nested jobs to use OIDC
-    with:
-      push_latest: true
-    secrets:
-      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-      GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      packages: write  # Required for GHCR
 
-  # Deploy to production
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: api
+            context: backend
+            dockerfile: backend/Dockerfile
+          - component: frontend
+            context: frontend
+            dockerfile: frontend/Dockerfile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/torale-${{ matrix.component }}:${{ env.IMAGE_TAG }}
+            ghcr.io/${{ github.repository_owner }}/torale-${{ matrix.component }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Tag worker image (same build as api)
+      - name: Tag and push worker
+        if: matrix.component == 'api'
+        run: |
+          docker pull ghcr.io/${{ github.repository_owner }}/torale-api:${{ env.IMAGE_TAG }}
+          docker tag ghcr.io/${{ github.repository_owner }}/torale-api:${{ env.IMAGE_TAG }} \
+            ghcr.io/${{ github.repository_owner }}/torale-worker:${{ env.IMAGE_TAG }}
+          docker tag ghcr.io/${{ github.repository_owner }}/torale-api:${{ env.IMAGE_TAG }} \
+            ghcr.io/${{ github.repository_owner }}/torale-worker:latest
+          docker push ghcr.io/${{ github.repository_owner }}/torale-worker:${{ env.IMAGE_TAG }}
+          docker push ghcr.io/${{ github.repository_owner }}/torale-worker:latest
+
   deploy:
-    name: Deploy to Production
+    name: Deploy to GKE
     runs-on: ubuntu-latest
     needs: build
 
@@ -66,8 +103,7 @@ jobs:
       url: https://torale.ai
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -90,7 +126,7 @@ jobs:
           helmfile-args: |
             sync --selector tier=app \
             --set image.tag=${{ env.IMAGE_TAG }} \
-            --set image.repository=${{ env.GCP_PROJECT_ID }} \
+            --set image.repository=ghcr.io/${{ github.repository_owner }} \
             --set global.projectId=${{ env.GCP_PROJECT_ID }}
 
       - name: Verify deployment
