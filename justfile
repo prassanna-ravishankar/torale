@@ -9,19 +9,19 @@ default:
 # === Development ===
 
 # Start all services (API + Workers + Temporal + PostgreSQL)
-dev:
+dev: build
     docker compose up
 
 # Start all services in background
-dev-bg:
+dev-bg: build
     docker compose up -d
 
 # Start only API service
-dev-api:
+dev-api: build
     docker compose up api
 
 # Start only workers service
-dev-workers:
+dev-workers: build
     docker compose up workers
 
 # Start frontend development server
@@ -29,13 +29,13 @@ dev-frontend:
     cd frontend && npm run dev
 
 # Start all services + frontend
-dev-all:
+dev-all: build
     #!/usr/bin/env bash
     docker compose up -d
     cd frontend && npm run dev
 
 # Start all services + frontend in no-auth mode
-dev-all-noauth:
+dev-all-noauth: build
     #!/usr/bin/env bash
     export TORALE_NOAUTH=1
     export VITE_TORALE_NOAUTH=1

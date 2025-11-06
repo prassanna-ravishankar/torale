@@ -19,12 +19,24 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Add CHECK constraint to task_templates.notify_behavior column."""
-    op.create_check_constraint(
-        "chk_templates_notify_behavior",
-        "task_templates",
-        "notify_behavior IN ('once', 'always', 'track_state')",
+    """Add CHECK constraint to task_templates.notify_behavior column if it doesn't exist."""
+    # Check if constraint already exists (for fresh installs that got it from 0c195cb8b608)
+    connection = op.get_bind()
+    result = connection.execute(
+        sa.text("""
+            SELECT COUNT(*)
+            FROM pg_constraint
+            WHERE conname = 'chk_templates_notify_behavior'
+        """)
     )
+    constraint_exists = result.scalar() > 0
+
+    if not constraint_exists:
+        op.create_check_constraint(
+            "chk_templates_notify_behavior",
+            "task_templates",
+            "notify_behavior IN ('once', 'always', 'track_state')",
+        )
 
 
 def downgrade() -> None:
