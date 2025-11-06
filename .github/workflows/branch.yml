@@ -51,7 +51,15 @@ jobs:
         id: metadata
         run: |
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
-          BRANCH_SLUG=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]' | cut -c1-30 | sed 's/-*$//')
+          BRANCH_SLUG=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | sed 's/^-*//' | tr '[:upper:]' '[:lower:]' | cut -c1-30 | sed 's/-*$//')
+
+          # Validate slug is not empty and starts with alphanumeric
+          if [ -z "$BRANCH_SLUG" ] || ! echo "$BRANCH_SLUG" | grep -qE '^[a-z0-9]'; then
+            echo "Error: Invalid branch name '$BRANCH_NAME' produces invalid slug '$BRANCH_SLUG'"
+            echo "Branch slug must start with alphanumeric character after sanitization"
+            exit 1
+          fi
+
           NAMESPACE="torale-$BRANCH_SLUG"
 
           echo "branch_slug=$BRANCH_SLUG" >> $GITHUB_OUTPUT
