@@ -12,8 +12,7 @@ domains:
 clerk:
   publishableKey: pk_test_cGxlYXNhbnQtcHJpbWF0ZS04OC5jbGVyay5hY2NvdW50cy5kZXYk
 
-image:
-  tag: latest  # Will be overridden by Cloud Build with commit SHA
+# image.tag is set via --set in CI pipeline (not here to avoid override issues)
 
 # Cloud SQL connection
 database:
