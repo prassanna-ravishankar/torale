@@ -239,12 +239,12 @@ k8s-push:
     #!/usr/bin/env bash
     set -e
     echo "Building and pushing images to GCR with linux/amd64 platform..."
-    docker build --platform=linux/amd64 -f backend/Dockerfile -t gcr.io/baldmaninc/torale/api:latest ./backend
-    docker tag gcr.io/baldmaninc/torale/api:latest gcr.io/baldmaninc/torale/worker:latest
-    docker build --platform=linux/amd64 -f frontend/Dockerfile -t gcr.io/baldmaninc/torale/frontend:latest ./frontend
-    docker push gcr.io/baldmaninc/torale/api:latest
-    docker push gcr.io/baldmaninc/torale/worker:latest
-    docker push gcr.io/baldmaninc/torale/frontend:latest
+    docker build --platform=linux/amd64 -f backend/Dockerfile -t gcr.io/baldmaninc/torale-api:latest ./backend
+    docker tag gcr.io/baldmaninc/torale-api:latest gcr.io/baldmaninc/torale-worker:latest
+    docker build --platform=linux/amd64 -f frontend/Dockerfile -t gcr.io/baldmaninc/torale-frontend:latest ./frontend
+    docker push gcr.io/baldmaninc/torale-api:latest
+    docker push gcr.io/baldmaninc/torale-worker:latest
+    docker push gcr.io/baldmaninc/torale-frontend:latest
     echo "✓ All images built and pushed successfully!"
 
 # === Kubernetes (GKE ClusterKit) ===
