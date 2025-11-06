@@ -5,7 +5,7 @@ echo "Torale - Kubernetes Deployment Status"
 echo "==============================================="
 echo ""
 
-K8S_NAMESPACE="production"
+K8S_NAMESPACE="torale"
 TEMPORAL_NAMESPACE="temporal"
 
 # Colors

@@ -202,21 +202,24 @@ certificate:
 config:
   # Will be populated from values
 
-# Secrets (should be created separately via kubectl)
+# Secrets are managed externally (not created by Helm)
+# This ensures secrets are never accidentally committed to git and provides
+# better separation between infrastructure and application deployment
 secrets:
-  # Set to true to use externally managed secrets (recommended for production)
+  # Always true - secrets must be created manually before deployment
+  # Create secrets using: just k8s-secrets
+  # Or manually with kubectl:
+  #   kubectl create secret generic torale-secrets -n torale \
+  #     --from-literal=GOOGLE_API_KEY="..." \
+  #     --from-literal=SECRET_KEY="..." \
+  #     --from-literal=DB_PASSWORD="..." \
+  #     --from-literal=CLERK_SECRET_KEY="..." \
+  #     --from-literal=TEMPORAL_API_KEY="..." \
+  #     --from-literal=OPENAI_API_KEY="" \
+  #     --from-literal=ANTHROPIC_API_KEY="" \
+  #     --from-literal=NOTIFICATION_API_KEY=""
   external: true
-  # Reference to existing secret name
   name: torale-secrets
-  # Keys expected in the secret:
-  # - GOOGLE_API_KEY
-  # - SECRET_KEY
-  # - DB_PASSWORD
-  # - CLERK_SECRET_KEY
-  # - TEMPORAL_API_KEY
-  # - OPENAI_API_KEY (optional)
-  # - ANTHROPIC_API_KEY (optional)
-  # - NOTIFICATION_API_KEY (optional)
 
 # Service Account (for Workload Identity)
 serviceAccount:
