@@ -53,7 +53,7 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
 
 export const ClerkAuthProvider: React.FC<ClerkAuthProviderProps> = ({ children }) => {
   if (!CLERK_PUBLISHABLE_KEY) {
-    throw new Error('Missing Clerk Publishable Key. Set VITE_CLERK_PUBLISHABLE_KEY or enable no-auth mode with VITE_TORALE_NOAUTH=1')
+    throw new Error('Missing Clerk Publishable Key. Set VITE_CLERK_PUBLISHABLE_KEY in your environment.')
   }
 
   return (
