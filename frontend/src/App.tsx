@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-do
 import { SignedIn, SignedOut, SignIn, SignUp, useAuth as useClerkAuth } from '@clerk/clerk-react'
 import { Dashboard } from '@/components/Dashboard'
 import { TaskDetail } from '@/components/TaskDetail'
+import Landing from '@/components/Landing'
 import { Header } from '@/components/Header'
 import { Toaster } from '@/components/ui/sonner'
 import { Loader2 } from 'lucide-react'
@@ -102,13 +103,7 @@ export default function App() {
         />
         <Route
           path="/"
-          element={
-            <ProtectedRoute>
-              <AppLayout>
-                <Dashboard onTaskClick={handleTaskClick} />
-              </AppLayout>
-            </ProtectedRoute>
-          }
+          element={<HomeRoute onTaskClick={handleTaskClick} />}
         />
         <Route
           path="/tasks/:taskId"
@@ -132,4 +127,26 @@ function TaskDetailRoute({ onBack, onDeleted }: { onBack: () => void; onDeleted:
     return <Navigate to="/" replace />
   }
   return <TaskDetail taskId={taskId} onBack={onBack} onDeleted={onDeleted} />
+}
+
+function HomeRoute({ onTaskClick }: { onTaskClick: (taskId: string) => void }) {
+  const { isLoaded, userId } = useClerkAuth()
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (userId) {
+    return (
+      <AppLayout>
+        <Dashboard onTaskClick={onTaskClick} />
+      </AppLayout>
+    )
+  }
+
+  return <Landing />
 }
