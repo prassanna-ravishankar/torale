@@ -1,6 +1,6 @@
 # Production deployment workflow
 # Simplified: Build → Deploy (no separate scan step)
-# Uses GitHub Container Registry (ghcr.io) for native GitHub integration
+# Uses Google Container Registry (gcr.io) for native GKE integration via Workload Identity
 # Maintains GKE deployment via Helmfile
 
 name: Deploy to Production
@@ -39,7 +39,7 @@ jobs:
 
     permissions:
       contents: read
-      packages: write  # Required for GHCR
+      id-token: write  # Required for GCP OIDC
 
     strategy:
       fail-fast: false
@@ -58,12 +58,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -72,8 +74,8 @@ jobs:
           file: ${{ matrix.dockerfile }}
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/torale-${{ matrix.component }}:${{ env.IMAGE_TAG }}
-            ghcr.io/${{ github.repository_owner }}/torale-${{ matrix.component }}:latest
+            gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:${{ env.IMAGE_TAG }}
+            gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -81,13 +83,13 @@ jobs:
       - name: Tag and push worker
         if: matrix.component == 'api'
         run: |
-          docker pull ghcr.io/${{ github.repository_owner }}/torale-api:${{ env.IMAGE_TAG }}
-          docker tag ghcr.io/${{ github.repository_owner }}/torale-api:${{ env.IMAGE_TAG }} \
-            ghcr.io/${{ github.repository_owner }}/torale-worker:${{ env.IMAGE_TAG }}
-          docker tag ghcr.io/${{ github.repository_owner }}/torale-api:${{ env.IMAGE_TAG }} \
-            ghcr.io/${{ github.repository_owner }}/torale-worker:latest
-          docker push ghcr.io/${{ github.repository_owner }}/torale-worker:${{ env.IMAGE_TAG }}
-          docker push ghcr.io/${{ github.repository_owner }}/torale-worker:latest
+          docker pull gcr.io/${{ env.GCP_PROJECT_ID }}/torale-api:${{ env.IMAGE_TAG }}
+          docker tag gcr.io/${{ env.GCP_PROJECT_ID }}/torale-api:${{ env.IMAGE_TAG }} \
+            gcr.io/${{ env.GCP_PROJECT_ID }}/torale-worker:${{ env.IMAGE_TAG }}
+          docker tag gcr.io/${{ env.GCP_PROJECT_ID }}/torale-api:${{ env.IMAGE_TAG }} \
+            gcr.io/${{ env.GCP_PROJECT_ID }}/torale-worker:latest
+          docker push gcr.io/${{ env.GCP_PROJECT_ID }}/torale-worker:${{ env.IMAGE_TAG }}
+          docker push gcr.io/${{ env.GCP_PROJECT_ID }}/torale-worker:latest
 
   deploy:
     name: Deploy to GKE
@@ -126,7 +128,6 @@ jobs:
           helmfile-args: |
             sync --selector tier=app \
             --set image.tag=${{ env.IMAGE_TAG }} \
-            --set image.repository=ghcr.io/${{ github.repository_owner }} \
             --set global.projectId=${{ env.GCP_PROJECT_ID }}
 
       - name: Verify deployment
