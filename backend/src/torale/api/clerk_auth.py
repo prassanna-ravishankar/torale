@@ -2,12 +2,11 @@
 
 import hashlib
 import uuid
-from typing import Optional
 
 from clerk_backend_api import Clerk
 from clerk_backend_api.security import verify_token
-from clerk_backend_api.security.types import VerifyTokenOptions, TokenVerificationError
-from fastapi import Depends, HTTPException, Security, status
+from clerk_backend_api.security.types import TokenVerificationError, VerifyTokenOptions
+from fastapi import HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +25,13 @@ if settings.clerk_secret_key:
 class ClerkUser:
     """User information from Clerk session or API key."""
 
-    def __init__(self, clerk_user_id: str, email: str, email_verified: bool = False, db_user_id: Optional[uuid.UUID] = None):
+    def __init__(
+        self,
+        clerk_user_id: str,
+        email: str,
+        email_verified: bool = False,
+        db_user_id: uuid.UUID | None = None,
+    ):
         self.clerk_user_id = clerk_user_id
         self.email = email
         self.email_verified = email_verified
@@ -114,7 +119,7 @@ async def verify_clerk_token(
                 try:
                     result = await session.execute(
                         text("SELECT id FROM users WHERE clerk_user_id = :clerk_user_id"),
-                        {"clerk_user_id": clerk_user_id}
+                        {"clerk_user_id": clerk_user_id},
                     )
                     row = result.first()
                     if row:
@@ -136,7 +141,7 @@ async def verify_clerk_token(
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to fetch user data: {str(e)}",
-            )
+            ) from e
 
     except TokenVerificationError as e:
         print(f"Clerk token verification failed: {e}")
@@ -144,7 +149,7 @@ async def verify_clerk_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Token verification failed: {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
     except HTTPException:
         raise
     except Exception as e:
@@ -154,7 +159,7 @@ async def verify_clerk_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
 
 
 async def verify_api_key(
@@ -253,3 +258,53 @@ async def get_current_user(
 
 # Alias for compatibility with existing code that uses current_active_user
 current_active_user = get_current_user
+
+
+async def get_current_user_or_test_user(
+    credentials: HTTPAuthorizationCredentials | None = Security(HTTPBearer(auto_error=False)),
+) -> ClerkUser:
+    """
+    Get current user with support for TORALE_NOAUTH test mode.
+
+    SECURITY WARNING: Only use this in test/development routes!
+    Production routes MUST use get_current_user() instead.
+
+    When TORALE_NOAUTH=1:
+    - Returns a test user without authentication
+    - Should ONLY be used in local development/testing
+
+    When TORALE_NOAUTH=0 (default):
+    - Requires proper authentication (same as get_current_user)
+    """
+    # If noauth mode is enabled, return test user
+    if settings.torale_noauth:
+        print("⚠️  WARNING: TORALE_NOAUTH mode enabled - authentication bypassed!")
+        # Return a test user with a fixed UUID
+        return ClerkUser(
+            clerk_user_id="test_user_noauth",
+            email="test@example.com",
+            email_verified=True,
+            db_user_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+        )
+
+    # In production mode, require authentication
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Use normal authentication
+    token = credentials.credentials
+
+    if token.startswith("sk_"):
+        from torale.api.users import get_async_session
+
+        async for session in get_async_session():
+            try:
+                return await verify_api_key(credentials, session)
+            finally:
+                await session.close()
+
+    return await verify_clerk_token(credentials)

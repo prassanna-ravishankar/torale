@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from torale.api.routers import tasks, auth, templates
+from torale.api.routers import auth, tasks, templates
 from torale.core.config import settings
 from torale.core.database import db
 
@@ -13,6 +13,17 @@ async def lifespan(app: FastAPI):
     print(f"Starting Torale API on {settings.api_host}:{settings.api_port}")
     await db.connect()
     print("Database connection pool established")
+
+    # Create test user for TORALE_NOAUTH mode
+    if settings.torale_noauth:
+        print("⚠️  TORALE_NOAUTH mode enabled - creating test user")
+        await db.execute("""
+            INSERT INTO users (id, clerk_user_id, email, is_active)
+            VALUES ('00000000-0000-0000-0000-000000000001', 'test_user_noauth', 'test@example.com', true)
+            ON CONFLICT (clerk_user_id) DO NOTHING
+        """)
+        print("✓ Test user ready (test@example.com)")
+
     yield
     await db.disconnect()
     print("Shutting down Torale API")

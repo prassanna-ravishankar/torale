@@ -1,5 +1,4 @@
 import json
-from typing import Any
 
 from torale.core.config import settings
 from torale.executors import TaskExecutor
@@ -21,7 +20,7 @@ class GroundedSearchExecutor(TaskExecutor):
             raise ValueError("Google API key required for grounded search")
 
         from google import genai
-        from google.genai.types import Tool, GoogleSearch
+        from google.genai.types import GoogleSearch, Tool
 
         self.client = genai.Client(api_key=settings.google_api_key)
         self.search_tool = Tool(google_search=GoogleSearch())
@@ -72,17 +71,14 @@ class GroundedSearchExecutor(TaskExecutor):
 
         try:
             # Step 1: Perform grounded search
-            search_result = await self._grounded_search(
-                search_query=search_query,
-                model=model
-            )
+            search_result = await self._grounded_search(search_query=search_query, model=model)
 
             # Step 2: Evaluate if condition is met
             condition_result = await self._evaluate_condition(
                 search_query=search_query,
                 search_answer=search_result["answer"],
                 condition_description=condition_description,
-                model=model
+                model=model,
             )
 
             # Step 3: Compare with last known state (if provided)
@@ -91,7 +87,7 @@ class GroundedSearchExecutor(TaskExecutor):
                 change_summary = await self._compare_states(
                     previous_state=last_known_state,
                     current_state=condition_result["current_state"],
-                    model=model
+                    model=model,
                 )
 
             return {
@@ -111,11 +107,7 @@ class GroundedSearchExecutor(TaskExecutor):
                 "condition_description": condition_description,
             }
 
-    async def _grounded_search(
-        self,
-        search_query: str,
-        model: str
-    ) -> dict:
+    async def _grounded_search(self, search_query: str, model: str) -> dict:
         """
         Perform grounded search using Gemini with Google Search.
 
@@ -129,41 +121,34 @@ class GroundedSearchExecutor(TaskExecutor):
             config=types.GenerateContentConfig(
                 tools=[self.search_tool],
                 response_modalities=["TEXT"],
-            )
+            ),
         )
 
         answer = response.text
 
         # Extract grounding sources from response
         grounding_sources = []
-        if hasattr(response, 'candidates') and response.candidates:
+        if hasattr(response, "candidates") and response.candidates:
             candidate = response.candidates[0]
-            if hasattr(candidate, 'grounding_metadata') and candidate.grounding_metadata:
+            if hasattr(candidate, "grounding_metadata") and candidate.grounding_metadata:
                 metadata = candidate.grounding_metadata
-                if hasattr(metadata, 'search_entry_point') and metadata.search_entry_point:
+                if hasattr(metadata, "search_entry_point") and metadata.search_entry_point:
                     # Extract web search queries used
                     pass
 
-                if hasattr(metadata, 'grounding_chunks') and metadata.grounding_chunks:
+                if hasattr(metadata, "grounding_chunks") and metadata.grounding_chunks:
                     for chunk in metadata.grounding_chunks:
-                        if hasattr(chunk, 'web') and chunk.web:
+                        if hasattr(chunk, "web") and chunk.web:
                             source = {
-                                "url": getattr(chunk.web, 'uri', ''),
-                                "title": getattr(chunk.web, 'title', ''),
+                                "url": getattr(chunk.web, "uri", ""),
+                                "title": getattr(chunk.web, "title", ""),
                             }
                             grounding_sources.append(source)
 
-        return {
-            "answer": answer,
-            "grounding_sources": grounding_sources
-        }
+        return {"answer": answer, "grounding_sources": grounding_sources}
 
     async def _evaluate_condition(
-        self,
-        search_query: str,
-        search_answer: str,
-        condition_description: str,
-        model: str
+        self, search_query: str, search_answer: str, condition_description: str, model: str
     ) -> dict:
         """
         Use LLM to evaluate if condition is met based on search results.
@@ -198,7 +183,7 @@ Be precise - only set condition_met to true if the condition is definitively met
             contents=evaluation_prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
-            )
+            ),
         )
 
         result = json.loads(response.text)
@@ -206,15 +191,10 @@ Be precise - only set condition_met to true if the condition is definitively met
         return {
             "condition_met": result.get("condition_met", False),
             "explanation": result.get("explanation", ""),
-            "current_state": result.get("current_state", {})
+            "current_state": result.get("current_state", {}),
         }
 
-    async def _compare_states(
-        self,
-        previous_state: dict,
-        current_state: dict,
-        model: str
-    ) -> str:
+    async def _compare_states(self, previous_state: dict, current_state: dict, model: str) -> str:
         """
         Compare previous and current states to generate change summary.
 
@@ -237,7 +217,7 @@ Provide a concise summary of the key changes (e.g., "Release date changed from u
             contents=comparison_prompt,
             config=types.GenerateContentConfig(
                 max_output_tokens=200,
-            )
+            ),
         )
 
         return response.text.strip()

@@ -1,13 +1,13 @@
 """User model and database operations."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, Column, String, DateTime
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase
 from pydantic import BaseModel
+from sqlalchemy import Boolean, Column, DateTime, String
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase
 
 from torale.core.config import settings
 
@@ -25,12 +25,19 @@ class User(Base):
     clerk_user_id = Column(String, unique=True, nullable=False, index=True)
     email = Column(String(length=320), unique=True, index=True, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 # Create async engine for SQLAlchemy
-engine = create_async_engine(settings.database_url.replace("postgresql://", "postgresql+asyncpg://"))
+engine = create_async_engine(
+    settings.database_url.replace("postgresql://", "postgresql+asyncpg://")
+)
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
 

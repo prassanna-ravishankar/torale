@@ -2,34 +2,51 @@
 set -e
 
 API_URL="http://localhost:8000"
-EMAIL="test-schedule-$(date +%s)@example.com"
-PASSWORD="testpass123"
 TASK_ID=""
-TOKEN=""
+
+# Check if running in no-auth mode
+NOAUTH_MODE=${TORALE_NOAUTH:-0}
 
 echo "=== Automatic Schedule Test ==="
 echo "This test verifies tasks execute automatically on their cron schedule"
 echo
 
-# 1. Register
-echo "1. Registering user..."
-curl -sL -X POST "$API_URL/auth/register" \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}" > /dev/null
-echo "✓ User registered"
+if [ "$NOAUTH_MODE" == "1" ]; then
+    echo "Running in no-auth mode (TORALE_NOAUTH=1)"
+    echo "Note: API must also be started with TORALE_NOAUTH=1"
+    echo
+    AUTH_HEADER=""
+else
+    echo "Running with Clerk authentication"
+    echo "Note: Requires valid CLERK_SECRET_KEY in API environment"
+    echo
 
-# 2. Login
-echo "2. Logging in..."
-LOGIN_RESPONSE=$(curl -sL -X POST "$API_URL/auth/jwt/login" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=$EMAIL&password=$PASSWORD")
-TOKEN=$(echo $LOGIN_RESPONSE | jq -r '.access_token')
-echo "✓ Logged in"
+    # Check for Clerk test token
+    if [ -z "$CLERK_TEST_TOKEN" ]; then
+        echo "✗ CLERK_TEST_TOKEN environment variable not set"
+        echo
+        echo "To run with authentication, either:"
+        echo "  1. Set TORALE_NOAUTH=1 for no-auth mode"
+        echo "  2. Set CLERK_TEST_TOKEN with a valid Clerk session token"
+        echo
+        exit 1
+    fi
 
-# 3. Create task with schedule "every minute"
-echo "3. Creating grounded search task with schedule '* * * * *' (every minute)..."
-TASK_RESPONSE=$(curl -sL -X POST "$API_URL/api/v1/tasks" \
-  -H "Authorization: Bearer $TOKEN" \
+    AUTH_HEADER="Authorization: Bearer $CLERK_TEST_TOKEN"
+fi
+
+# Helper function to make authenticated requests
+curl_auth() {
+    if [ -n "$AUTH_HEADER" ]; then
+        curl "$@" -H "$AUTH_HEADER"
+    else
+        curl "$@"
+    fi
+}
+
+# 1. Create task with schedule "every minute"
+echo "1. Creating grounded search task with schedule '* * * * *' (every minute)..."
+TASK_RESPONSE=$(curl_auth -sL -X POST "$API_URL/api/v1/tasks" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Scheduled Test Task",
@@ -53,8 +70,8 @@ fi
 echo "✓ Task created (ID: $TASK_ID)"
 echo "  Temporal schedule created: schedule-$TASK_ID"
 
-# 4. Wait for automatic execution (max 90 seconds)
-echo "4. Waiting for automatic execution..."
+# 2. Wait for automatic execution (max 90 seconds)
+echo "2. Waiting for automatic execution..."
 echo "   (Tasks scheduled for every minute, waiting up to 90s)"
 
 START_TIME=$(date +%s)
@@ -64,8 +81,7 @@ for i in {1..90}; do
   sleep 1
 
   # Check execution history
-  EXEC_HISTORY=$(curl -sL -X GET "$API_URL/api/v1/tasks/$TASK_ID/executions" \
-    -H "Authorization: Bearer $TOKEN")
+  EXEC_HISTORY=$(curl_auth -sL -X GET "$API_URL/api/v1/tasks/$TASK_ID/executions")
 
   EXEC_COUNT=$(echo $EXEC_HISTORY | jq '. | length')
 
@@ -106,10 +122,9 @@ if [ "$FOUND_EXECUTION" = false ]; then
   exit 1
 fi
 
-# 5. Test pause/unpause
-echo "5. Testing schedule pause..."
-UPDATE_RESPONSE=$(curl -sL -X PUT "$API_URL/api/v1/tasks/$TASK_ID" \
-  -H "Authorization: Bearer $TOKEN" \
+# 3. Test pause/unpause
+echo "3. Testing schedule pause..."
+UPDATE_RESPONSE=$(curl_auth -sL -X PUT "$API_URL/api/v1/tasks/$TASK_ID" \
   -H "Content-Type: application/json" \
   -d '{"is_active": false}')
 
@@ -120,10 +135,9 @@ else
   echo "✗ Failed to pause task"
 fi
 
-# 6. Cleanup
-echo "6. Cleaning up..."
-curl -sL -X DELETE "$API_URL/api/v1/tasks/$TASK_ID" \
-  -H "Authorization: Bearer $TOKEN" > /dev/null
+# 4. Cleanup
+echo "4. Cleaning up..."
+curl_auth -sL -X DELETE "$API_URL/api/v1/tasks/$TASK_ID" > /dev/null
 echo "✓ Task and schedule deleted"
 
 echo

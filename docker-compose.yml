@@ -62,6 +62,7 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - NOTIFICATION_API_KEY=${NOTIFICATION_API_KEY}
+      - TORALE_NOAUTH=${TORALE_NOAUTH:-0}
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,6 +84,7 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - NOTIFICATION_API_KEY=${NOTIFICATION_API_KEY}
+      - TORALE_NOAUTH=${TORALE_NOAUTH:-0}
     depends_on:
       - postgres
       - temporal

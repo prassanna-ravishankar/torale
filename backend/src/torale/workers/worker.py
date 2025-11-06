@@ -26,24 +26,24 @@ async def main():
             settings.temporal_host,
             namespace=settings.temporal_namespace,
         )
-    
+
     worker = Worker(
         client,
         task_queue="torale-tasks",
         workflows=[TaskExecutionWorkflow],
         activities=[execute_task, send_notification],
     )
-    
+
     print(f"Starting Temporal worker, connected to {settings.temporal_host}")
-    
+
     # Handle shutdown gracefully
     def signal_handler(sig, frame):
         print("\nShutting down worker...")
         sys.exit(0)
-    
+
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    
+
     await worker.run()
 
 

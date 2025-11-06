@@ -3,8 +3,8 @@
 
 import asyncio
 import os
+
 from dotenv import load_dotenv
-from typing import Dict, Any
 
 load_dotenv()
 
@@ -32,7 +32,7 @@ async def test_grounded_search():
         config = {
             "search_query": "What is 2+2?",
             "condition_description": "A numerical answer is provided",
-            "model": "gemini-2.0-flash-exp"
+            "model": "gemini-2.0-flash-exp",
         }
 
         result = await executor.execute(config)
@@ -55,22 +55,23 @@ async def test_grounded_search():
     except Exception as e:
         print(f"{RED}✗ Grounded search error: {str(e)}{RESET}")
         import traceback
+
         traceback.print_exc()
         return False
 
 
 async def test_all_executors():
     """Test grounded search executor"""
-    print(f"{BLUE}={'='*60}{RESET}")
+    print(f"{BLUE}={'=' * 60}{RESET}")
     print(f"{BLUE}Grounded Search Executor Tests{RESET}")
-    print(f"{BLUE}={'='*60}{RESET}")
+    print(f"{BLUE}={'=' * 60}{RESET}")
 
     result = await test_grounded_search()
 
     # Summary
-    print(f"\n{BLUE}{'='*60}{RESET}")
+    print(f"\n{BLUE}{'=' * 60}{RESET}")
     print(f"{BLUE}Test Summary:{RESET}")
-    print(f"{BLUE}={'='*60}{RESET}")
+    print(f"{BLUE}={'=' * 60}{RESET}")
 
     if result is True:
         print(f"  {GREEN}✓ Grounded Search{RESET}")
@@ -100,10 +101,12 @@ async def test_error_handling():
 
     # Test with missing required fields
     try:
-        result = await executor.execute({
-            "model": "gemini-2.0-flash-exp"
-            # Missing search_query and condition_description
-        })
+        result = await executor.execute(
+            {
+                "model": "gemini-2.0-flash-exp"
+                # Missing search_query and condition_description
+            }
+        )
         assert result["success"] is False, "Should fail with missing fields"
         print(f"{GREEN}✓ Config validation works{RESET}")
     except ValueError:
@@ -113,13 +116,13 @@ async def test_error_handling():
 if __name__ == "__main__":
     # Run all tests
     success = asyncio.run(test_all_executors())
-    
+
     # Test error handling regardless of API keys
     asyncio.run(test_error_handling())
-    
-    print(f"\n{BLUE}{'='*60}{RESET}")
+
+    print(f"\n{BLUE}{'=' * 60}{RESET}")
     if success:
         print(f"{GREEN}Ready for full deployment!{RESET}")
     else:
         print(f"{YELLOW}Configure API keys in .env for full testing{RESET}")
-    print(f"{BLUE}{'='*60}{RESET}")
+    print(f"{BLUE}{'=' * 60}{RESET}")

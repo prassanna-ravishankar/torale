@@ -6,7 +6,7 @@ import asyncpg
 from temporalio import activity
 
 from torale.core.config import settings
-from torale.core.models import TaskStatus, NotifyBehavior
+from torale.core.models import NotifyBehavior, TaskStatus
 from torale.executors import GroundedSearchExecutor
 
 
@@ -21,9 +21,7 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
 
     try:
         # Get task details
-        task = await conn.fetchrow(
-            "SELECT * FROM tasks WHERE id = $1", UUID(task_id)
-        )
+        task = await conn.fetchrow("SELECT * FROM tasks WHERE id = $1", UUID(task_id))
 
         if not task:
             raise ValueError(f"Task {task_id} not found")

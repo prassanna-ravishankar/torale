@@ -3,10 +3,12 @@
 
 import asyncio
 import os
+
 import pytest
 from dotenv import load_dotenv
 
 load_dotenv()
+
 
 async def test_gemini_integration():
     from torale.executors.grounded_search import GroundedSearchExecutor
@@ -28,7 +30,7 @@ async def test_gemini_integration():
     config = {
         "search_query": "What is 2+2?",
         "condition_description": "A numerical answer is provided",
-        "model": "gemini-2.0-flash-exp"
+        "model": "gemini-2.0-flash-exp",
     }
 
     if not executor.validate_config(config):
@@ -54,8 +56,10 @@ async def test_gemini_integration():
     except Exception as e:
         print(f"❌ Exception during execution: {e}")
         import traceback
+
         traceback.print_exc()
         return False
+
 
 @pytest.mark.asyncio
 async def test_gemini_executor():
@@ -65,6 +69,7 @@ async def test_gemini_executor():
         pytest.skip("GOOGLE_API_KEY not configured")
 
     from torale.executors.grounded_search import GroundedSearchExecutor
+
     executor = GroundedSearchExecutor()
 
     assert executor.client is not None, "Gemini client should be initialized"
@@ -72,7 +77,7 @@ async def test_gemini_executor():
     config = {
         "search_query": "What is the capital of France?",
         "condition_description": "A city name is provided",
-        "model": "gemini-2.0-flash-exp"
+        "model": "gemini-2.0-flash-exp",
     }
 
     result = await executor.execute(config)
@@ -80,6 +85,7 @@ async def test_gemini_executor():
     assert result.get("answer"), "Response should have answer"
     assert result.get("condition_met") is not None, "Should have condition_met field"
     assert isinstance(result.get("grounding_sources"), list), "Should have grounding sources list"
+
 
 if __name__ == "__main__":
     success = asyncio.run(test_gemini_integration())

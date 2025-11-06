@@ -11,6 +11,7 @@ class TaskExecutor(ABC):
         pass
 
 
-from torale.executors.grounded_search import GroundedSearchExecutor
+# Import after class definition to avoid circular import
+from torale.executors.grounded_search import GroundedSearchExecutor  # noqa: E402
 
 __all__ = ["TaskExecutor", "GroundedSearchExecutor"]

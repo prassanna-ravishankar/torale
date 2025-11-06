@@ -26,5 +26,8 @@ class Settings(BaseSettings):
     api_port: int = 8000
     api_reload: bool = False
 
+    # Development/testing mode - disable authentication
+    torale_noauth: bool = False
+
 
 settings = Settings()

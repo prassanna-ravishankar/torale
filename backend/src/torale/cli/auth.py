@@ -73,7 +73,7 @@ def status():
 
     config = load_config()
     if config.get("api_key"):
-        print(f"[green]✓ Authenticated with API key[/green]")
+        print("[green]✓ Authenticated with API key[/green]")
         key_prefix = config["api_key"][:10] + "..."
         print(f"[cyan]API Key: {key_prefix}[/cyan]")
         print(f"[cyan]API URL: {config.get('api_url')}[/cyan]")

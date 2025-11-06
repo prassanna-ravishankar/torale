@@ -2,34 +2,51 @@
 set -e
 
 API_URL="http://localhost:8000"
-EMAIL="test-grounded-$(date +%s)@example.com"
-PASSWORD="testpass123"
 TASK_ID=""
-TOKEN=""
+
+# Check if running in no-auth mode
+NOAUTH_MODE=${TORALE_NOAUTH:-0}
 
 echo "=== Grounded Search E2E Test ==="
 echo "This test verifies grounded search monitoring functionality"
 echo
 
-# 1. Register
-echo "1. Registering user..."
-curl -sL -X POST "$API_URL/auth/register" \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}" > /dev/null
-echo "✓ User registered"
+if [ "$NOAUTH_MODE" == "1" ]; then
+    echo "Running in no-auth mode (TORALE_NOAUTH=1)"
+    echo "Note: API must also be started with TORALE_NOAUTH=1"
+    echo
+    AUTH_HEADER=""
+else
+    echo "Running with Clerk authentication"
+    echo "Note: Requires valid CLERK_SECRET_KEY in API environment"
+    echo
 
-# 2. Login
-echo "2. Logging in..."
-LOGIN_RESPONSE=$(curl -sL -X POST "$API_URL/auth/jwt/login" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=$EMAIL&password=$PASSWORD")
-TOKEN=$(echo $LOGIN_RESPONSE | jq -r '.access_token')
-echo "✓ Logged in"
+    # Check for Clerk test token
+    if [ -z "$CLERK_TEST_TOKEN" ]; then
+        echo "✗ CLERK_TEST_TOKEN environment variable not set"
+        echo
+        echo "To run with authentication, either:"
+        echo "  1. Set TORALE_NOAUTH=1 for no-auth mode"
+        echo "  2. Set CLERK_TEST_TOKEN with a valid Clerk session token"
+        echo
+        exit 1
+    fi
 
-# 3. Create grounded search task
-echo "3. Creating grounded search monitoring task..."
-TASK_RESPONSE=$(curl -sL -X POST "$API_URL/api/v1/tasks" \
-  -H "Authorization: Bearer $TOKEN" \
+    AUTH_HEADER="Authorization: Bearer $CLERK_TEST_TOKEN"
+fi
+
+# Helper function to make authenticated requests
+curl_auth() {
+    if [ -n "$AUTH_HEADER" ]; then
+        curl "$@" -H "$AUTH_HEADER"
+    else
+        curl "$@"
+    fi
+}
+
+# 1. Create grounded search task
+echo "1. Creating grounded search monitoring task..."
+TASK_RESPONSE=$(curl_auth -sL -X POST "$API_URL/api/v1/tasks" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test Grounded Search",
@@ -61,10 +78,9 @@ echo "  Search query: $SEARCH_QUERY"
 echo "  Condition: $CONDITION"
 echo "  Notify behavior: $NOTIFY_BEHAVIOR"
 
-# 4. Execute task manually
-echo "4. Executing task manually..."
-EXEC_RESPONSE=$(curl -sL -X POST "$API_URL/api/v1/tasks/$TASK_ID/execute" \
-  -H "Authorization: Bearer $TOKEN")
+# 2. Execute task manually
+echo "2. Executing task manually..."
+EXEC_RESPONSE=$(curl_auth -sL -X POST "$API_URL/api/v1/tasks/$TASK_ID/execute")
 
 EXEC_ID=$(echo $EXEC_RESPONSE | jq -r '.id')
 if [ "$EXEC_ID" == "null" ] || [ -z "$EXEC_ID" ]; then
@@ -74,13 +90,12 @@ if [ "$EXEC_ID" == "null" ] || [ -z "$EXEC_ID" ]; then
 fi
 echo "✓ Task execution started (ID: $EXEC_ID)"
 
-# 5. Wait for execution to complete
-echo "5. Waiting for execution to complete..."
+# 3. Wait for execution to complete
+echo "3. Waiting for execution to complete..."
 for i in {1..30}; do
   sleep 2
 
-  EXEC_HISTORY=$(curl -sL -X GET "$API_URL/api/v1/tasks/$TASK_ID/executions" \
-    -H "Authorization: Bearer $TOKEN")
+  EXEC_HISTORY=$(curl_auth -sL -X GET "$API_URL/api/v1/tasks/$TASK_ID/executions")
 
   LATEST_STATUS=$(echo $EXEC_HISTORY | jq -r '.[0].status')
 
@@ -129,11 +144,10 @@ if [ "$LATEST_STATUS" != "success" ]; then
   exit 1
 fi
 
-# 6. Test notifications endpoint
-echo "6. Testing notifications endpoint..."
+# 4. Test notifications endpoint
+echo "4. Testing notifications endpoint..."
 if [ "$CONDITION_MET" == "true" ]; then
-  NOTIFICATIONS=$(curl -sL -X GET "$API_URL/api/v1/tasks/$TASK_ID/notifications" \
-    -H "Authorization: Bearer $TOKEN")
+  NOTIFICATIONS=$(curl_auth -sL -X GET "$API_URL/api/v1/tasks/$TASK_ID/notifications")
 
   NOTIF_COUNT=$(echo $NOTIFICATIONS | jq '. | length')
 
@@ -147,10 +161,9 @@ else
   echo "  (Condition not met, skipping notification check)"
 fi
 
-# 7. Verify task state was updated
-echo "7. Verifying task state tracking..."
-UPDATED_TASK=$(curl -sL -X GET "$API_URL/api/v1/tasks/$TASK_ID" \
-  -H "Authorization: Bearer $TOKEN")
+# 5. Verify task state was updated
+echo "5. Verifying task state tracking..."
+UPDATED_TASK=$(curl_auth -sL -X GET "$API_URL/api/v1/tasks/$TASK_ID")
 
 TASK_CONDITION_MET=$(echo $UPDATED_TASK | jq '.condition_met')
 LAST_KNOWN_STATE=$(echo $UPDATED_TASK | jq '.last_known_state')
@@ -165,10 +178,9 @@ fi
 
 echo "✓ Task state tracking verified"
 
-# 8. Cleanup
-echo "8. Cleaning up..."
-curl -sL -X DELETE "$API_URL/api/v1/tasks/$TASK_ID" \
-  -H "Authorization: Bearer $TOKEN" > /dev/null
+# 6. Cleanup
+echo "6. Cleaning up..."
+curl_auth -sL -X DELETE "$API_URL/api/v1/tasks/$TASK_ID" > /dev/null
 echo "✓ Task deleted"
 
 echo

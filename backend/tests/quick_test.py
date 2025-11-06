@@ -2,14 +2,15 @@
 """Quick smoke test - run this to verify basic functionality before full testing"""
 
 import asyncio
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # Color codes
@@ -23,27 +24,21 @@ RESET = "\033[0m"
 def check_environment():
     """Check if environment is set up correctly"""
     print(f"{BLUE}Checking environment...{RESET}")
-    
+
     issues = []
-    
+
     # Check for .env file
     if not Path(".env").exists():
         issues.append("No .env file found - run: cp .env.example .env")
-    
+
     # Check for at least one API key
-    has_llm = any([
-        os.getenv("OPENAI_API_KEY"),
-        os.getenv("ANTHROPIC_API_KEY"), 
-        os.getenv("GOOGLE_API_KEY")
-    ])
-    
+    has_llm = any(
+        [os.getenv("OPENAI_API_KEY"), os.getenv("ANTHROPIC_API_KEY"), os.getenv("GOOGLE_API_KEY")]
+    )
+
     if not has_llm:
         issues.append("No LLM API keys configured in .env")
-    
-    # Check Python version
-    if sys.version_info < (3, 11):
-        issues.append(f"Python 3.11+ required (you have {sys.version})")
-    
+
     if issues:
         print(f"{RED}Environment issues found:{RESET}")
         for issue in issues:
@@ -59,16 +54,17 @@ async def test_imports():
     print(f"\n{BLUE}Testing imports...{RESET}")
 
     try:
-        from torale.core import config
-        from torale.core import models
-        from torale.executors.grounded_search import GroundedSearchExecutor
-        from torale.api.main import app
+        from torale.api.main import app  # noqa: F401
+        from torale.core import config, models  # noqa: F401
+        from torale.executors.grounded_search import GroundedSearchExecutor  # noqa: F401
+
         print(f"{GREEN}✓ All imports successful{RESET}")
         return True
     except ImportError as e:
         print(f"{RED}✗ Import failed: {e}{RESET}")
         print(f"{YELLOW}  Run: uv sync{RESET}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -96,6 +92,7 @@ async def test_config():
     except Exception as e:
         print(f"{RED}✗ Config error: {e}{RESET}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -117,11 +114,13 @@ async def test_executor_init():
 
         # Try a quick execution
         print(f"{BLUE}  Running quick test...{RESET}")
-        result = await executor.execute({
-            "search_query": "What is 1+1?",
-            "condition_description": "A numerical answer is provided",
-            "model": "gemini-2.0-flash-exp"
-        })
+        result = await executor.execute(
+            {
+                "search_query": "What is 1+1?",
+                "condition_description": "A numerical answer is provided",
+                "model": "gemini-2.0-flash-exp",
+            }
+        )
 
         if result.get("success"):
             print(f"{GREEN}  ✓ Grounded search execution successful!{RESET}")
@@ -133,40 +132,41 @@ async def test_executor_init():
     except Exception as e:
         print(f"{RED}✗ Executor init failed: {e}{RESET}")
         import traceback
+
         traceback.print_exc()
         return False
 
 
 async def main():
     """Run all quick tests"""
-    print(f"{BLUE}{'='*60}{RESET}")
+    print(f"{BLUE}{'=' * 60}{RESET}")
     print(f"{BLUE}Torale Quick Test Suite{RESET}")
-    print(f"{BLUE}{'='*60}{RESET}")
-    
+    print(f"{BLUE}{'=' * 60}{RESET}")
+
     all_pass = True
-    
+
     # Check environment first
     if not check_environment():
         print(f"\n{RED}Fix environment issues first!{RESET}")
         return False
-    
+
     # Run tests
     all_pass &= await test_imports()
     all_pass &= await test_config()
     all_pass &= await test_executor_init()
-    
+
     # Summary
-    print(f"\n{BLUE}{'='*60}{RESET}")
+    print(f"\n{BLUE}{'=' * 60}{RESET}")
     if all_pass:
         print(f"{GREEN}✅ All quick tests passed!{RESET}")
         print(f"\n{BLUE}Next steps:{RESET}")
-        print(f"  1. Run full executor tests: python tests/test_executors.py")
-        print(f"  2. Start local services: docker compose up -d")
-        print(f"  3. Run API: uv run python run_api.py")
+        print("  1. Run full executor tests: python tests/test_executors.py")
+        print("  2. Start local services: docker compose up -d")
+        print("  3. Run API: uv run python run_api.py")
     else:
         print(f"{YELLOW}⚠ Some tests failed - see above for details{RESET}")
-    print(f"{BLUE}{'='*60}{RESET}")
-    
+    print(f"{BLUE}{'=' * 60}{RESET}")
+
     return all_pass
 
 
