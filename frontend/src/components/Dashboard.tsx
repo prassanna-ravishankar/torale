@@ -35,11 +35,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   }
 
   useEffect(() => {
+    const noAuth = import.meta.env.VITE_TORALE_NOAUTH === '1'
+
     // Sync user with backend on first load (creates user record if needed)
-    api.syncUser().catch(error => {
-      console.error('Failed to sync user:', error)
-      // Don't show error to user - sync will retry on next API call
-    })
+    // Skip in no-auth mode since there's no user to sync
+    if (!noAuth) {
+      api.syncUser().catch(error => {
+        console.error('Failed to sync user:', error)
+        // Don't show error to user - sync will retry on next API call
+      })
+    }
 
     loadTasks();
   }, []);
