@@ -75,3 +75,8 @@ ingress:
 # Certificate configuration
 certificate:
   enabled: true
+
+# Secrets (managed externally via kubectl)
+secrets:
+  external: true
+  name: torale-secrets

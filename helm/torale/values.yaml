@@ -204,12 +204,16 @@ config:
 
 # Secrets (should be created separately via kubectl)
 secrets:
+  # Set to true to use externally managed secrets (recommended for production)
+  external: true
   # Reference to existing secret name
   name: torale-secrets
   # Keys expected in the secret:
   # - GOOGLE_API_KEY
   # - SECRET_KEY
   # - DB_PASSWORD
+  # - CLERK_SECRET_KEY
+  # - TEMPORAL_API_KEY
   # - OPENAI_API_KEY (optional)
   # - ANTHROPIC_API_KEY (optional)
   # - NOTIFICATION_API_KEY (optional)
