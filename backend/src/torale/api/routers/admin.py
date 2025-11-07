@@ -368,6 +368,9 @@ async def list_temporal_schedules(
             if desc.schedule.spec and desc.schedule.spec.cron_expressions:
                 cron_spec = desc.schedule.spec.cron_expressions[0]
 
+            # Get memo data (memo is a method, not a property)
+            memo_data = schedule.memo() if callable(schedule.memo) else {}
+
             schedules.append(
                 {
                     "schedule_id": schedule.id,
@@ -375,7 +378,7 @@ async def list_temporal_schedules(
                     "paused": desc.schedule.state.paused,
                     "next_run": None,  # Would need to compute from cron
                     "recent_actions": len(desc.info.recent_actions) if desc.info.recent_actions else 0,
-                    "created_at": schedule.memo.get("created_at") if schedule.memo else None,
+                    "created_at": memo_data.get("created_at") if memo_data else None,
                 }
             )
 
