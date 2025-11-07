@@ -102,7 +102,9 @@ async def get_platform_stats(
     total_executions = exec_row[0] if exec_row else 0
     failed_executions = exec_row[1] if exec_row and exec_row[1] else 0
     success_rate = (
-        (total_executions - failed_executions) / total_executions * 100 if total_executions > 0 else 100
+        (total_executions - failed_executions) / total_executions * 100
+        if total_executions > 0
+        else 100
     )
 
     # Popular queries (top 10)
@@ -238,7 +240,7 @@ async def list_recent_executions(
     - Condition evaluation
     - Change summaries
     """
-    status_clause = f"AND te.status = :status_filter" if status_filter else ""
+    status_clause = "AND te.status = :status_filter" if status_filter else ""
     task_clause = "AND te.task_id = :task_id" if task_id else ""
 
     params: dict[str, Any] = {"limit": limit}
@@ -330,7 +332,9 @@ async def list_temporal_workflows(
                     "status": workflow.status.name,
                     "start_time": workflow.start_time.isoformat() if workflow.start_time else None,
                     "close_time": workflow.close_time.isoformat() if workflow.close_time else None,
-                    "execution_time": workflow.execution_time.isoformat() if workflow.execution_time else None,
+                    "execution_time": workflow.execution_time.isoformat()
+                    if workflow.execution_time
+                    else None,
                     "ui_url": ui_url,
                 }
             )
@@ -388,7 +392,9 @@ async def list_temporal_schedules(
                     "spec": cron_spec,
                     "paused": desc.schedule.state.paused,
                     "next_run": None,  # Would need to compute from cron
-                    "recent_actions": len(desc.info.recent_actions) if desc.info.recent_actions else 0,
+                    "recent_actions": len(desc.info.recent_actions)
+                    if desc.info.recent_actions
+                    else 0,
                     "created_at": memo_data.get("created_at") if memo_data else None,
                 }
             )
