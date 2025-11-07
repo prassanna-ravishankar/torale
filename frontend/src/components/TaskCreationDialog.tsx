@@ -305,21 +305,21 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
-        "max-h-[90vh] overflow-y-auto",
-        stage === 'select' && "max-w-6xl",
-        stage === 'edit' && "max-w-7xl",
-        stage === 'advanced' && "max-w-5xl"
+        "max-h-[85vh] overflow-hidden flex flex-col",
+        stage === 'select' && "max-w-[90vw]",
+        stage === 'edit' && "max-w-4xl",
+        stage === 'advanced' && "max-w-3xl"
       )}>
-        <DialogHeader className="space-y-3 pb-6">
+        <DialogHeader className="space-y-2 pb-4 flex-shrink-0">
           <DialogTitle className={cn(
-            "text-3xl font-bold tracking-tight",
-            (stage === 'select' || stage === 'advanced') && "flex items-center gap-3"
+            "text-2xl font-bold tracking-tight",
+            (stage === 'select' || stage === 'advanced') && "flex items-center gap-2"
           )}>
-            {stage === 'select' && <><Sparkles className="h-8 w-8 text-purple-500" />Choose a Template</>}
+            {stage === 'select' && <><Sparkles className="h-6 w-6 text-purple-500" />Choose a Template</>}
             {stage === 'edit' && "Configure Your Task"}
-            {stage === 'advanced' && <><Sparkles className="h-8 w-8 text-purple-500" />Advanced Settings</>}
+            {stage === 'advanced' && <><Sparkles className="h-6 w-6 text-purple-500" />Advanced Settings</>}
           </DialogTitle>
-          <DialogDescription className="text-base text-muted-foreground">
+          <DialogDescription className="text-sm text-muted-foreground">
             {stage === 'select' && "Start with a pre-built template or create from scratch"}
             {stage === 'edit' && "Review and customize your monitoring task"}
             {stage === 'advanced' && "Fine-tune every aspect of your monitoring task"}
@@ -328,252 +328,273 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
 
         {/* Progress Bar (Advanced Mode Only) */}
         {stage === 'advanced' && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Step {wizardStep} of 3</span>
-              <span className="text-muted-foreground">{Math.round(progressPercentage)}% complete</span>
+          <div className="space-y-3 pb-4 border-b flex-shrink-0">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground font-medium">Step {wizardStep} of 3</span>
+              <span className="text-muted-foreground">{Math.round(progressPercentage)}%</span>
             </div>
-            <Progress value={progressPercentage} className="h-2" />
-            <div className="flex items-center justify-between pt-2">
+            <Progress value={progressPercentage} className="h-1.5" />
+            <div className="flex items-center justify-between">
               <div className={cn(
-                "flex items-center gap-2 text-sm",
-                wizardStep >= 1 ? "text-primary" : "text-muted-foreground"
+                "flex items-center gap-1.5 text-xs transition-colors",
+                wizardStep >= 1 ? "text-primary font-medium" : "text-muted-foreground"
               )}>
-                <Search className="h-4 w-4" />
-                <span className="hidden sm:inline">What to Monitor</span>
+                <Search className="h-3.5 w-3.5" />
+                <span>What</span>
               </div>
               <div className={cn(
-                "flex items-center gap-2 text-sm",
-                wizardStep >= 2 ? "text-primary" : "text-muted-foreground"
+                "flex items-center gap-1.5 text-xs transition-colors",
+                wizardStep >= 2 ? "text-primary font-medium" : "text-muted-foreground"
               )}>
-                <Clock className="h-4 w-4" />
-                <span className="hidden sm:inline">When to Check</span>
+                <Clock className="h-3.5 w-3.5" />
+                <span>When</span>
               </div>
               <div className={cn(
-                "flex items-center gap-2 text-sm",
-                wizardStep >= 3 ? "text-primary" : "text-muted-foreground"
+                "flex items-center gap-1.5 text-xs transition-colors",
+                wizardStep >= 3 ? "text-primary font-medium" : "text-muted-foreground"
               )}>
-                <CheckCircle2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Review</span>
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>Review</span>
               </div>
             </div>
           </div>
         )}
 
-        {stage === 'advanced' && <Separator className="my-4" />}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <form onSubmit={handleSubmit} className="space-y-6 p-1">
+            {/* STAGE 1: TEMPLATE SELECTION */}
+            {stage === 'select' && (
+              <div className="space-y-6">
+                {/* Template Cards Grid */}
+                {templates.length > 0 && (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      {templates.slice(0, 6).map((template) => (
+                        <Card
+                          key={template.id}
+                          className="cursor-pointer transition-all duration-200 hover:border-primary hover:shadow-lg group h-full flex flex-col"
+                          onClick={() => handleTemplateSelect(template.id)}
+                        >
+                          <CardHeader className="pb-4 space-y-3 flex-shrink-0">
+                            <div className="flex items-start gap-3">
+                              {template.icon && (
+                                <span className="text-4xl flex-shrink-0 leading-none">
+                                  {template.icon}
+                                </span>
+                              )}
+                              <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors leading-snug">
+                                {template.name}
+                              </CardTitle>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-4 pt-0 flex-1 flex flex-col">
+                            <CardDescription className="text-sm leading-relaxed text-foreground/70 flex-shrink-0">
+                              {template.description}
+                            </CardDescription>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* STAGE 1: TEMPLATE SELECTION */}
-          {stage === 'select' && (
-            <div className="space-y-8">
-              {/* Template Cards Grid */}
-              {templates.length > 0 && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {templates.slice(0, 6).map((template) => (
-                      <Card
-                        key={template.id}
-                        className="cursor-pointer transition-all hover:border-primary hover:shadow-lg hover:scale-[1.02] group"
-                        onClick={() => handleTemplateSelect(template.id)}
-                      >
-                        <CardHeader className="pb-4 space-y-3">
-                          <div className="flex items-center gap-3">
-                            {template.icon && <span className="text-4xl">{template.icon}</span>}
-                            <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors">
-                              {template.name}
-                            </CardTitle>
-                          </div>
-                          <CardDescription className="text-base leading-relaxed">
-                            {template.description}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          <div className="flex items-start gap-3">
-                            <Search className="h-5 w-5 mt-1 flex-shrink-0 text-muted-foreground" />
-                            <span className="text-sm line-clamp-2 leading-relaxed">{template.search_query}</span>
-                          </div>
-                          <div className="flex items-start gap-3">
-                            <Bell className="h-5 w-5 mt-1 flex-shrink-0 text-muted-foreground" />
-                            <span className="text-sm line-clamp-2 leading-relaxed">{template.condition_description}</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                            <div className="space-y-3 pt-2 border-t flex-1">
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                  <Search className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                  <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wide">
+                                    Monitors
+                                  </span>
+                                </div>
+                                <p className="text-sm text-foreground/80 leading-relaxed pl-5">
+                                  {template.search_query}
+                                </p>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                  <Bell className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                  <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wide">
+                                    Alerts when
+                                  </span>
+                                </div>
+                                <p className="text-sm text-foreground/80 leading-relaxed pl-5">
+                                  {template.condition_description}
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    <Separator />
+                  </div>
+                )}
+
+                {/* Create from Scratch Option */}
+                <Card
+                  className="border-dashed border-2 cursor-pointer transition-all duration-200 hover:border-primary hover:bg-accent/50"
+                  onClick={() => handleTemplateSelect("none")}
+                >
+                  <CardHeader className="py-6">
+                    <CardTitle className="flex items-center gap-2.5 text-xl">
+                      <Sparkles className="h-6 w-6 text-primary" />
+                      Create from Scratch
+                    </CardTitle>
+                    <CardDescription className="text-sm pt-1">
+                      Build your own custom monitoring task with full control over every detail
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </div>
+            )}
+
+            {/* STAGE 2: EDIT/REVIEW */}
+            {stage === 'edit' && (
+              <div className="space-y-6">
+                {/* Task Name - Full Width */}
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-base font-semibold">Task Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="e.g., iPhone 16 Release Monitor"
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (validationErrors.name) {
+                        setValidationErrors(prev => ({ ...prev, name: "" }));
+                      }
+                    }}
+                    disabled={isLoading}
+                    className={cn("h-11 text-base", validationErrors.name && "border-destructive")}
+                  />
+                  {validationErrors.name && (
+                    <p className="text-xs text-destructive flex items-center gap-1.5">
+                      <AlertCircle className="h-3 w-3" />
+                      {validationErrors.name}
+                    </p>
+                  )}
+                </div>
+
+                {/* Search Query - Full Width */}
+                <div className="space-y-2">
+                  <Label htmlFor="searchQuery" className="text-base font-semibold flex items-center gap-2">
+                    <Search className="h-4 w-4" />
+                    What to Monitor
+                  </Label>
+                  <Textarea
+                    id="searchQuery"
+                    placeholder="e.g., When is the next iPhone being announced by Apple?"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      if (validationErrors.searchQuery) {
+                        setValidationErrors(prev => ({ ...prev, searchQuery: "" }));
+                      }
+                    }}
+                    disabled={isLoading}
+                    rows={3}
+                    className={cn("text-base resize-none leading-relaxed", validationErrors.searchQuery && "border-destructive")}
+                  />
+                  {validationErrors.searchQuery && (
+                    <p className="text-xs text-destructive flex items-center gap-1.5">
+                      <AlertCircle className="h-3 w-3" />
+                      {validationErrors.searchQuery}
+                    </p>
+                  )}
+                </div>
+
+                {/* Condition Description - Full Width */}
+                <div className="space-y-2">
+                  <Label htmlFor="condition" className="text-base font-semibold flex items-center gap-2">
+                    <Bell className="h-4 w-4" />
+                    When to Notify
+                  </Label>
+                  <Textarea
+                    id="condition"
+                    placeholder="e.g., A specific release date or month is officially announced"
+                    value={conditionDescription}
+                    onChange={(e) => {
+                      setConditionDescription(e.target.value);
+                      if (validationErrors.conditionDescription) {
+                        setValidationErrors(prev => ({ ...prev, conditionDescription: "" }));
+                      }
+                    }}
+                    disabled={isLoading}
+                    rows={3}
+                    className={cn("text-base resize-none leading-relaxed", validationErrors.conditionDescription && "border-destructive")}
+                  />
+                  {validationErrors.conditionDescription && (
+                    <p className="text-xs text-destructive flex items-center gap-1.5">
+                      <AlertCircle className="h-3 w-3" />
+                      {validationErrors.conditionDescription}
+                    </p>
+                  )}
+                </div>
+
+                {/* Schedule & Notification - Two Columns */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Schedule - Left Column */}
+                  <div className="space-y-2">
+                    <Label htmlFor="schedule" className="text-base font-semibold flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Check Frequency
+                    </Label>
+                    <Select value={schedule} onValueChange={setSchedule} disabled={isLoading}>
+                      <SelectTrigger id="schedule" className="h-11 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SIMPLE_SCHEDULE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value} className="text-sm">
+                            <span className="mr-2">{option.emoji}</span>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  <Separator className="my-8" />
-                </div>
-              )}
-
-              {/* Create from Scratch Option */}
-              <Card
-                className="border-dashed border-2 cursor-pointer transition-all hover:border-primary hover:bg-accent/50 hover:shadow-lg"
-                onClick={() => handleTemplateSelect("none")}
-              >
-                <CardHeader className="py-8">
-                  <CardTitle className="flex items-center gap-3 text-2xl">
-                    <Sparkles className="h-7 w-7 text-primary" />
-                    Create from Scratch
-                  </CardTitle>
-                  <CardDescription className="text-base pt-2">
-                    Build your own custom monitoring task with full control over every detail
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-          )}
-
-          {/* STAGE 2: EDIT/REVIEW */}
-          {stage === 'edit' && (
-            <div className="space-y-8">
-              {/* Task Name - Full Width */}
-              <div className="space-y-3">
-                <Label htmlFor="name" className="text-lg font-bold">Task Name</Label>
-                <Input
-                  id="name"
-                  placeholder="e.g., iPhone 16 Release Monitor"
-                  value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    if (validationErrors.name) {
-                      setValidationErrors(prev => ({ ...prev, name: "" }));
-                    }
-                  }}
-                  disabled={isLoading}
-                  className={cn("h-14 text-lg", validationErrors.name && "border-destructive")}
-                />
-                {validationErrors.name && (
-                  <p className="text-sm text-destructive flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    {validationErrors.name}
-                  </p>
-                )}
-              </div>
-
-              {/* Search Query - Full Width */}
-              <div className="space-y-3">
-                <Label htmlFor="searchQuery" className="text-lg font-bold flex items-center gap-2">
-                  <Search className="h-5 w-5" />
-                  What to Monitor
-                </Label>
-                <Textarea
-                  id="searchQuery"
-                  placeholder="e.g., When is the next iPhone being announced by Apple?"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    if (validationErrors.searchQuery) {
-                      setValidationErrors(prev => ({ ...prev, searchQuery: "" }));
-                    }
-                  }}
-                  disabled={isLoading}
-                  rows={4}
-                  className={cn("text-lg resize-none leading-relaxed", validationErrors.searchQuery && "border-destructive")}
-                />
-                {validationErrors.searchQuery && (
-                  <p className="text-sm text-destructive flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    {validationErrors.searchQuery}
-                  </p>
-                )}
-              </div>
-
-              {/* Condition Description - Full Width */}
-              <div className="space-y-3">
-                <Label htmlFor="condition" className="text-lg font-bold flex items-center gap-2">
-                  <Bell className="h-5 w-5" />
-                  When to Notify
-                </Label>
-                <Textarea
-                  id="condition"
-                  placeholder="e.g., A specific release date or month is officially announced"
-                  value={conditionDescription}
-                  onChange={(e) => {
-                    setConditionDescription(e.target.value);
-                    if (validationErrors.conditionDescription) {
-                      setValidationErrors(prev => ({ ...prev, conditionDescription: "" }));
-                    }
-                  }}
-                  disabled={isLoading}
-                  rows={3}
-                  className={cn("text-lg resize-none leading-relaxed", validationErrors.conditionDescription && "border-destructive")}
-                />
-                {validationErrors.conditionDescription && (
-                  <p className="text-sm text-destructive flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    {validationErrors.conditionDescription}
-                  </p>
-                )}
-              </div>
-
-              {/* Schedule & Notification - Two Columns */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Schedule - Left Column */}
-                <div className="space-y-3">
-                  <Label htmlFor="schedule" className="text-lg font-bold flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
-                    Check Frequency
-                  </Label>
-                  <Select value={schedule} onValueChange={setSchedule} disabled={isLoading}>
-                    <SelectTrigger id="schedule" className="h-14 text-base">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SIMPLE_SCHEDULE_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value} className="text-base py-3">
-                          <span className="mr-2 text-lg">{option.emoji}</span>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {/* Notification Behavior - Right Column */}
+                  <div className="space-y-2">
+                    <Label htmlFor="notifyBehavior" className="text-base font-semibold flex items-center gap-2">
+                      <Bell className="h-4 w-4" />
+                      Notification Mode
+                    </Label>
+                    <Select
+                      value={notifyBehavior}
+                      onValueChange={(value) => setNotifyBehavior(value as NotifyBehavior)}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger id="notifyBehavior" className="h-11 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {NOTIFY_BEHAVIORS.map((behavior) => (
+                          <SelectItem key={behavior.value} value={behavior.value} className="text-sm">
+                            {behavior.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
-                {/* Notification Behavior - Right Column */}
-                <div className="space-y-3">
-                  <Label htmlFor="notifyBehavior" className="text-lg font-bold flex items-center gap-2">
-                    <Bell className="h-5 w-5" />
-                    Notification Mode
-                  </Label>
-                  <Select
-                    value={notifyBehavior}
-                    onValueChange={(value) => setNotifyBehavior(value as NotifyBehavior)}
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger id="notifyBehavior" className="h-14 text-base">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {NOTIFY_BEHAVIORS.map((behavior) => (
-                        <SelectItem key={behavior.value} value={behavior.value} className="text-base py-3">
-                          {behavior.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Info Alert - Full Width */}
+                <Alert className="border-primary/20 bg-primary/5">
+                  <Info className="h-4 w-4 text-primary" />
+                  <AlertDescription className="text-sm leading-relaxed">
+                    The AI will search the web, analyze results, and notify you when your condition is met.
+                    {' '}<button
+                      type="button"
+                      onClick={handleGoToAdvanced}
+                      className="underline font-semibold hover:text-primary transition-colors"
+                    >
+                      Need advanced settings?
+                    </button>
+                  </AlertDescription>
+                </Alert>
               </div>
+            )}
 
-              {/* Info Alert - Full Width */}
-              <Alert className="border-primary/20 bg-primary/5">
-                <Info className="h-5 w-5 text-primary" />
-                <AlertDescription className="text-base leading-relaxed">
-                  The AI will search the web, analyze results, and notify you when your condition is met.
-                  {' '}<button
-                    type="button"
-                    onClick={handleGoToAdvanced}
-                    className="underline font-semibold hover:text-primary transition-colors"
-                  >
-                    Need advanced settings?
-                  </button>
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          {/* STAGE 3: ADVANCED WIZARD */}
-          {stage === 'advanced' && wizardStep === 1 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-5 duration-300">
+            {/* STAGE 3: ADVANCED WIZARD */}
+            {stage === 'advanced' && wizardStep === 1 && (
+              <div className="space-y-6">
               {/* Template Selection */}
               {templates.length > 0 && (
                 <Card className="border-dashed">
@@ -754,9 +775,9 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
             </div>
           )}
 
-          {/* ADVANCED WIZARD - STEP 2: When & How to Notify */}
-          {stage === 'advanced' && wizardStep === 2 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-5 duration-300">
+            {/* ADVANCED WIZARD - STEP 2: When & How to Notify */}
+            {stage === 'advanced' && wizardStep === 2 && (
+              <div className="space-y-6">
               {/* Check Frequency */}
               <div className="space-y-3">
                 <Label htmlFor="schedule-adv" className="text-base font-semibold flex items-center gap-2">
@@ -844,9 +865,9 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
             </div>
           )}
 
-          {/* ADVANCED WIZARD - STEP 3: Review & Create */}
-          {stage === 'advanced' && wizardStep === 3 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-5 duration-300">
+            {/* ADVANCED WIZARD - STEP 3: Review & Create */}
+            {stage === 'advanced' && wizardStep === 3 && (
+              <div className="space-y-6">
               <Alert>
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertDescription>
@@ -911,85 +932,85 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                   condition is met. All findings include source links for verification.
                 </AlertDescription>
               </Alert>
-            </div>
+              </div>
+            )}
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </form>
+        </div>
+
+        {/* NAVIGATION FOOTER */}
+        <DialogFooter className="flex-shrink-0 pt-4 border-t gap-2 sm:gap-3">
+          {/* Back Button */}
+          {(stage === 'edit' || stage === 'advanced') && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={stage === 'edit' ? handleBackToSelect : handleAdvancedPrevStep}
+              disabled={isLoading}
+              className="h-10 text-sm"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
           )}
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+          {/* Cancel Button */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isLoading}
+            className="h-10 text-sm"
+          >
+            Cancel
+          </Button>
+
+          {/* Action Buttons for Edit Stage */}
+          {stage === 'edit' && (
+            <Button
+              type="button"
+              onClick={handleCreateTask}
+              disabled={isLoading}
+              className="h-10 text-sm px-6 ml-auto"
+            >
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Create Task
+            </Button>
           )}
 
-          {/* NAVIGATION FOOTER */}
-          <DialogFooter className="flex-col sm:flex-row gap-3 pt-6 border-t">
-            <div className="flex gap-3 flex-1">
-              {/* Back Button */}
-              {(stage === 'edit' || stage === 'advanced') && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={stage === 'edit' ? handleBackToSelect : handleAdvancedPrevStep}
-                  disabled={isLoading}
-                  className="flex-1 sm:flex-none h-12 text-base"
-                >
-                  <ArrowLeft className="mr-2 h-5 w-5" />
-                  Back
-                </Button>
-              )}
+          {/* Action Buttons for Advanced Wizard */}
+          {stage === 'advanced' && wizardStep < 3 && (
+            <Button
+              type="button"
+              onClick={handleAdvancedNextStep}
+              disabled={isLoading}
+              className="h-10 text-sm px-6 ml-auto"
+            >
+              Continue
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          )}
 
-              {/* Cancel Button */}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isLoading}
-                className="flex-1 sm:flex-none h-12 text-base"
-              >
-                Cancel
-              </Button>
-            </div>
-
-            {/* Action Buttons for Edit Stage */}
-            {stage === 'edit' && (
-              <Button
-                type="button"
-                onClick={handleCreateTask}
-                disabled={isLoading}
-                className="flex-1 sm:flex-none h-12 text-base px-8"
-              >
-                {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                <CheckCircle2 className="mr-2 h-5 w-5" />
-                Create Task
-              </Button>
-            )}
-
-            {/* Action Buttons for Advanced Wizard */}
-            {stage === 'advanced' && wizardStep < 3 && (
-              <Button
-                type="button"
-                onClick={handleAdvancedNextStep}
-                disabled={isLoading}
-                className="flex-1 sm:flex-none h-12 text-base px-8"
-              >
-                Continue
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            )}
-
-            {stage === 'advanced' && wizardStep === 3 && (
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="flex-1 sm:flex-none h-12 text-base px-8"
-              >
-                {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                <CheckCircle2 className="mr-2 h-5 w-5" />
-                Create Task
-              </Button>
-            )}
-          </DialogFooter>
-        </form>
+          {stage === 'advanced' && wizardStep === 3 && (
+            <Button
+              type="submit"
+              onClick={handleCreateTask}
+              disabled={isLoading}
+              className="h-10 text-sm px-6 ml-auto"
+            >
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Create Task
+            </Button>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
