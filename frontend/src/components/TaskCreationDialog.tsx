@@ -367,55 +367,32 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
               <div className="space-y-6">
                 {/* Template Cards Grid */}
                 {templates.length > 0 && (
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <div className="grid grid-cols-3 gap-3">
                       {templates.map((template) => (
                         <Card
                           key={template.id}
-                          className="cursor-pointer transition-all duration-200 hover:border-primary hover:shadow-md group relative overflow-hidden"
+                          className="cursor-pointer transition-all duration-200 hover:border-primary hover:shadow-sm group relative overflow-hidden"
                           onClick={() => handleTemplateSelect(template.id)}
                         >
-                          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <CardHeader className="pb-2.5 relative">
-                            <div className="flex items-center gap-2.5 mb-1.5">
+                          <div className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <CardHeader className="p-3 relative">
+                            <div className="flex items-center gap-2">
                               {template.icon && (
-                                <span className="text-2xl flex-shrink-0 leading-none">
+                                <span className="text-xl flex-shrink-0 leading-none">
                                   {template.icon}
                                 </span>
                               )}
-                              <CardTitle className="text-sm font-bold group-hover:text-primary transition-colors leading-tight">
-                                {template.name}
-                              </CardTitle>
+                              <div className="flex-1 min-w-0">
+                                <CardTitle className="text-sm font-semibold group-hover:text-primary transition-colors leading-tight mb-0.5">
+                                  {template.name}
+                                </CardTitle>
+                                <CardDescription className="text-[10px] leading-snug text-muted-foreground/70 line-clamp-2">
+                                  {template.description}
+                                </CardDescription>
+                              </div>
                             </div>
-                            <CardDescription className="text-[11px] leading-snug text-muted-foreground line-clamp-2">
-                              {template.description}
-                            </CardDescription>
                           </CardHeader>
-                          <CardContent className="space-y-2 pt-2.5 border-t relative">
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <Search className="h-2.5 w-2.5 text-primary/60" />
-                                <span className="text-[9px] font-semibold text-primary/70 uppercase tracking-wider">
-                                  Query
-                                </span>
-                              </div>
-                              <p className="text-[11px] text-foreground/75 leading-snug line-clamp-2 pl-4">
-                                {template.search_query}
-                              </p>
-                            </div>
-
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <Bell className="h-2.5 w-2.5 text-primary/60" />
-                                <span className="text-[9px] font-semibold text-primary/70 uppercase tracking-wider">
-                                  Trigger
-                                </span>
-                              </div>
-                              <p className="text-[11px] text-foreground/75 leading-snug line-clamp-2 pl-4">
-                                {template.condition_description}
-                              </p>
-                            </div>
-                          </CardContent>
                         </Card>
                       ))}
                     </div>
@@ -427,15 +404,19 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                   className="border-dashed border-2 cursor-pointer transition-all duration-200 hover:border-primary hover:bg-accent/50 group relative overflow-hidden"
                   onClick={() => handleTemplateSelect("none")}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <CardHeader className="py-4 relative">
-                    <CardTitle className="flex items-center gap-2.5 text-base font-bold group-hover:text-primary transition-colors">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      Start from Scratch
-                    </CardTitle>
-                    <CardDescription className="text-[11px] pt-1 leading-snug">
-                      Build your own custom task with full control over every detail
-                    </CardDescription>
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <CardHeader className="p-3 relative">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-sm font-semibold group-hover:text-primary transition-colors leading-tight mb-0.5">
+                          Start from Scratch
+                        </CardTitle>
+                        <CardDescription className="text-[10px] leading-snug text-muted-foreground/70">
+                          Build your own custom task with full control
+                        </CardDescription>
+                      </div>
+                    </div>
                   </CardHeader>
                 </Card>
               </div>
