@@ -306,7 +306,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
         "max-h-[85vh] overflow-hidden flex flex-col",
-        stage === 'select' && "max-w-[90vw]",
+        stage === 'select' && "max-w-5xl",
         stage === 'edit' && "max-w-4xl",
         stage === 'advanced' && "max-w-3xl"
       )}>
@@ -365,34 +365,37 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
             {/* STAGE 1: TEMPLATE SELECTION */}
             {stage === 'select' && (
               <div className="space-y-6">
-                {/* Template Cards Grid */}
+                {/* Template Cards - Horizontal Scroll */}
                 {templates.length > 0 && (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                      {templates.slice(0, 6).map((template) => (
-                        <Card
-                          key={template.id}
-                          className="cursor-pointer transition-all duration-200 hover:border-primary hover:shadow-lg group h-full flex flex-col"
-                          onClick={() => handleTemplateSelect(template.id)}
-                        >
-                          <CardHeader className="pb-4 space-y-3 flex-shrink-0">
-                            <div className="flex items-start gap-3">
-                              {template.icon && (
-                                <span className="text-4xl flex-shrink-0 leading-none">
-                                  {template.icon}
-                                </span>
-                              )}
-                              <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors leading-snug">
-                                {template.name}
-                              </CardTitle>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="space-y-4 pt-0 flex-1 flex flex-col">
-                            <CardDescription className="text-sm leading-relaxed text-foreground/70 flex-shrink-0">
-                              {template.description}
-                            </CardDescription>
-
-                            <div className="space-y-3 pt-2 border-t flex-1">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-medium text-muted-foreground">Choose a template</h3>
+                      <span className="text-xs text-muted-foreground">{templates.length} templates</span>
+                    </div>
+                    <div className="relative -mx-1 px-1">
+                      <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin">
+                        {templates.map((template) => (
+                          <Card
+                            key={template.id}
+                            className="cursor-pointer transition-all duration-200 hover:border-primary hover:shadow-lg group flex-shrink-0 w-[340px] snap-start flex flex-col"
+                            onClick={() => handleTemplateSelect(template.id)}
+                          >
+                            <CardHeader className="pb-4 space-y-3">
+                              <div className="flex items-start gap-3">
+                                {template.icon && (
+                                  <span className="text-4xl flex-shrink-0 leading-none">
+                                    {template.icon}
+                                  </span>
+                                )}
+                                <CardTitle className="text-lg font-bold group-hover:text-primary transition-colors leading-snug">
+                                  {template.name}
+                                </CardTitle>
+                              </div>
+                              <CardDescription className="text-sm leading-relaxed text-foreground/70">
+                                {template.description}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3 pt-0 border-t flex-1">
                               <div className="space-y-1.5">
                                 <div className="flex items-center gap-2">
                                   <Search className="h-3.5 w-3.5 text-muted-foreground/60" />
@@ -416,10 +419,10 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                                   {template.condition_description}
                                 </p>
                               </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
                     </div>
 
                     <Separator />
