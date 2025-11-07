@@ -212,10 +212,11 @@ class NetworkAnimation {
       node.x += node.vx;
       node.y += node.vy;
 
-      if (node.x < 0) node.x = this.canvasWidth;
-      if (node.x > this.canvasWidth) node.x = 0;
-      if (node.y < 0) node.y = this.canvasHeight;
-      if (node.y > this.canvasHeight) node.y = 0;
+      // Account for node radius for smoother edge wrapping
+      if (node.x < -this.NODE_RADIUS) node.x = this.canvasWidth + this.NODE_RADIUS;
+      if (node.x > this.canvasWidth + this.NODE_RADIUS) node.x = -this.NODE_RADIUS;
+      if (node.y < -this.NODE_RADIUS) node.y = this.canvasHeight + this.NODE_RADIUS;
+      if (node.y > this.canvasHeight + this.NODE_RADIUS) node.y = -this.NODE_RADIUS;
     }
 
     this.createConnections();
@@ -293,24 +294,42 @@ class NetworkAnimation {
 
 export function AnimatedBackground({ className = '' }: AnimatedBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationRef = useRef<NetworkAnimation | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Disable animation on mobile devices
-    const isMobile = window.innerWidth < 768;
-    if (isMobile) return;
-
     // Check for reduced motion preference
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) return;
 
-    const animation = new NetworkAnimation(canvas);
-    animation.start();
+    const checkMobileAndStartAnimation = () => {
+      const isMobile = window.innerWidth < 768;
+
+      if (isMobile && animationRef.current) {
+        // Stop animation if it's running and we're now mobile
+        animationRef.current.stop();
+        animationRef.current = null;
+      } else if (!isMobile && !animationRef.current) {
+        // Start animation if we're desktop and it's not running
+        animationRef.current = new NetworkAnimation(canvas);
+        animationRef.current.start();
+      }
+    };
+
+    // Initial check
+    checkMobileAndStartAnimation();
+
+    // Listen for resize events
+    window.addEventListener('resize', checkMobileAndStartAnimation);
 
     return () => {
-      animation.stop();
+      if (animationRef.current) {
+        animationRef.current.stop();
+        animationRef.current = null;
+      }
+      window.removeEventListener('resize', checkMobileAndStartAnimation);
     };
   }, []);
 
