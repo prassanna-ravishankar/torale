@@ -1,6 +1,5 @@
 """Public waitlist endpoint."""
 
-import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -38,7 +37,7 @@ async def join_waitlist(
     """
     try:
         # Insert into waitlist
-        result = await session.execute(
+        await session.execute(
             text("""
             INSERT INTO waitlist (email, created_at, status)
             VALUES (:email, :created_at, 'pending')
@@ -75,5 +74,5 @@ async def join_waitlist(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="This email is already on the waitlist.",
-            )
+            ) from e
         raise
