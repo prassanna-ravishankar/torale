@@ -6,6 +6,7 @@ import { ExecutionsTable } from '@/components/admin/ExecutionsTable'
 import { TemporalMonitor } from '@/components/admin/TemporalMonitor'
 import { ErrorsList } from '@/components/admin/ErrorsList'
 import { UsersTable } from '@/components/admin/UsersTable'
+import { WaitlistTable } from '@/components/admin/WaitlistTable'
 import { Shield } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -47,6 +48,7 @@ export function Admin() {
           <TabsTrigger value="temporal">Temporal</TabsTrigger>
           <TabsTrigger value="errors">Errors</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="waitlist">Waitlist</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -71,6 +73,10 @@ export function Admin() {
 
         <TabsContent value="users">
           <UsersTable />
+        </TabsContent>
+
+        <TabsContent value="waitlist">
+          <WaitlistTable />
         </TabsContent>
       </Tabs>
     </div>

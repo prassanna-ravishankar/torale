@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from torale.api.routers import admin, auth, tasks, templates
+from torale.api.routers import admin, auth, tasks, templates, waitlist
 from torale.api.users import get_async_session
 from torale.core.config import settings
 from torale.core.database import db
@@ -52,6 +52,9 @@ app.include_router(auth.router, prefix="/auth", tags=["auth"])
 
 # Admin routes
 app.include_router(admin.router)
+
+# Waitlist routes
+app.include_router(waitlist.router, tags=["waitlist"])
 
 # API routes
 app.include_router(tasks.router, prefix="/api/v1")

@@ -74,6 +74,7 @@ services:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - NOTIFICATION_API_KEY=${NOTIFICATION_API_KEY}
       - TORALE_NOAUTH=${TORALE_NOAUTH:-0}
+      - MAX_USERS=${MAX_USERS:-100}
     depends_on:
       postgres:
         condition: service_healthy

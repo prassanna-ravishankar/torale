@@ -40,6 +40,7 @@ export default function Landing() {
   const { scrollYProgress } = useScroll();
   const [mounted, setMounted] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<number | null>(null);
+  const isFull = availableSlots === 0;
 
   // Parallax effects
   const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
@@ -75,7 +76,7 @@ export default function Landing() {
   }, []);
 
   const handleGetStarted = () => {
-    navigate("/sign-up");
+    navigate(isFull ? "/waitlist" : "/sign-up");
   };
 
   const handleSignIn = () => {
@@ -134,7 +135,9 @@ export default function Landing() {
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full bg-primary/10 text-primary text-sm font-medium">
               <Sparkles className="h-4 w-4" />
-              {availableSlots !== null && availableSlots > 0
+              {isFull
+                ? "We're at capacity - join the waitlist!"
+                : availableSlots !== null && availableSlots > 0
                 ? `Free for ${availableSlots} more user${availableSlots === 1 ? "" : "s"} till I figure out what this is used for`
                 : "Free till I figure out what this is used for"}
             </div>
@@ -151,7 +154,7 @@ export default function Landing() {
               onClick={handleGetStarted}
               className="group inline-flex items-center gap-2 px-8 py-4 bg-primary text-primary-foreground rounded-lg text-lg font-medium hover:bg-primary/90 transition-all hover:gap-3"
             >
-              Start monitoring
+              {isFull ? "Join waitlist" : "Start monitoring"}
               <ArrowRight className="h-5 w-5 transition-all" />
             </button>
           </motion.div>
@@ -331,7 +334,7 @@ export default function Landing() {
               onClick={handleGetStarted}
               className="group inline-flex items-center gap-2 px-8 py-4 bg-primary text-primary-foreground rounded-lg text-lg font-medium hover:bg-primary/90 transition-all hover:gap-3"
             >
-              Create your first monitor
+              {isFull ? "Join waitlist" : "Create your first monitor"}
               <ArrowRight className="h-5 w-5 transition-all" />
             </button>
           </motion.div>

@@ -58,7 +58,7 @@ export const ClerkAuthProvider: React.FC<ClerkAuthProviderProps> = ({ children }
   }
 
   return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} waitlistUrl="/waitlist">
       <ClerkAuthWrapper>{children}</ClerkAuthWrapper>
     </ClerkProvider>
   )
