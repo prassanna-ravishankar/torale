@@ -38,7 +38,7 @@ class GroundedSearchExecutor(TaskExecutor):
         {
             "search_query": "When is next iPhone release?",
             "condition_description": "A specific date has been announced",
-            "model": "gemini-2.0-flash-exp",  # optional
+            "model": "gemini-2.5-flash",  # optional
             "last_known_state": {...},  # optional, for state comparison
         }
 
@@ -66,7 +66,7 @@ class GroundedSearchExecutor(TaskExecutor):
 
         search_query = config["search_query"]
         condition_description = config["condition_description"]
-        model = config.get("model", "gemini-2.0-flash-exp")
+        model = config.get("model", "gemini-2.5-flash")
         last_known_state = config.get("last_known_state")
 
         try:
@@ -113,11 +113,17 @@ class GroundedSearchExecutor(TaskExecutor):
 
         Returns answer and grounding sources.
         """
+        from datetime import datetime
+
         from google.genai import types
+
+        # Add current date and time context to search query
+        current_datetime = datetime.now().strftime("%B %d, %Y at %I:%M %p %Z")
+        contextualized_query = f"Current date and time: {current_datetime}. {search_query}"
 
         response = await self.client.aio.models.generate_content(
             model=model,
-            contents=search_query,
+            contents=contextualized_query,
             config=types.GenerateContentConfig(
                 tools=[self.search_tool],
                 response_modalities=["TEXT"],

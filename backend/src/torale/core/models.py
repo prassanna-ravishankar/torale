@@ -97,7 +97,7 @@ class TaskTemplateBase(BaseModel):
     condition_description: str
     schedule: str
     notify_behavior: NotifyBehavior = NotifyBehavior.TRACK_STATE
-    config: dict = {"model": "gemini-2.0-flash-exp"}
+    config: dict = {"model": "gemini-2.5-flash"}
 
 
 class TaskTemplateCreate(TaskTemplateBase):
