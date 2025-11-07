@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { api } from '@/lib/api'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatDistanceToNow } from 'date-fns'
+import { formatDuration } from '@/lib/utils'
 
 interface Execution {
   id: string
@@ -143,13 +144,7 @@ export function ExecutionsTable() {
                       : '-'}
                   </TableCell>
                   <TableCell className="text-xs">
-                    {execution.started_at && execution.completed_at
-                      ? `${Math.round(
-                          (new Date(execution.completed_at).getTime() -
-                            new Date(execution.started_at).getTime()) /
-                            1000,
-                        )}s`
-                      : '-'}
+                    {formatDuration(execution.started_at, execution.completed_at, '-')}
                   </TableCell>
                   <TableCell className="text-xs">
                     {execution.grounding_sources?.length || 0} sources

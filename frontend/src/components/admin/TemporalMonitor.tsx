@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api } from '@/lib/api'
 import { formatDistanceToNow } from 'date-fns'
 import { ExternalLink } from 'lucide-react'
+import { formatDuration } from '@/lib/utils'
 
 interface Workflow {
   workflow_id: string
@@ -142,15 +143,11 @@ export function TemporalMonitor() {
                           : '-'}
                       </TableCell>
                       <TableCell className="text-xs">
-                        {workflow.start_time && workflow.close_time
-                          ? `${Math.round(
-                              (new Date(workflow.close_time).getTime() -
-                                new Date(workflow.start_time).getTime()) /
-                                1000,
-                            )}s`
-                          : workflow.status === 'RUNNING'
-                            ? 'In progress'
-                            : '-'}
+                        {formatDuration(
+                          workflow.start_time,
+                          workflow.close_time,
+                          workflow.status === 'RUNNING' ? 'In progress' : '-'
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
