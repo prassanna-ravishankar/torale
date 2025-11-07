@@ -177,6 +177,7 @@ temporal:
   # Can be overridden to point to Temporal Cloud
   host: temporal.temporal.svc.cluster.local:7233
   namespace: default
+  uiUrl: https://cloud.temporal.io
 
 # Ingress configuration
 ingress:
