@@ -49,11 +49,10 @@ export function AnimatedBackground({ className = '' }: AnimatedBackgroundProps) 
 
     // State variables
     let nodes: Node[] = [];
-    let dpr = window.devicePixelRatio || 1;
+    const dpr = window.devicePixelRatio || 1;
     let canvasWidth: number, canvasHeight: number;
 
     let currentNode: Node | null = null;
-    let nextNode: Node | null = null;
     let previousNode: Node | null = null;
 
     let timeInState = 0;
@@ -108,14 +107,14 @@ export function AnimatedBackground({ className = '' }: AnimatedBackgroundProps) 
       previousNode = currentNode;
 
       let randomIndex;
-      let nextNode;
+      let selectedNode;
 
       do {
         randomIndex = Math.floor(Math.random() * nodes.length);
-        nextNode = nodes[randomIndex];
-      } while (nodes.length > 1 && nextNode === previousNode);
+        selectedNode = nodes[randomIndex];
+      } while (nodes.length > 1 && selectedNode === previousNode);
 
-      currentNode = nextNode;
+      currentNode = selectedNode;
 
       animationPhase = 'FADE_IN_OUT';
       timeInState = 0;
@@ -239,14 +238,14 @@ export function AnimatedBackground({ className = '' }: AnimatedBackgroundProps) 
       let previousAlpha = 0;
 
       switch (animationPhase) {
-        case 'PAUSED_ON_CURRENT':
+        case 'PAUSED_ON_CURRENT': {
           currentAlpha = 1;
           if (timeInState > PAUSE_DURATION) {
             pickNextNode();
           }
           break;
-
-        case 'FADE_IN_OUT':
+        }
+        case 'FADE_IN_OUT': {
           const fadeOutProgress = Math.min(1, timeInState / FADE_DURATION);
           previousAlpha = 1 - easeInOutSine(fadeOutProgress);
 
@@ -263,6 +262,7 @@ export function AnimatedBackground({ className = '' }: AnimatedBackgroundProps) 
             timeInState = 0;
           }
           break;
+        }
       }
 
       // Draw glows
