@@ -1,9 +1,12 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.api.routers import admin, auth, tasks, templates
+from torale.api.users import get_async_session
 from torale.core.config import settings
 from torale.core.database import db
 
@@ -58,3 +61,33 @@ app.include_router(templates.router, prefix="/api/v1")
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "torale-api"}
+
+
+@app.get("/public/stats")
+async def get_public_stats(session: AsyncSession = Depends(get_async_session)):
+    """
+    Public endpoint for landing page stats.
+    Returns available user capacity for beta signup messaging.
+    """
+    # Count active users
+    user_result = await session.execute(
+        text("""
+        SELECT COUNT(*) as total_users
+        FROM users
+        WHERE is_active = true
+        """)
+    )
+    user_row = user_result.first()
+    total_users = user_row[0] if user_row else 0
+
+    # Get max users from settings
+    max_users = settings.max_users
+    available_slots = max_users - total_users
+
+    return {
+        "capacity": {
+            "max_users": max_users,
+            "current_users": total_users,
+            "available_slots": available_slots,
+        }
+    }
