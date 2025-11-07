@@ -368,8 +368,11 @@ async def list_temporal_schedules(
             if desc.schedule.spec and desc.schedule.spec.cron_expressions:
                 cron_spec = desc.schedule.spec.cron_expressions[0]
 
-            # Get memo data (memo is a method, not a property)
-            memo_data = schedule.memo() if callable(schedule.memo) else {}
+            # Get memo data (memo is an async method)
+            try:
+                memo_data = await schedule.memo()
+            except Exception:
+                memo_data = {}
 
             schedules.append(
                 {
