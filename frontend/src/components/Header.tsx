@@ -17,7 +17,7 @@ export const Header: React.FC = () => {
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2">
             <Bell className="h-6 w-6 text-primary" />
-            <h2>Torale</h2>
+            <h2 className="font-bold">τorale</h2>
           </Link>
 
           {isAdmin && (
