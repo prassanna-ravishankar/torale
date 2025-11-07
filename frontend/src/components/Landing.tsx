@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Bell, Search, Sparkles, ArrowRight, Code, Terminal } from "lucide-react";
+import { AnimatedBackground } from "./AnimatedBackground";
 
 const EXAMPLES = [
   "When is the iPhone 18 release date announced?",
@@ -42,6 +43,8 @@ export default function Landing() {
   // Parallax effects
   const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
   const opacity = useTransform(scrollYProgress, [0, 0.3], [1, 0]);
+  const backgroundY = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]); // Slower than content
+  const backgroundOpacity = useTransform(scrollYProgress, [0, 0.15, 0.35], [0.5, 0.5, 0]); // Fade out at use cases section
 
   useEffect(() => {
     setMounted(true);
@@ -56,12 +59,20 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20 relative">
+      {/* Full Page Animated Background with Parallax and Fade */}
+      <motion.div
+        style={{ y: backgroundY, opacity: backgroundOpacity }}
+        className="fixed inset-0 pointer-events-none z-0"
+      >
+        <AnimatedBackground />
+      </motion.div>
+
       {/* Header */}
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-lg"
+        className="fixed top-0 left-0 right-0 z-50 border-b border-border/20 bg-background/10 backdrop-blur-md"
       >
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -90,7 +101,8 @@ export default function Landing() {
         style={{ y: heroY, opacity }}
         className="relative pt-32 pb-20 px-6 overflow-hidden"
       >
-        <div className="container mx-auto max-w-4xl text-center">
+
+        <div className="container mx-auto max-w-4xl text-center relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={mounted ? { opacity: 1, y: 0 } : {}}
@@ -116,34 +128,6 @@ export default function Landing() {
               Start monitoring
               <ArrowRight className="h-5 w-5 transition-all" />
             </button>
-          </motion.div>
-
-          {/* Floating elements */}
-          <motion.div
-            animate={{
-              y: [0, -20, 0],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="absolute top-40 left-10 opacity-20"
-          >
-            <Search className="h-24 w-24 text-primary" />
-          </motion.div>
-          <motion.div
-            animate={{
-              y: [0, 20, 0],
-            }}
-            transition={{
-              duration: 4,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="absolute top-60 right-10 opacity-20"
-          >
-            <Bell className="h-20 w-20 text-primary" />
           </motion.div>
         </div>
       </motion.section>
