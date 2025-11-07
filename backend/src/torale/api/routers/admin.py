@@ -306,15 +306,28 @@ async def list_temporal_workflows(
     - Status (RUNNING, COMPLETED, FAILED, TIMED_OUT)
     - Start/close timestamps
     - Execution duration
+    - UI URL (clickable link to Temporal UI)
     """
     try:
         client = await get_temporal_client()
+
+        # Determine Temporal UI base URL
+        # If TEMPORAL_API_KEY is set, we're using Temporal Cloud
+        if settings.temporal_api_key:
+            # Temporal Cloud UI
+            temporal_ui_base = "https://cloud.temporal.io"
+        else:
+            # Self-hosted Temporal UI (default port 8233)
+            temporal_ui_base = "http://localhost:8233"
 
         # List recent workflows (last 100)
         workflows = []
         async for workflow in client.list_workflows(
             f"ExecutionTime >= '{(datetime.now(UTC) - timedelta(hours=24)).isoformat()}'"
         ):
+            # Construct UI URL
+            ui_url = f"{temporal_ui_base}/namespaces/{settings.temporal_namespace}/workflows/{workflow.id}/{workflow.run_id}"
+
             workflows.append(
                 {
                     "workflow_id": workflow.id,
@@ -324,6 +337,7 @@ async def list_temporal_workflows(
                     "start_time": workflow.start_time.isoformat() if workflow.start_time else None,
                     "close_time": workflow.close_time.isoformat() if workflow.close_time else None,
                     "execution_time": workflow.execution_time.isoformat() if workflow.execution_time else None,
+                    "ui_url": ui_url,
                 }
             )
 

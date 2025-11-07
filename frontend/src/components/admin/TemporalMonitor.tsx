@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api } from '@/lib/api'
 import { formatDistanceToNow } from 'date-fns'
+import { ExternalLink } from 'lucide-react'
 
 interface Workflow {
   workflow_id: string
@@ -21,6 +22,7 @@ interface Workflow {
   start_time: string | null
   close_time: string | null
   execution_time: string | null
+  ui_url: string
 }
 
 interface Schedule {
@@ -109,8 +111,16 @@ export function TemporalMonitor() {
                 ) : (
                   workflows.map((workflow) => (
                     <TableRow key={`${workflow.workflow_id}-${workflow.run_id}`}>
-                      <TableCell className="font-mono text-xs max-w-xs truncate">
-                        {workflow.workflow_id}
+                      <TableCell className="font-mono text-xs max-w-xs">
+                        <a
+                          href={workflow.ui_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 hover:text-primary hover:underline"
+                        >
+                          <span className="truncate">{workflow.workflow_id}</span>
+                          <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                        </a>
                       </TableCell>
                       <TableCell className="text-sm">{workflow.workflow_type}</TableCell>
                       <TableCell>
