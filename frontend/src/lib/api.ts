@@ -135,6 +135,79 @@ class ApiClient {
     const response = await fetch(`${API_BASE_URL}/api/v1/templates/${id}`)
     return this.handleResponse(response)
   }
+
+  // Admin endpoints
+  async getAdminStats(): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/admin/stats`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async getAdminQueries(params?: { limit?: number; active_only?: boolean }): Promise<any> {
+    const queryParams = new URLSearchParams()
+    if (params?.limit) queryParams.set('limit', params.limit.toString())
+    if (params?.active_only) queryParams.set('active_only', 'true')
+
+    const url = `${API_BASE_URL}/admin/queries${queryParams.toString() ? `?${queryParams}` : ''}`
+    const response = await fetch(url, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async getAdminExecutions(params?: { limit?: number; status?: string; task_id?: string }): Promise<any> {
+    const queryParams = new URLSearchParams()
+    if (params?.limit) queryParams.set('limit', params.limit.toString())
+    if (params?.status) queryParams.set('status', params.status)
+    if (params?.task_id) queryParams.set('task_id', params.task_id)
+
+    const url = `${API_BASE_URL}/admin/executions${queryParams.toString() ? `?${queryParams}` : ''}`
+    const response = await fetch(url, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async getTemporalWorkflows(): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/admin/temporal/workflows`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async getTemporalSchedules(): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/admin/temporal/schedules`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async getAdminErrors(params?: { limit?: number }): Promise<any> {
+    const queryParams = new URLSearchParams()
+    if (params?.limit) queryParams.set('limit', params.limit.toString())
+
+    const url = `${API_BASE_URL}/admin/errors${queryParams.toString() ? `?${queryParams}` : ''}`
+    const response = await fetch(url, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async getAdminUsers(): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/admin/users`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async deactivateUser(userId: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/deactivate`, {
+      method: 'PATCH',
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
 }
 
 export const api = new ApiClient()

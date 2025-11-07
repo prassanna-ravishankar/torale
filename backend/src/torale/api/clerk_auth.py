@@ -308,3 +308,55 @@ async def get_current_user_or_test_user(
                 await session.close()
 
     return await verify_clerk_token(credentials)
+
+
+async def require_admin(
+    credentials: HTTPAuthorizationCredentials = Security(security),
+) -> ClerkUser:
+    """
+    Require admin role for accessing admin endpoints.
+
+    This dependency:
+    1. Authenticates the user (via Clerk JWT or API key)
+    2. Fetches the user's public metadata from Clerk
+    3. Verifies that publicMetadata.role === "admin"
+
+    Raises:
+        HTTPException: 403 if user is not an admin
+
+    Example:
+        @router.get("/admin/stats")
+        async def get_stats(admin: ClerkUser = Depends(require_admin)):
+            return {"message": "Admin access granted"}
+    """
+    # First authenticate the user
+    user = await get_current_user(credentials)
+
+    # Fetch user's public metadata from Clerk to check role
+    if not clerk_client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Clerk client not initialized",
+        )
+
+    try:
+        clerk_user = clerk_client.users.get(user_id=user.clerk_user_id)
+
+        # Check if user has admin role in publicMetadata
+        public_metadata = clerk_user.public_metadata or {}
+        if public_metadata.get("role") != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin access required",
+            )
+
+        return user
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Failed to verify admin role: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to verify admin role",
+        ) from e

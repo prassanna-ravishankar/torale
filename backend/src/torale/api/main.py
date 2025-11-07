@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from torale.api.routers import auth, tasks, templates
+from torale.api.routers import admin, auth, tasks, templates
 from torale.core.config import settings
 from torale.core.database import db
 
@@ -46,6 +46,9 @@ app.add_middleware(
 
 # Auth routes
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
+
+# Admin routes
+app.include_router(admin.router)
 
 # API routes
 app.include_router(tasks.router, prefix="/api/v1")

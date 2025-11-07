@@ -312,6 +312,20 @@ GET    /api/v1/tasks/{id}/executions    # Full execution history
 GET    /api/v1/tasks/{id}/notifications # Filtered: condition_met = true only
 ```
 
+### Admin Endpoints (requires admin role)
+```
+GET    /admin/stats                     # Platform overview (users, tasks, executions, popular queries)
+GET    /admin/queries                   # All user queries with statistics
+GET    /admin/executions                # Full execution history across all users
+GET    /admin/temporal/workflows        # Recent Temporal workflow executions (with clickable UI links)
+GET    /admin/temporal/schedules        # All active Temporal schedules
+GET    /admin/errors                    # Recent failed executions
+GET    /admin/users                     # All platform users with activity stats
+PATCH  /admin/users/{id}/deactivate     # Deactivate user account
+```
+
+**Admin Access**: Set `{"role": "admin"}` in user's publicMetadata via Clerk Dashboard
+
 ### CLI Commands
 ```bash
 # Authentication
@@ -432,6 +446,7 @@ VITE_API_BASE_URL=http://localhost:8000     # Frontend: API endpoint
 TEMPORAL_HOST=localhost:7233
 TEMPORAL_NAMESPACE=default
 TEMPORAL_API_KEY=                         # Required for Temporal Cloud (production)
+TEMPORAL_UI_URL=http://localhost:8080     # Temporal UI for clickable workflow links (Cloud: https://cloud.temporal.io)
 
 # AI APIs (Gemini required, others optional)
 GOOGLE_API_KEY=your-gemini-api-key       # Required for grounded search
@@ -462,6 +477,7 @@ GCP_REGION=us-central1
 - **CLI**: Full CLI with API key authentication and no-auth dev mode
 - **Frontend**: React dashboard with Clerk authentication
 - **Cost Optimization**: Spot pods (60-91% savings), zonal Cloud SQL
+- **Admin Console**: Full platform monitoring with 8 admin endpoints (stats, queries, executions, Temporal workflows/schedules, errors, users, user management)
 
 ### 🚧 In Progress
 - **Enhanced UI**: Grounding source display and historical state comparison

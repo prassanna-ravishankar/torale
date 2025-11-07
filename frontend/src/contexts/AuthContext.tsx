@@ -8,6 +8,10 @@ export interface User {
   firstName?: string
   lastName?: string
   imageUrl?: string
+  publicMetadata?: {
+    role?: string
+    [key: string]: any
+  }
 }
 
 export interface AuthContextType {
