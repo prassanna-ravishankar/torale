@@ -76,8 +76,8 @@ export default function Landing() {
       >
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/brand/svg/logo.svg" alt="Torale" className="h-10 w-10" />
-            <span className="text-xl font-bold">τorale</span>
+            <img src="/brand/svg/logo-cropped.svg" alt="Torale" className="h-10 w-10" />
+            <span className="text-2xl font-bold">τorale</span>
           </div>
           <div className="flex items-center gap-4">
             <button
@@ -317,7 +317,7 @@ export default function Landing() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-muted-foreground">
-              <img src="/brand/svg/logo.svg" alt="Torale" className="h-6 w-6" />
+              <img src="/brand/svg/logo-cropped.svg" alt="Torale" className="h-6 w-6" />
               <span>© 2025 Torale. Monitor what matters.</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">

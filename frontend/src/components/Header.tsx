@@ -16,8 +16,8 @@ export const Header: React.FC = () => {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/brand/svg/logo.svg" alt="Torale" className="h-10 w-10" />
-            <h2 className="font-bold">τorale</h2>
+            <img src="/brand/svg/logo-cropped.svg" alt="Torale" className="h-10 w-10" />
+            <h2 className="font-bold text-xl">τorale</h2>
           </Link>
 
           {isAdmin && (
