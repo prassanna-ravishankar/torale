@@ -380,9 +380,9 @@ async def list_temporal_schedules(
             if desc.schedule.spec and desc.schedule.spec.cron_expressions:
                 cron_spec = desc.schedule.spec.cron_expressions[0]
 
-            # Get memo data (memo is an async method)
+            # Get memo data from description (memo is an async method)
             try:
-                memo_data = await schedule.memo()
+                memo_data = await desc.memo()
             except Exception:
                 memo_data = {}
 
@@ -556,18 +556,22 @@ async def deactivate_user(
             detail="User not found",
         )
 
-    # Deactivate user
-    await session.execute(
-        text("UPDATE users SET is_active = false, updated_at = NOW() WHERE id = :user_id"),
-        {"user_id": user_id},
-    )
-
-    # Deactivate all their tasks
-    await session.execute(
-        text("UPDATE tasks SET is_active = false, updated_at = NOW() WHERE user_id = :user_id"),
-        {"user_id": user_id},
-    )
-
-    await session.commit()
+    # Deactivate user and all their tasks in a single transaction
+    try:
+        await session.execute(
+            text("UPDATE users SET is_active = false, updated_at = NOW() WHERE id = :user_id"),
+            {"user_id": user_id},
+        )
+        await session.execute(
+            text("UPDATE tasks SET is_active = false, updated_at = NOW() WHERE user_id = :user_id"),
+            {"user_id": user_id},
+        )
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to deactivate user: {str(e)}",
+        ) from e
 
     return {"status": "deactivated", "user_id": str(user_id)}
