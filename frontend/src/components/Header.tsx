@@ -1,6 +1,6 @@
 import React from "react";
 import { UserButton } from "@clerk/clerk-react";
-import { Bell, Shield } from "lucide-react";
+import { Shield } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,7 +16,7 @@ export const Header: React.FC = () => {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2">
-            <Bell className="h-6 w-6 text-primary" />
+            <img src="/brand/svg/logo.svg" alt="Torale" className="h-10 w-10" />
             <h2 className="font-bold">τorale</h2>
           </Link>
 
