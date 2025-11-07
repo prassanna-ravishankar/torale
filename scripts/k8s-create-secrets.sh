@@ -9,15 +9,16 @@ echo ""
 K8S_NAMESPACE="torale"
 SECRET_NAME="torale-secrets"
 
-# Check if .env exists
-if [ ! -f .env ]; then
-    echo "❌ .env file not found"
-    echo "Please create .env from .env.example first"
+# Check if .env.prod exists
+if [ ! -f .env.prod ]; then
+    echo "❌ .env.prod file not found"
+    echo "Please create .env.prod with your production secrets"
+    echo "This should contain production Clerk keys (sk_live_..., pk_live_...)"
     exit 1
 fi
 
-# Load environment variables from .env
-export $(grep -v '^#' .env | xargs)
+# Load environment variables from .env.prod
+export $(grep -v '^#' .env.prod | xargs)
 
 # Check if Cloud SQL info exists
 if [ -f .cloud-sql-info ]; then
@@ -51,7 +52,8 @@ echo ""
 prompt_if_missing "GOOGLE_API_KEY" "Enter your Google AI API key (required):" "true"
 prompt_if_missing "SECRET_KEY" "Enter your JWT secret key (generate with: openssl rand -hex 32):" "true"
 prompt_if_missing "DB_PASSWORD" "Enter your database password:" "true"
-prompt_if_missing "CLERK_SECRET_KEY" "Enter your Clerk secret key (required):" "true"
+prompt_if_missing "CLERK_SECRET_KEY" "Enter your Clerk SECRET key (sk_live_... for production):" "true"
+prompt_if_missing "CLERK_PUBLISHABLE_KEY" "Enter your Clerk PUBLISHABLE key (pk_live_... for production):" "false"
 prompt_if_missing "TEMPORAL_API_KEY" "Enter your Temporal API key (required for Temporal Cloud):" "true"
 
 # Optional secrets
@@ -107,6 +109,16 @@ echo "==============================================="
 echo "✓ Secrets Setup Complete!"
 echo "==============================================="
 echo ""
+
+# Update Helm values with production Clerk publishable key
+if [ -n "$CLERK_PUBLISHABLE_KEY" ]; then
+    echo "Updating Helm values-production.yaml with Clerk publishable key..."
+    sed -i.bak "s|publishableKey:.*|publishableKey: $CLERK_PUBLISHABLE_KEY|" helm/torale/values-production.yaml
+    rm helm/torale/values-production.yaml.bak
+    echo "✓ Helm values updated"
+    echo ""
+fi
+
 echo "Next steps:"
 echo "  1. Deploy application: just k8s-deploy-all"
 echo "  2. Check status: just k8s-status"
