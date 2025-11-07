@@ -1,7 +1,7 @@
 # Multi-stage build for React frontend
 
 # Stage 1: Build the application
-FROM node:20-alpine AS builder
+FROM node:20.19.0-alpine AS builder
 
 WORKDIR /app
 
@@ -9,8 +9,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install ALL dependencies (including devDependencies for build)
-# Remove node_modules and package-lock to ensure clean install for target platform
-RUN rm -rf node_modules package-lock.json && npm install
+# Use npm ci for reproducible builds that respect package-lock.json
+RUN npm ci
 
 # Copy source code
 COPY . .
