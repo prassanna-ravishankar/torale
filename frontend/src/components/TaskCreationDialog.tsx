@@ -400,25 +400,17 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                 )}
 
                 {/* Create from Scratch Option */}
-                <Card
-                  className="border-dashed border-2 cursor-pointer transition-all duration-200 hover:border-primary hover:bg-accent/50 group relative overflow-hidden"
-                  onClick={() => handleTemplateSelect("none")}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <CardHeader className="p-3 relative">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-sm font-semibold group-hover:text-primary transition-colors leading-tight mb-0.5">
-                          Start from Scratch
-                        </CardTitle>
-                        <CardDescription className="text-[10px] leading-snug text-muted-foreground/70">
-                          Build your own custom task with full control
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                </Card>
+                <div className="pt-2 border-t">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleTemplateSelect("none")}
+                    className="w-full justify-start h-auto py-2.5 px-3 border-dashed hover:border-primary hover:bg-accent/50"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2 text-primary" />
+                    <span className="text-sm font-medium">Start from Scratch</span>
+                  </Button>
+                </div>
               </div>
             )}
 
