@@ -82,7 +82,7 @@ async def get_public_stats(session: AsyncSession = Depends(get_async_session)):
 
     # Get max users from settings
     max_users = settings.max_users
-    available_slots = max_users - total_users
+    available_slots = max(0, max_users - total_users)
 
     return {
         "capacity": {
