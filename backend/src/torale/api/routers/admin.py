@@ -358,7 +358,8 @@ async def list_temporal_schedules(
         client = await get_temporal_client()
 
         schedules = []
-        async for schedule in client.list_schedules():
+        schedule_iterator = await client.list_schedules()
+        async for schedule in schedule_iterator:
             handle = client.get_schedule_handle(schedule.id)
             desc = await handle.describe()
 
