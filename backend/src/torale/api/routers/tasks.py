@@ -11,6 +11,7 @@ from torale.api.auth import CurrentUserOrTestUser
 from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.core.models import Task, TaskCreate, TaskExecution, TaskUpdate
+from torale.notifications import NotificationValidationError, validate_notification
 from torale.workers.workflows import TaskExecutionRequest, TaskExecutionWorkflow
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,11 @@ def parse_task_row(row) -> dict:
     if isinstance(task_dict.get("last_known_state"), str):
         task_dict["last_known_state"] = (
             json.loads(task_dict["last_known_state"]) if task_dict["last_known_state"] else None
+        )
+    # Parse notifications if it's a string
+    if isinstance(task_dict.get("notifications"), str):
+        task_dict["notifications"] = (
+            json.loads(task_dict["notifications"]) if task_dict["notifications"] else []
         )
     return task_dict
 
@@ -68,13 +74,24 @@ def parse_execution_row(row) -> dict:
 
 @router.post("/", response_model=Task)
 async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depends(get_db)):
+    # Validate notifications before creating task
+    validated_notifications = []
+    for notif in task.notifications:
+        try:
+            validated = await validate_notification(notif.model_dump())
+            validated_notifications.append(validated)
+        except NotificationValidationError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid notification: {str(e)}"
+            )
+
     # Create task in database
     query = """
         INSERT INTO tasks (
             user_id, name, schedule, executor_type, config, is_active,
-            search_query, condition_description, notify_behavior
+            search_query, condition_description, notify_behavior, notifications
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *
     """
 
@@ -89,6 +106,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         task.search_query,
         task.condition_description,
         task.notify_behavior,
+        json.dumps(validated_notifications),
     )
 
     if not row:
@@ -203,6 +221,20 @@ async def update_task(
     if not update_data:
         return Task(**parse_task_row(existing))
 
+    # Validate notifications if provided
+    if "notifications" in update_data:
+        validated_notifications = []
+        for notif in update_data["notifications"]:
+            try:
+                # notif is already a dict from model_dump
+                validated = await validate_notification(notif)
+                validated_notifications.append(validated)
+            except NotificationValidationError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid notification: {str(e)}"
+                )
+        update_data["notifications"] = validated_notifications
+
     # Build dynamic UPDATE query
     set_clauses = []
     params = []
@@ -210,6 +242,9 @@ async def update_task(
 
     for field, value in update_data.items():
         if field == "config":
+            set_clauses.append(f"{field} = ${param_num}")
+            params.append(json.dumps(value))
+        elif field == "notifications":
             set_clauses.append(f"{field} = ${param_num}")
             params.append(json.dumps(value))
         elif field == "notify_behavior":
