@@ -6,6 +6,8 @@ import { TaskDetail } from '@/components/TaskDetail'
 import Landing from '@/components/Landing'
 import { Header } from '@/components/Header'
 import { Admin } from '@/pages/Admin'
+import { CapacityGate } from '@/components/CapacityGate'
+import { WaitlistPage } from '@/components/WaitlistPage'
 import { Toaster } from '@/components/ui/sonner'
 import { Loader2 } from 'lucide-react'
 import { useApiSetup } from '@/hooks/useApi'
@@ -98,8 +100,20 @@ export default function App() {
           element={
             <AuthRedirect>
               <AuthLayout>
-                <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" />
+                <CapacityGate fallback={<Navigate to="/waitlist" replace />}>
+                  <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" />
+                </CapacityGate>
               </AuthLayout>
+            </AuthRedirect>
+          }
+        />
+        <Route
+          path="/waitlist"
+          element={
+            <AuthRedirect>
+              <CapacityGate fallback={<WaitlistPage />}>
+                <Navigate to="/sign-up" replace />
+              </CapacityGate>
             </AuthRedirect>
           }
         />

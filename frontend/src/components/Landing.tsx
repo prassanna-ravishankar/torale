@@ -39,6 +39,8 @@ export default function Landing() {
   const navigate = useNavigate();
   const { scrollYProgress } = useScroll();
   const [mounted, setMounted] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState<number | null>(null);
+  const isFull = availableSlots === 0;
 
   // Parallax effects
   const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
@@ -48,10 +50,33 @@ export default function Landing() {
 
   useEffect(() => {
     setMounted(true);
+
+    // Fetch available user slots from public API
+    const fetchCapacity = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_BASE_URL;
+        if (!apiUrl) {
+          console.error("VITE_API_BASE_URL is not set");
+          return;
+        }
+        const response = await fetch(`${apiUrl}/public/stats`);
+        if (response.ok) {
+          const data = await response.json();
+          if (typeof data?.capacity?.available_slots === "number") {
+            setAvailableSlots(data.capacity.available_slots);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch capacity stats:", error);
+        // Silently fail - the message will still work without the count
+      }
+    };
+
+    fetchCapacity();
   }, []);
 
   const handleGetStarted = () => {
-    navigate("/sign-up");
+    navigate(isFull ? "/waitlist" : "/sign-up");
   };
 
   const handleSignIn = () => {
@@ -110,7 +135,11 @@ export default function Landing() {
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full bg-primary/10 text-primary text-sm font-medium">
               <Sparkles className="h-4 w-4" />
-              Free till I figure out what this is used for
+              {isFull
+                ? "We're at capacity - join the waitlist!"
+                : availableSlots !== null && availableSlots > 0
+                ? `Free for ${availableSlots} more user${availableSlots === 1 ? "" : "s"} till I figure out what this is used for`
+                : "Free till I figure out what this is used for"}
             </div>
             <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
               Monitor the web.
@@ -125,7 +154,7 @@ export default function Landing() {
               onClick={handleGetStarted}
               className="group inline-flex items-center gap-2 px-8 py-4 bg-primary text-primary-foreground rounded-lg text-lg font-medium hover:bg-primary/90 transition-all hover:gap-3"
             >
-              Start monitoring
+              {isFull ? "Join waitlist" : "Start monitoring"}
               <ArrowRight className="h-5 w-5 transition-all" />
             </button>
           </motion.div>
@@ -305,7 +334,7 @@ export default function Landing() {
               onClick={handleGetStarted}
               className="group inline-flex items-center gap-2 px-8 py-4 bg-primary text-primary-foreground rounded-lg text-lg font-medium hover:bg-primary/90 transition-all hover:gap-3"
             >
-              Create your first monitor
+              {isFull ? "Join waitlist" : "Create your first monitor"}
               <ArrowRight className="h-5 w-5 transition-all" />
             </button>
           </motion.div>

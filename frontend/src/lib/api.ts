@@ -208,6 +208,43 @@ class ApiClient {
     })
     return this.handleResponse(response)
   }
+
+  // Waitlist endpoints
+  async getWaitlist(statusFilter?: string): Promise<any> {
+    const url = statusFilter
+      ? `${API_BASE_URL}/admin/waitlist?status_filter=${statusFilter}`
+      : `${API_BASE_URL}/admin/waitlist`
+    const response = await fetch(url, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async getWaitlistStats(): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/admin/waitlist/stats`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async updateWaitlistEntry(entryId: string, data: { status?: string; notes?: string }): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/admin/waitlist/${entryId}`, {
+      method: 'PATCH',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify(data),
+    })
+    return this.handleResponse(response)
+  }
+
+  async deleteWaitlistEntry(entryId: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/admin/waitlist/${entryId}`, {
+      method: 'DELETE',
+      headers: await this.getAuthHeaders(),
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to delete waitlist entry: ${response.status}`)
+    }
+  }
 }
 
 export const api = new ApiClient()

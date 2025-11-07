@@ -575,3 +575,162 @@ async def deactivate_user(
         ) from e
 
     return {"status": "deactivated", "user_id": str(user_id)}
+
+
+# Waitlist endpoints
+@router.get("/waitlist")
+async def list_waitlist(
+    admin: ClerkUser = Depends(require_admin),
+    session: AsyncSession = Depends(get_async_session),
+    status_filter: str | None = None,
+):
+    """
+    List all waitlist entries (admin only).
+
+    Optionally filter by status: pending, invited, or converted.
+    """
+    # Build query with optional status filter
+    query = """
+        SELECT id, email, created_at, status, invited_at, notes
+        FROM waitlist
+    """
+    params = {}
+
+    if status_filter:
+        query += " WHERE status = :status"
+        params["status"] = status_filter
+
+    query += " ORDER BY created_at ASC"
+
+    result = await session.execute(text(query), params)
+
+    entries = [
+        {
+            "id": str(row[0]),
+            "email": row[1],
+            "created_at": row[2].isoformat() if row[2] else None,
+            "status": row[3],
+            "invited_at": row[4].isoformat() if row[4] else None,
+            "notes": row[5],
+        }
+        for row in result
+    ]
+
+    return entries
+
+
+@router.get("/waitlist/stats")
+async def get_waitlist_stats(
+    admin: ClerkUser = Depends(require_admin),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Get waitlist statistics (admin only).
+
+    Returns counts by status and recent growth.
+    """
+    result = await session.execute(
+        text("""
+        SELECT
+            COUNT(*) FILTER (WHERE status = 'pending') as pending,
+            COUNT(*) FILTER (WHERE status = 'invited') as invited,
+            COUNT(*) FILTER (WHERE status = 'converted') as converted,
+            COUNT(*) as total
+        FROM waitlist
+        """)
+    )
+
+    row = result.first()
+
+    return {
+        "pending": row[0] or 0,
+        "invited": row[1] or 0,
+        "converted": row[2] or 0,
+        "total": row[3] or 0,
+    }
+
+
+@router.patch("/waitlist/{entry_id}")
+async def update_waitlist_entry(
+    entry_id: UUID,
+    data: dict,
+    admin: ClerkUser = Depends(require_admin),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Update waitlist entry (admin only).
+
+    Used to mark entries as invited or add notes.
+    """
+    # Build update query
+    updates = []
+    params = {"entry_id": entry_id}
+
+    if "status" in data:
+        updates.append("status = :status")
+        params["status"] = data["status"]
+        if data["status"] == "invited":
+            updates.append("invited_at = :invited_at")
+            params["invited_at"] = datetime.now(UTC)
+
+    if "notes" in data:
+        updates.append("notes = :notes")
+        params["notes"] = data["notes"]
+
+    if not updates:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No updates provided",
+        )
+
+    query = f"""
+        UPDATE waitlist
+        SET {", ".join(updates)}
+        WHERE id = :entry_id
+        RETURNING id, email, created_at, status, invited_at, notes
+    """
+
+    result = await session.execute(text(query), params)
+    await session.commit()
+
+    row = result.first()
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Waitlist entry not found",
+        )
+
+    return {
+        "id": str(row[0]),
+        "email": row[1],
+        "created_at": row[2].isoformat() if row[2] else None,
+        "status": row[3],
+        "invited_at": row[4].isoformat() if row[4] else None,
+        "notes": row[5],
+    }
+
+
+@router.delete("/waitlist/{entry_id}")
+async def delete_waitlist_entry(
+    entry_id: UUID,
+    admin: ClerkUser = Depends(require_admin),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Delete waitlist entry (admin only).
+
+    Use when removing spam or invalid entries.
+    """
+    result = await session.execute(
+        text("DELETE FROM waitlist WHERE id = :entry_id"),
+        {"entry_id": entry_id},
+    )
+    await session.commit()
+
+    if result.rowcount == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Waitlist entry not found",
+        )
+
+    return {"status": "deleted"}
