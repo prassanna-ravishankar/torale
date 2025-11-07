@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { Bell, Search, Sparkles, ArrowRight, Code, Terminal } from "lucide-react";
+import { Search, Sparkles, ArrowRight, Code, Terminal } from "lucide-react";
 import { AnimatedBackground } from "./AnimatedBackground";
 
 const EXAMPLES = [
@@ -31,7 +31,7 @@ const HOW_IT_WORKS = [
     title: "Get notified",
     description:
       "We monitor continuously and alert you the moment it happens.",
-    icon: Bell,
+    icon: Sparkles,
   },
 ];
 
@@ -76,8 +76,8 @@ export default function Landing() {
       >
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Bell className="h-6 w-6 text-primary" />
-            <span className="text-xl font-semibold">Torale</span>
+            <img src="/brand/svg/logo.svg" alt="Torale" className="h-10 w-10" />
+            <span className="text-xl font-bold">τorale</span>
           </div>
           <div className="flex items-center gap-4">
             <button
@@ -317,7 +317,7 @@ export default function Landing() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-muted-foreground">
-              <Bell className="h-5 w-5" />
+              <img src="/brand/svg/logo.svg" alt="Torale" className="h-6 w-6" />
               <span>© 2025 Torale. Monitor what matters.</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
