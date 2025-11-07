@@ -18,7 +18,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     google_api_key: str | None = None
 
-    notification_api_key: str | None = None
+    # Novu Cloud configuration
+    novu_secret_key: str | None = None
+    novu_workflow_id: str = "torale-condition-met"
+    novu_verification_workflow_id: str = "torale-email-verification"
 
     gcp_project_id: str | None = None
     gcp_region: str = "us-central1"
