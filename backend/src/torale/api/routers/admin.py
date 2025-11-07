@@ -311,22 +311,16 @@ async def list_temporal_workflows(
     try:
         client = await get_temporal_client()
 
-        # Determine Temporal UI base URL
-        # If TEMPORAL_API_KEY is set, we're using Temporal Cloud
-        if settings.temporal_api_key:
-            # Temporal Cloud UI
-            temporal_ui_base = "https://cloud.temporal.io"
-        else:
-            # Self-hosted Temporal UI (default port 8233)
-            temporal_ui_base = "http://localhost:8233"
+        # Use configured Temporal UI URL
+        temporal_ui_base = settings.temporal_ui_url
 
         # List recent workflows (last 100)
         workflows = []
         async for workflow in client.list_workflows(
             f"ExecutionTime >= '{(datetime.now(UTC) - timedelta(hours=24)).isoformat()}'"
         ):
-            # Construct UI URL
-            ui_url = f"{temporal_ui_base}/namespaces/{settings.temporal_namespace}/workflows/{workflow.id}/{workflow.run_id}"
+            # Construct UI URL: {base}/namespaces/{namespace}/workflows/{workflow_id}/{run_id}/history
+            ui_url = f"{temporal_ui_base}/namespaces/{settings.temporal_namespace}/workflows/{workflow.id}/{workflow.run_id}/history"
 
             workflows.append(
                 {
