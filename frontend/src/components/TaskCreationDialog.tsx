@@ -52,7 +52,7 @@ interface TaskCreationDialogProps {
   onTaskCreated: () => void;
 }
 
-type DialogStage = 'simple' | 'review' | 'advanced';
+type DialogStage = 'select' | 'edit' | 'advanced';
 
 const SIMPLE_SCHEDULE_OPTIONS = [
   { value: "*/30 * * * *", label: "Every 30 minutes", emoji: "⚡" },
@@ -106,7 +106,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   onTaskCreated,
 }) => {
   // Stage management
-  const [stage, setStage] = useState<DialogStage>('simple');
+  const [stage, setStage] = useState<DialogStage>('select');
   const [wizardStep, setWizardStep] = useState(1);
 
   // Form data
@@ -139,7 +139,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
-      setStage('simple');
+      setStage('select');
       setWizardStep(1);
       setSelectedTemplateId("none");
       setName("");
@@ -157,12 +157,13 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
     setSelectedTemplateId(templateId);
 
     if (!templateId || templateId === "none") {
-      // Clear template - reset form
+      // Create from scratch - set defaults and go to edit
       setName("");
       setSearchQuery("");
       setConditionDescription("");
       setSchedule("0 9 * * *");
       setNotifyBehavior("track_state");
+      setStage('edit');
       return;
     }
 
@@ -173,6 +174,8 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
       setConditionDescription(template.condition_description);
       setSchedule(template.schedule);
       setNotifyBehavior(template.notify_behavior);
+      // Auto-advance to edit stage
+      setStage('edit');
     }
   };
 
@@ -207,26 +210,22 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   };
 
   // Navigation handlers
-  const handleContinueFromSimple = () => {
-    if (!validateSimpleMode()) {
-      toast.error("Please fix the errors before continuing");
-      return;
-    }
-    setStage('review');
-  };
-
-  const handleBackToSimple = () => {
-    setStage('simple');
+  const handleBackToSelect = () => {
+    setStage('select');
     setValidationErrors({});
   };
 
   const handleGoToAdvanced = () => {
+    if (!validateSimpleMode()) {
+      toast.error("Please fix the errors before continuing");
+      return;
+    }
     setStage('advanced');
     setWizardStep(1);
   };
 
   const handleBackFromAdvanced = () => {
-    setStage('review');
+    setStage('edit');
     setWizardStep(1);
   };
 
@@ -257,6 +256,12 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
 
   // Task creation
   const handleCreateTask = async () => {
+    // Validate before creating
+    if (!validateSimpleMode()) {
+      toast.error("Please fix the errors before creating");
+      return;
+    }
+
     setError("");
     setIsLoading(true);
 
@@ -301,22 +306,21 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
         "max-h-[90vh] overflow-y-auto",
-        stage === 'simple' && "max-w-2xl",
-        stage === 'review' && "max-w-2xl",
+        stage === 'select' && "max-w-3xl",
+        stage === 'edit' && "max-w-4xl",
         stage === 'advanced' && "max-w-3xl"
       )}>
         <DialogHeader>
           <DialogTitle className={cn(
-            stage === 'advanced' && "flex items-center gap-2 text-2xl"
+            (stage === 'select' || stage === 'advanced') && "flex items-center gap-2 text-2xl"
           )}>
-            {stage === 'advanced' && <Sparkles className="h-6 w-6 text-purple-500" />}
-            {stage === 'simple' && "Create Monitoring Task"}
-            {stage === 'review' && "Review Your Task"}
-            {stage === 'advanced' && "Customize Task Details"}
+            {stage === 'select' && <><Sparkles className="h-6 w-6 text-purple-500" />Choose a Template</>}
+            {stage === 'edit' && "Configure Your Task"}
+            {stage === 'advanced' && <><Sparkles className="h-6 w-6 text-purple-500" />Advanced Settings</>}
           </DialogTitle>
           <DialogDescription>
-            {stage === 'simple' && "Set up AI-powered monitoring in seconds"}
-            {stage === 'review' && "Confirm your task or customize details"}
+            {stage === 'select' && "Start with a pre-built template or create from scratch"}
+            {stage === 'edit' && "Review and customize your monitoring task"}
             {stage === 'advanced' && "Fine-tune every aspect of your monitoring task"}
           </DialogDescription>
         </DialogHeader>
@@ -358,82 +362,102 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
         {stage === 'advanced' && <Separator className="my-4" />}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* STAGE 1: SIMPLE MODE */}
-          {stage === 'simple' && (
+          {/* STAGE 1: TEMPLATE SELECTION */}
+          {stage === 'select' && (
             <div className="space-y-6">
-              {/* Template Selection */}
+              {/* Template Cards Grid */}
               {templates.length > 0 && (
-                <div className="space-y-2 pb-4 border-b">
-                  <Label htmlFor="template" className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-purple-500" />
-                    Start from Template (Optional)
-                  </Label>
-                  <Select value={selectedTemplateId} onValueChange={handleTemplateSelect}>
-                    <SelectTrigger id="template">
-                      <SelectValue placeholder="Create from scratch or choose a template..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Create from scratch</SelectItem>
-                      {(() => {
-                        const grouped = templates.reduce((acc, template) => {
-                          if (!acc[template.category]) {
-                            acc[template.category] = [];
-                          }
-                          acc[template.category].push(template);
-                          return acc;
-                        }, {} as Record<string, TaskTemplate[]>);
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {templates.slice(0, 6).map((template) => (
+                      <Card
+                        key={template.id}
+                        className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
+                        onClick={() => handleTemplateSelect(template.id)}
+                      >
+                        <CardHeader className="pb-3">
+                          <CardTitle className="flex items-center gap-2 text-lg">
+                            {template.icon && <span className="text-2xl">{template.icon}</span>}
+                            {template.name}
+                          </CardTitle>
+                          <CardDescription className="text-sm">
+                            {template.description}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2 text-sm text-muted-foreground">
+                            <div className="flex items-start gap-2">
+                              <Search className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <span className="line-clamp-2">{template.search_query}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <Bell className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <span className="line-clamp-1">{template.condition_description}</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
 
-                        return Object.entries(grouped).map(([category, categoryTemplates]) => (
-                          <SelectGroup key={category}>
-                            <SelectLabel>{category}</SelectLabel>
-                            {categoryTemplates.map((template) => (
-                              <SelectItem key={template.id} value={template.id}>
-                                {template.icon && `${template.icon} `}
-                                {template.name}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        ));
-                      })()}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Select a template to auto-fill the form, then customize as needed
-                  </p>
+                  <Separator className="my-6" />
                 </div>
               )}
 
-              {/* Task Name */}
-              <div className="space-y-2">
-                <Label htmlFor="name">Task Name</Label>
-                <Input
-                  id="name"
-                  placeholder="e.g., iPhone 16 Release Monitor"
-                  value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    if (validationErrors.name) {
-                      setValidationErrors(prev => ({ ...prev, name: "" }));
-                    }
-                  }}
-                  disabled={isLoading}
-                  className={cn(validationErrors.name && "border-destructive")}
-                />
-                {validationErrors.name ? (
-                  <p className="text-sm text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {validationErrors.name}
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    A descriptive name to identify this monitoring task
-                  </p>
-                )}
+              {/* Create from Scratch Option */}
+              <Card
+                className="border-dashed border-2 cursor-pointer transition-all hover:border-primary hover:bg-accent/50"
+                onClick={() => handleTemplateSelect("none")}
+              >
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Sparkles className="h-5 w-5" />
+                    Create from Scratch
+                  </CardTitle>
+                  <CardDescription>
+                    Build your own custom monitoring task with full control
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </div>
+          )}
+
+          {/* STAGE 2: EDIT/REVIEW */}
+          {stage === 'edit' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column - Main Fields */}
+              <div className="space-y-6 md:col-span-2">
+                {/* Task Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-base font-semibold">Task Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="e.g., iPhone 16 Release Monitor"
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (validationErrors.name) {
+                        setValidationErrors(prev => ({ ...prev, name: "" }));
+                      }
+                    }}
+                    disabled={isLoading}
+                    className={cn("h-12 text-base", validationErrors.name && "border-destructive")}
+                  />
+                  {validationErrors.name && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {validationErrors.name}
+                    </p>
+                  )}
+                </div>
               </div>
 
-              {/* Search Query */}
-              <div className="space-y-2">
-                <Label htmlFor="searchQuery">Search Query</Label>
+              {/* Search Query - Full Width */}
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="searchQuery" className="text-base font-semibold flex items-center gap-2">
+                  <Search className="h-4 w-4" />
+                  What to Monitor
+                </Label>
                 <Textarea
                   id="searchQuery"
                   placeholder="e.g., When is the next iPhone being announced by Apple?"
@@ -446,23 +470,22 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                   }}
                   disabled={isLoading}
                   rows={3}
-                  className={cn(validationErrors.searchQuery && "border-destructive")}
+                  className={cn("text-base resize-none", validationErrors.searchQuery && "border-destructive")}
                 />
-                {validationErrors.searchQuery ? (
+                {validationErrors.searchQuery && (
                   <p className="text-sm text-destructive flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />
                     {validationErrors.searchQuery}
                   </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    What should we search for? Be specific and use natural language.
-                  </p>
                 )}
               </div>
 
-              {/* Condition Description */}
-              <div className="space-y-2">
-                <Label htmlFor="condition">Trigger Condition</Label>
+              {/* Condition Description - Full Width */}
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="condition" className="text-base font-semibold flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  When to Notify
+                </Label>
                 <Textarea
                   id="condition"
                   placeholder="e.g., A specific release date or month is officially announced"
@@ -475,23 +498,22 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                   }}
                   disabled={isLoading}
                   rows={2}
-                  className={cn(validationErrors.conditionDescription && "border-destructive")}
+                  className={cn("text-base resize-none", validationErrors.conditionDescription && "border-destructive")}
                 />
-                {validationErrors.conditionDescription ? (
+                {validationErrors.conditionDescription && (
                   <p className="text-sm text-destructive flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />
                     {validationErrors.conditionDescription}
                   </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    When should we notify you? Describe the condition that matters to you.
-                  </p>
                 )}
               </div>
 
-              {/* Simple Schedule Selector */}
+              {/* Schedule - Left Column */}
               <div className="space-y-2">
-                <Label htmlFor="schedule">Check Frequency</Label>
+                <Label htmlFor="schedule" className="text-base font-semibold flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Check Frequency
+                </Label>
                 <Select value={schedule} onValueChange={setSchedule} disabled={isLoading}>
                   <SelectTrigger id="schedule" className="h-12">
                     <SelectValue />
@@ -505,87 +527,48 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  How often should we check for updates? Need more options? Continue to customize.
-                </p>
               </div>
 
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription className="text-sm">
-                  The AI will search the web, analyze results, and notify you when your condition is met.
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
+              {/* Notification Behavior - Right Column */}
+              <div className="space-y-2">
+                <Label htmlFor="notifyBehavior" className="text-base font-semibold flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  Notification Mode
+                </Label>
+                <Select
+                  value={notifyBehavior}
+                  onValueChange={(value) => setNotifyBehavior(value as NotifyBehavior)}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger id="notifyBehavior" className="h-12">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {NOTIFY_BEHAVIORS.map((behavior) => (
+                      <SelectItem key={behavior.value} value={behavior.value}>
+                        {behavior.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          {/* STAGE 2: REVIEW SCREEN */}
-          {stage === 'review' && (
-            <div className="space-y-6">
-              <Alert>
-                <CheckCircle2 className="h-4 w-4" />
-                <AlertDescription>
-                  Your task is ready with smart defaults. Create now or customize details.
-                </AlertDescription>
-              </Alert>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Task Summary</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Task Name</Label>
-                    <p className="text-base font-medium mt-1">{name}</p>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <Label className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Search className="h-3 w-3" />
-                      Search Query
-                    </Label>
-                    <p className="text-base mt-1 bg-muted/50 p-3 rounded-md">{searchQuery}</p>
-                  </div>
-
-                  <div>
-                    <Label className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Bell className="h-3 w-3" />
-                      Trigger Condition
-                    </Label>
-                    <p className="text-base mt-1 bg-muted/50 p-3 rounded-md">{conditionDescription}</p>
-                  </div>
-
-                  <Separator />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm text-muted-foreground flex items-center gap-2">
-                        <Clock className="h-3 w-3" />
-                        Frequency
-                      </Label>
-                      <p className="text-sm mt-1">
-                        {SIMPLE_SCHEDULE_OPTIONS.find(opt => opt.value === schedule)?.label ||
-                         ADVANCED_SCHEDULE_OPTIONS.find(opt => opt.value === schedule)?.label}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-muted-foreground">Notifications</Label>
-                      <p className="text-sm mt-1">
-                        {NOTIFY_BEHAVIORS.find(b => b.value === notifyBehavior)?.label}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription className="text-sm">
-                  Using smart defaults. Need more control? Click "Customize Details" below.
-                </AlertDescription>
-              </Alert>
+              {/* Info Alert - Full Width */}
+              <div className="md:col-span-2">
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="text-sm">
+                    The AI will search the web, analyze results, and notify you when your condition is met.
+                    {' '}<button
+                      type="button"
+                      onClick={handleGoToAdvanced}
+                      className="underline font-medium hover:text-primary"
+                    >
+                      Need advanced settings?
+                    </button>
+                  </AlertDescription>
+                </Alert>
+              </div>
             </div>
           )}
 
@@ -943,11 +926,11 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <div className="flex gap-2 flex-1">
               {/* Back Button */}
-              {(stage === 'review' || stage === 'advanced') && (
+              {(stage === 'edit' || stage === 'advanced') && (
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={stage === 'review' ? handleBackToSimple : handleAdvancedPrevStep}
+                  onClick={stage === 'edit' ? handleBackToSelect : handleAdvancedPrevStep}
                   disabled={isLoading}
                   className="flex-1 sm:flex-none"
                 >
@@ -968,43 +951,21 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
               </Button>
             </div>
 
-            {/* Action Buttons */}
-            {stage === 'simple' && (
+            {/* Action Buttons for Edit Stage */}
+            {stage === 'edit' && (
               <Button
                 type="button"
-                onClick={handleContinueFromSimple}
+                onClick={handleCreateTask}
                 disabled={isLoading}
                 className="flex-1 sm:flex-none"
               >
-                Continue
-                <ArrowRight className="ml-2 h-4 w-4" />
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Create Task
               </Button>
             )}
 
-            {stage === 'review' && (
-              <div className="flex gap-2 flex-1 sm:flex-none">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleGoToAdvanced}
-                  disabled={isLoading}
-                  className="flex-1"
-                >
-                  Customize Details
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleCreateTask}
-                  disabled={isLoading}
-                  className="flex-1"
-                >
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Create Now
-                </Button>
-              </div>
-            )}
-
+            {/* Action Buttons for Advanced Wizard */}
             {stage === 'advanced' && wizardStep < 3 && (
               <Button
                 type="button"
