@@ -306,19 +306,20 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
         "max-h-[90vh] overflow-y-auto",
-        stage === 'select' && "max-w-3xl",
-        stage === 'edit' && "max-w-4xl",
-        stage === 'advanced' && "max-w-3xl"
+        stage === 'select' && "max-w-6xl",
+        stage === 'edit' && "max-w-7xl",
+        stage === 'advanced' && "max-w-5xl"
       )}>
-        <DialogHeader>
+        <DialogHeader className="space-y-3 pb-6">
           <DialogTitle className={cn(
-            (stage === 'select' || stage === 'advanced') && "flex items-center gap-2 text-2xl"
+            "text-3xl font-bold tracking-tight",
+            (stage === 'select' || stage === 'advanced') && "flex items-center gap-3"
           )}>
-            {stage === 'select' && <><Sparkles className="h-6 w-6 text-purple-500" />Choose a Template</>}
+            {stage === 'select' && <><Sparkles className="h-8 w-8 text-purple-500" />Choose a Template</>}
             {stage === 'edit' && "Configure Your Task"}
-            {stage === 'advanced' && <><Sparkles className="h-6 w-6 text-purple-500" />Advanced Settings</>}
+            {stage === 'advanced' && <><Sparkles className="h-8 w-8 text-purple-500" />Advanced Settings</>}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-base text-muted-foreground">
             {stage === 'select' && "Start with a pre-built template or create from scratch"}
             {stage === 'edit' && "Review and customize your monitoring task"}
             {stage === 'advanced' && "Fine-tune every aspect of your monitoring task"}
@@ -364,58 +365,58 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* STAGE 1: TEMPLATE SELECTION */}
           {stage === 'select' && (
-            <div className="space-y-6">
+            <div className="space-y-8">
               {/* Template Cards Grid */}
               {templates.length > 0 && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {templates.slice(0, 6).map((template) => (
                       <Card
                         key={template.id}
-                        className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
+                        className="cursor-pointer transition-all hover:border-primary hover:shadow-lg hover:scale-[1.02] group"
                         onClick={() => handleTemplateSelect(template.id)}
                       >
-                        <CardHeader className="pb-3">
-                          <CardTitle className="flex items-center gap-2 text-lg">
-                            {template.icon && <span className="text-2xl">{template.icon}</span>}
-                            {template.name}
-                          </CardTitle>
-                          <CardDescription className="text-sm">
+                        <CardHeader className="pb-4 space-y-3">
+                          <div className="flex items-center gap-3">
+                            {template.icon && <span className="text-4xl">{template.icon}</span>}
+                            <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors">
+                              {template.name}
+                            </CardTitle>
+                          </div>
+                          <CardDescription className="text-base leading-relaxed">
                             {template.description}
                           </CardDescription>
                         </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2 text-sm text-muted-foreground">
-                            <div className="flex items-start gap-2">
-                              <Search className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                              <span className="line-clamp-2">{template.search_query}</span>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <Bell className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                              <span className="line-clamp-1">{template.condition_description}</span>
-                            </div>
+                        <CardContent className="space-y-3">
+                          <div className="flex items-start gap-3">
+                            <Search className="h-5 w-5 mt-1 flex-shrink-0 text-muted-foreground" />
+                            <span className="text-sm line-clamp-2 leading-relaxed">{template.search_query}</span>
+                          </div>
+                          <div className="flex items-start gap-3">
+                            <Bell className="h-5 w-5 mt-1 flex-shrink-0 text-muted-foreground" />
+                            <span className="text-sm line-clamp-2 leading-relaxed">{template.condition_description}</span>
                           </div>
                         </CardContent>
                       </Card>
                     ))}
                   </div>
 
-                  <Separator className="my-6" />
+                  <Separator className="my-8" />
                 </div>
               )}
 
               {/* Create from Scratch Option */}
               <Card
-                className="border-dashed border-2 cursor-pointer transition-all hover:border-primary hover:bg-accent/50"
+                className="border-dashed border-2 cursor-pointer transition-all hover:border-primary hover:bg-accent/50 hover:shadow-lg"
                 onClick={() => handleTemplateSelect("none")}
               >
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Sparkles className="h-5 w-5" />
+                <CardHeader className="py-8">
+                  <CardTitle className="flex items-center gap-3 text-2xl">
+                    <Sparkles className="h-7 w-7 text-primary" />
                     Create from Scratch
                   </CardTitle>
-                  <CardDescription>
-                    Build your own custom monitoring task with full control
+                  <CardDescription className="text-base pt-2">
+                    Build your own custom monitoring task with full control over every detail
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -424,38 +425,35 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
 
           {/* STAGE 2: EDIT/REVIEW */}
           {stage === 'edit' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left Column - Main Fields */}
-              <div className="space-y-6 md:col-span-2">
-                {/* Task Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-base font-semibold">Task Name</Label>
-                  <Input
-                    id="name"
-                    placeholder="e.g., iPhone 16 Release Monitor"
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      if (validationErrors.name) {
-                        setValidationErrors(prev => ({ ...prev, name: "" }));
-                      }
-                    }}
-                    disabled={isLoading}
-                    className={cn("h-12 text-base", validationErrors.name && "border-destructive")}
-                  />
-                  {validationErrors.name && (
-                    <p className="text-sm text-destructive flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      {validationErrors.name}
-                    </p>
-                  )}
-                </div>
+            <div className="space-y-8">
+              {/* Task Name - Full Width */}
+              <div className="space-y-3">
+                <Label htmlFor="name" className="text-lg font-bold">Task Name</Label>
+                <Input
+                  id="name"
+                  placeholder="e.g., iPhone 16 Release Monitor"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (validationErrors.name) {
+                      setValidationErrors(prev => ({ ...prev, name: "" }));
+                    }
+                  }}
+                  disabled={isLoading}
+                  className={cn("h-14 text-lg", validationErrors.name && "border-destructive")}
+                />
+                {validationErrors.name && (
+                  <p className="text-sm text-destructive flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    {validationErrors.name}
+                  </p>
+                )}
               </div>
 
               {/* Search Query - Full Width */}
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="searchQuery" className="text-base font-semibold flex items-center gap-2">
-                  <Search className="h-4 w-4" />
+              <div className="space-y-3">
+                <Label htmlFor="searchQuery" className="text-lg font-bold flex items-center gap-2">
+                  <Search className="h-5 w-5" />
                   What to Monitor
                 </Label>
                 <Textarea
@@ -469,21 +467,21 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                     }
                   }}
                   disabled={isLoading}
-                  rows={3}
-                  className={cn("text-base resize-none", validationErrors.searchQuery && "border-destructive")}
+                  rows={4}
+                  className={cn("text-lg resize-none leading-relaxed", validationErrors.searchQuery && "border-destructive")}
                 />
                 {validationErrors.searchQuery && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
+                  <p className="text-sm text-destructive flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
                     {validationErrors.searchQuery}
                   </p>
                 )}
               </div>
 
               {/* Condition Description - Full Width */}
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="condition" className="text-base font-semibold flex items-center gap-2">
-                  <Bell className="h-4 w-4" />
+              <div className="space-y-3">
+                <Label htmlFor="condition" className="text-lg font-bold flex items-center gap-2">
+                  <Bell className="h-5 w-5" />
                   When to Notify
                 </Label>
                 <Textarea
@@ -497,78 +495,79 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                     }
                   }}
                   disabled={isLoading}
-                  rows={2}
-                  className={cn("text-base resize-none", validationErrors.conditionDescription && "border-destructive")}
+                  rows={3}
+                  className={cn("text-lg resize-none leading-relaxed", validationErrors.conditionDescription && "border-destructive")}
                 />
                 {validationErrors.conditionDescription && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
+                  <p className="text-sm text-destructive flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
                     {validationErrors.conditionDescription}
                   </p>
                 )}
               </div>
 
-              {/* Schedule - Left Column */}
-              <div className="space-y-2">
-                <Label htmlFor="schedule" className="text-base font-semibold flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Check Frequency
-                </Label>
-                <Select value={schedule} onValueChange={setSchedule} disabled={isLoading}>
-                  <SelectTrigger id="schedule" className="h-12">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SIMPLE_SCHEDULE_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        <span className="mr-2">{option.emoji}</span>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Schedule & Notification - Two Columns */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Schedule - Left Column */}
+                <div className="space-y-3">
+                  <Label htmlFor="schedule" className="text-lg font-bold flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Check Frequency
+                  </Label>
+                  <Select value={schedule} onValueChange={setSchedule} disabled={isLoading}>
+                    <SelectTrigger id="schedule" className="h-14 text-base">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SIMPLE_SCHEDULE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value} className="text-base py-3">
+                          <span className="mr-2 text-lg">{option.emoji}</span>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {/* Notification Behavior - Right Column */}
-              <div className="space-y-2">
-                <Label htmlFor="notifyBehavior" className="text-base font-semibold flex items-center gap-2">
-                  <Bell className="h-4 w-4" />
-                  Notification Mode
-                </Label>
-                <Select
-                  value={notifyBehavior}
-                  onValueChange={(value) => setNotifyBehavior(value as NotifyBehavior)}
-                  disabled={isLoading}
-                >
-                  <SelectTrigger id="notifyBehavior" className="h-12">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {NOTIFY_BEHAVIORS.map((behavior) => (
-                      <SelectItem key={behavior.value} value={behavior.value}>
-                        {behavior.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {/* Notification Behavior - Right Column */}
+                <div className="space-y-3">
+                  <Label htmlFor="notifyBehavior" className="text-lg font-bold flex items-center gap-2">
+                    <Bell className="h-5 w-5" />
+                    Notification Mode
+                  </Label>
+                  <Select
+                    value={notifyBehavior}
+                    onValueChange={(value) => setNotifyBehavior(value as NotifyBehavior)}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger id="notifyBehavior" className="h-14 text-base">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {NOTIFY_BEHAVIORS.map((behavior) => (
+                        <SelectItem key={behavior.value} value={behavior.value} className="text-base py-3">
+                          {behavior.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Info Alert - Full Width */}
-              <div className="md:col-span-2">
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription className="text-sm">
-                    The AI will search the web, analyze results, and notify you when your condition is met.
-                    {' '}<button
-                      type="button"
-                      onClick={handleGoToAdvanced}
-                      className="underline font-medium hover:text-primary"
-                    >
-                      Need advanced settings?
-                    </button>
-                  </AlertDescription>
-                </Alert>
-              </div>
+              <Alert className="border-primary/20 bg-primary/5">
+                <Info className="h-5 w-5 text-primary" />
+                <AlertDescription className="text-base leading-relaxed">
+                  The AI will search the web, analyze results, and notify you when your condition is met.
+                  {' '}<button
+                    type="button"
+                    onClick={handleGoToAdvanced}
+                    className="underline font-semibold hover:text-primary transition-colors"
+                  >
+                    Need advanced settings?
+                  </button>
+                </AlertDescription>
+              </Alert>
             </div>
           )}
 
@@ -923,8 +922,8 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
           )}
 
           {/* NAVIGATION FOOTER */}
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <div className="flex gap-2 flex-1">
+          <DialogFooter className="flex-col sm:flex-row gap-3 pt-6 border-t">
+            <div className="flex gap-3 flex-1">
               {/* Back Button */}
               {(stage === 'edit' || stage === 'advanced') && (
                 <Button
@@ -932,9 +931,9 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                   variant="outline"
                   onClick={stage === 'edit' ? handleBackToSelect : handleAdvancedPrevStep}
                   disabled={isLoading}
-                  className="flex-1 sm:flex-none"
+                  className="flex-1 sm:flex-none h-12 text-base"
                 >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  <ArrowLeft className="mr-2 h-5 w-5" />
                   Back
                 </Button>
               )}
@@ -945,7 +944,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                 variant="outline"
                 onClick={() => onOpenChange(false)}
                 disabled={isLoading}
-                className="flex-1 sm:flex-none"
+                className="flex-1 sm:flex-none h-12 text-base"
               >
                 Cancel
               </Button>
@@ -957,10 +956,10 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                 type="button"
                 onClick={handleCreateTask}
                 disabled={isLoading}
-                className="flex-1 sm:flex-none"
+                className="flex-1 sm:flex-none h-12 text-base px-8"
               >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <CheckCircle2 className="mr-2 h-4 w-4" />
+                {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                <CheckCircle2 className="mr-2 h-5 w-5" />
                 Create Task
               </Button>
             )}
@@ -971,10 +970,10 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                 type="button"
                 onClick={handleAdvancedNextStep}
                 disabled={isLoading}
-                className="flex-1 sm:flex-none"
+                className="flex-1 sm:flex-none h-12 text-base px-8"
               >
                 Continue
-                <ArrowRight className="ml-2 h-4 w-4" />
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             )}
 
@@ -982,10 +981,10 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="flex-1 sm:flex-none"
+                className="flex-1 sm:flex-none h-12 text-base px-8"
               >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <CheckCircle2 className="mr-2 h-4 w-4" />
+                {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                <CheckCircle2 className="mr-2 h-5 w-5" />
                 Create Task
               </Button>
             )}
