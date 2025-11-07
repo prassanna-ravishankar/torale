@@ -20,6 +20,7 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
       firstName: clerkUser.firstName || undefined,
       lastName: clerkUser.lastName || undefined,
       imageUrl: clerkUser.imageUrl,
+      publicMetadata: clerkUser.publicMetadata as { role?: string; [key: string]: any } | undefined,
     }
   }, [clerkUser])
 
