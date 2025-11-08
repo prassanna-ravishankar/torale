@@ -183,13 +183,16 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
     setSelectedTemplateId(templateId);
 
     if (!templateId || templateId === "none") {
-      // Create from scratch - set defaults and go to edit
+      // Create from scratch - set defaults
       setName("");
       setSearchQuery("");
       setConditionDescription("");
       setSchedule("0 9 * * *");
       setNotifyBehavior("track_state");
-      setStage('edit');
+      // Only advance to edit stage if we're in select stage
+      if (stage === 'select') {
+        setStage('edit');
+      }
       return;
     }
 
@@ -200,8 +203,11 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
       setConditionDescription(template.condition_description);
       setSchedule(template.schedule);
       setNotifyBehavior(template.notify_behavior);
-      // Auto-advance to edit stage
-      setStage('edit');
+      // Only auto-advance to edit stage if we're in select stage
+      // In advanced stage, just populate the fields in place
+      if (stage === 'select') {
+        setStage('edit');
+      }
     }
   };
 
@@ -332,13 +338,10 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
         stage === 'advanced' && "max-w-3xl max-h-[85vh]"
       )}>
         <DialogHeader className="space-y-2 pb-4 flex-shrink-0">
-          <DialogTitle className={cn(
-            "text-2xl font-bold tracking-tight",
-            (stage === 'select' || stage === 'advanced') && "flex items-center gap-2"
-          )}>
-            {stage === 'select' && <><Sparkles className="h-6 w-6 text-purple-500" />Choose a Template</>}
+          <DialogTitle className="text-2xl font-bold tracking-tight">
+            {stage === 'select' && "Choose a Template"}
             {stage === 'edit' && "Configure Your Task"}
-            {stage === 'advanced' && <><Sparkles className="h-6 w-6 text-purple-500" />Advanced Settings</>}
+            {stage === 'advanced' && "Advanced Settings"}
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
             {stage === 'select' && "Start with a pre-built template or create from scratch"}
@@ -388,7 +391,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
               <div className="space-y-4">
                 {/* Template Cards Grid */}
                 {templates.length > 0 && (
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {templates.map((template) => {
                       const IconComponent = getTemplateIcon(template.name);
                       return (
