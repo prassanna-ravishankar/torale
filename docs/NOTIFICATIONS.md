@@ -230,6 +230,23 @@ NOVU_VERIFICATION_WORKFLOW_ID=torale-email-verification  # Verification workflow
 
 ### Condition Met Workflow
 
+**Setup Steps:**
+1. Create workflow with identifier: `torale-condition-met`
+2. Add Email channel
+3. **Define payload schema first** (click "Payload" or "Variables" in workflow editor):
+   ```json
+   {
+     "task_name": "string",
+     "search_query": "string",
+     "answer": "string",
+     "change_summary": "string",
+     "grounding_sources": "array",
+     "task_id": "string",
+     "execution_id": "string"
+   }
+   ```
+4. Configure Email step:
+
 **Subject:**
 ```
 {{task_name}} - Condition Met!
@@ -265,6 +282,19 @@ Sent by Torale Monitoring
 
 ### Email Verification Workflow
 
+**Setup Steps:**
+1. Create workflow with identifier: `torale-email-verification`
+2. Add Email channel
+3. **Define payload schema first**:
+   ```json
+   {
+     "code": "string",
+     "user_name": "string",
+     "expires_in_minutes": "number"
+   }
+   ```
+4. Configure Email step:
+
 **Subject:**
 ```
 Verify your email for Torale notifications
@@ -281,3 +311,5 @@ If you didn't request this, ignore this email.
 ---
 Torale
 ```
+
+**Note:** Novu requires you to define payload variables before you can use them in templates. Always set up the payload schema first to avoid "Variable invalid or missing namespace" errors.

@@ -46,15 +46,39 @@ Only needed if you want email notifications via Novu Cloud.
 1. Go to Workflows → Create Workflow
 2. Name: "Torale Condition Met"
 3. Identifier: `torale-condition-met`
-4. Add Email channel
-5. Use template from `docs/NOTIFICATIONS.md`
+4. Click "Add a channel" → Select "Email"
+5. **IMPORTANT:** Define payload schema first (click "Payload" or "Variables" tab):
+   ```json
+   {
+     "task_name": "string",
+     "search_query": "string",
+     "answer": "string",
+     "change_summary": "string",
+     "grounding_sources": "array",
+     "task_id": "string",
+     "execution_id": "string"
+   }
+   ```
+6. Now configure Email step:
+   - Subject: `{{task_name}} - Condition Met!`
+   - Body: Use template from `docs/NOTIFICATIONS.md`
 
 **Create Workflow 2: torale-email-verification**
 1. Go to Workflows → Create Workflow
 2. Name: "Torale Email Verification"
 3. Identifier: `torale-email-verification`
-4. Add Email channel
-5. Use template from `docs/NOTIFICATIONS.md`
+4. Click "Add a channel" → Select "Email"
+5. **IMPORTANT:** Define payload schema first:
+   ```json
+   {
+     "code": "string",
+     "user_name": "string",
+     "expires_in_minutes": "number"
+   }
+   ```
+6. Now configure Email step:
+   - Subject: `Verify your email for Torale notifications`
+   - Body: Use template from `docs/NOTIFICATIONS.md`
 
 ### 5. Test the System
 
