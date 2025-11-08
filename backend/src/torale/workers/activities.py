@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime
 from uuid import UUID
 
@@ -8,6 +9,8 @@ from temporalio import activity
 from torale.core.config import settings
 from torale.core.models import NotifyBehavior, TaskStatus
 from torale.executors import GroundedSearchExecutor
+
+logger = logging.getLogger(__name__)
 
 
 async def get_db_connection():
@@ -24,7 +27,17 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
         task = await conn.fetchrow("SELECT * FROM tasks WHERE id = $1", UUID(task_id))
 
         if not task:
-            raise ValueError(f"Task {task_id} not found")
+            # Task was deleted but schedule still exists (orphaned schedule)
+            # Log warning and return gracefully to avoid retries
+            logger.warning(
+                f"Task {task_id} not found in database (likely deleted). "
+                f"Skipping execution. Schedule should be cleaned up."
+            )
+            return {
+                "status": "skipped",
+                "reason": "task_deleted",
+                "message": f"Task {task_id} was deleted but schedule still exists",
+            }
 
         # Parse config if it's a JSON string
         config = task["config"]

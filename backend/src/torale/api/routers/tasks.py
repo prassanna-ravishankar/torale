@@ -1,4 +1,5 @@
 import json
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,6 +10,8 @@ from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.core.models import Task, TaskCreate, TaskExecution, TaskUpdate
 from torale.workers.workflows import TaskExecutionRequest, TaskExecutionWorkflow
+
+logger = logging.getLogger(__name__)
 
 # Use CurrentUserOrTestUser for all endpoints to support TORALE_NOAUTH testing mode
 # This is safe since all operations are user-scoped anyway
@@ -98,8 +101,10 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
     if task.is_active:
         try:
             client = await get_temporal_client()
+            schedule_id = f"schedule-{task_id}"
+            logger.info(f"Creating Temporal schedule {schedule_id} for task {task_id}")
             await client.create_schedule(
-                id=f"schedule-{task_id}",
+                id=schedule_id,
                 schedule=Schedule(
                     action=ScheduleActionStartWorkflow(
                         TaskExecutionWorkflow.run,
@@ -115,8 +120,10 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
                     spec=ScheduleSpec(cron_expressions=[task.schedule]),
                 ),
             )
+            logger.info(f"Successfully created Temporal schedule {schedule_id}")
         except Exception as e:
             # If schedule creation fails, delete the task and raise error
+            logger.error(f"Failed to create schedule {schedule_id}: {str(e)}")
             await db.execute("DELETE FROM tasks WHERE id = $1", row["id"])
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -232,54 +239,125 @@ async def update_task(
 
     # Handle schedule pause/unpause if is_active changed
     if "is_active" in update_data and update_data["is_active"] != existing["is_active"]:
+        client = await get_temporal_client()
+        schedule_id = f"schedule-{task_id}"
+
         try:
-            client = await get_temporal_client()
-            schedule_handle = client.get_schedule_handle(f"schedule-{task_id}")
+            schedule_handle = client.get_schedule_handle(schedule_id)
 
             if update_data["is_active"]:
                 # Unpause the schedule
+                logger.info(f"Unpausing Temporal schedule {schedule_id}")
                 await schedule_handle.unpause()
+                logger.info(f"Successfully unpaused schedule {schedule_id}")
             else:
                 # Pause the schedule
+                logger.info(f"Pausing Temporal schedule {schedule_id}")
                 await schedule_handle.pause()
-        except Exception:
-            # If schedule doesn't exist, we might need to create it
-            if update_data["is_active"]:
-                try:
-                    await client.create_schedule(
-                        id=f"schedule-{task_id}",
-                        schedule=Schedule(
-                            action=ScheduleActionStartWorkflow(
-                                TaskExecutionWorkflow.run,
-                                TaskExecutionRequest(
-                                    task_id=str(task_id),
-                                    execution_id="",
-                                    user_id=str(user.id),
-                                    task_name=row["name"],
+                logger.info(f"Successfully paused schedule {schedule_id}")
+        except Exception as e:
+            error_msg = str(e).lower()
+
+            # If schedule doesn't exist and task is being activated, create it
+            if "not found" in error_msg or "does not exist" in error_msg:
+                if update_data["is_active"]:
+                    # Schedule doesn't exist, create it
+                    logger.info(f"Schedule {schedule_id} not found, creating new schedule")
+                    try:
+                        await client.create_schedule(
+                            id=schedule_id,
+                            schedule=Schedule(
+                                action=ScheduleActionStartWorkflow(
+                                    TaskExecutionWorkflow.run,
+                                    TaskExecutionRequest(
+                                        task_id=str(task_id),
+                                        execution_id="",
+                                        user_id=str(user.id),
+                                        task_name=row["name"],
+                                    ),
+                                    id=f"scheduled-task-{task_id}",
+                                    task_queue="torale-tasks",
                                 ),
-                                id=f"scheduled-task-{task_id}",
-                                task_queue="torale-tasks",
+                                spec=ScheduleSpec(cron_expressions=[row["schedule"]]),
                             ),
-                            spec=ScheduleSpec(cron_expressions=[row["schedule"]]),
-                        ),
-                    )
-                except Exception:
-                    # Failed to create schedule, but task is already updated
-                    pass
+                        )
+                        logger.info(f"Successfully created schedule {schedule_id}")
+                    except Exception as create_error:
+                        # Failed to create schedule - rollback task update
+                        logger.error(f"Failed to create schedule {schedule_id}: {str(create_error)}")
+                        await db.execute(
+                            "UPDATE tasks SET is_active = $1 WHERE id = $2",
+                            existing["is_active"],
+                            task_id,
+                        )
+                        raise HTTPException(
+                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Failed to create schedule: {str(create_error)}. Task update rolled back.",
+                        ) from create_error
+                else:
+                    # Deactivating task but schedule doesn't exist - that's fine
+                    logger.info(f"Schedule {schedule_id} not found when deactivating task - already deleted")
+            else:
+                # Real error (not "not found") - rollback the task update
+                logger.error(
+                    f"Failed to {'unpause' if update_data['is_active'] else 'pause'} schedule {schedule_id}: {str(e)}"
+                )
+                await db.execute(
+                    "UPDATE tasks SET is_active = $1 WHERE id = $2",
+                    existing["is_active"],
+                    task_id,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to {'unpause' if update_data['is_active'] else 'pause'} schedule: {str(e)}. Task update rolled back.",
+                ) from e
 
     return Task(**parse_task_row(row))
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
+    # Verify task exists and belongs to user first
+    verify_query = """
+        SELECT id FROM tasks
+        WHERE id = $1 AND user_id = $2
+    """
+    task = await db.fetch_one(verify_query, task_id, user.id)
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
     # Delete Temporal schedule first (if it exists)
+    schedule_deleted = False
+    schedule_error = None
+    schedule_id = f"schedule-{task_id}"
+
     try:
         client = await get_temporal_client()
-        schedule_handle = client.get_schedule_handle(f"schedule-{task_id}")
+        schedule_handle = client.get_schedule_handle(schedule_id)
+        logger.info(f"Deleting Temporal schedule {schedule_id} for task {task_id}")
         await schedule_handle.delete()
-    except Exception:
-        # Schedule might not exist or already deleted, continue
-        pass
+        schedule_deleted = True
+        logger.info(f"Successfully deleted schedule {schedule_id}")
+    except Exception as e:
+        # Check if schedule doesn't exist (expected case for inactive tasks)
+        error_msg = str(e).lower()
+        if "not found" in error_msg or "does not exist" in error_msg:
+            logger.info(f"Schedule {schedule_id} not found - already deleted or never existed")
+            schedule_deleted = True  # Schedule doesn't exist, safe to proceed
+        else:
+            logger.error(f"Failed to delete schedule {schedule_id}: {str(e)}")
+            schedule_error = e
+
+    # Only delete from database if schedule was successfully deleted or doesn't exist
+    if not schedule_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete Temporal schedule: {str(schedule_error)}. Task not deleted to prevent orphaned schedule.",
+        ) from schedule_error
 
     # Delete task from database
     query = """
