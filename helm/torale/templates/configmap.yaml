@@ -19,3 +19,6 @@ data:
   # API configuration
   API_URL: {{ printf "https://%s" .Values.domains.api | quote }}
   FRONTEND_URL: {{ printf "https://%s" .Values.domains.frontend | quote }}
+
+  # Platform capacity
+  MAX_USERS: {{ .Values.capacity.maxUsers | quote }}

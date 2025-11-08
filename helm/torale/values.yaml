@@ -179,6 +179,10 @@ temporal:
   namespace: default
   uiUrl: https://cloud.temporal.io
 
+# Platform capacity limit for beta
+capacity:
+  maxUsers: 100
+
 # Ingress configuration
 ingress:
   enabled: true
