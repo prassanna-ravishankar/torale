@@ -77,7 +77,9 @@ jobs:
           tags: |
             gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:${{ env.IMAGE_TAG }}
             gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:latest
-          cache-from: type=gha
+          cache-from: |
+            type=gha
+            type=registry,ref=gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:latest
           cache-to: type=gha,mode=max
 
       # Tag worker image (same build as api)
