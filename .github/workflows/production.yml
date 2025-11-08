@@ -74,6 +74,9 @@ jobs:
           file: ${{ matrix.dockerfile }}
           push: true
           provenance: false  # Prevent manifest list creation that breaks tagging with GHA cache
+          build-args: |
+            ${{ matrix.component == 'frontend' && format('VITE_CLERK_PUBLISHABLE_KEY={0}', secrets.CLERK_PUBLISHABLE_KEY) || '' }}
+            ${{ matrix.component == 'frontend' && 'VITE_API_BASE_URL=https://api.torale.ai' || '' }}
           tags: |
             gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:${{ env.IMAGE_TAG }}
             gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:latest
