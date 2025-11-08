@@ -392,9 +392,9 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
             {stage === 'select' && (
               <>
                 {/* Scrollable Templates Area */}
-                <div className="flex-1 overflow-y-auto min-h-0 p-1">
+                <div className="flex-1 overflow-y-auto min-h-0 p-1 pb-20 sm:pb-4">
                   {templates.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {templates.map((template) => {
                         const IconComponent = getTemplateIcon(template.name);
                         return (
@@ -426,15 +426,15 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                   )}
                 </div>
 
-                {/* Fixed "Start from Scratch" Button */}
-                <div className="flex-shrink-0 p-1 pt-4 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                {/* Fixed "Start from Scratch" Button - Sticky on mobile */}
+                <div className="flex-shrink-0 p-3 pt-4 border-t bg-background sm:bg-background/95 sm:backdrop-blur sm:supports-[backdrop-filter]:bg-background/60 sticky sm:relative bottom-0 sm:bottom-auto shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] sm:shadow-none">
                   <div className="flex items-center gap-3">
                     <Separator className="flex-1" />
                     <Button
                       type="button"
                       variant="ghost"
                       onClick={() => handleTemplateSelect("none")}
-                      className="gap-2 text-muted-foreground hover:text-primary"
+                      className="gap-2 text-muted-foreground hover:text-primary whitespace-nowrap"
                     >
                       <Sparkles className="h-4 w-4" />
                       <span className="text-sm">Or start from scratch</span>
