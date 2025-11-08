@@ -45,7 +45,7 @@ spec:
         - |
           set -e
           echo "Waiting for Cloud SQL proxy..."
-          until nc -z localhost {{ .Values.database.port }} 2>/dev/null; do
+          until pg_isready -h localhost -p {{ .Values.database.port }} 2>/dev/null; do
             echo "Cloud SQL proxy not ready yet..."
             sleep 2
           done
