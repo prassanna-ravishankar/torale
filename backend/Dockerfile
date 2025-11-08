@@ -34,9 +34,6 @@ COPY . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
-# Make entrypoint executable
-RUN chmod +x docker-entrypoint.sh
-
 # ---- RUNTIME CONFIGURATION ----
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"

@@ -58,6 +58,40 @@ services:
       timeout: 5s
       retries: 5
 
+  # ============================================
+  # Database Migrations (Init Container Pattern)
+  # ============================================
+  # Mirrors production Kubernetes Job approach
+  # Runs once before API container starts
+
+  init-migrations:
+    build: ./backend
+    environment:
+      - DATABASE_URL=postgresql://torale:torale@postgres:5432/torale
+      - SECRET_KEY=${SECRET_KEY}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - CLERK_PUBLISHABLE_KEY=${CLERK_PUBLISHABLE_KEY}
+    command:
+      - /bin/bash
+      - -c
+      - |
+        set -e
+        echo "Waiting for postgres..."
+        while ! pg_isready -h postgres -p 5432 -U torale; do
+          sleep 1
+        done
+        echo "Running database migrations..."
+        alembic upgrade head
+        echo "Migrations completed successfully!"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ============================================
+  # Torale API (Local Development)
+  # ============================================
+  # Production uses GKE with Cloud SQL
+
   api:
     build: ./backend
     ports:
@@ -76,10 +110,9 @@ services:
       - TORALE_NOAUTH=${TORALE_NOAUTH:-0}
       - MAX_USERS=${MAX_USERS:-100}
     depends_on:
-      postgres:
-        condition: service_healthy
-    entrypoint: ["/app/docker-entrypoint.sh"]
-    command: ["uvicorn", "torale.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+      init-migrations:
+        condition: service_completed_successfully
+    command: ["uvicorn", "torale.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     volumes:
       - ./backend/src:/app/src
 

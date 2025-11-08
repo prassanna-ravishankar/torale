@@ -509,21 +509,26 @@ GCP_REGION=us-central1
 
 ## Database Migration Architecture
 
+### Unified Init Container Pattern
+
+**Both local and production use the same pattern**: migrations run in a separate container/job **before** the application starts.
+
+**Why Init Container/Job Pattern?**
+
+We use separate migration containers (not entrypoint scripts) because:
+- **Separation of Concerns**: Migrations are separate from application startup, making failures easier to diagnose
+- **Single Execution**: Runs once before application containers start (avoiding race conditions with multiple replicas)
+- **Explicit Dependencies**: Clear dependency chain shows that database must be migrated before app starts
+- **Failure Handling**: Migration failures prevent application from starting, ensuring database schema matches code
+
 ### Production: Kubernetes Job with Helm Hooks
-
-**Why Kubernetes Job?**
-
-We use a Kubernetes Job (not init containers or entrypoint) because:
-- **Cloud SQL Proxy Timing**: Init containers run before ALL containers, including sidecars. The Cloud SQL Proxy is a sidecar container, so it's not available during init phase.
-- **Separation of Concerns**: Migrations are separate from application startup, making failures easier to diagnose.
-- **Single Execution**: Job runs once per deployment, not per pod replica (avoiding race conditions).
-- **Helm Orchestration**: Pre-install/pre-upgrade hooks guarantee migrations complete before pods start.
 
 **Implementation:**
 - **Template**: `helm/torale/templates/migration-job.yaml`
 - **Helm Hooks**: `pre-install,pre-upgrade` with weight `-5`
 - **Containers**: Migration container + Cloud SQL Proxy sidecar
-- **Command**: Waits for proxy, then runs `alembic upgrade head`
+- **Command**: Waits for proxy → `alembic upgrade head`
+- **Why Job not Pod Init Container**: Kubernetes init containers run before ALL containers including sidecars, but we need the Cloud SQL Proxy sidecar running
 
 **Verification:**
 ```bash
@@ -538,17 +543,25 @@ kubectl exec -n torale deploy/torale-api -- alembic current
 kubectl exec -n torale deploy/torale-api -- alembic history
 ```
 
-### Local Development: docker-entrypoint.sh
+### Local Development: Init Container
 
 **Implementation:**
-- **File**: `backend/docker-entrypoint.sh`
-- **Triggered by**: `docker-compose.yml` sets `entrypoint: ["/app/docker-entrypoint.sh"]`
-- **Process**: Waits for postgres → runs `alembic upgrade head` → starts app
+- **Service**: `init-migrations` in `docker-compose.yml`
+- **Dependency Chain**: `postgres (healthy) → init-migrations (completed) → api (starts)`
+- **Command**: Waits for postgres → `alembic upgrade head`
+- **Pattern**: Mirrors production approach for consistency
 
-**Why Different from Production?**
-- Local uses direct postgres connection (no Cloud SQL Proxy sidecar needed)
-- Simpler to run migrations on API container startup
-- No need for separate Job resource in local docker-compose
+**Verification:**
+```bash
+# Migrations run automatically on docker-compose up
+docker compose up -d
+
+# Check migration logs
+docker compose logs init-migrations
+
+# Verify current migration version
+docker compose exec api alembic current
+```
 
 ### Migration Best Practices
 
@@ -580,10 +593,16 @@ git push origin main
 
 ### Troubleshooting
 
+**Local:**
 - **Out of sync?** Never manually edit alembic_version table - use `alembic stamp`
 - **Missing templates?** Run `just down-v && just dev-all` for fresh local start
-- **Production migration failed?** Check `kubectl logs -n torale job/torale-migrations`
+- **Migration failed?** Check `docker compose logs init-migrations`
+- **Need to re-run?** `docker compose down && docker compose up -d` (init container runs fresh)
+
+**Production:**
+- **Migration failed?** Check `kubectl logs -n torale job/torale-migrations`
 - **Migration job not running?** Verify Helm hooks: `kubectl get jobs -n torale -o yaml | grep "helm.sh/hook"`
+- **Need current version?** `kubectl exec -n torale deploy/torale-api -- alembic current`
 
 ## MVP Success Criteria
 ✅ Users can create monitoring tasks via API/CLI
