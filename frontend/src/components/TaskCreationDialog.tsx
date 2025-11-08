@@ -40,7 +40,13 @@ import {
   AlertCircle,
   Zap,
   Eye,
-  RotateCcw
+  RotateCcw,
+  Music,
+  Waves,
+  Gamepad2,
+  Code2,
+  Bot,
+  Cpu
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from 'sonner';
@@ -53,6 +59,18 @@ interface TaskCreationDialogProps {
 }
 
 type DialogStage = 'select' | 'edit' | 'advanced';
+
+// Map template names to lucide icons
+const getTemplateIcon = (templateName: string) => {
+  const name = templateName.toLowerCase();
+  if (name.includes('concert') || name.includes('ticket') || name.includes('music')) return Music;
+  if (name.includes('swimming') || name.includes('pool') || name.includes('summer')) return Waves;
+  if (name.includes('ps5') || name.includes('playstation') || name.includes('stock')) return Gamepad2;
+  if (name.includes('framework') || name.includes('react') || name.includes('code')) return Code2;
+  if (name.includes('ai') || name.includes('gpt') || name.includes('model') || name.includes('robot')) return Bot;
+  if (name.includes('gpu') || name.includes('graphics') || name.includes('cpu') || name.includes('nvidia')) return Cpu;
+  return Sparkles; // default fallback
+};
 
 const SIMPLE_SCHEDULE_OPTIONS = [
   { value: "*/30 * * * *", label: "Every 30 minutes", emoji: "⚡" },
@@ -368,32 +386,33 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                 {/* Template Cards Grid */}
                 {templates.length > 0 && (
                   <div className="grid grid-cols-3 gap-3">
-                    {templates.map((template) => (
-                      <Card
-                        key={template.id}
-                        className="cursor-pointer transition-all duration-200 hover:border-primary hover:shadow-sm group relative overflow-hidden"
-                        onClick={() => handleTemplateSelect(template.id)}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <CardHeader className="p-3 relative">
-                          <div className="flex items-center gap-2">
-                            {template.icon && (
-                              <span className="text-xl flex-shrink-0 leading-none">
-                                {template.icon}
-                              </span>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <CardTitle className="text-sm font-semibold group-hover:text-primary transition-colors leading-tight mb-0.5">
-                                {template.name}
-                              </CardTitle>
-                              <CardDescription className="text-[10px] leading-snug text-muted-foreground/70 line-clamp-2">
-                                {template.description}
-                              </CardDescription>
+                    {templates.map((template) => {
+                      const IconComponent = getTemplateIcon(template.name);
+                      return (
+                        <Card
+                          key={template.id}
+                          className="cursor-pointer transition-all duration-200 hover:border-primary hover:shadow-sm group relative overflow-hidden"
+                          onClick={() => handleTemplateSelect(template.id)}
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <CardHeader className="p-3 relative">
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/15 transition-colors">
+                                <IconComponent className="h-4 w-4 text-primary" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <CardTitle className="text-sm font-semibold group-hover:text-primary transition-colors leading-tight mb-0.5">
+                                  {template.name}
+                                </CardTitle>
+                                <CardDescription className="text-[10px] leading-snug text-muted-foreground/70 line-clamp-2">
+                                  {template.description}
+                                </CardDescription>
+                              </div>
                             </div>
-                          </div>
-                        </CardHeader>
-                      </Card>
-                    ))}
+                          </CardHeader>
+                        </Card>
+                      );
+                    })}
                   </div>
                 )}
 
