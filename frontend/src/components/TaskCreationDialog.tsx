@@ -60,33 +60,37 @@ interface TaskCreationDialogProps {
 
 type DialogStage = 'select' | 'edit' | 'advanced';
 
-// Map template names to lucide icons
+// Icon mapping for templates
+const iconMappings = [
+  { keywords: ['concert', 'ticket', 'music'], icon: Music },
+  { keywords: ['swimming', 'pool', 'summer'], icon: Waves },
+  { keywords: ['ps5', 'playstation', 'stock'], icon: Gamepad2 },
+  { keywords: ['framework', 'react', 'code'], icon: Code2 },
+  { keywords: ['ai', 'gpt', 'model', 'robot'], icon: Bot },
+  { keywords: ['gpu', 'graphics', 'cpu', 'nvidia'], icon: Cpu },
+];
+
 const getTemplateIcon = (templateName: string) => {
   const name = templateName.toLowerCase();
-  if (name.includes('concert') || name.includes('ticket') || name.includes('music')) return Music;
-  if (name.includes('swimming') || name.includes('pool') || name.includes('summer')) return Waves;
-  if (name.includes('ps5') || name.includes('playstation') || name.includes('stock')) return Gamepad2;
-  if (name.includes('framework') || name.includes('react') || name.includes('code')) return Code2;
-  if (name.includes('ai') || name.includes('gpt') || name.includes('model') || name.includes('robot')) return Bot;
-  if (name.includes('gpu') || name.includes('graphics') || name.includes('cpu') || name.includes('nvidia')) return Cpu;
-  return Sparkles; // default fallback
+  const mapping = iconMappings.find(m => m.keywords.some(k => name.includes(k)));
+  return mapping ? mapping.icon : Sparkles;
 };
 
 const SIMPLE_SCHEDULE_OPTIONS = [
-  { value: "*/30 * * * *", label: "Every 30 minutes", emoji: "⚡" },
-  { value: "0 */6 * * *", label: "Every 6 hours", emoji: "🕐" },
-  { value: "0 9 * * *", label: "Daily at 9:00 AM", emoji: "☀️" },
-  { value: "0 12 * * *", label: "Daily at noon", emoji: "🌞" },
-  { value: "0 8 * * 1", label: "Weekly on Monday", emoji: "📅" },
+  { value: "*/30 * * * *", label: "Every 30 minutes", icon: Zap },
+  { value: "0 */6 * * *", label: "Every 6 hours", icon: Clock },
+  { value: "0 9 * * *", label: "Daily at 9:00 AM", icon: Clock },
+  { value: "0 12 * * *", label: "Daily at noon", icon: Clock },
+  { value: "0 8 * * 1", label: "Weekly on Monday", icon: Clock },
 ];
 
 const ADVANCED_SCHEDULE_OPTIONS = [
-  { value: "*/30 * * * *", label: "Every 30 minutes", icon: Zap, description: "High frequency" },
-  { value: "0 */6 * * *", label: "Every 6 hours", icon: Clock, description: "Regular checks" },
-  { value: "0 9 * * *", label: "Daily at 9:00 AM", icon: Clock, description: "Morning updates" },
-  { value: "0 12 * * *", label: "Daily at noon", icon: Clock, description: "Midday checks" },
-  { value: "0 8 * * 1", label: "Weekly on Monday", icon: Clock, description: "Weekly summary" },
-  { value: "0 0 * * 0", label: "Weekly on Sunday", icon: Clock, description: "Weekly review" },
+  { value: "*/30 * * * *", label: "Every 30 minutes", icon: Zap, description: "High frequency", nextCheck: "in 30 minutes" },
+  { value: "0 */6 * * *", label: "Every 6 hours", icon: Clock, description: "Regular checks", nextCheck: "in 6 hours" },
+  { value: "0 9 * * *", label: "Daily at 9:00 AM", icon: Clock, description: "Morning updates", nextCheck: "tomorrow at 9:00 AM" },
+  { value: "0 12 * * *", label: "Daily at noon", icon: Clock, description: "Midday checks", nextCheck: "tomorrow at noon" },
+  { value: "0 8 * * 1", label: "Weekly on Monday", icon: Clock, description: "Weekly summary", nextCheck: "next Monday at 8:00 AM" },
+  { value: "0 0 * * 0", label: "Weekly on Sunday", icon: Clock, description: "Weekly review", nextCheck: "next Sunday at midnight" },
 ];
 
 const NOTIFY_BEHAVIORS = [
@@ -117,6 +121,10 @@ const EXAMPLE_QUERIES = [
   { query: "When is the next iPhone being released?", condition: "A specific release date is announced" },
   { query: "Is PlayStation 5 in stock at Best Buy?", condition: "The console is available for purchase" },
 ];
+
+const MIN_NAME_LENGTH = 3;
+const MIN_SEARCH_QUERY_LENGTH = 10;
+const MIN_CONDITION_DESCRIPTION_LENGTH = 10;
 
 export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   open,
@@ -203,19 +211,19 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
 
     if (!name.trim()) {
       errors.name = "Task name is required";
-    } else if (name.length < 3) {
-      errors.name = "Task name must be at least 3 characters";
+    } else if (name.length < MIN_NAME_LENGTH) {
+      errors.name = `Task name must be at least ${MIN_NAME_LENGTH} characters`;
     }
 
     if (!searchQuery.trim()) {
       errors.searchQuery = "Search query is required";
-    } else if (searchQuery.length < 10) {
+    } else if (searchQuery.length < MIN_SEARCH_QUERY_LENGTH) {
       errors.searchQuery = "Please provide a more specific search query";
     }
 
     if (!conditionDescription.trim()) {
       errors.conditionDescription = "Trigger condition is required";
-    } else if (conditionDescription.length < 10) {
+    } else if (conditionDescription.length < MIN_CONDITION_DESCRIPTION_LENGTH) {
       errors.conditionDescription = "Please provide a more specific condition";
     }
 
@@ -263,13 +271,8 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   };
 
   const getNextCheckTime = (cronExpression: string): string => {
-    if (cronExpression === "*/30 * * * *") return "in 30 minutes";
-    if (cronExpression === "0 */6 * * *") return "in 6 hours";
-    if (cronExpression === "0 9 * * *") return "tomorrow at 9:00 AM";
-    if (cronExpression === "0 12 * * *") return "tomorrow at noon";
-    if (cronExpression === "0 8 * * 1") return "next Monday at 8:00 AM";
-    if (cronExpression === "0 0 * * 0") return "next Sunday at midnight";
-    return "based on your schedule";
+    const option = ADVANCED_SCHEDULE_OPTIONS.find(opt => opt.value === cronExpression);
+    return option?.nextCheck || "based on your schedule";
   };
 
   // Task creation
@@ -529,12 +532,17 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {SIMPLE_SCHEDULE_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value} className="text-sm">
-                            <span className="mr-2">{option.emoji}</span>
-                            {option.label}
-                          </SelectItem>
-                        ))}
+                        {SIMPLE_SCHEDULE_OPTIONS.map((option) => {
+                          const IconComponent = option.icon;
+                          return (
+                            <SelectItem key={option.value} value={option.value} className="text-sm">
+                              <div className="flex items-center gap-2">
+                                <IconComponent className="h-4 w-4" />
+                                {option.label}
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
@@ -612,12 +620,17 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                           return Object.entries(grouped).map(([category, categoryTemplates]) => (
                             <SelectGroup key={category}>
                               <SelectLabel>{category}</SelectLabel>
-                              {categoryTemplates.map((template) => (
-                                <SelectItem key={template.id} value={template.id}>
-                                  {template.icon && `${template.icon} `}
-                                  {template.name}
-                                </SelectItem>
-                              ))}
+                              {categoryTemplates.map((template) => {
+                                const IconComponent = getTemplateIcon(template.name);
+                                return (
+                                  <SelectItem key={template.id} value={template.id}>
+                                    <div className="flex items-center gap-2">
+                                      <IconComponent className="h-4 w-4" />
+                                      {template.name}
+                                    </div>
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectGroup>
                           ));
                         })()}
