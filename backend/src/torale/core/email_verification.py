@@ -163,17 +163,34 @@ class EmailVerificationService:
 
     @staticmethod
     async def is_email_verified(conn, user_id: str, email: str) -> bool:
-        """Check if email is verified for user."""
-        result = await conn.fetchval(
+        """
+        Check if email is verified for user.
+
+        Auto-verifies Clerk email (from users.email field).
+        Also checks verified_notification_emails array for custom emails.
+        """
+        result = await conn.fetchrow(
             """
-            SELECT $1 = ANY(COALESCE(verified_notification_emails, ARRAY[]::TEXT[]))
+            SELECT
+                email AS clerk_email,
+                $1 = ANY(COALESCE(verified_notification_emails, ARRAY[]::TEXT[]))
+                    AS in_verified_array
             FROM users
             WHERE id = $2
             """,
             email,
             UUID(user_id),
         )
-        return result or False
+
+        if not result:
+            return False
+
+        # Clerk email is always verified
+        if email == result["clerk_email"]:
+            return True
+
+        # Check verified array for custom emails
+        return result["in_verified_array"] or False
 
     @staticmethod
     async def check_spam_limits(

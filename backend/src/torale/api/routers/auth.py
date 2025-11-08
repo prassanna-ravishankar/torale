@@ -41,15 +41,40 @@ async def sync_user(
     existing_user = result.scalar_one_or_none()
 
     if existing_user:
-        # Update email if changed
+        # Update email if changed and update verified_notification_emails array
         if existing_user.email != clerk_user.email:
+            old_email = existing_user.email
+            new_email = clerk_user.email
+
+            # Update email and verified_notification_emails array
+            # Remove old Clerk email, add new Clerk email
             await session.execute(
-                update(User)
-                .where(User.id == existing_user.id)
-                .values(
-                    email=clerk_user.email,
-                    updated_at=datetime.now(UTC),
-                )
+                text("""
+                    UPDATE users
+                    SET email = :new_email,
+                        updated_at = :now,
+                        verified_notification_emails = (
+                            -- Remove old email from array
+                            array_remove(
+                                COALESCE(verified_notification_emails, ARRAY[]::TEXT[]),
+                                :old_email
+                            )
+                            ||
+                            -- Add new email if not already present
+                            CASE
+                                WHEN :new_email = ANY(COALESCE(verified_notification_emails, ARRAY[]::TEXT[]))
+                                THEN ARRAY[]::TEXT[]
+                                ELSE ARRAY[:new_email]::TEXT[]
+                            END
+                        )
+                    WHERE id = :user_id
+                """),
+                {
+                    "user_id": existing_user.id,
+                    "old_email": old_email,
+                    "new_email": new_email,
+                    "now": datetime.now(UTC),
+                },
             )
             await session.commit()
             await session.refresh(existing_user)
@@ -59,15 +84,32 @@ async def sync_user(
             created=False,
         )
 
-    # Create new user
-    new_user = User(
-        clerk_user_id=clerk_user.clerk_user_id,
-        email=clerk_user.email,
-        is_active=True,
+    # Create new user with Clerk email auto-verified
+    new_user_id = uuid.uuid4()
+    await session.execute(
+        text("""
+            INSERT INTO users (
+                id, clerk_user_id, email, is_active,
+                verified_notification_emails, created_at, updated_at
+            )
+            VALUES (
+                :id, :clerk_user_id, :email, :is_active,
+                ARRAY[:email]::TEXT[], :now, :now
+            )
+        """),
+        {
+            "id": new_user_id,
+            "clerk_user_id": clerk_user.clerk_user_id,
+            "email": clerk_user.email,
+            "is_active": True,
+            "now": datetime.now(UTC),
+        },
     )
-    session.add(new_user)
     await session.commit()
-    await session.refresh(new_user)
+
+    # Fetch created user
+    result = await session.execute(select(User).where(User.id == new_user_id))
+    new_user = result.scalar_one()
 
     return SyncUserResponse(
         user=UserRead.model_validate(new_user),

@@ -1,7 +1,7 @@
 """add email verification and webhooks
 
 Revision ID: a1b2c3d4e5f6
-Revises: c9da50682126
+Revises: 7468642f6abd
 Create Date: 2025-11-07 22:30:00.000000
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "a1b2c3d4e5f6"
-down_revision: str | Sequence[str] | None = "c9da50682126"
+down_revision: str | Sequence[str] | None = "7468642f6abd"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
