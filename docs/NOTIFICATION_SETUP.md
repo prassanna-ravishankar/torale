@@ -60,8 +60,8 @@ Only needed if you want email notifications via Novu Cloud.
    }
    ```
 6. Now configure Email step:
-   - Subject: `{{task_name}} - Condition Met!`
-   - Body: Use template from `docs/NOTIFICATIONS.md`
+   - Subject: `{{payload.task_name}} - Condition Met!`
+   - Body: Use template from `docs/NOTIFICATIONS.md` (remember to use `{{payload.variable_name}}` syntax)
 
 **Create Workflow 2: torale-email-verification**
 1. Go to Workflows → Create Workflow
@@ -78,7 +78,7 @@ Only needed if you want email notifications via Novu Cloud.
    ```
 6. Now configure Email step:
    - Subject: `Verify your email for Torale notifications`
-   - Body: Use template from `docs/NOTIFICATIONS.md`
+   - Body: Use template from `docs/NOTIFICATIONS.md` (remember to use `{{payload.variable_name}}` syntax)
 
 ### 5. Test the System
 

@@ -249,32 +249,32 @@ NOVU_VERIFICATION_WORKFLOW_ID=torale-email-verification  # Verification workflow
 
 **Subject:**
 ```
-{{task_name}} - Condition Met!
+{{payload.task_name}} - Condition Met!
 ```
 
 **Body:**
 ```
 Hi there!
 
-Your Torale monitoring task "{{task_name}}" has detected a match.
+Your Torale monitoring task "{{payload.task_name}}" has detected a match.
 
 **What you asked:**
-{{search_query}}
+{{payload.search_query}}
 
 **What we found:**
-{{answer}}
+{{payload.answer}}
 
-{% if change_summary %}
+{% if payload.change_summary %}
 **What changed:**
-{{change_summary}}
+{{payload.change_summary}}
 {% endif %}
 
 **Sources:**
-{% for source in grounding_sources %}
+{% for source in payload.grounding_sources %}
 - {{source.title}}: {{source.uri}}
 {% endfor %}
 
-View details: https://torale.ai/tasks/{{task_id}}
+View details: https://torale.ai/tasks/{{payload.task_id}}
 
 ---
 Sent by Torale Monitoring
@@ -302,9 +302,9 @@ Verify your email for Torale notifications
 
 **Body:**
 ```
-Your verification code is: {{code}}
+Your verification code is: {{payload.code}}
 
-This code expires in {{expires_in_minutes}} minutes.
+This code expires in {{payload.expires_in_minutes}} minutes.
 
 If you didn't request this, ignore this email.
 
