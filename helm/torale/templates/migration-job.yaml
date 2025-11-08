@@ -24,6 +24,10 @@ spec:
     spec:
       # Don't restart on failure - let Helm handle retry
       restartPolicy: Never
+      # Share process namespace so migration container can signal proxy to exit
+      shareProcessNamespace: true
+      # Give proxy time to close connections gracefully
+      terminationGracePeriodSeconds: 20
       serviceAccountName: {{ include "torale.serviceAccountName" . }}
       {{- with .Values.api.nodeSelector }}
       nodeSelector:
@@ -54,6 +58,11 @@ spec:
           echo "Running database migrations..."
           alembic upgrade head
           echo "Migrations completed successfully!"
+
+          # Signal Cloud SQL Proxy sidecar to exit (via shared process namespace)
+          echo "Signaling Cloud SQL Proxy to terminate..."
+          pkill -TERM -f cloud-sql-proxy || true
+          sleep 2
         env:
         - name: DATABASE_URL
           value: {{ include "torale.databaseUrl" . | quote }}
