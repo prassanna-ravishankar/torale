@@ -16,10 +16,6 @@ metadata:
 spec:
   # Don't keep successful jobs around
   ttlSecondsAfterFinished: 60
-  # Kill job after 5 minutes (migrations should complete in ~10 seconds)
-  activeDeadlineSeconds: 300
-  # Don't retry on failure - migrations are idempotent
-  backoffLimit: 0
   template:
     metadata:
       labels:
@@ -28,6 +24,10 @@ spec:
     spec:
       # Don't restart on failure
       restartPolicy: Never
+      # Share process namespace so migration container can signal proxy
+      shareProcessNamespace: true
+      # Give proxy time to shutdown gracefully on SIGTERM
+      terminationGracePeriodSeconds: 20
       serviceAccountName: {{ include "torale.serviceAccountName" . }}
       {{- with .Values.api.nodeSelector }}
       nodeSelector:
@@ -49,20 +49,22 @@ spec:
         - |
           set -e
           echo "Waiting for Cloud SQL proxy..."
-          until pg_isready -h localhost -p {{ .Values.database.port }} 2>/dev/null; do
-            echo "Cloud SQL proxy not ready yet..."
-            sleep 2
+          # Wait for proxy to be ready (retry for 30 seconds)
+          for i in $(seq 1 30); do
+            (</dev/tcp/127.0.0.1/{{ .Values.database.port }}) 2>/dev/null && break || sleep 1
           done
           echo "Cloud SQL proxy is ready!"
-          sleep 2
+
           echo "Running database migrations..."
           alembic upgrade head
           echo "Migrations completed successfully!"
-          echo "Job will be terminated by activeDeadlineSeconds after success"
 
-          # Sleep to keep container alive until activeDeadlineSeconds kills the job
-          # This allows checking logs before cleanup
-          sleep infinity
+          # Signal Cloud SQL Proxy to shutdown gracefully (SIGTERM → exit 0)
+          echo "Signaling Cloud SQL Proxy to terminate..."
+          pkill -TERM cloud-sql-proxy || true
+
+          # Ensure main container exits with code 0
+          exit 0
         env:
         - name: DATABASE_URL
           value: {{ include "torale.databaseUrl" . | quote }}
