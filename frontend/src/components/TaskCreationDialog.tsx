@@ -333,7 +333,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
         "overflow-hidden flex flex-col",
-        stage === 'select' && "max-w-5xl",
+        stage === 'select' && "max-w-5xl max-h-[85vh]",
         stage === 'edit' && "max-w-4xl max-h-[85vh]",
         stage === 'advanced' && "max-w-3xl max-h-[85vh]"
       )}>
@@ -385,58 +385,64 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
         )}
 
         <div className="flex-1 overflow-y-auto min-h-0">
-          <form onSubmit={handleSubmit} className="space-y-6 p-1">
+          <form onSubmit={handleSubmit} className={cn(
+            stage === 'select' ? "flex flex-col h-full" : "space-y-6 p-1"
+          )}>
             {/* STAGE 1: TEMPLATE SELECTION */}
             {stage === 'select' && (
-              <div className="space-y-4">
-                {/* Template Cards Grid */}
-                {templates.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {templates.map((template) => {
-                      const IconComponent = getTemplateIcon(template.name);
-                      return (
-                        <Card
-                          key={template.id}
-                          className="cursor-pointer transition-all duration-200 hover:border-primary hover:shadow-sm group relative overflow-hidden"
-                          onClick={() => handleTemplateSelect(template.id)}
-                        >
-                          <div className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <CardHeader className="p-3 relative">
-                            <div className="flex items-center gap-2.5">
-                              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/15 transition-colors">
-                                <IconComponent className="h-4 w-4 text-primary" />
+              <>
+                {/* Scrollable Templates Area */}
+                <div className="flex-1 overflow-y-auto min-h-0 p-1 pb-20 sm:pb-4">
+                  {templates.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {templates.map((template) => {
+                        const IconComponent = getTemplateIcon(template.name);
+                        return (
+                          <Card
+                            key={template.id}
+                            className="cursor-pointer transition-all duration-200 hover:border-primary hover:shadow-sm group relative overflow-hidden"
+                            onClick={() => handleTemplateSelect(template.id)}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <CardHeader className="p-3 relative">
+                              <div className="flex items-center gap-2.5">
+                                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/15 transition-colors">
+                                  <IconComponent className="h-4 w-4 text-primary" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <CardTitle className="text-sm font-semibold group-hover:text-primary transition-colors leading-tight mb-0.5">
+                                    {template.name}
+                                  </CardTitle>
+                                  <CardDescription className="text-[10px] leading-snug text-muted-foreground/70 line-clamp-2">
+                                    {template.description}
+                                  </CardDescription>
+                                </div>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <CardTitle className="text-sm font-semibold group-hover:text-primary transition-colors leading-tight mb-0.5">
-                                  {template.name}
-                                </CardTitle>
-                                <CardDescription className="text-[10px] leading-snug text-muted-foreground/70 line-clamp-2">
-                                  {template.description}
-                                </CardDescription>
-                              </div>
-                            </div>
-                          </CardHeader>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Create from Scratch Option */}
-                <div className="flex items-center gap-3">
-                  <Separator className="flex-1" />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => handleTemplateSelect("none")}
-                    className="gap-2 text-muted-foreground hover:text-primary"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    <span className="text-sm">Or start from scratch</span>
-                  </Button>
-                  <Separator className="flex-1" />
+                            </CardHeader>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
+
+                {/* Fixed "Start from Scratch" Button - Sticky on mobile */}
+                <div className="flex-shrink-0 p-3 pt-4 border-t bg-background sm:bg-background/95 sm:backdrop-blur sm:supports-[backdrop-filter]:bg-background/60 sticky sm:relative bottom-0 sm:bottom-auto shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] sm:shadow-none">
+                  <div className="flex items-center gap-3">
+                    <Separator className="flex-1" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => handleTemplateSelect("none")}
+                      className="gap-2 text-muted-foreground hover:text-primary whitespace-nowrap"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      <span className="text-sm">Or start from scratch</span>
+                    </Button>
+                    <Separator className="flex-1" />
+                  </div>
+                </div>
+              </>
             )}
 
             {/* STAGE 2: EDIT/REVIEW */}
