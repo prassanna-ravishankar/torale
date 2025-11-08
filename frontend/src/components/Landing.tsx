@@ -54,9 +54,9 @@ export default function Landing() {
     // Fetch available user slots from public API
     const fetchCapacity = async () => {
       try {
-        const apiUrl = import.meta.env.VITE_API_BASE_URL;
+        const apiUrl = window.CONFIG?.apiUrl || import.meta.env.VITE_API_BASE_URL;
         if (!apiUrl) {
-          console.error("VITE_API_BASE_URL is not set");
+          console.error("API URL is not set");
           return;
         }
         const response = await fetch(`${apiUrl}/public/stats`);
