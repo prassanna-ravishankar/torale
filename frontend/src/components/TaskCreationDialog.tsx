@@ -719,9 +719,9 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                   <div className="space-y-2">
                     <p className="text-sm font-medium">Example queries:</p>
                     <div className="flex flex-wrap gap-2">
-                      {EXAMPLE_QUERIES.map((example, idx) => (
+                      {EXAMPLE_QUERIES.map((example) => (
                         <Button
-                          key={idx}
+                          key={example.query}
                           type="button"
                           variant="outline"
                           size="sm"
