@@ -24,10 +24,6 @@ spec:
     spec:
       # Don't restart on failure
       restartPolicy: Never
-      # Share process namespace so migration container can signal proxy
-      shareProcessNamespace: true
-      # Give proxy time to shutdown gracefully on SIGTERM
-      terminationGracePeriodSeconds: 20
       serviceAccountName: {{ include "torale.serviceAccountName" . }}
       {{- with .Values.api.nodeSelector }}
       nodeSelector:
@@ -59,18 +55,11 @@ spec:
           alembic upgrade head
           echo "Migrations completed successfully!"
 
-          # Signal Cloud SQL Proxy to shutdown gracefully (SIGTERM → exit 0)
+          # Signal Cloud SQL Proxy to shutdown via quitquitquit endpoint
           echo "Signaling Cloud SQL Proxy to terminate..."
-          pkill -TERM cloud-sql-proxy || true
+          curl -X POST http://localhost:9091/quitquitquit || true
 
-          # Wait for proxy process to actually exit (not just start shutting down)
-          echo "Waiting for proxy to exit..."
-          while pgrep -f cloud-sql-proxy > /dev/null 2>&1; do
-            sleep 1
-          done
-          echo "Proxy has exited"
-
-          # Ensure main container exits with code 0
+          echo "Migration complete"
           exit 0
         env:
         - name: DATABASE_URL
@@ -100,7 +89,7 @@ spec:
         args:
         - "--structured-logs"
         - "--port={{ .Values.database.port }}"
-        - "--max-sigterm-delay=10s"
+        - "--quitquitquit"
         - "{{ .Values.database.connectionName }}"
         securityContext:
           runAsNonRoot: true
