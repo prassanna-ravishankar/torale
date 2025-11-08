@@ -50,6 +50,14 @@ User ──► Frontend (torale.ai)
 4. **CLI**: Command-line interface for creating and managing monitoring tasks
 5. **State Tracker**: Compares current search results with historical state to detect changes
 
+### Frontend Runtime Configuration
+The frontend uses `window.CONFIG` for environment-agnostic Docker images:
+
+- **Local Dev**: `frontend/public/config.js` (git-tracked) sets `window.CONFIG` with `undefined` values → components fall back to `.env` files
+- **Production**: Kubernetes ConfigMap mounts `config.js` with real values → components use production settings
+- **Pattern**: `window.CONFIG?.apiUrl || import.meta.env.VITE_API_BASE_URL`
+- **Benefit**: Same Docker image deploys to any environment; config injected at runtime via ConfigMap
+
 ## Deployment Architecture
 
 ### Production (GKE)
