@@ -507,16 +507,61 @@ GCP_REGION=us-central1
 - Input validation on all user data
 - SQL injection prevention via parameterized queries (asyncpg)
 
-## Database Migration Best Practices
+## Database Migration Architecture
+
+### Production: Kubernetes Job with Helm Hooks
+
+**Why Kubernetes Job?**
+
+We use a Kubernetes Job (not init containers or entrypoint) because:
+- **Cloud SQL Proxy Timing**: Init containers run before ALL containers, including sidecars. The Cloud SQL Proxy is a sidecar container, so it's not available during init phase.
+- **Separation of Concerns**: Migrations are separate from application startup, making failures easier to diagnose.
+- **Single Execution**: Job runs once per deployment, not per pod replica (avoiding race conditions).
+- **Helm Orchestration**: Pre-install/pre-upgrade hooks guarantee migrations complete before pods start.
+
+**Implementation:**
+- **Template**: `helm/torale/templates/migration-job.yaml`
+- **Helm Hooks**: `pre-install,pre-upgrade` with weight `-5`
+- **Containers**: Migration container + Cloud SQL Proxy sidecar
+- **Command**: Waits for proxy, then runs `alembic upgrade head`
+
+**Verification:**
+```bash
+# Check Job execution
+kubectl get jobs -n torale | grep migrations
+kubectl logs -n torale job/torale-migrations
+
+# Verify current migration version
+kubectl exec -n torale deploy/torale-api -- alembic current
+
+# Check migration history
+kubectl exec -n torale deploy/torale-api -- alembic history
+```
+
+### Local Development: docker-entrypoint.sh
+
+**Implementation:**
+- **File**: `backend/docker-entrypoint.sh`
+- **Triggered by**: `docker-compose.yml` sets `entrypoint: ["/app/docker-entrypoint.sh"]`
+- **Process**: Waits for postgres → runs `alembic upgrade head` → starts app
+
+**Why Different from Production?**
+- Local uses direct postgres connection (no Cloud SQL Proxy sidecar needed)
+- Simpler to run migrations on API container startup
+- No need for separate Job resource in local docker-compose
+
+### Migration Best Practices
+
 **Philosophy**: Forward-only migrations for production systems
 
-### Core Rules
+**Core Rules:**
 1. **Never modify migrations after production deployment** - Once applied, treat as immutable
 2. **Never consolidate migrations in production systems** - Keep linear history
 3. **Never reuse revision IDs** - Each migration must have unique identifier
 4. **Test migrations on local copy before production** - Use `docker compose down -v` for fresh starts
 
 ### Migration Workflow
+
 ```bash
 # Create new migration
 docker compose exec api alembic revision --autogenerate -m "description"
@@ -524,23 +569,21 @@ docker compose exec api alembic revision --autogenerate -m "description"
 # Test locally (fresh start)
 just down-v && just dev-all
 
-# Verify migration applied
+# Verify migration applied locally
 docker compose exec api alembic current
 docker compose exec api alembic history
 
-# Deploy to production (automatic via docker-entrypoint.sh)
+# Deploy to production (automatic via Kubernetes Job)
 git push origin main
+# GitHub Actions → builds image → Helm deploys → Job runs migrations → API pods start
 ```
 
-### Current Migration State
-- **Production**: All 6 incremental migrations applied through `1ccec0168405`
-- **Migrations**: c9da50682126 → 30d7793fb7d2 → 7e4bc3017b35 → 9ca6877eba15 → 0c195cb8b608 → 1ccec0168405
-- **Templates**: 6 seeded templates in production
-
 ### Troubleshooting
+
 - **Out of sync?** Never manually edit alembic_version table - use `alembic stamp`
 - **Missing templates?** Run `just down-v && just dev-all` for fresh local start
-- **Production issues?** Check `kubectl logs -n torale deploy/torale-api -c init-migrations`
+- **Production migration failed?** Check `kubectl logs -n torale job/torale-migrations`
+- **Migration job not running?** Verify Helm hooks: `kubectl get jobs -n torale -o yaml | grep "helm.sh/hook"`
 
 ## MVP Success Criteria
 ✅ Users can create monitoring tasks via API/CLI
