@@ -25,6 +25,7 @@ export function CapacityGate({ children, fallback }: CapacityGateProps) {
         const apiUrl = window.CONFIG?.apiUrl || import.meta.env.VITE_API_BASE_URL;
         if (!apiUrl) {
           console.error("API URL is not set");
+          setAvailableSlots(0); // Fail closed - deny access if config is missing
           setIsLoading(false);
           return;
         }
