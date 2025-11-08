@@ -163,7 +163,7 @@ database:
 # Cloud SQL Proxy sidecar configuration
 cloudsql:
   enabled: true
-  image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0
+  image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.19.0
   resources:
     requests:
       cpu: 50m
