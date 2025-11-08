@@ -17,7 +17,7 @@ export function WaitlistPage() {
     setError(null);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_BASE_URL;
+      const apiUrl = window.CONFIG?.apiUrl || import.meta.env.VITE_API_BASE_URL;
       if (!apiUrl) {
         throw new Error("API URL not configured");
       }

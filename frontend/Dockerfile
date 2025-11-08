@@ -15,15 +15,7 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Accept build args for Vite environment variables
-ARG VITE_CLERK_PUBLISHABLE_KEY
-ARG VITE_API_BASE_URL
-
-# Set as environment variables for the build process
-ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
-
-# Build the application
+# Build the application (no env vars - runtime config will be injected)
 RUN npm run build
 
 # Stage 2: Serve with nginx
