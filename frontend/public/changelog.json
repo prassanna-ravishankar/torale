@@ -5,7 +5,8 @@
     "title": "What's New - Changelog Page",
     "description": "Introducing our beautiful new changelog page with an animated timeline, scroll-based reveals, and PR links. Track every update, improvement, and fix as we build in the open. See exactly what's changing and when.",
     "category": "feature",
-    "requestedBy": []
+    "requestedBy": [],
+    "pr": 35
   },
   {
     "id": "2025-11-09-schedule-cleanup",
