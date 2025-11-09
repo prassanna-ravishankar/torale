@@ -2,8 +2,10 @@ import json
 import logging
 from uuid import UUID
 
+import grpc
 from fastapi import APIRouter, Depends, HTTPException, status
 from temporalio.client import Client, Schedule, ScheduleActionStartWorkflow, ScheduleSpec
+from temporalio.service import RPCError
 
 from torale.api.auth import CurrentUserOrTestUser
 from torale.core.config import settings
@@ -255,11 +257,8 @@ async def update_task(
                 logger.info(f"Pausing Temporal schedule {schedule_id}")
                 await schedule_handle.pause()
                 logger.info(f"Successfully paused schedule {schedule_id}")
-        except Exception as e:
-            error_msg = str(e).lower()
-
-            # If schedule doesn't exist and task is being activated, create it
-            if "not found" in error_msg or "does not exist" in error_msg:
+        except RPCError as e:
+            if e.status == grpc.StatusCode.NOT_FOUND:
                 if update_data["is_active"]:
                     # Schedule doesn't exist, create it
                     logger.info(f"Schedule {schedule_id} not found, creating new schedule")
@@ -298,7 +297,7 @@ async def update_task(
                     # Deactivating task but schedule doesn't exist - that's fine
                     logger.info(f"Schedule {schedule_id} not found when deactivating task - already deleted")
             else:
-                # Real error (not "not found") - rollback the task update
+                # Real RPC error (not "not found") - rollback the task update
                 logger.error(
                     f"Failed to {'unpause' if update_data['is_active'] else 'pause'} schedule {schedule_id}: {str(e)}"
                 )
@@ -311,6 +310,20 @@ async def update_task(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail=f"Failed to {'unpause' if update_data['is_active'] else 'pause'} schedule: {str(e)}. Task update rolled back.",
                 ) from e
+        except Exception as e:
+            # Other unexpected error - rollback the task update
+            logger.error(
+                f"Unexpected error when trying to {'unpause' if update_data['is_active'] else 'pause'} schedule {schedule_id}: {str(e)}"
+            )
+            await db.execute(
+                "UPDATE tasks SET is_active = $1 WHERE id = $2",
+                existing["is_active"],
+                task_id,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to {'unpause' if update_data['is_active'] else 'pause'} schedule: {str(e)}. Task update rolled back.",
+            ) from e
 
     return Task(**parse_task_row(row))
 
@@ -342,15 +355,17 @@ async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(g
         await schedule_handle.delete()
         schedule_deleted = True
         logger.info(f"Successfully deleted schedule {schedule_id}")
-    except Exception as e:
-        # Check if schedule doesn't exist (expected case for inactive tasks)
-        error_msg = str(e).lower()
-        if "not found" in error_msg or "does not exist" in error_msg:
+    except RPCError as e:
+        if e.status == grpc.StatusCode.NOT_FOUND:
             logger.info(f"Schedule {schedule_id} not found - already deleted or never existed")
             schedule_deleted = True  # Schedule doesn't exist, safe to proceed
         else:
             logger.error(f"Failed to delete schedule {schedule_id}: {str(e)}")
             schedule_error = e
+    except Exception as e:
+        # Catch any other unexpected errors
+        logger.error(f"Unexpected error when deleting schedule {schedule_id}: {str(e)}")
+        schedule_error = e
 
     # Only delete from database if schedule was successfully deleted or doesn't exist
     if not schedule_deleted:

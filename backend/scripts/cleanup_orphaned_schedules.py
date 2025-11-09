@@ -77,22 +77,36 @@ async def cleanup_orphaned_schedules(dry_run: bool = True, specific_task_id: str
             print(f"Filtering to specific task: {specific_task_id}")
 
         # Check which schedules are orphaned
-        orphaned = []
-        for schedule_id in schedules:
-            # Extract task_id from schedule_id (format: schedule-{task_id})
-            task_id_str = schedule_id.replace("schedule-", "")
+        if not schedules:
+            print("\nNo schedules found!")
+            return
 
+        # Extract task IDs from schedule IDs and build mapping
+        task_ids_to_check = []
+        schedule_map = {}
+        for schedule_id in schedules:
+            task_id_str = schedule_id.replace("schedule-", "")
             try:
                 task_id = UUID(task_id_str)
+                task_ids_to_check.append(task_id)
+                schedule_map[str(task_id)] = schedule_id
             except ValueError:
                 print(f"WARNING: Invalid UUID in schedule ID: {schedule_id}")
                 continue
 
-            # Check if task exists in database
-            task = await conn.fetchrow("SELECT id FROM tasks WHERE id = $1", task_id)
+        if not task_ids_to_check:
+            print("\nNo valid task schedules found to check.")
+            return
 
-            if not task:
-                orphaned.append((schedule_id, task_id_str))
+        # Fetch all existing task IDs from the database in a single query
+        existing_task_rows = await conn.fetch(
+            "SELECT id FROM tasks WHERE id = ANY($1::uuid[])", task_ids_to_check
+        )
+        existing_task_ids = {str(row["id"]) for row in existing_task_rows}
+
+        # Find orphaned schedules by comparing sets
+        orphaned_task_ids = {str(tid) for tid in task_ids_to_check} - existing_task_ids
+        orphaned = sorted([(schedule_map[task_id], task_id) for task_id in orphaned_task_ids])
 
         print(f"\nFound {len(orphaned)} orphaned schedules:")
         for schedule_id, task_id in orphaned:
