@@ -93,12 +93,31 @@ async def test_webhook_payload():
 
 
 async def test_novu_service():
-    """Test Novu service initialization."""
+    """Test Novu service initialization and actual notification sending."""
     print("\n=== Testing Novu Service ===")
 
     print(f"✓ Novu service enabled: {novu_service._enabled}")
     if novu_service._enabled:
         print("✓ Novu client initialized")
+
+        # Try sending a test notification
+        print("\nAttempting to send test notification...")
+        result = await novu_service.send_condition_met_notification(
+            subscriber_id="test@example.com",
+            task_name="Test Task",
+            search_query="Test query",
+            answer="Test answer",
+            change_summary="Test change",
+            grounding_sources=[{"title": "Test Source", "uri": "https://example.com"}],
+            task_id="test_task_123",
+            execution_id="test_exec_456",
+        )
+
+        if result.get("success"):
+            print(f"✓ Test notification sent successfully!")
+            print(f"  Transaction ID: {result.get('transaction_id')}")
+        else:
+            print(f"✗ Failed to send notification: {result.get('error')}")
     else:
         print("⚠ Novu not configured (expected in development)")
 

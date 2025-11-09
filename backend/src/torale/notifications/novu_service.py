@@ -79,8 +79,8 @@ class NovuService:
 
             # Extract transaction ID from response
             transaction_id = None
-            if hasattr(response, "data") and hasattr(response.data, "transaction_id"):
-                transaction_id = response.data.transaction_id
+            if hasattr(response, "result") and hasattr(response.result, "transaction_id"):
+                transaction_id = response.result.transaction_id
 
             logger.info(f"Notification sent to {subscriber_id}: {transaction_id}")
 
@@ -131,8 +131,8 @@ class NovuService:
 
             # Extract transaction ID from response
             transaction_id = None
-            if hasattr(response, "data") and hasattr(response.data, "transaction_id"):
-                transaction_id = response.data.transaction_id
+            if hasattr(response, "result") and hasattr(response.result, "transaction_id"):
+                transaction_id = response.result.transaction_id
 
             logger.info(f"Verification email sent to {email}: {transaction_id}")
 
