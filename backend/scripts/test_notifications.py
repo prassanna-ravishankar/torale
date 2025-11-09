@@ -3,6 +3,7 @@
 
 import asyncio
 import sys
+import time
 from pathlib import Path
 
 # Add parent directory to path
@@ -36,20 +37,20 @@ async def test_webhook_signature():
 
     # Test signing
     payload = '{"test": "data"}'
-    timestamp = 1699564800
+    timestamp = int(time.time())  # Use current time
     signature = WebhookSignature.sign(payload, secret, timestamp)
     print(f"✓ Generated signature: {signature[:50]}...")
     assert signature.startswith("t=")
     assert ",v1=" in signature
 
     # Test verification
-    is_valid = WebhookSignature.verify(payload, signature, secret, tolerance=999999)
+    is_valid = WebhookSignature.verify(payload, signature, secret, tolerance=300)
     print(f"✓ Signature verification: {is_valid}")
     assert is_valid
 
     # Test tampering detection
     tampered_payload = '{"test": "modified"}'
-    is_invalid = WebhookSignature.verify(tampered_payload, signature, secret, tolerance=999999)
+    is_invalid = WebhookSignature.verify(tampered_payload, signature, secret, tolerance=300)
     print(f"✓ Tampered payload rejected: {not is_invalid}")
     assert not is_invalid
 

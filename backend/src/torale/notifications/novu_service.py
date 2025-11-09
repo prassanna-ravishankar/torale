@@ -20,15 +20,16 @@ class NovuService:
             self._enabled = True
             # Import here to avoid errors if novu not installed
             try:
-                from novu.api import EventApi
+                from novu_py import Novu
 
-                self._client = EventApi(
-                    url="https://api.novu.co", api_key=settings.novu_secret_key
+                self._client = Novu(
+                    secret_key=settings.novu_secret_key,
+                    server_url=settings.novu_api_url
                 )
                 logger.info("Novu service initialized successfully")
             except ImportError:
                 logger.error(
-                    "novu package not installed. Run: uv add novu-py"
+                    "novu-py package not installed. Run: uv add novu-py"
                 )
                 self._enabled = False
                 self._client = None
@@ -57,30 +58,29 @@ class NovuService:
             }
 
         try:
+            import novu_py
+
             # Trigger Novu workflow
-            response = self._client.trigger(
-                name=settings.novu_workflow_id,
-                recipients=[
-                    {
-                        "subscriberId": subscriber_id,
-                        "email": subscriber_id,  # Use email as subscriber ID
-                    }
-                ],
-                payload={
-                    "task_name": task_name,
-                    "search_query": search_query,
-                    "answer": answer,
-                    "change_summary": change_summary or "Condition met",
-                    "grounding_sources": grounding_sources[:5],  # Limit to 5 sources
-                    "task_id": task_id,
-                    "execution_id": execution_id,
-                },
+            response = await self._client.trigger_async(
+                trigger_event_request_dto=novu_py.TriggerEventRequestDto(
+                    workflow_id=settings.novu_workflow_id,
+                    to=subscriber_id,  # Use email as subscriber ID
+                    payload={
+                        "task_name": task_name,
+                        "search_query": search_query,
+                        "answer": answer,
+                        "change_summary": change_summary or "Condition met",
+                        "grounding_sources": grounding_sources[:5],  # Limit to 5 sources
+                        "task_id": task_id,
+                        "execution_id": execution_id,
+                    },
+                )
             )
 
             # Extract transaction ID from response
             transaction_id = None
-            if hasattr(response, "data") and hasattr(response.data, "transactionId"):
-                transaction_id = response.data.transactionId
+            if hasattr(response, "data") and hasattr(response.data, "transaction_id"):
+                transaction_id = response.data.transaction_id
 
             logger.info(f"Notification sent to {subscriber_id}: {transaction_id}")
 
@@ -114,26 +114,25 @@ class NovuService:
             }
 
         try:
+            import novu_py
+
             # Trigger verification workflow
-            response = self._client.trigger(
-                name=settings.novu_verification_workflow_id,
-                recipients=[
-                    {
-                        "subscriberId": email,
-                        "email": email,
-                    }
-                ],
-                payload={
-                    "code": code,
-                    "user_name": user_name,
-                    "expires_in_minutes": 15,
-                },
+            response = await self._client.trigger_async(
+                trigger_event_request_dto=novu_py.TriggerEventRequestDto(
+                    workflow_id=settings.novu_verification_workflow_id,
+                    to=email,  # Use email as subscriber ID
+                    payload={
+                        "code": code,
+                        "user_name": user_name,
+                        "expires_in_minutes": 15,
+                    },
+                )
             )
 
             # Extract transaction ID from response
             transaction_id = None
-            if hasattr(response, "data") and hasattr(response.data, "transactionId"):
-                transaction_id = response.data.transactionId
+            if hasattr(response, "data") and hasattr(response.data, "transaction_id"):
+                transaction_id = response.data.transaction_id
 
             logger.info(f"Verification email sent to {email}: {transaction_id}")
 
