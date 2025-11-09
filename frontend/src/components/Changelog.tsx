@@ -109,7 +109,7 @@ export default function Changelog() {
                     key={entry.id}
                     initial={{ opacity: 0, x: isEven ? -50 : 50 }}
                     whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: false, margin: "-200px" }}
+                    viewport={{ once: true, margin: "-200px" }}
                     transition={{ duration: 0.6, delay: 0.1 }}
                     className="relative"
                   >
@@ -118,7 +118,7 @@ export default function Changelog() {
                       className="absolute left-1/2 top-6 w-3 h-3 rounded-full border-4 border-background -translate-x-1/2 z-10"
                       initial={{ scale: 1, backgroundColor: "hsl(var(--muted-foreground) / 0.3)" }}
                       whileInView={{ scale: 1.3, backgroundColor: "hsl(var(--primary))" }}
-                      viewport={{ margin: "-200px" }}
+                      viewport={{ once: true, margin: "-200px" }}
                       transition={{ duration: 0.3 }}
                     />
 

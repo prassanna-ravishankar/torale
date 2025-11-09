@@ -22,7 +22,7 @@ export function ChangelogEntryCard({ entry, isEven }: ChangelogEntryCardProps) {
       className="rounded-lg border-2 overflow-hidden"
       initial={{ borderColor: "hsl(var(--border))" }}
       whileInView={{ borderColor: "hsl(var(--primary))", scale: 1.02 }}
-      viewport={{ margin: "-200px" }}
+      viewport={{ once: true, margin: "-200px" }}
       transition={{ duration: 0.3 }}
     >
       <Card className="border-0">
@@ -30,7 +30,7 @@ export function ChangelogEntryCard({ entry, isEven }: ChangelogEntryCardProps) {
           className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
-          viewport={{ margin: "-200px" }}
+          viewport={{ once: true, margin: "-200px" }}
           transition={{ duration: 0.3 }}
         />
         <CardHeader className="p-6 relative">
@@ -88,15 +88,15 @@ export function ChangelogEntryCard({ entry, isEven }: ChangelogEntryCardProps) {
   );
 
   return (
-    <div className="grid grid-cols-2 gap-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
       {isEven ? (
         <>
           <div className="text-right">{content}</div>
-          <div />
+          <div className="hidden md:block" />
         </>
       ) : (
         <>
-          <div />
+          <div className="hidden md:block" />
           <div>{content}</div>
         </>
       )}

@@ -209,7 +209,7 @@ export default function Landing() {
                 onClick={() => navigate("/changelog")}
                 onMouseEnter={() => setIsPaused(true)}
                 onMouseLeave={() => setIsPaused(false)}
-                className="relative flex items-center justify-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium cursor-pointer hover:bg-primary/15 transition-colors min-w-[400px]"
+                className="relative flex items-center justify-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium cursor-pointer hover:bg-primary/15 transition-colors min-w-[280px] sm:min-w-[400px]"
               >
                 <AnimatePresence mode="wait">
                   <motion.div
@@ -242,7 +242,16 @@ export default function Landing() {
                         <IconComponent className="h-4 w-4" />
                         <span>
                           {currentEntry.title}
-                          {currentEntry.requestedBy.length > 0 && `. Thanks ${currentEntry.requestedBy[0]}`}
+                          {currentEntry.requestedBy.length > 0 && (() => {
+                            const names = currentEntry.requestedBy;
+                            if (names.length === 1) {
+                              return `. Thanks ${names[0]}`;
+                            } else if (names.length === 2) {
+                              return `. Thanks ${names[0]} and ${names[1]}`;
+                            } else {
+                              return `. Thanks ${names[0]} & others`;
+                            }
+                          })()}
                         </span>
                       </motion.div>
                     );
