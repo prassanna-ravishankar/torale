@@ -160,7 +160,7 @@ class TestDeletedTaskHandling:
 
         # Verify task was deleted from database
         delete_calls = [
-            call for call in mock_db.fetch_one.call_args_list if "DELETE" in str(call)[0]
+            call for call in mock_db.fetch_one.call_args_list if "DELETE" in str(call)
         ]
         assert len(delete_calls) == 1, "Task should be deleted if schedule doesn't exist"
 
