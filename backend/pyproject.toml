@@ -31,6 +31,9 @@ dev = [
     "pytest-cov>=5.0.0",
     "ruff>=0.6.0",
 ]
+research = [
+    "langfuse>=2.0.0",
+]
 
 [project.scripts]
 torale = "torale.cli.main:app"
