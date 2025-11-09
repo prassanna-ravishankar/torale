@@ -10,8 +10,9 @@ To install research dependencies:
 
 import os
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Literal
 
 from dotenv import load_dotenv
 from langfuse import Langfuse
@@ -288,6 +289,7 @@ if __name__ == "__main__":
     import argparse
     import os
     import sys
+
     from test_cases import TEST_EXPERIMENTS
 
     # Parse command-line arguments
@@ -313,7 +315,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Import all available approaches
-    from approaches.stub import retrieve as stub_retrieve, evaluate as stub_evaluate
+    from approaches.stub import evaluate as stub_evaluate
+    from approaches.stub import retrieve as stub_retrieve
 
     # Build approaches dict based on available API keys
     all_approaches = {
@@ -323,24 +326,30 @@ if __name__ == "__main__":
     # Add real approaches if API keys are available
     if os.getenv("GOOGLE_API_KEY"):
         from approaches.gemini_grounded import (
-            retrieve as gemini_retrieve,
             evaluate as gemini_evaluate,
+        )
+        from approaches.gemini_grounded import (
+            retrieve as gemini_retrieve,
         )
 
         all_approaches["gemini_grounded"] = (gemini_retrieve, gemini_evaluate)
 
     if os.getenv("PERPLEXITY_API_KEY"):
         from approaches.perplexity import (
-            retrieve as perplexity_retrieve,
             evaluate as perplexity_evaluate,
+        )
+        from approaches.perplexity import (
+            retrieve as perplexity_retrieve,
         )
 
         all_approaches["perplexity"] = (perplexity_retrieve, perplexity_evaluate)
 
     if os.getenv("OPENAI_API_KEY"):
         from approaches.openai_websearch import (
-            retrieve as openai_retrieve,
             evaluate as openai_evaluate,
+        )
+        from approaches.openai_websearch import (
+            retrieve as openai_retrieve,
         )
 
         all_approaches["openai_websearch"] = (openai_retrieve, openai_evaluate)
@@ -363,7 +372,7 @@ if __name__ == "__main__":
                 approaches[name] = all_approaches[name]
             else:
                 print(f"✗ Error: '{name}' requires API key but none found")
-                print(f"  Set the required environment variable in .env")
+                print("  Set the required environment variable in .env")
                 sys.exit(1)
     else:
         approaches = all_approaches
@@ -384,4 +393,4 @@ if __name__ == "__main__":
 
     print("\n✓ Results logged to Langfuse")
     print(f"  View at: {os.getenv('LANGFUSE_HOST', 'https://cloud.langfuse.com')}")
-    print(f"  Project: badlmaninc/torale\n")
+    print("  Project: badlmaninc/torale\n")

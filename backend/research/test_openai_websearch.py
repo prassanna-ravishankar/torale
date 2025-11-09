@@ -1,6 +1,5 @@
 """Test OpenAI web search approach."""
 
-import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -9,15 +8,15 @@ from dotenv import load_dotenv
 env_path = Path(__file__).parent.parent.parent / ".env"
 if env_path.exists():
     load_dotenv(env_path)
-    print(f"✓ Loaded .env\n")
+    print("✓ Loaded .env\n")
 
-from approaches.openai_websearch import retrieve, evaluate
+from approaches.openai_websearch import evaluate, retrieve  # noqa: E402
 
 # Test retrieve with web search
 print("Testing OpenAI Responses API with web search...")
 try:
     result = retrieve("When is the next iPhone being released?")
-    print(f"✓ Retrieve works!")
+    print("✓ Retrieve works!")
     print(f"  Answer: {result['answer'][:150]}...")
     print(f"  Sources: {len(result['sources'])}")
     for i, source in enumerate(result["sources"][:3]):
@@ -30,7 +29,7 @@ try:
     eval_result = evaluate(
         result["answer"], "A specific release date or month has been officially announced"
     )
-    print(f"✓ Evaluate works!")
+    print("✓ Evaluate works!")
     print(f"  Condition met: {eval_result['condition_met']}")
     print(f"  Reasoning: {eval_result['reasoning'][:150]}...")
     print(f"  Usage: {eval_result['usage']}\n")

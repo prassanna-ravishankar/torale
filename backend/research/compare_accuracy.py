@@ -10,9 +10,9 @@ env_path = Path(__file__).parent.parent.parent / ".env"
 if env_path.exists():
     load_dotenv(env_path)
 
-from approaches import gemini_grounded, openai_websearch, perplexity, stub
-from harness import run_batch
-from test_cases import ONCE_EXPERIMENTS
+from approaches import gemini_grounded, openai_websearch, perplexity, stub  # noqa: E402
+from harness import run_batch  # noqa: E402
+from test_cases import ONCE_EXPERIMENTS  # noqa: E402
 
 print("=" * 80)
 print("ACCURACY COMPARISON - Running 10 test cases per approach")
