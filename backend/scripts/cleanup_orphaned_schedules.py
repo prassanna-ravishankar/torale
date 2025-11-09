@@ -136,6 +136,7 @@ async def cleanup_orphaned_schedules(dry_run: bool = True, specific_task_id: str
 
     finally:
         await conn.close()
+        await client.close()
 
 
 async def main():
