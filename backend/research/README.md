@@ -10,10 +10,10 @@ cd backend
 uv sync --extra research
 
 # Set up Langfuse credentials in project root .env
-# Add these to /path/to/torale-research/.env:
+# Add your API keys to the project root `.env` file.
+# For Langfuse, you will need:
 # LANGFUSE_PUBLIC_KEY=pk-lf-...
 # LANGFUSE_SECRET_KEY=sk-lf-...
-# LANGFUSE_HOST=https://cloud.langfuse.com
 
 # Run the harness
 cd backend
