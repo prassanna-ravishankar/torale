@@ -1,0 +1,13 @@
+# Environment files
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Experiment outputs (if any)
+*.jsonl
+results/
+outputs/
