@@ -22,3 +22,9 @@ data:
 
   # Platform capacity
   MAX_USERS: {{ .Values.capacity.maxUsers | quote }}
+
+  # Novu configuration (non-sensitive)
+  NOVU_API_URL: {{ .Values.novu.apiUrl | quote }}
+  NOVU_WORKFLOW_ID: {{ .Values.novu.workflowId | quote }}
+  NOVU_VERIFICATION_WORKFLOW_ID: {{ .Values.novu.verificationWorkflowId | quote }}
+  NOVU_APPLICATION_ID: {{ .Values.novu.applicationId | quote }}
