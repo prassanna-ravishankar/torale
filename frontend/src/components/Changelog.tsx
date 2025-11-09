@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { Zap, TrendingUp, Bug, ArrowLeft, Server } from "lucide-react";
+import { Zap, TrendingUp, Bug, ArrowLeft, Server, FlaskConical } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { AnimatedBackground } from "./AnimatedBackground";
 
@@ -10,9 +10,9 @@ interface ChangelogEntry {
   date: string;
   title: string;
   description: string;
-  category: "feature" | "improvement" | "fix" | "infra";
+  category: "feature" | "improvement" | "fix" | "infra" | "research";
   requestedBy: string[];
-  commit?: string; // Optional git short SHA
+  pr?: number; // Optional PR number
 }
 
 const getCategoryIcon = (category: string) => {
@@ -25,6 +25,8 @@ const getCategoryIcon = (category: string) => {
       return Bug;
     case "infra":
       return Server;
+    case "research":
+      return FlaskConical;
     default:
       return Zap;
   }
@@ -40,6 +42,8 @@ const getCategoryLabel = (category: string) => {
       return "Bug Fix";
     case "infra":
       return "Infrastructure";
+    case "research":
+      return "Research";
     default:
       return "Update";
   }
@@ -185,15 +189,15 @@ export default function Changelog() {
                               <CardHeader className="p-6 relative">
                                 <div className="flex flex-col items-end">
                                   <div className="flex items-center gap-2 mb-1">
-                                    {entry.commit && (
+                                    {entry.pr && (
                                       <a
-                                        href={`https://github.com/prassanna-ravishankar/torale/commit/${entry.commit}`}
+                                        href={`https://github.com/prassanna-ravishankar/torale/pull/${entry.pr}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-[10px] font-mono text-muted-foreground/70 hover:text-primary hover:underline transition-colors"
-                                        title="View commit on GitHub"
+                                        title="View PR on GitHub"
                                       >
-                                        {entry.commit.substring(0, 7)}
+                                        #{entry.pr}
                                       </a>
                                     )}
                                     <span className="text-xs text-muted-foreground">
@@ -265,15 +269,15 @@ export default function Changelog() {
                                         year: "numeric",
                                       })}
                                     </span>
-                                    {entry.commit && (
+                                    {entry.pr && (
                                       <a
-                                        href={`https://github.com/prassanna-ravishankar/torale/commit/${entry.commit}`}
+                                        href={`https://github.com/prassanna-ravishankar/torale/pull/${entry.pr}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-[10px] font-mono text-muted-foreground/70 hover:text-primary hover:underline transition-colors"
-                                        title="View commit on GitHub"
+                                        title="View PR on GitHub"
                                       >
-                                        {entry.commit.substring(0, 7)}
+                                        #{entry.pr}
                                       </a>
                                     )}
                                   </div>

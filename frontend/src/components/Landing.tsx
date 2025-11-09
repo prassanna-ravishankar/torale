@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { Search, Sparkles, ArrowRight, Code, Terminal, Zap, TrendingUp, Bug, Newspaper, Server } from "lucide-react";
+import { Search, Sparkles, ArrowRight, Code, Terminal, Zap, TrendingUp, Bug, Newspaper, Server, FlaskConical } from "lucide-react";
 import { AnimatedBackground } from "./AnimatedBackground";
 
 const EXAMPLES = [
@@ -40,7 +40,7 @@ interface ChangelogEntry {
   date: string;
   title: string;
   description: string;
-  category: "feature" | "improvement" | "fix" | "infra";
+  category: "feature" | "improvement" | "fix" | "infra" | "research";
   requestedBy: string[];
 }
 
@@ -54,6 +54,8 @@ const getCategoryIcon = (category: string) => {
       return Bug;
     case "infra":
       return Server;
+    case "research":
+      return FlaskConical;
     default:
       return Sparkles;
   }
