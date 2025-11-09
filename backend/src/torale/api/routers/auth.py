@@ -7,7 +7,8 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select, text, update
+from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.api.clerk_auth import ClerkUser, get_current_user
@@ -32,8 +33,20 @@ async def sync_user(
     Sync Clerk user to local database.
 
     Called automatically on first login from frontend.
-    Creates user if doesn't exist, updates email if changed.
+    Creates user if doesn't exist, updates email and first_name if changed.
     """
+    from torale.api.clerk_auth import clerk_client
+
+    # Fetch full user data from Clerk to get first_name
+    first_name = None
+    if clerk_client:
+        try:
+            clerk_user_data = clerk_client.users.get(user_id=clerk_user.clerk_user_id)
+            first_name = clerk_user_data.first_name if clerk_user_data else None
+        except Exception:
+            # Continue without first_name if Clerk API fails
+            pass
+
     # Check if user exists by clerk_user_id
     result = await session.execute(
         select(User).where(User.clerk_user_id == clerk_user.clerk_user_id)
@@ -41,15 +54,45 @@ async def sync_user(
     existing_user = result.scalar_one_or_none()
 
     if existing_user:
-        # Update email if changed
-        if existing_user.email != clerk_user.email:
+        # Update email and first_name if changed
+        needs_update = existing_user.email != clerk_user.email or (
+            first_name and existing_user.first_name != first_name
+        )
+
+        if needs_update:
+            old_email = existing_user.email
+            new_email = clerk_user.email
+
+            # Update email, first_name and verified_notification_emails array
             await session.execute(
-                update(User)
-                .where(User.id == existing_user.id)
-                .values(
-                    email=clerk_user.email,
-                    updated_at=datetime.now(UTC),
-                )
+                text("""
+                    UPDATE users
+                    SET email = :new_email,
+                        first_name = :first_name,
+                        updated_at = :now,
+                        verified_notification_emails = (
+                            -- Remove old email from array
+                            array_remove(
+                                COALESCE(verified_notification_emails, ARRAY[]::TEXT[]),
+                                :old_email
+                            )
+                            ||
+                            -- Add new email if not already present
+                            CASE
+                                WHEN :new_email = ANY(COALESCE(verified_notification_emails, ARRAY[]::TEXT[]))
+                                THEN ARRAY[]::TEXT[]
+                                ELSE ARRAY[:new_email]::TEXT[]
+                            END
+                        )
+                    WHERE id = :user_id
+                """),
+                {
+                    "user_id": existing_user.id,
+                    "old_email": old_email,
+                    "new_email": new_email,
+                    "first_name": first_name,
+                    "now": datetime.now(UTC),
+                },
             )
             await session.commit()
             await session.refresh(existing_user)
@@ -59,20 +102,52 @@ async def sync_user(
             created=False,
         )
 
-    # Create new user
-    new_user = User(
-        clerk_user_id=clerk_user.clerk_user_id,
-        email=clerk_user.email,
-        is_active=True,
-    )
-    session.add(new_user)
-    await session.commit()
-    await session.refresh(new_user)
+    # Create new user with Clerk email auto-verified
+    # Handle race condition where user might be created between check and insert
+    try:
+        new_user_id = uuid.uuid4()
+        await session.execute(
+            text("""
+                INSERT INTO users (
+                    id, clerk_user_id, email, first_name, is_active,
+                    verified_notification_emails, created_at, updated_at
+                )
+                VALUES (
+                    :id, :clerk_user_id, :email, :first_name, :is_active,
+                    ARRAY[:email]::TEXT[], :now, :now
+                )
+            """),
+            {
+                "id": new_user_id,
+                "clerk_user_id": clerk_user.clerk_user_id,
+                "email": clerk_user.email,
+                "first_name": first_name,
+                "is_active": True,
+                "now": datetime.now(UTC),
+            },
+        )
+        await session.commit()
 
-    return SyncUserResponse(
-        user=UserRead.model_validate(new_user),
-        created=True,
-    )
+        # Fetch created user
+        result = await session.execute(select(User).where(User.id == new_user_id))
+        new_user = result.scalar_one()
+
+        return SyncUserResponse(
+            user=UserRead.model_validate(new_user),
+            created=True,
+        )
+    except IntegrityError:
+        # Race condition: user was created by another request
+        # Rollback and fetch the existing user
+        await session.rollback()
+        result = await session.execute(
+            select(User).where(User.clerk_user_id == clerk_user.clerk_user_id)
+        )
+        existing_user = result.scalar_one()
+        return SyncUserResponse(
+            user=UserRead.model_validate(existing_user),
+            created=False,
+        )
 
 
 # API Key management

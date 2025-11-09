@@ -24,6 +24,7 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     clerk_user_id = Column(String, unique=True, nullable=False, index=True)
     email = Column(String(length=320), unique=True, index=True, nullable=False)
+    first_name = Column(String, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     updated_at = Column(
@@ -54,6 +55,7 @@ class UserRead(BaseModel):
     id: uuid.UUID
     clerk_user_id: str
     email: str
+    first_name: str | None = None
     is_active: bool
     created_at: datetime
 
@@ -66,3 +68,4 @@ class UserCreate(BaseModel):
 
     clerk_user_id: str
     email: str
+    first_name: str | None = None

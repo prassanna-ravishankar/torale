@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from torale.api.routers import admin, auth, tasks, templates, waitlist
+from torale.api.routers import admin, auth, email_verification, tasks, templates, waitlist, webhooks
 from torale.api.users import get_async_session
 from torale.core.config import settings
 from torale.core.database import db
@@ -59,6 +59,8 @@ app.include_router(waitlist.router, tags=["waitlist"])
 # API routes
 app.include_router(tasks.router, prefix="/api/v1")
 app.include_router(templates.router, prefix="/api/v1")
+app.include_router(email_verification.router, prefix="/api/v1")
+app.include_router(webhooks.router, prefix="/api/v1")
 
 
 @app.get("/health")

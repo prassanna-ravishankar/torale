@@ -130,7 +130,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
         </Alert>
       )}
 
-      <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as any)}>
+      <Tabs
+        value={activeFilter}
+        onValueChange={(v) => setActiveFilter(v as "all" | "active" | "triggered")}
+      >
         <TabsList>
           <TabsTrigger value="all">All Tasks ({tasks.length})</TabsTrigger>
           <TabsTrigger value="active">

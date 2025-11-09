@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import type { Task, TaskExecution } from '@/types'
 import api from '@/lib/api'
 import { toast } from 'sonner'
@@ -16,7 +16,6 @@ import {
   Bell,
   Play,
   Loader2,
-  Settings,
   Trash2,
 } from "lucide-react";
 import {
@@ -49,7 +48,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   const [isExecuting, setIsExecuting] = useState(false);
   const [activeTab, setActiveTab] = useState("executions");
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [taskData, executionsData, notificationsData] = await Promise.all([
@@ -66,11 +65,11 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [taskId]);
 
   useEffect(() => {
     loadData();
-  }, [taskId]);
+  }, [loadData]);
 
   const handleToggle = async () => {
     if (!task) return;

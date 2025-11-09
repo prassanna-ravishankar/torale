@@ -10,7 +10,6 @@ import {
   ExternalLink,
   AlertCircle,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface ExecutionTimelineProps {
   executions: TaskExecution[];
@@ -56,7 +55,7 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
 
   return (
     <div className="space-y-4">
-      {executions.map((execution, index) => (
+      {executions.map((execution) => (
         <Card
           key={execution.id}
           className={

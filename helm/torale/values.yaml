@@ -183,6 +183,13 @@ temporal:
 capacity:
   maxUsers: 100
 
+# Novu notification configuration
+novu:
+  apiUrl: "https://eu.api.novu.co"
+  workflowId: "torale-condition-met"
+  verificationWorkflowId: "torale-email-verification"
+  applicationId: "1mO9V2spkNCO"  # Production app ID
+
 # Ingress configuration
 ingress:
   enabled: true
@@ -220,6 +227,7 @@ secrets:
   #     --from-literal=DB_PASSWORD="..." \
   #     --from-literal=CLERK_SECRET_KEY="..." \
   #     --from-literal=TEMPORAL_API_KEY="..." \
+  #     --from-literal=NOVU_SECRET_KEY="..." \
   #     --from-literal=OPENAI_API_KEY="" \
   #     --from-literal=ANTHROPIC_API_KEY="" \
   #     --from-literal=NOTIFICATION_API_KEY=""

@@ -2,7 +2,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    """
+    Application settings loaded from environment variables.
+
+    The .env file is loaded by justfile/docker-compose, so we just
+    read from the environment. This works in all environments.
+    """
+
+    model_config = SettingsConfigDict(extra="ignore")
 
     database_url: str = "postgresql://torale:torale@localhost:5432/torale"
 
@@ -18,7 +25,11 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     google_api_key: str | None = None
 
-    notification_api_key: str | None = None
+    # Novu Cloud configuration
+    novu_secret_key: str | None = None
+    novu_workflow_id: str = "torale-condition-met"
+    novu_verification_workflow_id: str = "torale-email-verification"
+    novu_api_url: str = "https://eu.api.novu.co"
 
     gcp_project_id: str | None = None
     gcp_region: str = "us-central1"

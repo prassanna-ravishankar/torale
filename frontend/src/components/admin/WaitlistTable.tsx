@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -36,12 +36,7 @@ export function WaitlistTable() {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadWaitlist()
-    loadStats()
-  }, [statusFilter])
-
-  const loadWaitlist = async () => {
+  const loadWaitlist = useCallback(async () => {
     try {
       setLoading(true)
       const data = await api.getWaitlist(statusFilter || undefined)
@@ -52,16 +47,21 @@ export function WaitlistTable() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter])
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const data = await api.getWaitlistStats()
       setStats(data)
     } catch (error) {
       console.error('Failed to load stats:', error)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadWaitlist()
+    loadStats()
+  }, [loadWaitlist, loadStats])
 
   const deleteEntry = async (entryId: string) => {
     if (!confirm('Are you sure you want to remove this entry?')) return
@@ -83,10 +83,10 @@ export function WaitlistTable() {
   }
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, any> = {
-      pending: 'default',
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      pending: 'outline',
       invited: 'secondary',
-      converted: 'success',
+      converted: 'default',
     }
 
     return (
