@@ -305,12 +305,15 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
                     execution_id, dict(task), dict(execution), result
                 )
 
-                # Attempt delivery
+                # Attempt delivery with proper resource cleanup
                 service = WebhookDeliveryService()
-                success, http_status, error = await service.deliver(
-                    webhook_url, payload, webhook_secret, attempt=1
-                )
-                await service.close()
+                signature: str | None = None
+                try:
+                    success, http_status, error, signature = await service.deliver(
+                        webhook_url, payload, webhook_secret, attempt=1
+                    )
+                finally:
+                    await service.close()
 
                 # Record delivery attempt
                 if success:
@@ -326,7 +329,7 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
                         UUID(execution_id),
                         webhook_url,
                         payload.model_dump_json(),
-                        payload.id,
+                        signature,
                         http_status,
                         1,
                     )
@@ -346,7 +349,7 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
                         UUID(execution_id),
                         webhook_url,
                         payload.model_dump_json(),
-                        payload.id,
+                        signature,
                         http_status,
                         error,
                         1,

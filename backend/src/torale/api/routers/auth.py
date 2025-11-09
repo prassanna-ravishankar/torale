@@ -32,8 +32,20 @@ async def sync_user(
     Sync Clerk user to local database.
 
     Called automatically on first login from frontend.
-    Creates user if doesn't exist, updates email if changed.
+    Creates user if doesn't exist, updates email and first_name if changed.
     """
+    from torale.api.clerk_auth import clerk_client
+
+    # Fetch full user data from Clerk to get first_name
+    first_name = None
+    if clerk_client:
+        try:
+            clerk_user_data = clerk_client.users.get(user_id=clerk_user.clerk_user_id)
+            first_name = clerk_user_data.first_name if clerk_user_data else None
+        except Exception:
+            # Continue without first_name if Clerk API fails
+            pass
+
     # Check if user exists by clerk_user_id
     result = await session.execute(
         select(User).where(User.clerk_user_id == clerk_user.clerk_user_id)
@@ -41,17 +53,22 @@ async def sync_user(
     existing_user = result.scalar_one_or_none()
 
     if existing_user:
-        # Update email if changed and update verified_notification_emails array
-        if existing_user.email != clerk_user.email:
+        # Update email and first_name if changed
+        needs_update = (
+            existing_user.email != clerk_user.email
+            or (first_name and existing_user.first_name != first_name)
+        )
+
+        if needs_update:
             old_email = existing_user.email
             new_email = clerk_user.email
 
-            # Update email and verified_notification_emails array
-            # Remove old Clerk email, add new Clerk email
+            # Update email, first_name and verified_notification_emails array
             await session.execute(
                 text("""
                     UPDATE users
                     SET email = :new_email,
+                        first_name = :first_name,
                         updated_at = :now,
                         verified_notification_emails = (
                             -- Remove old email from array
@@ -73,6 +90,7 @@ async def sync_user(
                     "user_id": existing_user.id,
                     "old_email": old_email,
                     "new_email": new_email,
+                    "first_name": first_name,
                     "now": datetime.now(UTC),
                 },
             )
@@ -89,11 +107,11 @@ async def sync_user(
     await session.execute(
         text("""
             INSERT INTO users (
-                id, clerk_user_id, email, is_active,
+                id, clerk_user_id, email, first_name, is_active,
                 verified_notification_emails, created_at, updated_at
             )
             VALUES (
-                :id, :clerk_user_id, :email, :is_active,
+                :id, :clerk_user_id, :email, :first_name, :is_active,
                 ARRAY[:email]::TEXT[], :now, :now
             )
         """),
@@ -101,6 +119,7 @@ async def sync_user(
             "id": new_user_id,
             "clerk_user_id": clerk_user.clerk_user_id,
             "email": clerk_user.email,
+            "first_name": first_name,
             "is_active": True,
             "now": datetime.now(UTC),
         },

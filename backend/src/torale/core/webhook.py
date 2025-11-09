@@ -97,11 +97,11 @@ class WebhookDeliveryService:
 
     async def deliver(
         self, url: str, payload: WebhookPayload, secret: str, attempt: int = 1
-    ) -> tuple[bool, int | None, str | None]:
+    ) -> tuple[bool, int | None, str | None, str]:
         """
         Deliver webhook with HMAC signature.
 
-        Returns: (success, http_status, error_message)
+        Returns: (success, http_status, error_message, signature)
         """
         # Generate signature
         timestamp = int(time.time())
@@ -123,18 +123,19 @@ class WebhookDeliveryService:
 
             # Consider 2xx as success
             if 200 <= response.status_code < 300:
-                return (True, response.status_code, None)
+                return (True, response.status_code, None, signature)
             else:
                 return (
                     False,
                     response.status_code,
                     f"HTTP {response.status_code}: {response.text[:200]}",
+                    signature,
                 )
 
         except httpx.TimeoutException:
-            return (False, None, f"Timeout after {self.TIMEOUT}s")
+            return (False, None, f"Timeout after {self.TIMEOUT}s", signature)
         except httpx.RequestError as e:
-            return (False, None, f"Request error: {str(e)}")
+            return (False, None, f"Request error: {str(e)}", signature)
 
     async def close(self):
         """Close HTTP client."""

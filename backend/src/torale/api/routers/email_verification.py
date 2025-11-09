@@ -6,6 +6,7 @@ from pydantic import BaseModel, EmailStr
 from torale.api.auth import CurrentUserOrTestUser
 from torale.core.database import Database, get_db
 from torale.core.email_verification import EmailVerificationService
+from torale.notifications.novu_service import novu_service
 
 CurrentUser = CurrentUserOrTestUser
 router = APIRouter(prefix="/email-verification", tags=["email-verification"])
@@ -50,12 +51,20 @@ async def send_verification_email(
         if not success:
             raise HTTPException(status_code=429, detail=error)
 
-        # TODO: Send verification email via Novu
-        # For now, return the code (development only - remove in production)
+        # Get user name for personalization (use email prefix as fallback)
+        user_row = await conn.fetchrow(
+            "SELECT first_name FROM users WHERE id = $1", user.id
+        )
+        user_name = user_row["first_name"] if user_row and user_row["first_name"] else user.email.split("@")[0]
+
+        # Send verification email via Novu (or log code if not configured)
+        await novu_service.send_verification_email(
+            email=request.email, code=code, user_name=user_name
+        )
+
         return {
             "message": f"Verification code sent to {request.email}",
             "expires_in_minutes": EmailVerificationService.VERIFICATION_EXPIRY_MINUTES,
-            "code": code,  # TODO: Remove this in production!
         }
 
     finally:

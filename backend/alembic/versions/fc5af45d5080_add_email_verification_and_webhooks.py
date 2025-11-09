@@ -50,16 +50,24 @@ def upgrade() -> None:
             expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
             verified_at TIMESTAMP WITH TIME ZONE,
             attempts INTEGER DEFAULT 0,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            UNIQUE(user_id, email)
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         )
     """)
 
     # Create indexes for email_verifications
     op.execute("""
-        CREATE INDEX idx_email_verifications_code
+        CREATE INDEX IF NOT EXISTS idx_email_verifications_code
         ON email_verifications(verification_code)
         WHERE verified = false
+    """)
+    op.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_pending_email_verification
+        ON email_verifications(user_id, email)
+        WHERE verified = false
+    """)
+    op.execute("""
+        CREATE INDEX IF NOT EXISTS idx_email_verifications_user_created
+        ON email_verifications(user_id, created_at)
     """)
 
     # Create notification_sends table for spam tracking

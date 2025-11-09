@@ -111,7 +111,7 @@ async def test_webhook(test_req: WebhookTestRequest, user: CurrentUser):
 
     # Attempt delivery
     service = WebhookDeliveryService()
-    success, http_status, error = await service.deliver(
+    success, http_status, error, _ = await service.deliver(
         str(test_req.webhook_url), payload, test_req.webhook_secret, attempt=1
     )
     await service.close()
