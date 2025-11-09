@@ -64,7 +64,10 @@ class NovuService:
             response = await self._client.trigger_async(
                 trigger_event_request_dto=novu_py.TriggerEventRequestDto(
                     workflow_id=settings.novu_workflow_id,
-                    to=subscriber_id,  # Use email as subscriber ID
+                    to={
+                        "subscriber_id": subscriber_id,
+                        "email": subscriber_id,  # Explicitly provide email address
+                    },
                     payload={
                         "task_name": task_name,
                         "search_query": search_query,
@@ -120,7 +123,10 @@ class NovuService:
             response = await self._client.trigger_async(
                 trigger_event_request_dto=novu_py.TriggerEventRequestDto(
                     workflow_id=settings.novu_verification_workflow_id,
-                    to=email,  # Use email as subscriber ID
+                    to={
+                        "subscriber_id": email,
+                        "email": email,  # Explicitly provide email address
+                    },
                     payload={
                         "code": code,
                         "user_name": user_name,
