@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { Search, Sparkles, ArrowRight, Code, Terminal } from "lucide-react";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import { Search, Sparkles, ArrowRight, Code, Terminal, Zap, TrendingUp, Bug, Newspaper, Server } from "lucide-react";
 import { AnimatedBackground } from "./AnimatedBackground";
 
 const EXAMPLES = [
@@ -35,11 +35,38 @@ const HOW_IT_WORKS = [
   },
 ];
 
+interface ChangelogEntry {
+  id: string;
+  date: string;
+  title: string;
+  description: string;
+  category: "feature" | "improvement" | "fix" | "infra";
+  requestedBy: string[];
+}
+
+const getCategoryIcon = (category: string) => {
+  switch (category) {
+    case "feature":
+      return Zap;
+    case "improvement":
+      return TrendingUp;
+    case "fix":
+      return Bug;
+    case "infra":
+      return Server;
+    default:
+      return Sparkles;
+  }
+};
+
 export default function Landing() {
   const navigate = useNavigate();
   const { scrollYProgress } = useScroll();
   const [mounted, setMounted] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<number | null>(null);
+  const [changelogEntries, setChangelogEntries] = useState<ChangelogEntry[]>([]);
+  const [currentChangelogIndex, setCurrentChangelogIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const isFull = availableSlots === 0;
 
   // Parallax effects
@@ -72,8 +99,33 @@ export default function Landing() {
       }
     };
 
+    // Fetch changelog entries
+    const fetchChangelog = async () => {
+      try {
+        const response = await fetch("/changelog.json");
+        if (response.ok) {
+          const data = await response.json();
+          setChangelogEntries(data.slice(0, 5)); // Show last 5 updates
+        }
+      } catch (error) {
+        console.error("Failed to fetch changelog:", error);
+      }
+    };
+
     fetchCapacity();
+    fetchChangelog();
   }, []);
+
+  // Auto-rotate changelog carousel
+  useEffect(() => {
+    if (changelogEntries.length === 0 || isPaused) return;
+
+    const interval = setInterval(() => {
+      setCurrentChangelogIndex((prev) => (prev + 1) % changelogEntries.length);
+    }, 4000); // Rotate every 4 seconds
+
+    return () => clearInterval(interval);
+  }, [changelogEntries.length, isPaused]);
 
   const handleGetStarted = () => {
     navigate(isFull ? "/waitlist" : "/sign-up");
@@ -160,6 +212,70 @@ export default function Landing() {
           </motion.div>
         </div>
       </motion.section>
+
+      {/* Changelog Carousel */}
+      {changelogEntries.length > 0 && (
+        <section className="py-8 px-6">
+          <div className="container mx-auto max-w-4xl text-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={mounted ? { opacity: 1 } : {}}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="inline-flex flex-col items-center gap-2"
+            >
+              <div className="text-xs text-muted-foreground">
+                Latest updates
+              </div>
+              <div
+                onClick={() => navigate("/changelog")}
+                onMouseEnter={() => setIsPaused(true)}
+                onMouseLeave={() => setIsPaused(false)}
+                className="relative flex items-center justify-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium cursor-pointer hover:bg-primary/15 transition-colors min-w-[400px]"
+              >
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentChangelogIndex}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="absolute left-3 text-muted-foreground text-xs"
+                  >
+                    {new Date(changelogEntries[currentChangelogIndex].date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </motion.div>
+                </AnimatePresence>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentChangelogIndex}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3 }}
+                    className="flex items-center gap-2"
+                  >
+                    {(() => {
+                      const currentEntry = changelogEntries[currentChangelogIndex];
+                      const IconComponent = getCategoryIcon(currentEntry.category);
+                      return (
+                        <>
+                          <IconComponent className="h-4 w-4" />
+                          <span>
+                            {currentEntry.title}
+                            {currentEntry.requestedBy.length > 0 && `. Thanks ${currentEntry.requestedBy[0]}`}
+                          </span>
+                        </>
+                      );
+                    })()}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+      )}
 
       {/* How It Works */}
       <section className="py-20 px-6">
@@ -350,6 +466,13 @@ export default function Landing() {
               <span>© 2025 Torale. Monitor what matters.</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
+              <button
+                onClick={() => navigate("/changelog")}
+                className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors"
+              >
+                <Newspaper className="h-3.5 w-3.5" />
+                What's New
+              </button>
               <a href="https://torale.ai" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
                 torale.ai
               </a>

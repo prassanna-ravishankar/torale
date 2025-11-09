@@ -4,6 +4,7 @@ import { SignIn, SignUp } from '@clerk/clerk-react'
 import { Dashboard } from '@/components/Dashboard'
 import { TaskDetail } from '@/components/TaskDetail'
 import Landing from '@/components/Landing'
+import Changelog from '@/components/Changelog'
 import { Header } from '@/components/Header'
 import { Admin } from '@/pages/Admin'
 import { CapacityGate } from '@/components/CapacityGate'
@@ -116,6 +117,10 @@ export default function App() {
               </CapacityGate>
             </AuthRedirect>
           }
+        />
+        <Route
+          path="/changelog"
+          element={<Changelog />}
         />
         <Route
           path="/"

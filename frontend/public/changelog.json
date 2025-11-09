@@ -1,0 +1,217 @@
+[
+  {
+    "id": "2025-11-09-changelog",
+    "date": "2025-11-09",
+    "title": "What's New - Changelog Page",
+    "description": "Introducing our beautiful new changelog page with an animated timeline, scroll-based reveals, and commit links. Track every update, improvement, and fix as we build in the open. See exactly what's changing and when.",
+    "category": "feature",
+    "requestedBy": []
+  },
+  {
+    "id": "2025-11-09-schedule-cleanup",
+    "date": "2025-11-09",
+    "title": "Automatic Schedule Cleanup",
+    "description": "Improved reliability with automatic cleanup of orphaned Temporal schedules. When tasks are deleted, their background monitoring schedules are now properly removed with comprehensive error handling.",
+    "category": "improvement",
+    "requestedBy": [],
+    "commit": "71d1dcb"
+  },
+  {
+    "id": "2025-11-08-email-notifications",
+    "date": "2025-11-08",
+    "title": "Email & Webhook Notifications",
+    "description": "Get notified when your monitoring conditions are met via email or webhook. Beautifully designed HTML emails with spam protection and automatic email verification through Clerk integration.",
+    "category": "feature",
+    "requestedBy": [],
+    "commit": "aeb1f75"
+  },
+  {
+    "id": "2025-11-08-mobile-scrolling",
+    "date": "2025-11-08",
+    "title": "Mobile Scrolling Fixed",
+    "description": "Fixed scrolling overflow issues in the task creation modal on mobile devices. Template selection and form inputs now work smoothly on smaller screens.",
+    "category": "fix",
+    "requestedBy": [],
+    "commit": "48ab6a2"
+  },
+  {
+    "id": "2025-11-08-modern-ui",
+    "date": "2025-11-08",
+    "title": "Modernized Task Creation UI",
+    "description": "Completely redesigned the task creation interface with improved template selection, better visual hierarchy, icon-based template cards, and smoother animations. Creating monitoring tasks is now more intuitive and delightful.",
+    "category": "feature",
+    "requestedBy": [],
+    "commit": "9d87c8c"
+  },
+  {
+    "id": "2025-11-08-cloud-sql-proxy",
+    "date": "2025-11-08",
+    "title": "Cloud SQL Proxy Reliability",
+    "description": "Upgraded Cloud SQL Proxy to v2.19.0 with proper SIGTERM handling for graceful shutdowns. Includes quitquitquit endpoint support and optimized max-sigterm-delay configuration.",
+    "category": "infra",
+    "requestedBy": [],
+    "commit": "90fc78c"
+  },
+  {
+    "id": "2025-11-08-docker-cache",
+    "date": "2025-11-08",
+    "title": "Registry Cache Fallback",
+    "description": "Added registry cache fallback mechanism for better Docker layer reuse. Significantly improved build times and deployment reliability.",
+    "category": "infra",
+    "requestedBy": [],
+    "commit": "e809f15"
+  },
+  {
+    "id": "2025-11-08-migration-jobs",
+    "date": "2025-11-08",
+    "title": "Unified Migration Architecture",
+    "description": "Refactored database migrations to use consistent init container pattern across local and production environments. Improved reliability and simplified deployment process.",
+    "category": "infra",
+    "requestedBy": [],
+    "commit": "b1ab352"
+  },
+  {
+    "id": "2025-11-07-admin-console",
+    "date": "2025-11-07",
+    "title": "Admin Console",
+    "description": "Added comprehensive admin dashboard for platform monitoring. Track users, executions, popular queries, Temporal workflows, and system errors all in one place.",
+    "category": "feature",
+    "requestedBy": [],
+    "commit": "3165e09"
+  },
+  {
+    "id": "2025-11-07-animated-background",
+    "date": "2025-11-07",
+    "title": "Animated Landing Page",
+    "description": "Enhanced the landing page with a beautiful animated network background featuring particles and connections. Includes parallax scrolling effects for a modern, dynamic first impression.",
+    "category": "improvement",
+    "requestedBy": [],
+    "commit": "008528f"
+  },
+  {
+    "id": "2025-11-07-clerk-production",
+    "date": "2025-11-07",
+    "title": "Production Authentication",
+    "description": "Configured Clerk for production environment with proper OAuth flows and secure session management. Production-ready authentication is now live.",
+    "category": "infra",
+    "requestedBy": [],
+    "commit": "3652f49"
+  },
+  {
+    "id": "2025-11-07-new-branding",
+    "date": "2025-11-07",
+    "title": "New Logo & Branding",
+    "description": "Refreshed brand identity with a new logo design, updated favicon, and comprehensive brand pack. The new visual identity better represents Torale's modern, intelligent monitoring platform.",
+    "category": "improvement",
+    "requestedBy": [],
+    "commit": "1c1d6e1"
+  },
+  {
+    "id": "2025-11-07-temporal-ui",
+    "date": "2025-11-07",
+    "title": "Temporal Cloud Integration",
+    "description": "Configured Temporal UI to point to Temporal Cloud for production workflows. Enables easy monitoring and debugging of background task execution.",
+    "category": "infra",
+    "requestedBy": [],
+    "commit": "8dbccfa"
+  },
+  {
+    "id": "2025-11-07-capacity-limits",
+    "date": "2025-11-07",
+    "title": "Dynamic Capacity Management",
+    "description": "Implemented configurable user capacity limits with environment variable support. Allows flexible scaling control as the platform grows.",
+    "category": "infra",
+    "requestedBy": [],
+    "commit": "1edaf56"
+  },
+  {
+    "id": "2025-11-06-social-sharing",
+    "date": "2025-11-06",
+    "title": "Social Sharing Optimization",
+    "description": "Added OpenGraph meta tags for beautiful link previews when sharing Torale on social media platforms like Twitter, LinkedIn, and Slack.",
+    "category": "improvement",
+    "requestedBy": [],
+    "commit": "8335540"
+  },
+  {
+    "id": "2025-11-06-security-patch",
+    "date": "2025-11-06",
+    "title": "Security: esbuild CVE Patch",
+    "description": "Patched esbuild CORS vulnerability to enhance frontend security. Keeping dependencies up-to-date and secure.",
+    "category": "fix",
+    "requestedBy": [],
+    "commit": "69bab93"
+  },
+  {
+    "id": "2025-11-06-ci-optimization",
+    "date": "2025-11-06",
+    "title": "CI/CD Layer Caching",
+    "description": "Optimized CI/CD pipeline with Docker layer caching and integrated security scanning. Deployments are now significantly faster while maintaining security standards.",
+    "category": "infra",
+    "requestedBy": [],
+    "commit": "2e71934"
+  },
+  {
+    "id": "2025-11-06-helm-secrets",
+    "date": "2025-11-06",
+    "title": "External Secret Management",
+    "description": "Removed Helm secrets template to enforce external secret management best practices. Secrets are now managed securely outside version control.",
+    "category": "infra",
+    "requestedBy": [],
+    "commit": "757a14d"
+  },
+  {
+    "id": "2025-11-06-gha-cache",
+    "date": "2025-11-06",
+    "title": "Native GitHub Actions Cache",
+    "description": "Migrated to Docker's native GitHub Actions cache backend for simpler and more reliable build caching. Reduced manual cache management complexity.",
+    "category": "infra",
+    "requestedBy": [],
+    "commit": "a955d09"
+  },
+  {
+    "id": "2025-11-06-gke-credentials",
+    "date": "2025-11-06",
+    "title": "Simplified GKE Authentication",
+    "description": "Refactored GKE authentication to use get-gke-credentials action for simpler, more secure cluster access. Includes gke-gcloud-auth-plugin for kubectl compatibility.",
+    "category": "infra",
+    "requestedBy": [],
+    "commit": "7049150"
+  },
+  {
+    "id": "2025-11-06-helmfile-action",
+    "date": "2025-11-06",
+    "title": "Helmfile v2 Integration",
+    "description": "Upgraded to helmfile-action v2 with integrated Helm and plugins. Streamlined deployment process with better dependency management.",
+    "category": "infra",
+    "requestedBy": [],
+    "commit": "39ff651"
+  },
+  {
+    "id": "2025-11-06-gcp-pipeline",
+    "date": "2025-11-06",
+    "title": "GCP Kubernetes CI/CD",
+    "description": "Set up complete CI/CD pipeline for GCP Kubernetes deployments with automated builds, security scanning, and multi-environment support. Production deployments are now fully automated.",
+    "category": "infra",
+    "requestedBy": [],
+    "commit": "db0851b"
+  },
+  {
+    "id": "2025-11-05-task-templates",
+    "date": "2025-11-05",
+    "title": "Task Templates",
+    "description": "Choose from pre-built monitoring templates like Product Release Tracker, Price Monitoring, and Availability Alerts. Get started faster with smart defaults and auto-filled configurations for common use cases.",
+    "category": "feature",
+    "requestedBy": [],
+    "commit": "ace9a07"
+  },
+  {
+    "id": "2025-11-04-landing-page",
+    "date": "2025-11-04",
+    "title": "Modern Landing Page",
+    "description": "Launched a beautiful new landing page with scroll animations, clear use cases, and a modern design. Now it's easier than ever to understand what Torale does and get started.",
+    "category": "feature",
+    "requestedBy": [],
+    "commit": "7e71732"
+  }
+]
