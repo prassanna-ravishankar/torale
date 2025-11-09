@@ -164,19 +164,35 @@ All metrics automatically logged to Langfuse for analysis.
 
 ## Environment Variables
 
-Add these to your project root `.env` file (not in research directory).
+**Important**: Add these to your **project root `.env` file** (e.g., `/path/to/torale/.env`), **NOT** in the `backend/research/` directory. The harness automatically loads environment variables from the project root.
+
+Example location: If your project is at `/Users/you/torale/`, create or edit `/Users/you/torale/.env`
 
 **Required for all approaches:**
 
 - `LANGFUSE_PUBLIC_KEY` - Get at https://cloud.langfuse.com
 - `LANGFUSE_SECRET_KEY` - Get at https://cloud.langfuse.com
+- `LANGFUSE_HOST=https://cloud.langfuse.com` (optional, defaults to cloud)
 
 **Required per approach:**
 
-- **stub**: None
-- **gemini_grounded**: `GOOGLE_API_KEY` (get at https://aistudio.google.com/app/apikey)
-- **perplexity**: `PERPLEXITY_API_KEY` (get at https://www.perplexity.ai/settings/api)
-- **openai_websearch**: `OPENAI_API_KEY` (get at https://platform.openai.com/account/api-keys)
+- **stub**: None (no API calls)
+- **gemini_grounded**: `GOOGLE_API_KEY` - Get at https://aistudio.google.com/app/apikey
+- **perplexity**: `PERPLEXITY_API_KEY` - Get at https://www.perplexity.ai/settings/api
+- **openai_websearch**: `OPENAI_API_KEY` - Get at https://platform.openai.com/account/api-keys
+
+**Example `.env` file:**
+```bash
+# Langfuse (required for all approaches)
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_HOST=https://cloud.langfuse.com
+
+# API keys (add what you need)
+GOOGLE_API_KEY=your-key-here
+PERPLEXITY_API_KEY=your-key-here
+OPENAI_API_KEY=your-key-here
+```
 
 ## View Results
 

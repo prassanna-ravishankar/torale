@@ -18,25 +18,31 @@ from openai import OpenAI
 
 
 def _extract_usage(response) -> dict:
-    """Extract token usage from OpenAI response with detailed breakdown."""
+    """
+    Extract token usage from OpenAI response with detailed breakdown.
+
+    Handles both Responses API (input_tokens/output_tokens) and
+    Chat Completions API (prompt_tokens/completion_tokens).
+    """
+    usage_obj = response.usage
+
+    # Responses API uses input_tokens/output_tokens
+    # Chat Completions API uses prompt_tokens/completion_tokens
     usage = {
-        "input": response.usage.input_tokens,
-        "output": response.usage.output_tokens,
-        "total": response.usage.total_tokens,
+        "input": getattr(usage_obj, "input_tokens", None) or getattr(usage_obj, "prompt_tokens", 0),
+        "output": getattr(usage_obj, "output_tokens", None) or getattr(usage_obj, "completion_tokens", 0),
+        "total": usage_obj.total_tokens,
     }
 
     # Add detailed token breakdown if available
-    if hasattr(response.usage, "input_tokens_details"):
-        if hasattr(response.usage.input_tokens_details, "cached_tokens"):
-            usage["cache_read_input_tokens"] = (
-                response.usage.input_tokens_details.cached_tokens
-            )
+    # Try Responses API field names first, then Chat Completions API
+    input_details = getattr(usage_obj, "input_tokens_details", None) or getattr(usage_obj, "prompt_tokens_details", None)
+    if input_details and hasattr(input_details, "cached_tokens"):
+        usage["cache_read_input_tokens"] = input_details.cached_tokens
 
-    if hasattr(response.usage, "output_tokens_details"):
-        if hasattr(response.usage.output_tokens_details, "reasoning_tokens"):
-            usage["reasoning_tokens"] = (
-                response.usage.output_tokens_details.reasoning_tokens
-            )
+    output_details = getattr(usage_obj, "output_tokens_details", None) or getattr(usage_obj, "completion_tokens_details", None)
+    if output_details and hasattr(output_details, "reasoning_tokens"):
+        usage["reasoning_tokens"] = output_details.reasoning_tokens
 
     return usage
 
@@ -173,25 +179,7 @@ Be precise - only set condition_met to true if the condition is definitively met
     result = json.loads(response.choices[0].message.content)
 
     # Extract token usage for Langfuse tracking
-    # Chat Completions API uses different field names than Responses API
-    usage = {
-        "input": response.usage.prompt_tokens,
-        "output": response.usage.completion_tokens,
-        "total": response.usage.total_tokens,
-    }
-
-    # Add detailed token breakdown if available
-    if hasattr(response.usage, "prompt_tokens_details"):
-        if hasattr(response.usage.prompt_tokens_details, "cached_tokens"):
-            usage["cache_read_input_tokens"] = (
-                response.usage.prompt_tokens_details.cached_tokens
-            )
-
-    if hasattr(response.usage, "completion_tokens_details"):
-        if hasattr(response.usage.completion_tokens_details, "reasoning_tokens"):
-            usage["reasoning_tokens"] = (
-                response.usage.completion_tokens_details.reasoning_tokens
-            )
+    usage = _extract_usage(response)
 
     return {
         "condition_met": result.get("condition_met", False),
