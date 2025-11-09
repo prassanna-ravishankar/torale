@@ -260,100 +260,108 @@ NOVU_VERIFICATION_WORKFLOW_ID=torale-email-verification  # Verification workflow
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
-  <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+  <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0a;">
     <table role="presentation" style="width: 100%; border-collapse: collapse;">
       <tr>
-        <td align="center" style="padding: 40px 0;">
-          <table role="presentation" style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            <!-- Header -->
+        <td align="center" style="padding: 48px 16px;">
+          <table role="presentation" style="width: 100%; max-width: 600px; background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);">
+            <!-- Header with primary brand color -->
             <tr>
-              <td style="padding: 32px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px 8px 0 0;">
-                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">
-                  🎯 Condition Met!
-                </h1>
-                <p style="margin: 8px 0 0 0; color: #e0e7ff; font-size: 16px;">
-                  {{payload.task_name}}
-                </p>
-              </td>
-            </tr>
-
-            <!-- Content -->
-            <tr>
-              <td style="padding: 40px;">
-                <p style="margin: 0 0 24px 0; color: #374151; font-size: 16px; line-height: 1.6;">
-                  Your Torale monitoring task has detected a match. Here's what we found:
-                </p>
-
-                <!-- What you asked -->
-                <div style="margin: 0 0 24px 0; padding: 20px; background-color: #f9fafb; border-left: 4px solid #667eea; border-radius: 4px;">
-                  <h2 style="margin: 0 0 8px 0; color: #667eea; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                    What you asked
-                  </h2>
-                  <p style="margin: 0; color: #1f2937; font-size: 15px; line-height: 1.6;">
-                    {{payload.search_query}}
-                  </p>
-                </div>
-
-                <!-- What we found -->
-                <div style="margin: 0 0 24px 0; padding: 20px; background-color: #f0fdf4; border-left: 4px solid #10b981; border-radius: 4px;">
-                  <h2 style="margin: 0 0 8px 0; color: #10b981; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                    What we found
-                  </h2>
-                  <p style="margin: 0; color: #1f2937; font-size: 15px; line-height: 1.6;">
-                    {{payload.answer}}
-                  </p>
-                </div>
-
-                <!-- What changed -->
-                {% if payload.change_summary %}
-                <div style="margin: 0 0 24px 0; padding: 20px; background-color: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 4px;">
-                  <h2 style="margin: 0 0 8px 0; color: #f59e0b; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                    What changed
-                  </h2>
-                  <p style="margin: 0; color: #1f2937; font-size: 15px; line-height: 1.6;">
-                    {{payload.change_summary}}
-                  </p>
-                </div>
-                {% endif %}
-
-                <!-- Sources -->
-                {% if payload.grounding_sources %}
-                <div style="margin: 0 0 32px 0;">
-                  <h2 style="margin: 0 0 12px 0; color: #6b7280; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                    Sources
-                  </h2>
-                  <ul style="margin: 0; padding: 0; list-style: none;">
-                    {% for source in payload.grounding_sources %}
-                    <li style="margin: 0 0 8px 0; padding: 12px 16px; background-color: #f9fafb; border-radius: 4px;">
-                      <a href="{{source.uri}}" style="color: #667eea; text-decoration: none; font-size: 14px;">
-                        <strong>{{source.title}}</strong>
-                      </a>
-                    </li>
-                    {% endfor %}
-                  </ul>
-                </div>
-                {% endif %}
-
-                <!-- CTA Button -->
-                <table role="presentation" style="width: 100%;">
+              <td style="padding: 32px; background-color: #18181b; border-bottom: 1px solid #27272a;">
+                <table role="presentation" style="width: 100%; border-collapse: collapse;">
                   <tr>
-                    <td align="center">
-                      <a href="https://torale.ai/tasks/{{payload.task_id}}" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
-                        View Full Details
-                      </a>
+                    <td style="vertical-align: top;">
+                      <!-- Icon container matching frontend pattern (h-8 w-8 rounded-lg bg-primary/10) -->
+                      <div style="display: inline-block; width: 32px; height: 32px; background-color: rgba(168, 85, 247, 0.1); border-radius: 6px; text-align: center; line-height: 32px; margin-right: 12px;">
+                        <span style="color: #a855f7; font-size: 18px;">✓</span>
+                      </div>
+                    </td>
+                    <td style="vertical-align: top;">
+                      <h1 style="margin: 0; color: #fafafa; font-size: 20px; font-weight: 600; line-height: 1.2;">
+                        Condition Met
+                      </h1>
+                      <p style="margin: 4px 0 0 0; color: #a1a1aa; font-size: 14px; line-height: 1.4;">
+                        {{payload.task_name}}
+                      </p>
                     </td>
                   </tr>
                 </table>
               </td>
             </tr>
 
-            <!-- Footer -->
+            <!-- Content -->
             <tr>
-              <td style="padding: 24px 40px; background-color: #f9fafb; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
-                <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 13px; text-align: center;">
-                  Sent by <strong>Torale Monitoring</strong>
+              <td style="padding: 32px;">
+                <p style="margin: 0 0 24px 0; color: #e4e4e7; font-size: 14px; line-height: 1.6;">
+                  Your monitoring task has detected a match. Here's what we found:
                 </p>
-                <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center;">
+
+                <!-- What you asked - matching Card pattern with border-left accent -->
+                <div style="margin: 0 0 16px 0; padding: 16px; background-color: #27272a; border-left: 3px solid #a855f7; border-radius: 6px;">
+                  <h2 style="margin: 0 0 8px 0; color: #a855f7; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+                    What You Asked
+                  </h2>
+                  <p style="margin: 0; color: #fafafa; font-size: 14px; line-height: 1.6;">
+                    {{payload.search_query}}
+                  </p>
+                </div>
+
+                <!-- What we found - matching success/green state -->
+                <div style="margin: 0 0 16px 0; padding: 16px; background-color: #27272a; border-left: 3px solid #22c55e; border-radius: 6px;">
+                  <h2 style="margin: 0 0 8px 0; color: #22c55e; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+                    What We Found
+                  </h2>
+                  <p style="margin: 0; color: #fafafa; font-size: 14px; line-height: 1.6;">
+                    {{payload.answer}}
+                  </p>
+                </div>
+
+                <!-- What changed - matching warning/yellow state -->
+                {% if payload.change_summary %}
+                <div style="margin: 0 0 16px 0; padding: 16px; background-color: #27272a; border-left: 3px solid #eab308; border-radius: 6px;">
+                  <h2 style="margin: 0 0 8px 0; color: #eab308; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+                    What Changed
+                  </h2>
+                  <p style="margin: 0; color: #fafafa; font-size: 14px; line-height: 1.6;">
+                    {{payload.change_summary}}
+                  </p>
+                </div>
+                {% endif %}
+
+                <!-- Sources with muted styling -->
+                {% if payload.grounding_sources %}
+                <div style="margin: 24px 0 0 0;">
+                  <h2 style="margin: 0 0 12px 0; color: #71717a; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+                    Sources
+                  </h2>
+                  <div style="display: block;">
+                    {% for source in payload.grounding_sources %}
+                    <div style="margin: 0 0 8px 0; padding: 12px; background-color: #27272a; border-radius: 6px;">
+                      <a href="{{source.uri}}" style="color: #a855f7; text-decoration: none; font-size: 13px; line-height: 1.4;">
+                        {{source.title}}
+                      </a>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endif %}
+
+                <!-- CTA Button matching frontend Button component -->
+                <div style="margin: 32px 0 0 0; text-align: center;">
+                  <a href="https://torale.ai/tasks/{{payload.task_id}}" style="display: inline-block; padding: 10px 24px; background-color: #a855f7; color: #fafafa; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px; transition: background-color 200ms;">
+                    View Full Details
+                  </a>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Footer with muted colors -->
+            <tr>
+              <td style="padding: 24px 32px; background-color: #27272a; border-radius: 0 0 8px 8px; border-top: 1px solid #3f3f46;">
+                <p style="margin: 0 0 4px 0; color: #71717a; font-size: 12px; text-align: center; line-height: 1.5;">
+                  Sent by <strong style="color: #a1a1aa;">Torale</strong>
+                </p>
+                <p style="margin: 0; color: #52525b; font-size: 11px; text-align: center; line-height: 1.5;">
                   Automated monitoring for the web
                 </p>
               </td>
@@ -361,13 +369,13 @@ NOVU_VERIFICATION_WORKFLOW_ID=torale-email-verification  # Verification workflow
           </table>
 
           <!-- Unsubscribe footer -->
-          <table role="presentation" style="width: 600px; max-width: 100%; margin-top: 24px;">
+          <table role="presentation" style="width: 100%; max-width: 600px; margin-top: 16px;">
             <tr>
-              <td style="padding: 0 40px; text-align: center;">
-                <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                  You're receiving this because you created a monitoring task on Torale.
+              <td style="text-align: center;">
+                <p style="margin: 0; color: #52525b; font-size: 11px; line-height: 1.6;">
+                  You're receiving this because you created a monitoring task.
                   <br>
-                  <a href="https://torale.ai/settings/notifications" style="color: #667eea; text-decoration: none;">Manage notification preferences</a>
+                  <a href="https://torale.ai/settings/notifications" style="color: #a855f7; text-decoration: none;">Manage preferences</a>
                 </p>
               </td>
             </tr>
@@ -407,52 +415,60 @@ Verify your email for Torale notifications
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
-  <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+  <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0a;">
     <table role="presentation" style="width: 100%; border-collapse: collapse;">
       <tr>
-        <td align="center" style="padding: 40px 0;">
-          <table role="presentation" style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <td align="center" style="padding: 48px 16px;">
+          <table role="presentation" style="width: 100%; max-width: 600px; background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);">
             <!-- Header -->
             <tr>
-              <td style="padding: 32px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px 8px 0 0;">
-                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">
-                  🔐 Verify Your Email
-                </h1>
-                <p style="margin: 8px 0 0 0; color: #e0e7ff; font-size: 16px;">
-                  Torale Email Verification
-                </p>
+              <td style="padding: 32px; background-color: #18181b; border-bottom: 1px solid #27272a;">
+                <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="vertical-align: top;">
+                      <!-- Icon container matching frontend pattern -->
+                      <div style="display: inline-block; width: 32px; height: 32px; background-color: rgba(168, 85, 247, 0.1); border-radius: 6px; text-align: center; line-height: 32px; margin-right: 12px;">
+                        <span style="color: #a855f7; font-size: 18px;">🔒</span>
+                      </div>
+                    </td>
+                    <td style="vertical-align: top;">
+                      <h1 style="margin: 0; color: #fafafa; font-size: 20px; font-weight: 600; line-height: 1.2;">
+                        Verify Your Email
+                      </h1>
+                      <p style="margin: 4px 0 0 0; color: #a1a1aa; font-size: 14px; line-height: 1.4;">
+                        Email Verification
+                      </p>
+                    </td>
+                  </tr>
+                </table>
               </td>
             </tr>
 
             <!-- Content -->
             <tr>
-              <td style="padding: 40px;">
-                <p style="margin: 0 0 24px 0; color: #374151; font-size: 16px; line-height: 1.6;">
-                  Hi there! 👋
-                </p>
-
-                <p style="margin: 0 0 32px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+              <td style="padding: 32px;">
+                <p style="margin: 0 0 24px 0; color: #e4e4e7; font-size: 14px; line-height: 1.6;">
                   Please use the following verification code to complete your email verification:
                 </p>
 
-                <!-- Verification Code -->
-                <div style="margin: 0 0 32px 0; text-align: center;">
-                  <div style="display: inline-block; padding: 24px 48px; background-color: #f9fafb; border: 2px dashed #667eea; border-radius: 8px;">
-                    <p style="margin: 0; color: #667eea; font-size: 36px; font-weight: 700; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+                <!-- Verification Code with Card-like styling -->
+                <div style="margin: 0 0 24px 0; text-align: center;">
+                  <div style="display: inline-block; padding: 24px 48px; background-color: #27272a; border: 2px dashed #a855f7; border-radius: 8px;">
+                    <p style="margin: 0; color: #a855f7; font-size: 32px; font-weight: 700; letter-spacing: 12px; font-family: 'Courier New', monospace;">
                       {{payload.code}}
                     </p>
                   </div>
                 </div>
 
-                <!-- Expiry Notice -->
-                <div style="margin: 0 0 24px 0; padding: 16px; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
-                  <p style="margin: 0; color: #92400e; font-size: 14px;">
-                    ⏰ This code expires in <strong>{{payload.expires_in_minutes}} minutes</strong>
+                <!-- Expiry Notice with warning state -->
+                <div style="margin: 0 0 24px 0; padding: 16px; background-color: #27272a; border-left: 3px solid #eab308; border-radius: 6px;">
+                  <p style="margin: 0; color: #fafafa; font-size: 13px; line-height: 1.6;">
+                    <span style="color: #eab308;">⚠</span> This code expires in <strong>{{payload.expires_in_minutes}} minutes</strong>
                   </p>
                 </div>
 
-                <!-- Security Notice -->
-                <p style="margin: 0 0 16px 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+                <!-- Security Notice with muted text -->
+                <p style="margin: 0; color: #a1a1aa; font-size: 13px; line-height: 1.6;">
                   If you didn't request this verification code, you can safely ignore this email.
                 </p>
               </td>
@@ -460,11 +476,11 @@ Verify your email for Torale notifications
 
             <!-- Footer -->
             <tr>
-              <td style="padding: 24px 40px; background-color: #f9fafb; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
-                <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 13px; text-align: center;">
-                  Sent by <strong>Torale</strong>
+              <td style="padding: 24px 32px; background-color: #27272a; border-radius: 0 0 8px 8px; border-top: 1px solid #3f3f46;">
+                <p style="margin: 0 0 4px 0; color: #71717a; font-size: 12px; text-align: center; line-height: 1.5;">
+                  Sent by <strong style="color: #a1a1aa;">Torale</strong>
                 </p>
-                <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center;">
+                <p style="margin: 0; color: #52525b; font-size: 11px; text-align: center; line-height: 1.5;">
                   Secure email verification
                 </p>
               </td>
