@@ -4,7 +4,7 @@ Demonstration of how dynamic ground truth translates to True/False.
 Shows the complete flow from API → boolean GT → accuracy evaluation.
 """
 
-from approaches.weather_gt import get_tomorrow_rain, CITIES
+from approaches.weather_gt import CITIES, get_tomorrow_rain
 from dynamic_gt import get_dynamic_ground_truth
 from test_cases import TEST_EXPERIMENTS
 
@@ -16,7 +16,7 @@ print("=" * 80)
 print("\n📡 STEP 1: Raw API Call")
 print("-" * 80)
 result = get_tomorrow_rain(*CITIES["seattle"])
-print(f"Open-Meteo API Response for Seattle:")
+print("Open-Meteo API Response for Seattle:")
 print(f"  precipitation_mm: {result['precipitation_mm']}")
 print(f"  rain_mm: {result['rain_mm']}")
 print(f"  date: {result['date']}")
@@ -25,7 +25,7 @@ print(f"  timezone: {result['timezone']}")
 # Step 2: Translation to boolean
 print("\n🔄 STEP 2: Translation to Boolean")
 print("-" * 80)
-print(f"Logic: will_rain = (precipitation_mm > 0)")
+print("Logic: will_rain = (precipitation_mm > 0)")
 print(f"  {result['precipitation_mm']} > 0 = {result['will_rain']}")
 print(f"\n✅ Ground Truth (boolean): {result['will_rain']}")
 
@@ -42,7 +42,7 @@ print("\n⚙️  STEP 4: Dynamic GT Resolution (at runtime)")
 print("-" * 80)
 resolved_gt = get_dynamic_ground_truth(weather_exp)
 print(f"get_dynamic_ground_truth() returns: {resolved_gt}")
-print(f"  (This is what replaces 'None' during test execution)")
+print("  (This is what replaces 'None' during test execution)")
 
 # Step 5: How it's used in harness
 print("\n🎯 STEP 5: Usage in Harness")

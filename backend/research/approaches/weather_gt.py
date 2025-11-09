@@ -7,8 +7,9 @@ No API key required - free for non-commercial use up to 10,000 calls/day.
 API Docs: https://open-meteo.com/en/docs
 """
 
-import requests
 from datetime import datetime, timedelta
+
+import requests
 
 
 def get_tomorrow_rain(latitude: float = 37.7749, longitude: float = -122.4194) -> dict:

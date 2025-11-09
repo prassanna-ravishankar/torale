@@ -10,7 +10,7 @@ env_path = Path(__file__).parent.parent.parent / ".env"
 if env_path.exists():
     load_dotenv(env_path)
 
-from approaches import gemini_grounded, openai_websearch, perplexity, stub
+from approaches import gemini_grounded, openai_websearch, perplexity, stub  # noqa: E402
 
 print("=" * 80)
 print("VERIFYING TOKEN TRACKING FOR ALL APPROACHES")
@@ -28,7 +28,7 @@ def verify_approach(name, retrieve_fn, evaluate_fn):
     try:
         # Test retrieve
         result = retrieve_fn(test_query)
-        print(f"  retrieve():")
+        print("  retrieve():")
         print(f"    ✓ answer: {len(result.get('answer', ''))} chars")
         print(f"    ✓ sources: {len(result.get('sources', []))} sources")
         print(f"    ✓ model: {result.get('model', 'MISSING')}")
@@ -36,7 +36,7 @@ def verify_approach(name, retrieve_fn, evaluate_fn):
 
         # Test evaluate
         eval_result = evaluate_fn(result["answer"], test_condition)
-        print(f"  evaluate():")
+        print("  evaluate():")
         print(f"    ✓ condition_met: {eval_result.get('condition_met', 'MISSING')}")
         print(f"    ✓ model: {eval_result.get('model', 'MISSING')}")
         print(f"    ✓ usage: {eval_result.get('usage', 'MISSING')}")
@@ -55,7 +55,7 @@ def verify_approach(name, retrieve_fn, evaluate_fn):
         if errors:
             print(f"  ❌ ERRORS: {', '.join(errors)}")
         else:
-            print(f"  ✅ All fields present!")
+            print("  ✅ All fields present!")
 
     except Exception as e:
         print(f"  ❌ ERROR: {e}")

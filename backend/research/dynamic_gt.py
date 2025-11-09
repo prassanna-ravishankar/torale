@@ -5,7 +5,7 @@ This module provides helpers to evaluate ground truth for test cases that
 depend on current state (like weather, prices, availability, etc).
 """
 
-from approaches.weather_gt import get_tomorrow_rain, CITIES
+from approaches.weather_gt import CITIES, get_tomorrow_rain
 
 
 def get_dynamic_ground_truth(experiment) -> bool:

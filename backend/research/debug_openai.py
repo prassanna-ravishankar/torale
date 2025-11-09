@@ -1,7 +1,7 @@
 """Simple debug script to understand OpenAI Responses API structure."""
 
-import os
 import json
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
