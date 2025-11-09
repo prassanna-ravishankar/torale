@@ -337,9 +337,12 @@ NOVU_VERIFICATION_WORKFLOW_ID=torale-email-verification  # Verification workflow
                   <div style="display: block;">
                     {% for source in payload.grounding_sources %}
                     <div style="margin: 0 0 8px 0; padding: 12px; background-color: #f9fafb; border-radius: 6px;">
-                      <a href="{{source.uri}}" style="color: #a855f7; text-decoration: none; font-size: 13px; line-height: 1.4;">
+                      <a href="{{source.uri}}" target="_blank" rel="noopener noreferrer" style="color: #a855f7; text-decoration: underline; font-size: 13px; line-height: 1.4; display: block;">
                         {{source.title}}
                       </a>
+                      <div style="margin-top: 4px; font-size: 11px; color: #71717a; word-break: break-all;">
+                        {{source.uri}}
+                      </div>
                     </div>
                     {% endfor %}
                   </div>
@@ -348,7 +351,7 @@ NOVU_VERIFICATION_WORKFLOW_ID=torale-email-verification  # Verification workflow
 
                 <!-- CTA Button matching frontend Button component -->
                 <div style="margin: 32px 0 0 0; text-align: center;">
-                  <a href="https://torale.ai/tasks/{{payload.task_id}}" style="display: inline-block; padding: 10px 24px; background-color: #a855f7; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px;">
+                  <a href="https://torale.ai/tasks/{{payload.task_id}}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 10px 24px; background-color: #a855f7; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px;">
                     View Full Details
                   </a>
                 </div>

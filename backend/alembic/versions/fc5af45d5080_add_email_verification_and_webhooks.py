@@ -1,20 +1,21 @@
 """add email verification and webhooks
 
-Revision ID: a1b2c3d4e5f6
-Revises: 7468642f6abd
-Create Date: 2025-11-07 22:30:00.000000
+Revision ID: fc5af45d5080
+Revises: 3dcde9bea1b3
+Create Date: 2025-11-09 19:18:32.726256
 
 """
-
-from collections.abc import Sequence
+from typing import Sequence, Union
 
 from alembic import op
+import sqlalchemy as sa
+
 
 # revision identifiers, used by Alembic.
-revision: str = "a1b2c3d4e5f6"
-down_revision: str | Sequence[str] | None = "7468642f6abd"
-branch_labels: str | Sequence[str] | None = None
-depends_on: str | Sequence[str] | None = None
+revision: str = 'fc5af45d5080'
+down_revision: Union[str, Sequence[str], None] = '3dcde9bea1b3'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
