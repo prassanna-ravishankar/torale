@@ -13,9 +13,9 @@ from uuid import uuid4
 
 import grpc
 import pytest
-from temporalio.service import RPCError
 
 from torale.workers.activities import execute_task
+
 
 class MockRPCError(Exception):
     """
@@ -268,7 +268,9 @@ class TestUpdateTaskRollback:
             assert "rolled back" in exc_info.value.detail.lower()
 
         # Verify rollback was attempted
-        rollback_calls = [call for call in mock_db.execute.call_args_list if "is_active" in str(call)]
+        rollback_calls = [
+            call for call in mock_db.execute.call_args_list if "is_active" in str(call)
+        ]
         assert len(rollback_calls) >= 1, "Should attempt to rollback is_active"
 
     @pytest.mark.asyncio
@@ -321,7 +323,9 @@ class TestUpdateTaskRollback:
             assert "rolled back" in exc_info.value.detail.lower()
 
         # Verify rollback was attempted
-        rollback_calls = [call for call in mock_db.execute.call_args_list if "is_active" in str(call)]
+        rollback_calls = [
+            call for call in mock_db.execute.call_args_list if "is_active" in str(call)
+        ]
         assert len(rollback_calls) >= 1, "Should attempt to rollback is_active"
 
     @pytest.mark.skip(

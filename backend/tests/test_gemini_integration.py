@@ -81,6 +81,15 @@ async def test_gemini_executor():
     }
 
     result = await executor.execute(config)
+
+    # Skip if quota exhausted or API unavailable (common in CI)
+    if not result.get("success"):
+        error = result.get("error", "")
+        if "RESOURCE_EXHAUSTED" in str(error) or "429" in str(error):
+            pytest.skip(f"Gemini API quota exhausted: {error}")
+        elif "UNAVAILABLE" in str(error) or "503" in str(error):
+            pytest.skip(f"Gemini API unavailable: {error}")
+
     assert result.get("success") is True, f"Execution failed: {result.get('error')}"
     assert result.get("answer"), "Response should have answer"
     assert result.get("condition_met") is not None, "Should have condition_met field"

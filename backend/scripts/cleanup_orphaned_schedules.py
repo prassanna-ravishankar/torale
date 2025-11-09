@@ -118,7 +118,7 @@ async def cleanup_orphaned_schedules(dry_run: bool = True, specific_task_id: str
             deleted = 0
             failed = 0
 
-            for schedule_id, task_id in orphaned:
+            for schedule_id, _task_id in orphaned:
                 try:
                     schedule_handle = client.get_schedule_handle(schedule_id)
                     await schedule_handle.delete()

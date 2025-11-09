@@ -283,7 +283,9 @@ async def update_task(
                         logger.info(f"Successfully created schedule {schedule_id}")
                     except Exception as create_error:
                         # Failed to create schedule - rollback task update
-                        logger.error(f"Failed to create schedule {schedule_id}: {str(create_error)}")
+                        logger.error(
+                            f"Failed to create schedule {schedule_id}: {str(create_error)}"
+                        )
                         await db.execute(
                             "UPDATE tasks SET is_active = $1 WHERE id = $2",
                             existing["is_active"],
@@ -295,7 +297,9 @@ async def update_task(
                         ) from create_error
                 else:
                     # Deactivating task but schedule doesn't exist - that's fine
-                    logger.info(f"Schedule {schedule_id} not found when deactivating task - already deleted")
+                    logger.info(
+                        f"Schedule {schedule_id} not found when deactivating task - already deleted"
+                    )
             else:
                 # Real RPC error (not "not found") - rollback the task update
                 logger.error(
