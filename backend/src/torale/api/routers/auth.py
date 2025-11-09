@@ -103,37 +103,51 @@ async def sync_user(
         )
 
     # Create new user with Clerk email auto-verified
-    new_user_id = uuid.uuid4()
-    await session.execute(
-        text("""
-            INSERT INTO users (
-                id, clerk_user_id, email, first_name, is_active,
-                verified_notification_emails, created_at, updated_at
-            )
-            VALUES (
-                :id, :clerk_user_id, :email, :first_name, :is_active,
-                ARRAY[:email]::TEXT[], :now, :now
-            )
-        """),
-        {
-            "id": new_user_id,
-            "clerk_user_id": clerk_user.clerk_user_id,
-            "email": clerk_user.email,
-            "first_name": first_name,
-            "is_active": True,
-            "now": datetime.now(UTC),
-        },
-    )
-    await session.commit()
+    # Handle race condition where user might be created between check and insert
+    try:
+        new_user_id = uuid.uuid4()
+        await session.execute(
+            text("""
+                INSERT INTO users (
+                    id, clerk_user_id, email, first_name, is_active,
+                    verified_notification_emails, created_at, updated_at
+                )
+                VALUES (
+                    :id, :clerk_user_id, :email, :first_name, :is_active,
+                    ARRAY[:email]::TEXT[], :now, :now
+                )
+            """),
+            {
+                "id": new_user_id,
+                "clerk_user_id": clerk_user.clerk_user_id,
+                "email": clerk_user.email,
+                "first_name": first_name,
+                "is_active": True,
+                "now": datetime.now(UTC),
+            },
+        )
+        await session.commit()
 
-    # Fetch created user
-    result = await session.execute(select(User).where(User.id == new_user_id))
-    new_user = result.scalar_one()
+        # Fetch created user
+        result = await session.execute(select(User).where(User.id == new_user_id))
+        new_user = result.scalar_one()
 
-    return SyncUserResponse(
-        user=UserRead.model_validate(new_user),
-        created=True,
-    )
+        return SyncUserResponse(
+            user=UserRead.model_validate(new_user),
+            created=True,
+        )
+    except Exception:
+        # Race condition: user was created by another request
+        # Rollback and fetch the existing user
+        await session.rollback()
+        result = await session.execute(
+            select(User).where(User.clerk_user_id == clerk_user.clerk_user_id)
+        )
+        existing_user = result.scalar_one()
+        return SyncUserResponse(
+            user=UserRead.model_validate(existing_user),
+            created=False,
+        )
 
 
 # API Key management
