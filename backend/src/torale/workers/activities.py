@@ -357,9 +357,9 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
             else:
                 activity.logger.warning("Webhook enabled but no URL/secret configured")
 
-    except Exception as e:
+    except Exception:
         # Never fail the workflow due to notification errors
-        activity.logger.error(f"Notification activity error: {str(e)}")
+        activity.logger.error("Notification activity error", exc_info=True)
 
     finally:
         await conn.close()

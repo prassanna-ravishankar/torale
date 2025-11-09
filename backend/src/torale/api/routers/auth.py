@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.api.clerk_auth import ClerkUser, get_current_user
@@ -135,7 +136,7 @@ async def sync_user(
             user=UserRead.model_validate(new_user),
             created=True,
         )
-    except Exception:
+    except IntegrityError:
         # Race condition: user was created by another request
         # Rollback and fetch the existing user
         await session.rollback()

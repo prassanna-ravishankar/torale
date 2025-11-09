@@ -1,7 +1,7 @@
 """add first_name to users
 
 Revision ID: 5cc2c3800faa
-Revises: 9fb326d5f5a7
+Revises: fc5af45d5080
 Create Date: 2025-11-09 19:49:30.069739
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "5cc2c3800faa"
-down_revision: str | Sequence[str] | None = "9fb326d5f5a7"
+down_revision: str | Sequence[str] | None = "fc5af45d5080"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

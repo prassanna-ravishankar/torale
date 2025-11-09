@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -41,12 +41,7 @@ export function ExecutionsTable() {
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
-  useEffect(() => {
-    loadExecutions()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter])
-
-  const loadExecutions = async () => {
+  const loadExecutions = useCallback(async () => {
     try {
       setLoading(true)
       const params: { limit: number; status?: string } = { limit: 50 }
@@ -61,7 +56,11 @@ export function ExecutionsTable() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter])
+
+  useEffect(() => {
+    loadExecutions()
+  }, [loadExecutions])
 
   if (loading) {
     return (

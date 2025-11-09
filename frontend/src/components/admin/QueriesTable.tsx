@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -33,12 +33,7 @@ export function QueriesTable() {
   const [error, setError] = useState<string | null>(null)
   const [activeOnly, setActiveOnly] = useState(false)
 
-  useEffect(() => {
-    loadQueries()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeOnly])
-
-  const loadQueries = async () => {
+  const loadQueries = useCallback(async () => {
     try {
       setLoading(true)
       const data = await api.getAdminQueries({ limit: 100, active_only: activeOnly })
@@ -49,7 +44,11 @@ export function QueriesTable() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeOnly])
+
+  useEffect(() => {
+    loadQueries()
+  }, [loadQueries])
 
   if (loading) {
     return (

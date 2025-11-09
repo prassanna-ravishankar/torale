@@ -91,65 +91,70 @@ class EmailVerificationService:
 
         Returns: (success, error_message)
         """
-        # Get verification record
-        record = await conn.fetchrow(
-            """
-            SELECT * FROM email_verifications
-            WHERE user_id = $1 AND email = $2 AND verified = false
-            ORDER BY created_at DESC
-            LIMIT 1
-            """,
-            UUID(user_id),
-            email,
-        )
+        # Use transaction and row-level locking to prevent race conditions
+        async with conn.transaction():
+            # Get verification record and lock the row
+            record = await conn.fetchrow(
+                """
+                SELECT * FROM email_verifications
+                WHERE user_id = $1 AND email = $2 AND verified = false
+                ORDER BY created_at DESC
+                LIMIT 1
+                FOR UPDATE
+                """,
+                UUID(user_id),
+                email,
+            )
 
-        if not record:
-            return False, "No verification pending for this email"
+            if not record:
+                return False, "No verification pending for this email"
 
-        # Check if expired
-        if datetime.utcnow() > record["expires_at"]:
-            return False, "Verification code expired. Request a new one."
+            # Check if expired
+            if datetime.utcnow() > record["expires_at"]:
+                return False, "Verification code expired. Request a new one."
 
-        # Check attempts
-        if record["attempts"] >= EmailVerificationService.MAX_VERIFICATION_ATTEMPTS:
-            return False, "Too many failed attempts. Request a new code."
+            # Check attempts
+            if record["attempts"] >= EmailVerificationService.MAX_VERIFICATION_ATTEMPTS:
+                return False, "Too many failed attempts. Request a new code."
 
-        # Check code
-        if record["verification_code"] != code:
-            # Increment attempts
+            # Check code
+            if record["verification_code"] != code:
+                # Increment attempts
+                await conn.execute(
+                    "UPDATE email_verifications SET attempts = attempts + 1 WHERE id = $1",
+                    record["id"],
+                )
+                remaining = (
+                    EmailVerificationService.MAX_VERIFICATION_ATTEMPTS - record["attempts"] - 1
+                )
+                return False, f"Invalid code. {remaining} attempts remaining."
+
+            # Mark as verified
             await conn.execute(
-                "UPDATE email_verifications SET attempts = attempts + 1 WHERE id = $1",
+                """
+                UPDATE email_verifications
+                SET verified = true, verified_at = NOW()
+                WHERE id = $1
+                """,
                 record["id"],
             )
-            remaining = EmailVerificationService.MAX_VERIFICATION_ATTEMPTS - record["attempts"] - 1
-            return False, f"Invalid code. {remaining} attempts remaining."
 
-        # Mark as verified
-        await conn.execute(
-            """
-            UPDATE email_verifications
-            SET verified = true, verified_at = NOW()
-            WHERE id = $1
-            """,
-            record["id"],
-        )
+            # Add to user's verified emails list
+            await conn.execute(
+                """
+                UPDATE users
+                SET verified_notification_emails =
+                    array_append(
+                        COALESCE(verified_notification_emails, ARRAY[]::TEXT[]),
+                        $1
+                    )
+                WHERE id = $2 AND NOT ($1 = ANY(COALESCE(verified_notification_emails, ARRAY[]::TEXT[])))
+                """,
+                email,
+                UUID(user_id),
+            )
 
-        # Add to user's verified emails list
-        await conn.execute(
-            """
-            UPDATE users
-            SET verified_notification_emails =
-                array_append(
-                    COALESCE(verified_notification_emails, ARRAY[]::TEXT[]),
-                    $1
-                )
-            WHERE id = $2 AND NOT ($1 = ANY(COALESCE(verified_notification_emails, ARRAY[]::TEXT[])))
-            """,
-            email,
-            UUID(user_id),
-        )
-
-        return True, None
+            return True, None
 
     @staticmethod
     async def is_email_verified(conn, user_id: str, email: str) -> bool:

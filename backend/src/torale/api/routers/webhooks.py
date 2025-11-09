@@ -1,5 +1,6 @@
 """Webhook API endpoints."""
 
+import json
 import secrets
 import time
 from datetime import datetime
@@ -148,10 +149,10 @@ async def verify_webhook(request: Request):
 
         return {"message": "Verification endpoint"}
 
-    except Exception as e:
+    except json.JSONDecodeError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid verification request",
+            detail="Invalid verification request: not valid JSON",
         ) from e
 
 
