@@ -148,7 +148,12 @@ Be precise - only set condition_met to true if the condition is definitively met
     elif content.startswith("```"):
         content = content.replace("```", "").strip()
 
-    result = json.loads(content)
+    try:
+        result = json.loads(content)
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"Failed to parse JSON response from Perplexity. Content: {content[:200]}"
+        ) from e
 
     # Extract token usage for Langfuse tracking
     usage = {

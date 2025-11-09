@@ -40,24 +40,29 @@ for name, retrieve_fn, evaluate_fn in approaches:
     print(f"Testing: {name}")
     print(f"{'='*80}")
 
-    summary = run_batch(
+    experiment_results = run_batch(
         experiments=ONCE_EXPERIMENTS[:10],  # Use first 10 test cases
         approach_name=name,
         retrieve_fn=retrieve_fn,
         evaluate_fn=evaluate_fn,
     )
 
+    # Calculate summary stats from list of ExperimentResults
+    accuracy = sum(r.accuracy for r in experiment_results) / len(experiment_results)
+    avg_tokens = sum(r.total_tokens for r in experiment_results) / len(experiment_results)
+    avg_latency = sum(r.latency_seconds for r in experiment_results) / len(experiment_results)
+
     results.append({
         "approach": name,
-        "accuracy": summary["accuracy"],
-        "avg_tokens": summary["avg_tokens"],
-        "avg_latency": summary["avg_latency"],
+        "accuracy": accuracy,
+        "avg_tokens": avg_tokens,
+        "avg_latency": avg_latency,
     })
 
     print(f"\n✓ {name} complete:")
-    print(f"  Accuracy: {summary['accuracy']:.1%}")
-    print(f"  Avg tokens: {summary['avg_tokens']:.0f}")
-    print(f"  Avg latency: {summary['avg_latency']:.2f}s")
+    print(f"  Accuracy: {accuracy:.1%}")
+    print(f"  Avg tokens: {avg_tokens:.0f}")
+    print(f"  Avg latency: {avg_latency:.2f}s")
 
 # Print final comparison
 print("\n" + "=" * 80)

@@ -17,6 +17,30 @@ from datetime import datetime
 from openai import OpenAI
 
 
+def _extract_usage(response) -> dict:
+    """Extract token usage from OpenAI response with detailed breakdown."""
+    usage = {
+        "input": response.usage.input_tokens,
+        "output": response.usage.output_tokens,
+        "total": response.usage.total_tokens,
+    }
+
+    # Add detailed token breakdown if available
+    if hasattr(response.usage, "input_tokens_details"):
+        if hasattr(response.usage.input_tokens_details, "cached_tokens"):
+            usage["cache_read_input_tokens"] = (
+                response.usage.input_tokens_details.cached_tokens
+            )
+
+    if hasattr(response.usage, "output_tokens_details"):
+        if hasattr(response.usage.output_tokens_details, "reasoning_tokens"):
+            usage["reasoning_tokens"] = (
+                response.usage.output_tokens_details.reasoning_tokens
+            )
+
+    return usage
+
+
 def _get_client():
     """Initialize OpenAI client."""
     api_key = os.getenv("OPENAI_API_KEY")
@@ -88,24 +112,7 @@ def retrieve(query: str, model: str = "gpt-5-mini") -> dict:
     sources = list(sources_map.values())
 
     # Extract token usage for Langfuse tracking
-    usage = {
-        "input": response.usage.input_tokens,
-        "output": response.usage.output_tokens,
-        "total": response.usage.total_tokens,
-    }
-
-    # Add detailed token breakdown if available
-    if hasattr(response.usage, "input_tokens_details"):
-        if hasattr(response.usage.input_tokens_details, "cached_tokens"):
-            usage["cache_read_input_tokens"] = (
-                response.usage.input_tokens_details.cached_tokens
-            )
-
-    if hasattr(response.usage, "output_tokens_details"):
-        if hasattr(response.usage.output_tokens_details, "reasoning_tokens"):
-            usage["reasoning_tokens"] = (
-                response.usage.output_tokens_details.reasoning_tokens
-            )
+    usage = _extract_usage(response)
 
     return {
         "answer": answer,
@@ -166,6 +173,7 @@ Be precise - only set condition_met to true if the condition is definitively met
     result = json.loads(response.choices[0].message.content)
 
     # Extract token usage for Langfuse tracking
+    # Chat Completions API uses different field names than Responses API
     usage = {
         "input": response.usage.prompt_tokens,
         "output": response.usage.completion_tokens,

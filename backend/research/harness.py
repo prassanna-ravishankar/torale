@@ -138,13 +138,13 @@ def run_experiment(
         latency = time.time() - start_time
 
         # Calculate total tokens from usage dicts or fallback to old format
+        retrieve_total = retrieve_result.get("usage", {}).get("total")
         retrieve_tokens = (
-            retrieve_result.get("usage", {}).get("total")
-            or retrieve_result.get("tokens", 0)
+            retrieve_total if retrieve_total is not None else retrieve_result.get("tokens", 0)
         )
+        evaluate_total = evaluate_result.get("usage", {}).get("total")
         evaluate_tokens = (
-            evaluate_result.get("usage", {}).get("total")
-            or evaluate_result.get("tokens", 0)
+            evaluate_total if evaluate_total is not None else evaluate_result.get("tokens", 0)
         )
         total_tokens = retrieve_tokens + evaluate_tokens
 

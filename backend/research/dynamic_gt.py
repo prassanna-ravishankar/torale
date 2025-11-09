@@ -8,6 +8,24 @@ depend on current state (like weather, prices, availability, etc).
 from approaches.weather_gt import CITIES, get_tomorrow_rain
 
 
+def _check_rain_tomorrow(city_key: str) -> bool:
+    """Check if it will rain tomorrow in the specified city."""
+    result = get_tomorrow_rain(*CITIES[city_key])
+    return result["will_rain"]
+
+
+# Map query patterns to handler functions
+# Each key is a tuple of keywords that must all be present in the query
+DYNAMIC_GT_HANDLERS = {
+    ("rain", "seattle", "tomorrow"): lambda: _check_rain_tomorrow("seattle"),
+    ("rain", "san francisco", "tomorrow"): lambda: _check_rain_tomorrow("san_francisco"),
+    ("rain", "new york", "tomorrow"): lambda: _check_rain_tomorrow("new_york"),
+    # Add more dynamic checks here as needed
+    # e.g., ("bitcoin", "price", "above"): lambda: _check_bitcoin_price_above(threshold),
+    # ("ps5", "stock", "best buy"): lambda: _check_bestbuy_stock("ps5"),
+}
+
+
 def get_dynamic_ground_truth(experiment) -> bool:
     """
     Get ground truth for experiments that require real-time data.
@@ -20,21 +38,10 @@ def get_dynamic_ground_truth(experiment) -> bool:
     """
     query = experiment.search_query.lower()
 
-    # Weather checks
-    if "rain" in query and "seattle" in query and "tomorrow" in query:
-        result = get_tomorrow_rain(*CITIES["seattle"])
-        return result["will_rain"]
-
-    if "rain" in query and "san francisco" in query and "tomorrow" in query:
-        result = get_tomorrow_rain(*CITIES["san_francisco"])
-        return result["will_rain"]
-
-    if "rain" in query and "new york" in query and "tomorrow" in query:
-        result = get_tomorrow_rain(*CITIES["new_york"])
-        return result["will_rain"]
-
-    # Add more dynamic checks here as needed
-    # e.g., Bitcoin price, stock availability, etc.
+    # Try to match query against registered handlers
+    for keywords, handler in DYNAMIC_GT_HANDLERS.items():
+        if all(keyword in query for keyword in keywords):
+            return handler()
 
     # If no dynamic GT found, raise error
     raise ValueError(

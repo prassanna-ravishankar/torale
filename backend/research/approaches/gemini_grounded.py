@@ -139,7 +139,10 @@ Be precise - only set condition_met to true if the condition is definitively met
         ),
     )
 
-    result = json.loads(response.text)
+    try:
+        result = json.loads(response.text)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Failed to parse JSON response from Gemini: {e}") from e
 
     # Extract token usage for Langfuse tracking
     usage = {"input": 0, "output": 0, "total": 0}
