@@ -1,53 +1,11 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { Zap, TrendingUp, Bug, ArrowLeft, Server, FlaskConical } from "lucide-react";
-import { Card, CardHeader } from "@/components/ui/card";
+import { ArrowLeft } from "lucide-react";
 import { AnimatedBackground } from "./AnimatedBackground";
-
-interface ChangelogEntry {
-  id: string;
-  date: string;
-  title: string;
-  description: string;
-  category: "feature" | "improvement" | "fix" | "infra" | "research";
-  requestedBy: string[];
-  pr?: number; // Optional PR number
-}
-
-const getCategoryIcon = (category: string) => {
-  switch (category) {
-    case "feature":
-      return Zap;
-    case "improvement":
-      return TrendingUp;
-    case "fix":
-      return Bug;
-    case "infra":
-      return Server;
-    case "research":
-      return FlaskConical;
-    default:
-      return Zap;
-  }
-};
-
-const getCategoryLabel = (category: string) => {
-  switch (category) {
-    case "feature":
-      return "New Feature";
-    case "improvement":
-      return "Improvement";
-    case "fix":
-      return "Bug Fix";
-    case "infra":
-      return "Infrastructure";
-    case "research":
-      return "Research";
-    default:
-      return "Update";
-  }
-};
+import { ChangelogEntryCard } from "./ChangelogEntryCard";
+import { ChangelogEntry } from "@/types/changelog";
+import { GITHUB_REPO_URL } from "@/constants/links";
 
 export default function Changelog() {
   const navigate = useNavigate();
@@ -120,7 +78,7 @@ export default function Changelog() {
             </p>
             <p className="text-sm text-muted-foreground/70">
               <a
-                href="https://github.com/prassanna-ravishankar/torale"
+                href={GITHUB_REPO_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline inline-flex items-center gap-1"
@@ -144,7 +102,6 @@ export default function Changelog() {
             {/* Entries */}
             <div className="space-y-12">
               {entries.map((entry, index) => {
-                const IconComponent = getCategoryIcon(entry.category);
                 const isEven = index % 2 === 0;
 
                 return (
@@ -166,145 +123,7 @@ export default function Changelog() {
                     />
 
                     {/* Content */}
-                    <div className={`grid grid-cols-2 gap-8 ${isEven ? "" : ""}`}>
-                      {isEven ? (
-                        <>
-                          {/* Content on left */}
-                          <div className="text-right">
-                            <motion.div
-                              className="rounded-lg border-2 overflow-hidden"
-                              initial={{ borderColor: "hsl(var(--border))" }}
-                              whileInView={{ borderColor: "hsl(var(--primary))", scale: 1.02 }}
-                              viewport={{ margin: "-200px" }}
-                              transition={{ duration: 0.3 }}
-                            >
-                              <Card className="border-0">
-                                <motion.div
-                                  className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent"
-                                  initial={{ opacity: 0 }}
-                                  whileInView={{ opacity: 1 }}
-                                  viewport={{ margin: "-200px" }}
-                                  transition={{ duration: 0.3 }}
-                                />
-                              <CardHeader className="p-6 relative">
-                                <div className="flex flex-col items-end">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    {entry.pr && (
-                                      <a
-                                        href={`https://github.com/prassanna-ravishankar/torale/pull/${entry.pr}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-[10px] font-mono text-muted-foreground/70 hover:text-primary hover:underline transition-colors"
-                                        title="View PR on GitHub"
-                                      >
-                                        #{entry.pr}
-                                      </a>
-                                    )}
-                                    <span className="text-xs text-muted-foreground">
-                                      {new Date(entry.date).toLocaleDateString("en-US", {
-                                        month: "short",
-                                        day: "numeric",
-                                        year: "numeric",
-                                      })}
-                                    </span>
-                                    <span className="text-[9px] font-semibold uppercase tracking-wide text-primary">
-                                      {getCategoryLabel(entry.category)}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-3 mb-2">
-                                    <h3 className="text-lg font-bold group-hover:text-primary transition-colors">
-                                      {entry.title}
-                                    </h3>
-                                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/15 transition-colors">
-                                      <IconComponent className="h-5 w-5 text-primary" />
-                                    </div>
-                                  </div>
-                                  <p className="text-sm text-muted-foreground leading-relaxed text-right">
-                                    {entry.description}
-                                  </p>
-                                  {entry.requestedBy.length > 0 && (
-                                    <p className="text-xs text-muted-foreground/70 mt-3">
-                                      Requested by {entry.requestedBy.join(", ")}
-                                    </p>
-                                  )}
-                                </div>
-                              </CardHeader>
-                            </Card>
-                            </motion.div>
-                          </div>
-                          {/* Empty space on right */}
-                          <div />
-                        </>
-                      ) : (
-                        <>
-                          {/* Empty space on left */}
-                          <div />
-                          {/* Content on right */}
-                          <div>
-                            <motion.div
-                              className="rounded-lg border-2 overflow-hidden"
-                              initial={{ borderColor: "hsl(var(--border))" }}
-                              whileInView={{ borderColor: "hsl(var(--primary))", scale: 1.02 }}
-                              viewport={{ margin: "-200px" }}
-                              transition={{ duration: 0.3 }}
-                            >
-                              <Card className="border-0">
-                                <motion.div
-                                  className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent"
-                                  initial={{ opacity: 0 }}
-                                  whileInView={{ opacity: 1 }}
-                                  viewport={{ margin: "-200px" }}
-                                  transition={{ duration: 0.3 }}
-                                />
-                              <CardHeader className="p-6 relative">
-                                <div className="flex flex-col items-start">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-[9px] font-semibold uppercase tracking-wide text-primary">
-                                      {getCategoryLabel(entry.category)}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {new Date(entry.date).toLocaleDateString("en-US", {
-                                        month: "short",
-                                        day: "numeric",
-                                        year: "numeric",
-                                      })}
-                                    </span>
-                                    {entry.pr && (
-                                      <a
-                                        href={`https://github.com/prassanna-ravishankar/torale/pull/${entry.pr}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-[10px] font-mono text-muted-foreground/70 hover:text-primary hover:underline transition-colors"
-                                        title="View PR on GitHub"
-                                      >
-                                        #{entry.pr}
-                                      </a>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-3 mb-2">
-                                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/15 transition-colors">
-                                      <IconComponent className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <h3 className="text-lg font-bold group-hover:text-primary transition-colors">
-                                      {entry.title}
-                                    </h3>
-                                  </div>
-                                  <p className="text-sm text-muted-foreground leading-relaxed">
-                                    {entry.description}
-                                  </p>
-                                  {entry.requestedBy.length > 0 && (
-                                    <p className="text-xs text-muted-foreground/70 mt-3">
-                                      Requested by {entry.requestedBy.join(", ")}
-                                    </p>
-                                  )}
-                                </div>
-                              </CardHeader>
-                            </Card>
-                            </motion.div>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                    <ChangelogEntryCard entry={entry} isEven={isEven} />
                   </motion.div>
                 );
               })}

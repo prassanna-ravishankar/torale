@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { Search, Sparkles, ArrowRight, Code, Terminal, Zap, TrendingUp, Bug, Newspaper, Server, FlaskConical } from "lucide-react";
+import { Search, Sparkles, ArrowRight, Code, Terminal, Newspaper } from "lucide-react";
 import { AnimatedBackground } from "./AnimatedBackground";
+import { ChangelogEntry } from "@/types/changelog";
+import { getCategoryIcon, formatChangelogDate } from "@/utils/changelog";
 
 const EXAMPLES = [
   "When is the iPhone 18 release date announced?",
@@ -35,31 +37,6 @@ const HOW_IT_WORKS = [
   },
 ];
 
-interface ChangelogEntry {
-  id: string;
-  date: string;
-  title: string;
-  description: string;
-  category: "feature" | "improvement" | "fix" | "infra" | "research";
-  requestedBy: string[];
-}
-
-const getCategoryIcon = (category: string) => {
-  switch (category) {
-    case "feature":
-      return Zap;
-    case "improvement":
-      return TrendingUp;
-    case "fix":
-      return Bug;
-    case "infra":
-      return Server;
-    case "research":
-      return FlaskConical;
-    default:
-      return Sparkles;
-  }
-};
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -243,35 +220,33 @@ export default function Landing() {
                     transition={{ duration: 0.3 }}
                     className="absolute left-3 text-muted-foreground text-xs"
                   >
-                    {new Date(changelogEntries[currentChangelogIndex].date).toLocaleDateString("en-US", {
+                    {formatChangelogDate(changelogEntries[currentChangelogIndex].date, {
                       month: "short",
                       day: "numeric",
                     })}
                   </motion.div>
                 </AnimatePresence>
                 <AnimatePresence mode="wait">
-                  <motion.div
-                    key={currentChangelogIndex}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.3 }}
-                    className="flex items-center gap-2"
-                  >
-                    {(() => {
-                      const currentEntry = changelogEntries[currentChangelogIndex];
-                      const IconComponent = getCategoryIcon(currentEntry.category);
-                      return (
-                        <>
-                          <IconComponent className="h-4 w-4" />
-                          <span>
-                            {currentEntry.title}
-                            {currentEntry.requestedBy.length > 0 && `. Thanks ${currentEntry.requestedBy[0]}`}
-                          </span>
-                        </>
-                      );
-                    })()}
-                  </motion.div>
+                  {(() => {
+                    const currentEntry = changelogEntries[currentChangelogIndex];
+                    const IconComponent = getCategoryIcon(currentEntry.category);
+                    return (
+                      <motion.div
+                        key={currentChangelogIndex}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3 }}
+                        className="flex items-center gap-2"
+                      >
+                        <IconComponent className="h-4 w-4" />
+                        <span>
+                          {currentEntry.title}
+                          {currentEntry.requestedBy.length > 0 && `. Thanks ${currentEntry.requestedBy[0]}`}
+                        </span>
+                      </motion.div>
+                    );
+                  })()}
                 </AnimatePresence>
               </div>
             </motion.div>

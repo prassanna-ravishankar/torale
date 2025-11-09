@@ -56,15 +56,6 @@
   body {
     @apply bg-background text-foreground;
   }
-
-  /* Hide scrollbar globally while keeping scroll functionality */
-  html {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
-  }
-  html::-webkit-scrollbar {
-    display: none;  /* Chrome, Safari, Opera */
-  }
 }
 
 @layer utilities {
