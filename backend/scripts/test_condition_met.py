@@ -2,22 +2,24 @@
 import asyncio
 import sys
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Load environment variables from parent directory
 env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(env_path)
 
-# Add backend to path
+# Add backend to path - must be before importing local modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# ruff: noqa: E402 - Import must come after sys.path modification
 from torale.notifications.novu_service import novu_service
 
 
 async def main():
     email = "me@prassanna.io"
 
-    print(f"\n=== Testing Condition Met Notification ===")
+    print("\n=== Testing Condition Met Notification ===")
     print(f"Sending to: {email}")
 
     result = await novu_service.send_condition_met_notification(
@@ -45,12 +47,12 @@ async def main():
     )
 
     if result.get("success"):
-        print(f"✓ Notification sent successfully!")
+        print("✓ Notification sent successfully!")
         print(f"  Transaction ID: {result.get('transaction_id')}")
     else:
         print(f"✗ Failed: {result.get('error')}")
         if result.get("skipped"):
-            print(f"  (Novu not configured)")
+            print("  (Novu not configured)")
 
 
 if __name__ == "__main__":

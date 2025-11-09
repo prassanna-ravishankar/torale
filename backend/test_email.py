@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 """Quick test of condition met email."""
 import asyncio
+
 from torale.notifications.novu_service import novu_service
+
 
 async def main():
     result = await novu_service.send_condition_met_notification(

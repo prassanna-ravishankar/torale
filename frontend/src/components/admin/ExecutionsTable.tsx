@@ -14,17 +14,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatDistanceToNow } from 'date-fns'
 import { formatDuration } from '@/lib/utils'
 
+interface GroundingSource {
+  title: string
+  uri: string
+}
+
 interface Execution {
   id: string
   task_id: string
   status: string
   started_at: string
   completed_at: string | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   result: any
   error_message: string | null
   condition_met: boolean | null
   change_summary: string | null
-  grounding_sources: any[]
+  grounding_sources: GroundingSource[]
   search_query: string
   user_email: string
 }
@@ -37,12 +43,13 @@ export function ExecutionsTable() {
 
   useEffect(() => {
     loadExecutions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter])
 
   const loadExecutions = async () => {
     try {
       setLoading(true)
-      const params: any = { limit: 50 }
+      const params: { limit: number; status?: string } = { limit: 50 }
       if (statusFilter !== 'all') {
         params.status = statusFilter
       }

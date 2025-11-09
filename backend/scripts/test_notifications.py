@@ -114,7 +114,7 @@ async def test_novu_service():
         )
 
         if result.get("success"):
-            print(f"✓ Test notification sent successfully!")
+            print("✓ Test notification sent successfully!")
             print(f"  Transaction ID: {result.get('transaction_id')}")
         else:
             print(f"✗ Failed to send notification: {result.get('error')}")

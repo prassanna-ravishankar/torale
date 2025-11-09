@@ -39,6 +39,7 @@ export function WaitlistTable() {
   useEffect(() => {
     loadWaitlist()
     loadStats()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter])
 
   const loadWaitlist = async () => {
@@ -83,7 +84,7 @@ export function WaitlistTable() {
   }
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, any> = {
+    const variants: Record<string, "default" | "secondary" | "success"> = {
       pending: 'default',
       invited: 'secondary',
       converted: 'success',

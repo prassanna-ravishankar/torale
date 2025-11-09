@@ -3,7 +3,9 @@
 import asyncio
 import json
 import time
+
 from torale.core.webhook import WebhookPayload, WebhookSignature
+
 
 async def main():
     # Generate a test webhook secret
@@ -61,9 +63,9 @@ async def main():
 
     # Show headers that would be sent
     print("Headers that would be sent:")
-    print(f"Content-Type: application/json")
-    print(f"User-Agent: Torale-Webhooks/1.0")
-    print(f"X-Torale-Event: task.condition_met")
+    print("Content-Type: application/json")
+    print("User-Agent: Torale-Webhooks/1.0")
+    print("X-Torale-Event: task.condition_met")
     print(f"X-Torale-Signature: {signature}")
     print(f"X-Torale-Delivery: {payload.id}")
     print()
@@ -74,9 +76,9 @@ async def main():
     print("2. Copy your unique URL")
     print("3. Use this curl command:")
     print()
-    print(f"curl -X POST https://webhook.site/YOUR-ID \\")
-    print(f"  -H 'Content-Type: application/json' \\")
-    print(f"  -H 'X-Torale-Event: task.condition_met' \\")
+    print("curl -X POST https://webhook.site/YOUR-ID \\")
+    print("  -H 'Content-Type: application/json' \\")
+    print("  -H 'X-Torale-Event: task.condition_met' \\")
     print(f"  -H 'X-Torale-Signature: {signature}' \\")
     print(f"  -H 'X-Torale-Delivery: {payload.id}' \\")
     print(f"  -d '{payload_json}'")

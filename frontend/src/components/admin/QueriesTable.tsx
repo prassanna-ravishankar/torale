@@ -35,6 +35,7 @@ export function QueriesTable() {
 
   useEffect(() => {
     loadQueries()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOnly])
 
   const loadQueries = async () => {

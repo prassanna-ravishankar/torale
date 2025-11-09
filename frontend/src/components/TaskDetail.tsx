@@ -16,7 +16,6 @@ import {
   Bell,
   Play,
   Loader2,
-  Settings,
   Trash2,
 } from "lucide-react";
 import {
@@ -70,6 +69,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId]);
 
   const handleToggle = async () => {

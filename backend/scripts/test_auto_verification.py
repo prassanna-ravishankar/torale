@@ -7,9 +7,10 @@ from pathlib import Path
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+import asyncpg
+
 from torale.core.config import settings
 from torale.core.email_verification import EmailVerificationService
-import asyncpg
 
 
 async def test_auto_verification():
@@ -95,7 +96,7 @@ async def test_auto_verification():
         old_email = clerk_email
         new_email = "newemail@example.com"
 
-        print(f"Simulating email change:")
+        print("Simulating email change:")
         print(f"  Old: {old_email}")
         print(f"  New: {new_email}")
 
@@ -127,7 +128,7 @@ async def test_auto_verification():
             WHERE id = $1
         """, user["id"])
 
-        print(f"After update:")
+        print("After update:")
         print(f"  email: {updated_user['email']}")
         print(f"  verified_notification_emails: {updated_user['verified_notification_emails']}")
 
