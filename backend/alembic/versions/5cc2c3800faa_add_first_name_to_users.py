@@ -5,13 +5,14 @@ Revises: 9fb326d5f5a7
 Create Date: 2025-11-09 19:49:30.069739
 
 """
+
 from collections.abc import Sequence
 
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '5cc2c3800faa'
-down_revision: str | Sequence[str] | None = '9fb326d5f5a7'
+revision: str = "5cc2c3800faa"
+down_revision: str | Sequence[str] | None = "9fb326d5f5a7"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

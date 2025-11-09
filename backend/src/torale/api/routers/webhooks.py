@@ -55,9 +55,7 @@ async def update_user_webhook_config(
     Generates new secret if webhook is being enabled for the first time.
     """
     # Get current config
-    current = await db.fetch_one(
-        "SELECT webhook_secret FROM users WHERE id = $1", user.id
-    )
+    current = await db.fetch_one("SELECT webhook_secret FROM users WHERE id = $1", user.id)
 
     # Generate secret if enabling webhook for first time
     secret = current["webhook_secret"]

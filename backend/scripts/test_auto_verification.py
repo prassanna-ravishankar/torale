@@ -46,9 +46,7 @@ async def test_auto_verification():
         print(f"Verified emails array: {verified_emails}")
 
         # Check if Clerk email is verified (should be True even if not in array)
-        is_verified = await EmailVerificationService.is_email_verified(
-            conn, user_id, clerk_email
-        )
+        is_verified = await EmailVerificationService.is_email_verified(conn, user_id, clerk_email)
         print(f"is_email_verified(clerk_email): {is_verified}")
 
         if is_verified:
@@ -101,7 +99,8 @@ async def test_auto_verification():
         print(f"  New: {new_email}")
 
         # Perform the update operation from /auth/sync-user
-        await conn.execute("""
+        await conn.execute(
+            """
             UPDATE users
             SET email = $1,
                 verified_notification_emails = (
@@ -119,32 +118,36 @@ async def test_auto_verification():
                     END
                 )
             WHERE id = $3
-        """, new_email, old_email, user["id"])
+        """,
+            new_email,
+            old_email,
+            user["id"],
+        )
 
         # Verify the change
-        updated_user = await conn.fetchrow("""
+        updated_user = await conn.fetchrow(
+            """
             SELECT email, verified_notification_emails
             FROM users
             WHERE id = $1
-        """, user["id"])
+        """,
+            user["id"],
+        )
 
         print("After update:")
         print(f"  email: {updated_user['email']}")
         print(f"  verified_notification_emails: {updated_user['verified_notification_emails']}")
 
         # Check verification status
-        old_verified = await EmailVerificationService.is_email_verified(
-            conn, user_id, old_email
-        )
-        new_verified = await EmailVerificationService.is_email_verified(
-            conn, user_id, new_email
-        )
+        old_verified = await EmailVerificationService.is_email_verified(conn, user_id, old_email)
+        new_verified = await EmailVerificationService.is_email_verified(conn, user_id, new_email)
 
         print(f"  Old email verified: {old_verified}")
         print(f"  New email verified: {new_verified}")
 
         # Revert the change
-        await conn.execute("""
+        await conn.execute(
+            """
             UPDATE users
             SET email = $1,
                 verified_notification_emails = (
@@ -160,7 +163,11 @@ async def test_auto_verification():
                     END
                 )
             WHERE id = $3
-        """, old_email, new_email, user["id"])
+        """,
+            old_email,
+            new_email,
+            user["id"],
+        )
 
         if not old_verified and new_verified:
             print("✓ Email change correctly updated verified emails\n")

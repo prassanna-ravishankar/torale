@@ -23,14 +23,11 @@ class NovuService:
                 from novu_py import Novu
 
                 self._client = Novu(
-                    secret_key=settings.novu_secret_key,
-                    server_url=settings.novu_api_url
+                    secret_key=settings.novu_secret_key, server_url=settings.novu_api_url
                 )
                 logger.info("Novu service initialized successfully")
             except ImportError:
-                logger.error(
-                    "novu-py package not installed. Run: uv add novu-py"
-                )
+                logger.error("novu-py package not installed. Run: uv add novu-py")
                 self._enabled = False
                 self._client = None
 
@@ -97,9 +94,7 @@ class NovuService:
             logger.error(f"Novu API error: {str(e)}")
             return {"success": False, "error": str(e)}
 
-    async def send_verification_email(
-        self, email: str, code: str, user_name: str
-    ) -> dict:
+    async def send_verification_email(self, email: str, code: str, user_name: str) -> dict:
         """
         Send email verification code.
 
@@ -107,9 +102,7 @@ class NovuService:
         """
         if not self._enabled or not self._client:
             # For development - just log the code
-            logger.warning(
-                f"Novu not configured - verification code for {email}: {code}"
-            )
+            logger.warning(f"Novu not configured - verification code for {email}: {code}")
             return {
                 "success": False,
                 "error": "Novu not configured",

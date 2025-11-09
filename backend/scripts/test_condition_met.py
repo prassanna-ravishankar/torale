@@ -1,4 +1,5 @@
 """Test condition met notification to specific email."""
+
 import asyncio
 import sys
 from pathlib import Path
@@ -31,16 +32,16 @@ async def main():
         grounding_sources=[
             {
                 "title": "Apple announces iPhone 16 release date",
-                "uri": "https://www.apple.com/newsroom/2024/09/iphone-16-available-september-20/"
+                "uri": "https://www.apple.com/newsroom/2024/09/iphone-16-available-september-20/",
             },
             {
                 "title": "iPhone 16: Everything you need to know",
-                "uri": "https://www.macrumors.com/guide/iphone-16/"
+                "uri": "https://www.macrumors.com/guide/iphone-16/",
             },
             {
                 "title": "Apple Event September 2024",
-                "uri": "https://www.theverge.com/2024/9/9/apple-event-iphone-16"
-            }
+                "uri": "https://www.theverge.com/2024/9/9/apple-event-iphone-16",
+            },
         ],
         task_id="test_task_123",
         execution_id="test_exec_456",

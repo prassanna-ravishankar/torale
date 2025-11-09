@@ -84,10 +84,10 @@ export function WaitlistTable() {
   }
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "success"> = {
-      pending: 'default',
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      pending: 'outline',
       invited: 'secondary',
-      converted: 'success',
+      converted: 'default',
     }
 
     return (

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """Test webhook delivery."""
+
 import asyncio
 import json
 import time
@@ -24,22 +25,28 @@ async def main():
                 "id": "test_task_456",
                 "name": "iPhone Release Monitor",
                 "search_query": "When is the next iPhone being released?",
-                "condition_description": "A specific release date has been announced"
+                "condition_description": "A specific release date has been announced",
             },
             "execution": {
                 "id": "test_exec_123",
                 "condition_met": True,
                 "change_summary": "Apple officially announced the release date during their September event",
-                "completed_at": "2024-11-09T10:30:00Z"
+                "completed_at": "2024-11-09T10:30:00Z",
             },
             "result": {
                 "answer": "Apple announced the iPhone 16 will be released on September 20, 2024",
                 "grounding_sources": [
-                    {"title": "Apple announces iPhone 16", "uri": "https://www.apple.com/newsroom/2024/09/iphone-16"},
-                    {"title": "iPhone 16 Guide", "uri": "https://www.macrumors.com/guide/iphone-16/"},
-                ]
-            }
-        }
+                    {
+                        "title": "Apple announces iPhone 16",
+                        "uri": "https://www.apple.com/newsroom/2024/09/iphone-16",
+                    },
+                    {
+                        "title": "iPhone 16 Guide",
+                        "uri": "https://www.macrumors.com/guide/iphone-16/",
+                    },
+                ],
+            },
+        },
     }
 
     payload = WebhookPayload(**payload_data)
@@ -82,6 +89,7 @@ async def main():
     print(f"  -H 'X-Torale-Signature: {signature}' \\")
     print(f"  -H 'X-Torale-Delivery: {payload.id}' \\")
     print(f"  -d '{payload_json}'")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

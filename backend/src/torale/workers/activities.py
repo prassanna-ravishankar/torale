@@ -301,9 +301,7 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
 
             if webhook_url and webhook_secret:
                 # Build payload
-                payload = build_webhook_payload(
-                    execution_id, dict(task), dict(execution), result
-                )
+                payload = build_webhook_payload(execution_id, dict(task), dict(execution), result)
 
                 # Attempt delivery with proper resource cleanup
                 service = WebhookDeliveryService()

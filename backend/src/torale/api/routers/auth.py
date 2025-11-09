@@ -54,9 +54,8 @@ async def sync_user(
 
     if existing_user:
         # Update email and first_name if changed
-        needs_update = (
-            existing_user.email != clerk_user.email
-            or (first_name and existing_user.first_name != first_name)
+        needs_update = existing_user.email != clerk_user.email or (
+            first_name and existing_user.first_name != first_name
         )
 
         if needs_update:

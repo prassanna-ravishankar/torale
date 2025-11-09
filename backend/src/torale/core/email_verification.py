@@ -43,18 +43,14 @@ class EmailVerificationService:
         return True, None
 
     @staticmethod
-    async def create_verification(
-        conn, user_id: str, email: str
-    ) -> tuple[bool, str, str | None]:
+    async def create_verification(conn, user_id: str, email: str) -> tuple[bool, str, str | None]:
         """
         Create email verification record.
 
         Returns: (success, code_or_error, error_message)
         """
         # Check rate limit
-        can_send, error = await EmailVerificationService.can_send_verification(
-            conn, user_id
-        )
+        can_send, error = await EmailVerificationService.can_send_verification(conn, user_id)
         if not can_send:
             return False, "", error
 
@@ -89,9 +85,7 @@ class EmailVerificationService:
         return True, code, None
 
     @staticmethod
-    async def verify_code(
-        conn, user_id: str, email: str, code: str
-    ) -> tuple[bool, str | None]:
+    async def verify_code(conn, user_id: str, email: str, code: str) -> tuple[bool, str | None]:
         """
         Verify email with code.
 
@@ -127,11 +121,7 @@ class EmailVerificationService:
                 "UPDATE email_verifications SET attempts = attempts + 1 WHERE id = $1",
                 record["id"],
             )
-            remaining = (
-                EmailVerificationService.MAX_VERIFICATION_ATTEMPTS
-                - record["attempts"]
-                - 1
-            )
+            remaining = EmailVerificationService.MAX_VERIFICATION_ATTEMPTS - record["attempts"] - 1
             return False, f"Invalid code. {remaining} attempts remaining."
 
         # Mark as verified
@@ -193,9 +183,7 @@ class EmailVerificationService:
         return result["in_verified_array"] or False
 
     @staticmethod
-    async def check_spam_limits(
-        conn, user_id: str, email: str
-    ) -> tuple[bool, str | None]:
+    async def check_spam_limits(conn, user_id: str, email: str) -> tuple[bool, str | None]:
         """
         Check if user is within spam limits.
 

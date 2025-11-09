@@ -38,9 +38,7 @@ async def send_verification_email(
 
     try:
         # Check if already verified
-        if await EmailVerificationService.is_email_verified(
-            conn, str(user.id), request.email
-        ):
+        if await EmailVerificationService.is_email_verified(conn, str(user.id), request.email):
             return {"message": "Email already verified"}
 
         # Create verification
@@ -52,10 +50,12 @@ async def send_verification_email(
             raise HTTPException(status_code=429, detail=error)
 
         # Get user name for personalization (use email prefix as fallback)
-        user_row = await conn.fetchrow(
-            "SELECT first_name FROM users WHERE id = $1", user.id
+        user_row = await conn.fetchrow("SELECT first_name FROM users WHERE id = $1", user.id)
+        user_name = (
+            user_row["first_name"]
+            if user_row and user_row["first_name"]
+            else user.email.split("@")[0]
         )
-        user_name = user_row["first_name"] if user_row and user_row["first_name"] else user.email.split("@")[0]
 
         # Send verification email via Novu (or log code if not configured)
         await novu_service.send_verification_email(
@@ -117,22 +117,16 @@ async def list_verified_emails(user: CurrentUser, db: Database = Depends(get_db)
 
 
 @router.delete("/verified-emails/{email}")
-async def remove_verified_email(
-    email: str, user: CurrentUser, db: Database = Depends(get_db)
-):
+async def remove_verified_email(email: str, user: CurrentUser, db: Database = Depends(get_db)):
     """Remove email from verified list (cannot remove Clerk email)."""
     conn = await db.get_connection()
 
     try:
         # Get Clerk email
-        clerk_email = await conn.fetchval(
-            "SELECT email FROM users WHERE id = $1", user.id
-        )
+        clerk_email = await conn.fetchval("SELECT email FROM users WHERE id = $1", user.id)
 
         if email == clerk_email:
-            raise HTTPException(
-                status_code=400, detail="Cannot remove primary Clerk email"
-            )
+            raise HTTPException(status_code=400, detail="Cannot remove primary Clerk email")
 
         # Remove from verified list
         await conn.execute(

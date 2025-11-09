@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     The .env file is loaded by justfile/docker-compose, so we just
     read from the environment. This works in all environments.
     """
+
     model_config = SettingsConfigDict(extra="ignore")
 
     database_url: str = "postgresql://torale:torale@localhost:5432/torale"
