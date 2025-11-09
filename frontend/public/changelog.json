@@ -9,6 +9,15 @@
     "pr": 35
   },
   {
+    "id": "2025-11-09-research-harness",
+    "date": "2025-11-09",
+    "title": "Grounded Search Research Harness",
+    "description": "Built comprehensive research harness to evaluate and compare different grounded search approaches. Tested Gemini Grounded, Perplexity, and OpenAI Web Search across 17 test cases with Langfuse tracking. Perplexity showed the best balance of accuracy (80%), speed, and cost for production use.",
+    "category": "research",
+    "requestedBy": [],
+    "pr": 34
+  },
+  {
     "id": "2025-11-09-schedule-cleanup",
     "date": "2025-11-09",
     "title": "Automatic Schedule Cleanup",
