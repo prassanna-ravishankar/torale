@@ -81,7 +81,9 @@ for i, scenario in enumerate(scenarios, 1):
     print(f"  Ground Truth (from API): {resolved_gt}")
     print(f"  LLM condition_met: {scenario['llm_prediction']}")
     accuracy = scenario["llm_prediction"] == resolved_gt
-    print(f"  Accuracy: {scenario['llm_prediction']} == {resolved_gt} = {accuracy} {'✅' if accuracy else '❌'}")
+    print(
+        f"  Accuracy: {scenario['llm_prediction']} == {resolved_gt} = {accuracy} {'✅' if accuracy else '❌'}"
+    )
 
 print("\n" + "=" * 80)
 print("KEY INSIGHT")

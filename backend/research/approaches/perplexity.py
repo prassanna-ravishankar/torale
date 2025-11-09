@@ -68,7 +68,7 @@ def retrieve(query: str, model: str = "sonar") -> dict:
             sources.append(
                 {
                     "url": citation if isinstance(citation, str) else citation.get("url", ""),
-                    "title": f"Citation {i+1}",
+                    "title": f"Citation {i + 1}",
                     "snippet": "",
                 }
             )
@@ -76,7 +76,7 @@ def retrieve(query: str, model: str = "sonar") -> dict:
     elif hasattr(response, "model_extra") and response.model_extra:
         citations = response.model_extra.get("citations", [])
         for i, citation in enumerate(citations):
-            sources.append({"url": citation, "title": f"Citation {i+1}", "snippet": ""})
+            sources.append({"url": citation, "title": f"Citation {i + 1}", "snippet": ""})
 
     # Extract token usage for Langfuse tracking
     usage = {

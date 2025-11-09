@@ -383,9 +383,7 @@ if __name__ == "__main__":
         experiments = TEST_EXPERIMENTS[: args.experiments]
 
     # Run comparison across selected approaches
-    print(
-        f"\nComparing {len(approaches)} approach(es) on {len(experiments)} test case(s)..."
-    )
+    print(f"\nComparing {len(approaches)} approach(es) on {len(experiments)} test case(s)...")
     all_results = compare_approaches(experiments, approaches)
 
     # Flush Langfuse data

@@ -108,9 +108,7 @@ def get_weather_condition(
 
     if condition_check == "rain":
         condition_met = rain > 0
-        reasoning = (
-            f"Rain: {rain}mm" if condition_met else f"No rain (precipitation: {precip}mm)"
-        )
+        reasoning = f"Rain: {rain}mm" if condition_met else f"No rain (precipitation: {precip}mm)"
     elif condition_check == "snow":
         condition_met = snow > 0
         reasoning = f"Snow: {snow}mm" if condition_met else "No snow"

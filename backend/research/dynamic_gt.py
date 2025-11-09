@@ -44,9 +44,7 @@ def get_dynamic_ground_truth(experiment) -> bool:
             return handler()
 
     # If no dynamic GT found, raise error
-    raise ValueError(
-        f"No dynamic ground truth handler for query: {experiment.search_query}"
-    )
+    raise ValueError(f"No dynamic ground truth handler for query: {experiment.search_query}")
 
 
 if __name__ == "__main__":

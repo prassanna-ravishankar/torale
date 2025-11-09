@@ -65,7 +65,9 @@ print("OUTPUT STRUCTURE")
 print("=" * 80)
 if hasattr(response, "output"):
     print(f"Output type: {type(response.output)}")
-    print(f"Output length: {len(response.output) if hasattr(response.output, '__len__') else 'N/A'}")
+    print(
+        f"Output length: {len(response.output) if hasattr(response.output, '__len__') else 'N/A'}"
+    )
 
     for i, item in enumerate(response.output):
         print(f"\n--- Output Item {i} ---")

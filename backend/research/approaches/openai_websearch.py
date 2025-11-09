@@ -30,17 +30,22 @@ def _extract_usage(response) -> dict:
     # Chat Completions API uses prompt_tokens/completion_tokens
     usage = {
         "input": getattr(usage_obj, "input_tokens", None) or getattr(usage_obj, "prompt_tokens", 0),
-        "output": getattr(usage_obj, "output_tokens", None) or getattr(usage_obj, "completion_tokens", 0),
+        "output": getattr(usage_obj, "output_tokens", None)
+        or getattr(usage_obj, "completion_tokens", 0),
         "total": usage_obj.total_tokens,
     }
 
     # Add detailed token breakdown if available
     # Try Responses API field names first, then Chat Completions API
-    input_details = getattr(usage_obj, "input_tokens_details", None) or getattr(usage_obj, "prompt_tokens_details", None)
+    input_details = getattr(usage_obj, "input_tokens_details", None) or getattr(
+        usage_obj, "prompt_tokens_details", None
+    )
     if input_details and hasattr(input_details, "cached_tokens"):
         usage["cache_read_input_tokens"] = input_details.cached_tokens
 
-    output_details = getattr(usage_obj, "output_tokens_details", None) or getattr(usage_obj, "completion_tokens_details", None)
+    output_details = getattr(usage_obj, "output_tokens_details", None) or getattr(
+        usage_obj, "completion_tokens_details", None
+    )
     if output_details and hasattr(output_details, "reasoning_tokens"):
         usage["reasoning_tokens"] = output_details.reasoning_tokens
 

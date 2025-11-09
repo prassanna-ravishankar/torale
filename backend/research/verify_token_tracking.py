@@ -65,7 +65,9 @@ def verify_approach(name, retrieve_fn, evaluate_fn):
 verify_approach("Stub", stub.retrieve, stub.evaluate)
 
 if os.getenv("GOOGLE_API_KEY"):
-    verify_approach("Gemini (gemini-2.5-flash-lite)", gemini_grounded.retrieve, gemini_grounded.evaluate)
+    verify_approach(
+        "Gemini (gemini-2.5-flash-lite)", gemini_grounded.retrieve, gemini_grounded.evaluate
+    )
 else:
     print("\nGemini: Skipped (no GOOGLE_API_KEY)")
 
@@ -75,9 +77,7 @@ else:
     print("\nPerplexity: Skipped (no PERPLEXITY_API_KEY)")
 
 if os.getenv("OPENAI_API_KEY"):
-    verify_approach(
-        "OpenAI Web Search", openai_websearch.retrieve, openai_websearch.evaluate
-    )
+    verify_approach("OpenAI Web Search", openai_websearch.retrieve, openai_websearch.evaluate)
 else:
     print("\nOpenAI: Skipped (no OPENAI_API_KEY)")
 

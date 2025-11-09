@@ -20,7 +20,7 @@ try:
     print(f"  Answer: {result['answer'][:150]}...")
     print(f"  Sources: {len(result['sources'])}")
     for i, source in enumerate(result["sources"][:3]):
-        print(f"    {i+1}. {source['title'][:60]}...")
+        print(f"    {i + 1}. {source['title'][:60]}...")
         print(f"       {source['url']}")
     print(f"  Usage: {result['usage']}\n")
 
@@ -39,4 +39,5 @@ try:
 except Exception as e:
     print(f"✗ Error: {e}")
     import traceback
+
     traceback.print_exc()

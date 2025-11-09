@@ -36,9 +36,9 @@ if os.getenv("OPENAI_API_KEY"):
 # Run comparison
 results = []
 for name, retrieve_fn, evaluate_fn in approaches:
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"Testing: {name}")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     experiment_results = run_batch(
         experiments=ONCE_EXPERIMENTS[:10],  # Use first 10 test cases
@@ -52,12 +52,14 @@ for name, retrieve_fn, evaluate_fn in approaches:
     avg_tokens = sum(r.total_tokens for r in experiment_results) / len(experiment_results)
     avg_latency = sum(r.latency_seconds for r in experiment_results) / len(experiment_results)
 
-    results.append({
-        "approach": name,
-        "accuracy": accuracy,
-        "avg_tokens": avg_tokens,
-        "avg_latency": avg_latency,
-    })
+    results.append(
+        {
+            "approach": name,
+            "accuracy": accuracy,
+            "avg_tokens": avg_tokens,
+            "avg_latency": avg_latency,
+        }
+    )
 
     print(f"\n✓ {name} complete:")
     print(f"  Accuracy: {accuracy:.1%}")
@@ -72,7 +74,9 @@ print(f"\n{'Approach':<20} {'Accuracy':<12} {'Avg Tokens':<12} {'Avg Latency':<1
 print("-" * 80)
 
 for r in sorted(results, key=lambda x: x["accuracy"], reverse=True):
-    print(f"{r['approach']:<20} {r['accuracy']:>10.1%}  {r['avg_tokens']:>10.0f}  {r['avg_latency']:>10.2f}s")
+    print(
+        f"{r['approach']:<20} {r['accuracy']:>10.1%}  {r['avg_tokens']:>10.0f}  {r['avg_latency']:>10.2f}s"
+    )
 
 best = max(results, key=lambda x: x["accuracy"])
 print("\n" + "=" * 80)

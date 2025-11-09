@@ -33,6 +33,4 @@ print(f"  Latency: {result.latency_seconds:.2f}s")
 print(f"  Condition met: {result.condition_met}")
 print(f"  Expected: {experiment.expected_outcome}")
 print("\n✓ Check Langfuse for token tracking details!")
-print(
-    "  https://cloud.langfuse.com/project/cm5lxo2hu00016p79v4x0rwq7/traces"
-)
+print("  https://cloud.langfuse.com/project/cm5lxo2hu00016p79v4x0rwq7/traces")
