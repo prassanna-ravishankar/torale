@@ -191,3 +191,25 @@ Each trace includes:
 - Retrieve and evaluate spans
 - Token usage breakdown
 - Accuracy and latency metrics
+
+## Performance Results (Nov 2025)
+
+| Approach | Accuracy | Avg Tokens | Avg Latency | Notes |
+|----------|----------|------------|-------------|-------|
+| **Perplexity** 🏆 | **80%** | **~800** | **~9s** | Best balance |
+| OpenAI Web Search | 70% | ~14,500 | ~28s | Expensive |
+| Gemini Grounded | 60% | ~750 | ~3.4s | Fast, cheap |
+| Stub | 60% | 250 | 0s | Baseline |
+
+## Future Improvements
+
+See `FUTURE_IMPROVEMENTS.md` for plans to expand dynamic ground truth beyond weather:
+- Stock availability checks (Best Buy API, Amazon)
+- Price tracking (CamelCamelCamel, Keepa)
+- Product release dates (Wikidata SPARQL)
+
+## Related Documentation
+
+- **FUTURE_IMPROVEMENTS.md** - Dynamic GT expansion plans
+- **CLAUDE.md** (project root) - Overall project context
+- **README.md** (project root) - Main project documentation

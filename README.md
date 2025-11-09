@@ -200,6 +200,12 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 ### Frontend
 - **Alert Component Layout**: The info panel in the task creation dialog has alignment issues with the icon and text. The shadcn/ui Alert component's grid layout may need adjustment for proper spacing.
 
+## Research
+
+Systematic evaluation framework for comparing grounded search approaches. See [`backend/research/`](backend/research/) for details.
+
+**Results**: Perplexity achieves 80% accuracy at ~800 tokens (~9s), outperforming Gemini (60%/~750 tokens/~3.4s) and OpenAI (70%/~14,500 tokens/~28s).
+
 ## Testing
 
 Torale has comprehensive unit, integration, and E2E tests covering Temporal workflows, grounded search, and scheduled execution.
