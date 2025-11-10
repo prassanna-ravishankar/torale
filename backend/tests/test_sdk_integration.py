@@ -8,32 +8,48 @@ Prerequisites:
 - TORALE_NOAUTH=1 environment variable set
 
 Run with:
-    # Run all integration tests
-    pytest tests/test_sdk_integration.py -v -m integration
-
-    # Run regular tests (skip integration)
-    pytest tests/ -m "not integration"
+    # Run all tests (will auto-skip if API not available)
+    pytest tests/test_sdk_integration.py -v
 
     # Run specific test class
     pytest tests/test_sdk_integration.py::TestSDKBasicOperations -v
+
+Note: These tests automatically skip if the API server isn't running (similar to
+      test_gemini_integration.py). They're safe to run in CI.
 """
 
+import os
 import uuid
 from datetime import datetime
 
+import httpx
 import pytest
 
 from torale.sdk import Torale
 from torale.sdk.exceptions import AuthenticationError, NotFoundError, ValidationError
 
-# Mark all tests in this module as integration tests
-pytestmark = pytest.mark.integration
+
+def check_api_available() -> bool:
+    """Check if the API server is available."""
+    api_url = os.getenv("TORALE_API_URL", "http://localhost:8000")
+    try:
+        response = httpx.get(f"{api_url}/health", timeout=2.0)
+        return response.status_code == 200
+    except Exception:
+        return False
 
 
 @pytest.fixture
 def sdk_client():
     """Create SDK client with proper cleanup."""
+    # Check if API is available
+    if not check_api_available():
+        pytest.skip("API server not available (start with `just dev`)")
+
     # Use TORALE_NOAUTH=1 for local testing
+    if not os.getenv("TORALE_NOAUTH"):
+        pytest.skip("TORALE_NOAUTH not set (required for integration tests)")
+
     client = Torale()
     yield client
     client.close()
@@ -398,10 +414,10 @@ class TestSDKContextManager:
 class TestSDKConfiguration:
     """Test SDK configuration and initialization."""
 
-    def test_sdk_respects_base_url_env_var(self, monkeypatch):
-        """Test that SDK respects TORALE_BASE_URL environment variable."""
+    def test_sdk_respects_api_url_env_var(self, monkeypatch):
+        """Test that SDK respects TORALE_API_URL environment variable."""
         custom_url = "http://custom-api:9000"
-        monkeypatch.setenv("TORALE_BASE_URL", custom_url)
+        monkeypatch.setenv("TORALE_API_URL", custom_url)
 
         client = Torale()
         assert client.api_url == custom_url
