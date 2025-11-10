@@ -27,12 +27,13 @@
     "pr": 32
   },
   {
-    "id": "2025-11-08-email-notifications",
-    "date": "2025-11-08",
+    "id": "2025-11-09-email-notifications",
+    "date": "2025-11-09",
     "title": "Email & Webhook Notifications",
     "description": "Get notified when your monitoring conditions are met via email or webhook. Beautifully designed HTML emails with spam protection and automatic email verification through Clerk integration.",
     "category": "feature",
-    "requestedBy": []
+    "requestedBy": [],
+    "pr": 27
   },
   {
     "id": "2025-11-08-mobile-scrolling",
@@ -42,6 +43,15 @@
     "category": "fix",
     "requestedBy": [],
     "pr": 31
+  },
+  {
+    "id": "2025-11-08-mobile-responsiveness",
+    "date": "2025-11-08",
+    "title": "Enhanced Mobile Responsiveness",
+    "description": "Improved task modal layout and UX on mobile devices. Optimized touch interactions and viewport handling for better mobile experience.",
+    "category": "improvement",
+    "requestedBy": [],
+    "pr": 30
   },
   {
     "id": "2025-11-08-modern-ui",
