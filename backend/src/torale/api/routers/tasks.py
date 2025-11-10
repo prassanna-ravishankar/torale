@@ -85,13 +85,38 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
                 status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid notification: {str(e)}"
             )
 
-    # Create task in database
+    # Extract notification channels and webhook config from JSONB for compatibility with PR #27 schema
+    notification_channels = []
+    notification_email = None
+    webhook_url = None
+    webhook_secret = None
+
+    for notif in validated_notifications:
+        notif_type = notif.get("type")
+        if notif_type == "email":
+            if "email" not in notification_channels:
+                notification_channels.append("email")
+            # Store first email address found
+            if not notification_email:
+                notification_email = notif.get("address")
+        elif notif_type == "webhook":
+            if "webhook" not in notification_channels:
+                notification_channels.append("webhook")
+            # Store first webhook URL found
+            if not webhook_url:
+                webhook_url = notif.get("url")
+                # Generate HMAC secret for webhook signing (Stripe-compatible)
+                import secrets
+                webhook_secret = secrets.token_urlsafe(32)
+
+    # Create task in database, populating BOTH schema approaches for compatibility
     query = """
         INSERT INTO tasks (
             user_id, name, schedule, executor_type, config, is_active,
-            search_query, condition_description, notify_behavior, notifications
+            search_query, condition_description, notify_behavior, notifications,
+            notification_channels, notification_email, webhook_url, webhook_secret
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING *
     """
 
@@ -107,6 +132,10 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         task.condition_description,
         task.notify_behavior,
         json.dumps(validated_notifications),
+        notification_channels if notification_channels else None,
+        notification_email,
+        webhook_url,
+        webhook_secret,
     )
 
     if not row:
@@ -234,6 +263,34 @@ async def update_task(
                     status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid notification: {str(e)}"
                 )
         update_data["notifications"] = validated_notifications
+
+        # Extract notification channels and webhook config for PR #27 schema compatibility
+        notification_channels = []
+        notification_email = None
+        webhook_url = None
+        webhook_secret = None
+
+        for notif in validated_notifications:
+            notif_type = notif.get("type")
+            if notif_type == "email":
+                if "email" not in notification_channels:
+                    notification_channels.append("email")
+                if not notification_email:
+                    notification_email = notif.get("address")
+            elif notif_type == "webhook":
+                if "webhook" not in notification_channels:
+                    notification_channels.append("webhook")
+                if not webhook_url:
+                    webhook_url = notif.get("url")
+                    # Generate new secret when webhook URL changes
+                    import secrets
+                    webhook_secret = secrets.token_urlsafe(32)
+
+        # Add mapped fields to update data
+        update_data["notification_channels"] = notification_channels if notification_channels else None
+        update_data["notification_email"] = notification_email
+        update_data["webhook_url"] = webhook_url
+        update_data["webhook_secret"] = webhook_secret
 
     # Build dynamic UPDATE query
     set_clauses = []
