@@ -32,13 +32,13 @@ dev-frontend:
 dev-all: build
     #!/usr/bin/env bash
     docker compose up -d
-    cd frontend && npm run dev
+    cd frontend && npm install && npm run dev
 
 # Start all services + frontend in no-auth mode
 dev-all-noauth: build
     #!/usr/bin/env bash
     TORALE_NOAUTH=1 docker compose up -d
-    cd frontend && VITE_TORALE_NOAUTH=1 npm run dev
+    cd frontend && npm install && VITE_TORALE_NOAUTH=1 npm run dev
 
 # View logs for all services
 logs:
@@ -175,9 +175,20 @@ shell-workers:
 
 # === Linting and Formatting ===
 
-# Run ruff linter
-lint:
+# Run backend linting (ruff check + format check)
+lint-backend:
+    @echo "Running backend linting..."
     cd backend && uv run ruff check .
+    cd backend && uv run ruff format --check .
+
+# Run frontend linting (ESLint + TypeScript check)
+lint-frontend:
+    @echo "Running frontend linting..."
+    cd frontend && npm run lint
+    cd frontend && npx tsc --noEmit
+
+# Run all linting (backend + frontend) - mirrors CI
+lint: lint-backend lint-frontend
 
 # Run ruff formatter
 format:
@@ -187,7 +198,7 @@ format:
 typecheck:
     cd backend && uv run ty check .
 
-# Run all checks (lint + format + typecheck)
+# Run all checks (lint + typecheck)
 check: lint typecheck
 
 # === Installation ===
