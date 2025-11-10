@@ -26,9 +26,9 @@ async def lifespan(app: FastAPI):
             VALUES ('00000000-0000-0000-0000-000000000001', 'test_user_noauth', $1, true)
             ON CONFLICT (clerk_user_id) DO UPDATE SET email = EXCLUDED.email
         """,
-            settings.novu_noauth_email,
+            settings.torale_noauth_email,
         )
-        print(f"✓ Test user ready ({settings.novu_noauth_email})")
+        print(f"✓ Test user ready ({settings.torale_noauth_email})")
 
     yield
     await db.disconnect()

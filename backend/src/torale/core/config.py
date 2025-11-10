@@ -40,7 +40,7 @@ class Settings(BaseSettings):
 
     # Development/testing mode - disable authentication
     torale_noauth: bool = False
-    novu_noauth_email: str = "test@example.com"
+    torale_noauth_email: str = "test@example.com"
 
     # Platform capacity limit for beta
     max_users: int = 100
