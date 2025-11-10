@@ -4,6 +4,8 @@ Torale SDK - Python client for the Torale API.
 Beautiful, Pythonic API for creating and managing monitoring tasks.
 """
 
+from __future__ import annotations
+
 from torale.sdk.builders import MonitorBuilder, monitor
 from torale.sdk.client import ToraleClient
 from torale.sdk.exceptions import (

@@ -1,8 +1,10 @@
 """Fluent API builders for Torale SDK."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
-from torale.core.models import NotificationConfig, NotifyBehavior, Task
+from torale.core.models import NotifyBehavior, Task
 
 if TYPE_CHECKING:
     from torale.sdk import Torale

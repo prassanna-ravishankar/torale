@@ -1,5 +1,7 @@
 """Tasks resource for Torale SDK."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -12,7 +14,7 @@ if TYPE_CHECKING:
 class TasksResource:
     """Resource for managing tasks."""
 
-    def __init__(self, client: "ToraleClient"):
+    def __init__(self, client: ToraleClient):
         self.client = client
 
     def create(
