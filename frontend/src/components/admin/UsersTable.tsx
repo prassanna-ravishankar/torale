@@ -92,8 +92,8 @@ export function UsersTable() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Platform Capacity</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-lg sm:text-xl">Platform Capacity</CardTitle>
+          <CardDescription className="text-sm">
             {data.capacity.used} / {data.capacity.total} seats used • {data.capacity.available} available
           </CardDescription>
         </CardHeader>
@@ -101,11 +101,13 @@ export function UsersTable() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>Manage platform users and view their activity</CardDescription>
+          <CardTitle className="text-lg sm:text-xl">All Users</CardTitle>
+          <CardDescription className="text-sm">Manage platform users and view their activity</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Email</TableHead>
@@ -157,6 +159,63 @@ export function UsersTable() {
               )}
             </TableBody>
           </Table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="block md:hidden space-y-4">
+            {data.users.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground py-8">No users found</p>
+            ) : (
+              data.users.map((user) => (
+                <Card key={user.id} className="p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm truncate">{user.email}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Joined {user.created_at
+                            ? formatDistanceToNow(new Date(user.created_at), { addSuffix: true })
+                            : '-'}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={user.is_active ? 'default' : 'secondary'}
+                        className="text-xs flex-shrink-0"
+                      >
+                        {user.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Tasks</p>
+                        <p className="font-medium">{user.task_count}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Executions</p>
+                        <p className="font-medium">{user.total_executions}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Triggered</p>
+                        <p className="font-medium">{user.conditions_met_count}</p>
+                      </div>
+                    </div>
+
+                    {user.is_active && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="w-full min-h-[44px]"
+                        onClick={() => handleDeactivate(user.id, user.email)}
+                      >
+                        Deactivate User
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

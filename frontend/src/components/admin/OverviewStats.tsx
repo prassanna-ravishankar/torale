@@ -67,8 +67,8 @@ export function OverviewStats() {
   if (!stats) return null
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">User Capacity</CardTitle>
@@ -133,8 +133,8 @@ export function OverviewStats() {
           ) : (
             <div className="space-y-3">
               {stats.popular_queries.map((query, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex-1">
+                <div key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{query.search_query}</p>
                     <p className="text-xs text-muted-foreground">
                       {query.count} tasks • {query.triggered_count} triggered

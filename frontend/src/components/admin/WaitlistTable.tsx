@@ -108,7 +108,7 @@ export function WaitlistTable() {
     <div className="space-y-4">
       {/* Stats Cards */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total</CardTitle>
@@ -143,11 +143,11 @@ export function WaitlistTable() {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Waitlist Entries</CardTitle>
-          <CardDescription>Manage users waiting for access</CardDescription>
+          <CardTitle className="text-lg sm:text-xl">Waitlist Entries</CardTitle>
+          <CardDescription className="text-sm">Manage users waiting for access</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4">
             <Button
               variant={statusFilter === null ? 'default' : 'outline'}
               size="sm"
@@ -176,7 +176,10 @@ export function WaitlistTable() {
               No waitlist entries found
             </div>
           ) : (
-            <Table>
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block">
+                <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Email</TableHead>
@@ -217,6 +220,47 @@ export function WaitlistTable() {
                 ))}
               </TableBody>
             </Table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="block md:hidden space-y-4">
+                {entries.map((entry) => (
+                  <Card key={entry.id} className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm truncate">{entry.email}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Joined {new Date(entry.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        {getStatusBadge(entry.status)}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 min-h-[44px]"
+                          onClick={() => copyEmail(entry.email)}
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy Email
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="min-h-[44px]"
+                          onClick={() => deleteEntry(entry.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

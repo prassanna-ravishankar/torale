@@ -81,13 +81,13 @@ export function ExecutionsTable() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Execution History</CardTitle>
-            <CardDescription>View all task executions across users</CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+          <div className="min-w-0">
+            <CardTitle className="text-lg sm:text-xl">Execution History</CardTitle>
+            <CardDescription className="text-sm">View all task executions across users</CardDescription>
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
@@ -100,7 +100,9 @@ export function ExecutionsTable() {
         </div>
       </CardHeader>
       <CardContent>
-        <Table>
+        {/* Desktop Table View */}
+        <div className="hidden md:block">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>User</TableHead>
@@ -160,6 +162,67 @@ export function ExecutionsTable() {
             )}
           </TableBody>
         </Table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="block md:hidden space-y-4">
+          {executions.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground py-8">No executions found</p>
+          ) : (
+            executions.map((execution) => (
+              <Card key={execution.id} className="p-4">
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium break-words">{execution.search_query}</p>
+                      <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">{execution.user_email}</p>
+                    </div>
+                    <Badge
+                      variant={
+                        execution.status === 'success'
+                          ? 'default'
+                          : execution.status === 'failed'
+                            ? 'destructive'
+                            : 'secondary'
+                      }
+                      className="text-xs flex-shrink-0"
+                    >
+                      {execution.status}
+                    </Badge>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {execution.condition_met !== null && (
+                      <div>
+                        <span className="text-xs text-muted-foreground">Condition: </span>
+                        <Badge variant={execution.condition_met ? 'default' : 'outline'} className="text-xs">
+                          {execution.condition_met ? 'Met' : 'Not met'}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <div>
+                      <span className="font-medium">Started:</span>{' '}
+                      {execution.started_at
+                        ? formatDistanceToNow(new Date(execution.started_at), { addSuffix: true })
+                        : '-'}
+                    </div>
+                    <div>
+                      <span className="font-medium">Duration:</span>{' '}
+                      {formatDuration(execution.started_at, execution.completed_at, '-')}
+                    </div>
+                    <div>
+                      <span className="font-medium">Sources:</span>{' '}
+                      {execution.grounding_sources?.length || 0}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
       </CardContent>
     </Card>
   )

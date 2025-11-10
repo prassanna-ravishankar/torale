@@ -57,8 +57,8 @@ export function ErrorsList() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Errors</CardTitle>
-        <CardDescription>Failed task executions requiring attention</CardDescription>
+        <CardTitle className="text-lg sm:text-xl">Recent Errors</CardTitle>
+        <CardDescription className="text-sm">Failed task executions requiring attention</CardDescription>
       </CardHeader>
       <CardContent>
         {errors.length === 0 ? (
@@ -69,12 +69,12 @@ export function ErrorsList() {
           <div className="space-y-4">
             {errors.map((errorExec) => (
               <Alert key={errorExec.id} variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle className="flex items-center justify-between">
-                  <span>
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <AlertTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                  <span className="min-w-0 truncate text-sm sm:text-base">
                     {errorExec.task_name} - {errorExec.user_email}
                   </span>
-                  <span className="text-xs font-normal">
+                  <span className="text-xs font-normal flex-shrink-0">
                     {errorExec.started_at
                       ? formatDistanceToNow(new Date(errorExec.started_at), { addSuffix: true })
                       : 'Unknown'}
@@ -84,16 +84,18 @@ export function ErrorsList() {
                   <div className="space-y-2 mt-2">
                     <div>
                       <p className="text-xs font-semibold">Query:</p>
-                      <p className="text-xs">{errorExec.search_query}</p>
+                      <p className="text-xs break-words">{errorExec.search_query}</p>
                     </div>
                     <div>
                       <p className="text-xs font-semibold">Error:</p>
-                      <p className="text-xs font-mono">
+                      <p className="text-xs font-mono break-words">
                         {errorExec.error_message || 'No error message available'}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Task ID: {errorExec.task_id}</p>
+                      <p className="text-xs text-muted-foreground font-mono truncate">
+                        Task ID: {errorExec.task_id}
+                      </p>
                     </div>
                   </div>
                 </AlertDescription>

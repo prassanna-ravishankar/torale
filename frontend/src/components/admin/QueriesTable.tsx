@@ -69,19 +69,21 @@ export function QueriesTable() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>All User Queries</CardTitle>
-            <CardDescription>Monitor all search queries and conditions across users</CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+          <div className="min-w-0">
+            <CardTitle className="text-lg sm:text-xl">All User Queries</CardTitle>
+            <CardDescription className="text-sm">Monitor all search queries and conditions across users</CardDescription>
           </div>
           <div className="flex items-center space-x-2">
             <Switch id="active-only" checked={activeOnly} onCheckedChange={setActiveOnly} />
-            <Label htmlFor="active-only">Active only</Label>
+            <Label htmlFor="active-only" className="text-sm whitespace-nowrap">Active only</Label>
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        <Table>
+        {/* Desktop Table View */}
+        <div className="hidden md:block">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>User</TableHead>
@@ -130,6 +132,64 @@ export function QueriesTable() {
             )}
           </TableBody>
         </Table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="block md:hidden space-y-4">
+          {queries.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground py-8">No queries found</p>
+          ) : (
+            queries.map((query) => (
+              <Card key={query.id} className="p-4">
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-medium text-sm truncate">{query.name}</h3>
+                      <p className="text-xs text-muted-foreground font-mono truncate">{query.user_email}</p>
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <Badge variant={query.is_active ? 'default' : 'secondary'} className="text-xs">
+                        {query.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                      {query.condition_met && (
+                        <Badge variant="outline" className="text-green-600 text-xs">
+                          Met
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Search Query</p>
+                      <p className="text-sm break-words">{query.search_query}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Condition</p>
+                      <p className="text-sm text-muted-foreground break-words">{query.condition_description}</p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                      <div>
+                        <span className="text-muted-foreground">Schedule:</span>{' '}
+                        <span className="font-mono">{query.schedule}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Executions:</span>{' '}
+                        <span className="font-medium">{query.execution_count}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Triggered:</span>{' '}
+                        <span className="font-medium">{query.trigger_count}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
       </CardContent>
     </Card>
   )
