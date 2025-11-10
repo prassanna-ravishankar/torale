@@ -13,6 +13,7 @@ import { api } from '@/lib/api'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatDistanceToNow } from 'date-fns'
 import { formatDuration } from '@/lib/utils'
+import { ExecutionCard } from './cards/ExecutionCard'
 
 interface GroundingSource {
   title: string
@@ -169,58 +170,7 @@ export function ExecutionsTable() {
           {executions.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground py-8">No executions found</p>
           ) : (
-            executions.map((execution) => (
-              <Card key={execution.id} className="p-4">
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium break-words">{execution.search_query}</p>
-                      <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">{execution.user_email}</p>
-                    </div>
-                    <Badge
-                      variant={
-                        execution.status === 'success'
-                          ? 'default'
-                          : execution.status === 'failed'
-                            ? 'destructive'
-                            : 'secondary'
-                      }
-                      className="text-xs flex-shrink-0"
-                    >
-                      {execution.status}
-                    </Badge>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {execution.condition_met !== null && (
-                      <div>
-                        <span className="text-xs text-muted-foreground">Condition: </span>
-                        <Badge variant={execution.condition_met ? 'default' : 'outline'} className="text-xs">
-                          {execution.condition_met ? 'Met' : 'Not met'}
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    <div>
-                      <span className="font-medium">Started:</span>{' '}
-                      {execution.started_at
-                        ? formatDistanceToNow(new Date(execution.started_at), { addSuffix: true })
-                        : '-'}
-                    </div>
-                    <div>
-                      <span className="font-medium">Duration:</span>{' '}
-                      {formatDuration(execution.started_at, execution.completed_at, '-')}
-                    </div>
-                    <div>
-                      <span className="font-medium">Sources:</span>{' '}
-                      {execution.grounding_sources?.length || 0}
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            ))
+            executions.map((execution) => <ExecutionCard key={execution.id} execution={execution} />)
           )}
         </div>
       </CardContent>

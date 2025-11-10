@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Loader2, Users, Copy, Trash2, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { WaitlistEntryCard } from './cards/WaitlistEntryCard'
 
 interface WaitlistEntry {
   id: string
@@ -225,39 +226,13 @@ export function WaitlistTable() {
               {/* Mobile Card View */}
               <div className="block md:hidden space-y-4">
                 {entries.map((entry) => (
-                  <Card key={entry.id} className="p-4">
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium text-sm truncate">{entry.email}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            Joined {new Date(entry.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        {getStatusBadge(entry.status)}
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 min-h-[44px]"
-                          onClick={() => copyEmail(entry.email)}
-                        >
-                          <Copy className="h-4 w-4 mr-2" />
-                          Copy Email
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="min-h-[44px]"
-                          onClick={() => deleteEntry(entry.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
+                  <WaitlistEntryCard
+                    key={entry.id}
+                    entry={entry}
+                    onCopyEmail={copyEmail}
+                    onDelete={deleteEntry}
+                    getStatusBadge={getStatusBadge}
+                  />
                 ))}
               </div>
             </>

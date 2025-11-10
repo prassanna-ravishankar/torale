@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
+import { UserCard } from './cards/UserCard'
 
 interface User {
   id: string
@@ -167,52 +168,7 @@ export function UsersTable() {
               <p className="text-center text-sm text-muted-foreground py-8">No users found</p>
             ) : (
               data.users.map((user) => (
-                <Card key={user.id} className="p-4">
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-sm truncate">{user.email}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Joined {user.created_at
-                            ? formatDistanceToNow(new Date(user.created_at), { addSuffix: true })
-                            : '-'}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={user.is_active ? 'default' : 'secondary'}
-                        className="text-xs flex-shrink-0"
-                      >
-                        {user.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div>
-                        <p className="text-muted-foreground">Tasks</p>
-                        <p className="font-medium">{user.task_count}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Executions</p>
-                        <p className="font-medium">{user.total_executions}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Triggered</p>
-                        <p className="font-medium">{user.conditions_met_count}</p>
-                      </div>
-                    </div>
-
-                    {user.is_active && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="w-full min-h-[44px]"
-                        onClick={() => handleDeactivate(user.id, user.email)}
-                      >
-                        Deactivate User
-                      </Button>
-                    )}
-                  </div>
-                </Card>
+                <UserCard key={user.id} user={user} onDeactivate={handleDeactivate} />
               ))
             )}
           </div>
