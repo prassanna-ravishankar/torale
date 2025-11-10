@@ -23,7 +23,7 @@ class MonitorBuilder:
         ...     .create())
     """
 
-    def __init__(self, client: "Torale", search_query: str):
+    def __init__(self, client: Torale, search_query: str):
         self.client = client
         self._search_query = search_query
         self._condition_description: str | None = None
@@ -34,7 +34,7 @@ class MonitorBuilder:
         self._config: dict = {"model": "gemini-2.0-flash-exp"}
         self._is_active: bool = True
 
-    def when(self, condition_description: str) -> "MonitorBuilder":
+    def when(self, condition_description: str) -> MonitorBuilder:
         """
         Specify the condition that triggers notifications.
 
@@ -50,7 +50,7 @@ class MonitorBuilder:
         self._condition_description = condition_description
         return self
 
-    def check_every(self, schedule: str) -> "MonitorBuilder":
+    def check_every(self, schedule: str) -> MonitorBuilder:
         """
         Set how often to check the condition.
 
@@ -88,7 +88,7 @@ class MonitorBuilder:
         webhook: str | None = None,
         behavior: str | NotifyBehavior = NotifyBehavior.ONCE,
         **kwargs,
-    ) -> "MonitorBuilder":
+    ) -> MonitorBuilder:
         """
         Configure notifications.
 
@@ -138,7 +138,7 @@ class MonitorBuilder:
 
         return self
 
-    def named(self, name: str) -> "MonitorBuilder":
+    def named(self, name: str) -> MonitorBuilder:
         """
         Set a custom name for the task.
 
@@ -154,7 +154,7 @@ class MonitorBuilder:
         self._name = name
         return self
 
-    def with_config(self, **config) -> "MonitorBuilder":
+    def with_config(self, **config) -> MonitorBuilder:
         """
         Set custom executor configuration.
 
@@ -170,7 +170,7 @@ class MonitorBuilder:
         self._config.update(config)
         return self
 
-    def paused(self) -> "MonitorBuilder":
+    def paused(self) -> MonitorBuilder:
         """
         Create task in paused state (not active).
 
@@ -215,7 +215,7 @@ class MonitorBuilder:
         )
 
 
-def monitor(search_query: str, client: "Torale | None" = None) -> MonitorBuilder:
+def monitor(search_query: str, client: Torale | None = None) -> MonitorBuilder:
     """
     Create a monitoring task with fluent API.
 

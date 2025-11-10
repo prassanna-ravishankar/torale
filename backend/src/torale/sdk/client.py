@@ -117,13 +117,15 @@ class ToraleClient:
 
             # Raise appropriate exception based on status code
             if response.status_code == 401:
-                raise AuthenticationError(error_message)
+                raise AuthenticationError(error_message) from e
             elif response.status_code == 404:
-                raise NotFoundError(error_message)
+                raise NotFoundError(error_message) from e
             elif response.status_code == 400 or response.status_code == 422:
-                raise ValidationError(error_message)
+                raise ValidationError(error_message) from e
             else:
-                raise APIError(error_message, status_code=response.status_code, response=error_data)
+                raise APIError(
+                    error_message, status_code=response.status_code, response=error_data
+                ) from e
 
         # Return JSON response
         return response.json()

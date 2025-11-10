@@ -44,7 +44,9 @@ class Torale(ToraleClient):
         ...     .create())
     """
 
-    def __init__(self, api_key: str | None = None, api_url: str | None = None, timeout: float = 60.0):
+    def __init__(
+        self, api_key: str | None = None, api_url: str | None = None, timeout: float = 60.0
+    ):
         """
         Initialize Torale SDK client.
 

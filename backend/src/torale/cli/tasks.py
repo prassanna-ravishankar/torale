@@ -38,16 +38,20 @@ def get_client() -> Torale:
         print()
         print("[cyan]For local development without auth:[/cyan]")
         print("  export TORALE_NOAUTH=1")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 @task_app.command("create")
 def create_task(
     query: str = typer.Option(..., "--query", "-q", help="What to monitor"),
     condition: str = typer.Option(..., "--condition", "-c", help="When to trigger notification"),
-    name: str | None = typer.Option(None, "--name", "-n", help="Task name (auto-generated if not provided)"),
+    name: str | None = typer.Option(
+        None, "--name", "-n", help="Task name (auto-generated if not provided)"
+    ),
     schedule: str = typer.Option("0 9 * * *", "--schedule", "-s", help="Cron schedule expression"),
-    notify_behavior: str = typer.Option("once", "--notify-behavior", help="When to notify: once, always, track_state"),
+    notify_behavior: str = typer.Option(
+        "once", "--notify-behavior", help="When to notify: once, always, track_state"
+    ),
     webhook: str | None = typer.Option(None, "--webhook", "-w", help="Webhook URL to call"),
     model: str = typer.Option("gemini-2.0-flash-exp", "--model", "-m", help="LLM model to use"),
 ):
@@ -92,7 +96,7 @@ def create_task(
 
     except ToraleError as e:
         print(f"[red]✗ Failed to create task: {str(e)}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     finally:
         client.close()
 
@@ -123,7 +127,9 @@ def list_tasks(
             table.add_row(
                 str(task.id)[:8] + "...",
                 task.name,
-                task.search_query[:40] + "..." if len(task.search_query) > 40 else task.search_query,
+                task.search_query[:40] + "..."
+                if len(task.search_query) > 40
+                else task.search_query,
                 task.schedule,
                 "✓" if task.is_active else "✗",
                 str(task.created_at)[:19],
@@ -133,7 +139,7 @@ def list_tasks(
 
     except ToraleError as e:
         print(f"[red]✗ Failed to list tasks: {str(e)}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     finally:
         client.close()
 
@@ -171,7 +177,7 @@ def get_task(task_id: str):
 
     except ToraleError as e:
         print(f"[red]✗ Failed to get task: {str(e)}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     finally:
         client.close()
 
@@ -208,7 +214,7 @@ def update_task(
 
     except ToraleError as e:
         print(f"[red]✗ Failed to update task: {str(e)}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     finally:
         client.close()
 
@@ -233,7 +239,7 @@ def delete_task(
 
     except ToraleError as e:
         print(f"[red]✗ Failed to delete task: {str(e)}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     finally:
         client.close()
 
@@ -251,7 +257,7 @@ def execute_task(task_id: str):
 
     except ToraleError as e:
         print(f"[red]✗ Failed to execute task: {str(e)}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     finally:
         client.close()
 
@@ -284,7 +290,10 @@ def get_logs(
                 "failed": "red",
                 "running": "yellow",
                 "pending": "cyan",
-            }.get(execution.status.value if hasattr(execution.status, "value") else execution.status, "white")
+            }.get(
+                execution.status.value if hasattr(execution.status, "value") else execution.status,
+                "white",
+            )
 
             table.add_row(
                 str(execution.id)[:8] + "...",
@@ -298,7 +307,7 @@ def get_logs(
 
     except ToraleError as e:
         print(f"[red]✗ Failed to get logs: {str(e)}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     finally:
         client.close()
 
@@ -334,6 +343,6 @@ def get_notifications(
 
     except ToraleError as e:
         print(f"[red]✗ Failed to get notifications: {str(e)}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     finally:
         client.close()

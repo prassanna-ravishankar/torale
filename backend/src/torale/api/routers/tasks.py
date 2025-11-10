@@ -83,7 +83,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         except NotificationValidationError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid notification: {str(e)}"
-            )
+            ) from e
 
     # Extract notification channels and webhook config from JSONB for compatibility with PR #27 schema
     notification_channels = []
@@ -107,6 +107,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
                 webhook_url = notif.get("url")
                 # Generate HMAC secret for webhook signing (Stripe-compatible)
                 import secrets
+
                 webhook_secret = secrets.token_urlsafe(32)
 
     # Create task in database, populating BOTH schema approaches for compatibility
@@ -260,8 +261,9 @@ async def update_task(
                 validated_notifications.append(validated)
             except NotificationValidationError as e:
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid notification: {str(e)}"
-                )
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid notification: {str(e)}",
+                ) from e
         update_data["notifications"] = validated_notifications
 
         # Extract notification channels and webhook config for PR #27 schema compatibility
@@ -284,10 +286,13 @@ async def update_task(
                     webhook_url = notif.get("url")
                     # Generate new secret when webhook URL changes
                     import secrets
+
                     webhook_secret = secrets.token_urlsafe(32)
 
         # Add mapped fields to update data
-        update_data["notification_channels"] = notification_channels if notification_channels else None
+        update_data["notification_channels"] = (
+            notification_channels if notification_channels else None
+        )
         update_data["notification_email"] = notification_email
         update_data["webhook_url"] = webhook_url
         update_data["webhook_secret"] = webhook_secret
