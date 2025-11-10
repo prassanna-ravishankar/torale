@@ -32,13 +32,12 @@ class TaskExecutionWorkflow:
             retry_policy=retry_policy,
         )
 
-        # Send notification if condition was met
-        if result.get("condition_met"):
-            await workflow.execute_activity(
-                "send_notification",
-                args=[request.user_id, request.task_name, request.task_id, result],
-                start_to_close_timeout=timedelta(minutes=1),
-                retry_policy=retry_policy,
-            )
+        # Send notification
+        await workflow.execute_activity(
+            "send_notification",
+            args=[request.user_id, request.task_name, result],
+            start_to_close_timeout=timedelta(minutes=1),
+            retry_policy=retry_policy,
+        )
 
         return result
