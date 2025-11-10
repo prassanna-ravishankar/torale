@@ -37,9 +37,7 @@ dev-all: build
 # Start all services + frontend in no-auth mode
 dev-all-noauth: build
     #!/usr/bin/env bash
-    export TORALE_NOAUTH=1
-    export VITE_TORALE_NOAUTH=1
-    docker compose up -d
+    TORALE_NOAUTH=1 docker compose up -d
     cd frontend && VITE_TORALE_NOAUTH=1 npm run dev
 
 # View logs for all services
