@@ -282,7 +282,7 @@ async def get_current_user_or_test_user(
         # Return a test user with a fixed UUID
         return ClerkUser(
             clerk_user_id="test_user_noauth",
-            email="test@example.com",
+            email=settings.torale_noauth_email,
             email_verified=True,
             db_user_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
         )
