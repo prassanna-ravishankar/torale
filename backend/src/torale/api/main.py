@@ -20,12 +20,15 @@ async def lifespan(app: FastAPI):
     # Create test user for TORALE_NOAUTH mode
     if settings.torale_noauth:
         print("⚠️  TORALE_NOAUTH mode enabled - creating test user")
-        await db.execute("""
+        await db.execute(
+            """
             INSERT INTO users (id, clerk_user_id, email, is_active)
-            VALUES ('00000000-0000-0000-0000-000000000001', 'test_user_noauth', 'test@example.com', true)
-            ON CONFLICT (clerk_user_id) DO NOTHING
-        """)
-        print("✓ Test user ready (test@example.com)")
+            VALUES ('00000000-0000-0000-0000-000000000001', 'test_user_noauth', $1, true)
+            ON CONFLICT (clerk_user_id) DO UPDATE SET email = EXCLUDED.email
+        """,
+            settings.novu_noauth_email,
+        )
+        print(f"✓ Test user ready ({settings.novu_noauth_email})")
 
     yield
     await db.disconnect()

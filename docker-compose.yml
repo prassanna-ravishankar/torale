@@ -112,6 +112,7 @@ services:
       - NOVU_VERIFICATION_WORKFLOW_ID=${NOVU_VERIFICATION_WORKFLOW_ID:-torale-email-verification}
       - NOVU_API_URL=${NOVU_API_URL:-https://eu.api.novu.co}
       - TORALE_NOAUTH=${TORALE_NOAUTH:-0}
+      - NOVU_NOAUTH_EMAIL=${NOVU_NOAUTH_EMAIL:-test@example.com}
       - MAX_USERS=${MAX_USERS:-100}
     depends_on:
       init-migrations:
@@ -138,6 +139,7 @@ services:
       - NOVU_VERIFICATION_WORKFLOW_ID=${NOVU_VERIFICATION_WORKFLOW_ID:-torale-email-verification}
       - NOVU_API_URL=${NOVU_API_URL:-https://eu.api.novu.co}
       - TORALE_NOAUTH=${TORALE_NOAUTH:-0}
+      - NOVU_NOAUTH_EMAIL=${NOVU_NOAUTH_EMAIL:-test@example.com}
     depends_on:
       - postgres
       - temporal
