@@ -9,6 +9,7 @@ Create Date: 2025-11-07 22:40:09.036578
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
@@ -21,9 +22,10 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Add notifications column to tasks table
+    # Add notifications column to tasks table (using JSONB for PostgreSQL performance)
     op.add_column(
-        "tasks", sa.Column("notifications", sa.JSON(), nullable=False, server_default="[]")
+        "tasks",
+        sa.Column("notifications", postgresql.JSONB(), nullable=False, server_default="[]"),
     )
 
 
