@@ -7,6 +7,9 @@ Full implementation will be added in a separate PR.
 
 from typing import Any
 
+from pydantic import EmailStr
+from pydantic import ValidationError as PydanticValidationError
+
 
 class NotificationValidationError(Exception):
     """Raised when notification configuration is invalid."""
@@ -48,9 +51,11 @@ async def validate_notification(notification: dict[str, Any]) -> dict[str, Any]:
         if not address:
             raise NotificationValidationError("Email address required")
 
-        # Basic format validation
-        if "@" not in address or "." not in address.split("@")[-1]:
-            raise NotificationValidationError("Invalid email format")
+        # Validate email format using Pydantic EmailStr
+        try:
+            EmailStr._validate(address)
+        except PydanticValidationError as e:
+            raise NotificationValidationError(f"Invalid email format: {str(e)}") from e
 
         # TODO (Notification PR): Validate against user's connected/validated emails
         # For now, we'll reject task creation if email is provided

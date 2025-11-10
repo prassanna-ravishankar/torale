@@ -1,5 +1,6 @@
 import json
 import logging
+import secrets
 from uuid import UUID
 
 import grpc
@@ -85,6 +86,14 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
                 status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid notification: {str(e)}"
             ) from e
 
+    # Validate no duplicate notification types (PR #27 schema supports 1 email + 1 webhook max)
+    notification_types = [n.get("type") for n in validated_notifications]
+    if len(notification_types) != len(set(notification_types)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Multiple notifications of the same type are not supported. Please provide at most one email and one webhook notification.",
+        )
+
     # Extract notification channels and webhook config from JSONB for compatibility with PR #27 schema
     notification_channels = []
     notification_email = None
@@ -94,21 +103,13 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
     for notif in validated_notifications:
         notif_type = notif.get("type")
         if notif_type == "email":
-            if "email" not in notification_channels:
-                notification_channels.append("email")
-            # Store first email address found
-            if not notification_email:
-                notification_email = notif.get("address")
+            notification_channels.append("email")
+            notification_email = notif.get("address")
         elif notif_type == "webhook":
-            if "webhook" not in notification_channels:
-                notification_channels.append("webhook")
-            # Store first webhook URL found
-            if not webhook_url:
-                webhook_url = notif.get("url")
-                # Generate HMAC secret for webhook signing (Stripe-compatible)
-                import secrets
-
-                webhook_secret = secrets.token_urlsafe(32)
+            notification_channels.append("webhook")
+            webhook_url = notif.get("url")
+            # Generate HMAC secret for webhook signing (Stripe-compatible)
+            webhook_secret = secrets.token_urlsafe(32)
 
     # Create task in database, populating BOTH schema approaches for compatibility
     query = """
@@ -264,6 +265,15 @@ async def update_task(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Invalid notification: {str(e)}",
                 ) from e
+
+        # Validate no duplicate notification types (PR #27 schema supports 1 email + 1 webhook max)
+        notification_types = [n.get("type") for n in validated_notifications]
+        if len(notification_types) != len(set(notification_types)):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Multiple notifications of the same type are not supported. Please provide at most one email and one webhook notification.",
+            )
+
         update_data["notifications"] = validated_notifications
 
         # Extract notification channels and webhook config for PR #27 schema compatibility
@@ -275,19 +285,13 @@ async def update_task(
         for notif in validated_notifications:
             notif_type = notif.get("type")
             if notif_type == "email":
-                if "email" not in notification_channels:
-                    notification_channels.append("email")
-                if not notification_email:
-                    notification_email = notif.get("address")
+                notification_channels.append("email")
+                notification_email = notif.get("address")
             elif notif_type == "webhook":
-                if "webhook" not in notification_channels:
-                    notification_channels.append("webhook")
-                if not webhook_url:
-                    webhook_url = notif.get("url")
-                    # Generate new secret when webhook URL changes
-                    import secrets
-
-                    webhook_secret = secrets.token_urlsafe(32)
+                notification_channels.append("webhook")
+                webhook_url = notif.get("url")
+                # Generate new secret when webhook URL changes
+                webhook_secret = secrets.token_urlsafe(32)
 
         # Add mapped fields to update data
         update_data["notification_channels"] = (

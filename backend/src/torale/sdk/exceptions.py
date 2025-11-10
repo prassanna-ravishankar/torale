@@ -5,20 +5,16 @@ class ToraleError(Exception):
     """Base exception for all Torale SDK errors."""
 
 
-
 class AuthenticationError(ToraleError):
     """Raised when authentication fails."""
-
 
 
 class NotFoundError(ToraleError):
     """Raised when a resource is not found."""
 
 
-
 class ValidationError(ToraleError):
     """Raised when request validation fails."""
-
 
 
 class RateLimitError(ToraleError):

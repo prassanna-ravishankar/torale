@@ -109,6 +109,7 @@ class ToraleClient:
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
             # Try to parse error response
+            error_data = None  # Initialize to ensure it's always defined
             try:
                 error_data = response.json()
                 error_message = error_data.get("detail", str(e))
