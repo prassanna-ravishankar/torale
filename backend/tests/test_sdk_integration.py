@@ -33,10 +33,15 @@ def check_api_available() -> bool:
     """Check if the API server is available."""
     api_url = os.getenv("TORALE_API_URL", "http://localhost:8000")
     try:
-        response = httpx.get(f"{api_url}/health", timeout=2.0)
-        return response.status_code == 200
-    except Exception:
+        # Try to connect to the API (any response means it's up)
+        response = httpx.get(f"{api_url}/api/v1/tasks", timeout=2.0, follow_redirects=True)
+        # Any HTTP response (even 401/403) means API is running
+        return True
+    except (httpx.ConnectError, httpx.TimeoutException):
         return False
+    except Exception:
+        # Other errors (like auth errors) mean API is running
+        return True
 
 
 @pytest.fixture
