@@ -1,224 +1,270 @@
 [
   {
-    "id": "2025-11-09-changelog",
+    "id": "2025-11-11-mobile-admin-console",
+    "date": "2025-11-11",
+    "title": "Mobile-Friendly Admin Console",
+    "description": "Admin console now works beautifully on mobile devices with touch-optimized card layouts, responsive tables, and proper spacing. Monitor your platform on the go with a native-feeling mobile experience.",
+    "category": "improvement",
+    "requestedBy": [],
+    "pr": 63
+  },
+  {
+    "id": "2025-11-11-python-sdk",
+    "date": "2025-11-11",
+    "title": "Python SDK with Notification Infrastructure",
+    "description": "Introducing the beautiful new Python SDK with fluent API for programmatic task management. Create monitors with: monitor().when().notify().create(). Includes comprehensive notification system with email and webhook support.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": 28
+  },
+  {
+    "id": "2025-11-10-dev-mode-improvements",
+    "date": "2025-11-10",
+    "title": "Enhanced Development Mode",
+    "description": "Developers can now configure custom email addresses for no-auth development mode via TORALE_NOAUTH_EMAIL environment variable. Improved Docker Compose integration for faster local development setup.",
+    "category": "infra",
+    "requestedBy": [],
+    "pr": [61, 62]
+  },
+  {
+    "id": "2025-11-09-changelog-page",
     "date": "2025-11-09",
-    "title": "What's New - Changelog Page",
-    "description": "Introducing our beautiful new changelog page with an animated timeline, scroll-based reveals, and PR links. Track every update, improvement, and fix as we build in the open. See exactly what's changing and when.",
+    "title": "Beautiful Changelog Page",
+    "description": "Introducing our new changelog page with animated timeline, scroll-based reveals, and PR links. Track every update, improvement, and fix as we build in the open. See exactly what's changing and when.",
     "category": "feature",
     "requestedBy": [],
     "pr": 35
   },
   {
-    "id": "2025-11-09-research-harness",
+    "id": "2025-11-09-grounded-search-research",
     "date": "2025-11-09",
-    "title": "Grounded Search Research Harness",
-    "description": "Built comprehensive research harness to evaluate and compare different grounded search approaches. Tested Gemini Grounded, Perplexity, and OpenAI Web Search across 17 test cases with Langfuse tracking. Perplexity showed the best balance of accuracy (80%), speed, and cost for production use.",
+    "title": "Grounded Search Research & Evaluation",
+    "description": "Built comprehensive research harness to evaluate different grounded search approaches. Tested Gemini Grounded, Perplexity, and OpenAI Web Search across 17 test cases with Langfuse tracking. Research findings inform our production search quality.",
     "category": "research",
     "requestedBy": [],
     "pr": 34
   },
   {
-    "id": "2025-11-09-schedule-cleanup",
+    "id": "2025-11-09-temporal-schedule-cleanup",
     "date": "2025-11-09",
     "title": "Automatic Schedule Cleanup",
-    "description": "Improved reliability with automatic cleanup of orphaned Temporal schedules. When tasks are deleted, their background monitoring schedules are now properly removed with comprehensive error handling.",
+    "description": "Improved system reliability with automatic cleanup of orphaned Temporal schedules. When monitoring tasks are deleted, their background schedules are now properly removed with comprehensive error handling to prevent resource leaks.",
     "category": "improvement",
     "requestedBy": [],
     "pr": 32
   },
   {
-    "id": "2025-11-09-email-notifications",
+    "id": "2025-11-09-email-webhook-notifications",
     "date": "2025-11-09",
     "title": "Email & Webhook Notifications",
-    "description": "Get notified when your monitoring conditions are met via email or webhook. Beautifully designed HTML emails with spam protection and automatic email verification through Clerk integration.",
+    "description": "Get notified when your monitoring conditions are met via email or webhook. Features beautifully designed HTML emails with spam protection and automatic email verification through Clerk integration.",
     "category": "feature",
     "requestedBy": [],
     "pr": 27
   },
   {
-    "id": "2025-11-08-mobile-scrolling",
+    "id": "2025-11-08-mobile-task-creation",
     "date": "2025-11-08",
-    "title": "Mobile Scrolling Fixed",
-    "description": "Fixed scrolling overflow issues in the task creation modal on mobile devices. Template selection and form inputs now work smoothly on smaller screens.",
-    "category": "fix",
-    "requestedBy": [],
-    "pr": 31
-  },
-  {
-    "id": "2025-11-08-mobile-responsiveness",
-    "date": "2025-11-08",
-    "title": "Enhanced Mobile Responsiveness",
-    "description": "Improved task modal layout and UX on mobile devices. Optimized touch interactions and viewport handling for better mobile experience.",
+    "title": "Mobile Task Creation UX",
+    "description": "Completely redesigned task creation interface with improved mobile responsiveness. Fixed scrolling overflow issues, optimized touch interactions, and enhanced template selection for seamless task creation on any device.",
     "category": "improvement",
     "requestedBy": [],
-    "pr": 30
+    "pr": [29, 30, 31]
   },
   {
-    "id": "2025-11-08-modern-ui",
+    "id": "2025-11-08-kubernetes-migration-reliability",
     "date": "2025-11-08",
-    "title": "Modernized Task Creation UI",
-    "description": "Completely redesigned the task creation interface with improved template selection, better visual hierarchy, icon-based template cards, and smoother animations. Creating monitoring tasks is now more intuitive and delightful.",
-    "category": "feature",
-    "requestedBy": [],
-    "pr": 29
-  },
-  {
-    "id": "2025-11-08-cloud-sql-proxy",
-    "date": "2025-11-08",
-    "title": "Cloud SQL Proxy Reliability",
-    "description": "Upgraded Cloud SQL Proxy to v2.19.0 with proper SIGTERM handling for graceful shutdowns. Includes quitquitquit endpoint support and optimized max-sigterm-delay configuration.",
-    "category": "infra",
-    "requestedBy": []
-  },
-  {
-    "id": "2025-11-08-docker-cache",
-    "date": "2025-11-08",
-    "title": "Registry Cache Fallback",
-    "description": "Added registry cache fallback mechanism for better Docker layer reuse. Significantly improved build times and deployment reliability.",
-    "category": "infra",
-    "requestedBy": []
-  },
-  {
-    "id": "2025-11-08-migration-jobs",
-    "date": "2025-11-08",
-    "title": "Unified Migration Architecture",
-    "description": "Refactored database migrations to use consistent init container pattern across local and production environments. Improved reliability and simplified deployment process.",
+    "title": "Kubernetes Migration Reliability",
+    "description": "Unified database migration architecture using init containers across local and production environments. Upgraded Cloud SQL Proxy to v2.19.0 with proper graceful shutdown handling. Added registry cache fallback for faster deployments.",
     "category": "infra",
     "requestedBy": []
   },
   {
     "id": "2025-11-07-admin-console",
     "date": "2025-11-07",
-    "title": "Admin Console",
-    "description": "Added comprehensive admin dashboard for platform monitoring. Track users, executions, popular queries, Temporal workflows, and system errors all in one place.",
+    "title": "Admin Console Launch",
+    "description": "Comprehensive admin dashboard for platform monitoring. Track users, task executions, popular queries, Temporal workflows/schedules, and system errors all in one place. Includes user management with account deactivation controls.",
     "category": "feature",
     "requestedBy": [],
     "pr": 18
   },
   {
-    "id": "2025-11-07-animated-background",
+    "id": "2025-11-07-branding-update",
     "date": "2025-11-07",
-    "title": "Animated Landing Page",
-    "description": "Enhanced the landing page with a beautiful animated network background featuring particles and connections. Includes parallax scrolling effects for a modern, dynamic first impression.",
+    "title": "New Logo & Brand Identity",
+    "description": "Refreshed brand identity with new logo design, updated favicon, comprehensive brand pack, and animated network background on landing page. The new visual identity better represents Torale's modern, intelligent monitoring platform.",
     "category": "improvement",
     "requestedBy": [],
-    "pr": 22
+    "pr": [22, 23, 25]
   },
   {
-    "id": "2025-11-07-clerk-production",
+    "id": "2025-11-07-production-infrastructure",
     "date": "2025-11-07",
-    "title": "Production Authentication",
-    "description": "Configured Clerk for production environment with proper OAuth flows and secure session management. Production-ready authentication is now live.",
+    "title": "Production Infrastructure Enhancements",
+    "description": "Configured Clerk for production OAuth flows, integrated Temporal Cloud UI for workflow monitoring, and implemented dynamic capacity management with configurable user limits. Production-ready authentication and monitoring now live.",
     "category": "infra",
-    "requestedBy": []
+    "requestedBy": [],
+    "pr": [24, 26]
   },
   {
-    "id": "2025-11-07-new-branding",
-    "date": "2025-11-07",
-    "title": "New Logo & Branding",
-    "description": "Refreshed brand identity with a new logo design, updated favicon, and comprehensive brand pack. The new visual identity better represents Torale's modern, intelligent monitoring platform.",
+    "id": "2025-11-06-social-security",
+    "date": "2025-11-06",
+    "title": "Social Sharing & Security",
+    "description": "Added OpenGraph meta tags for beautiful link previews when sharing on social media. Patched esbuild CORS vulnerability (CVE) to enhance frontend security. Share Torale confidently with rich previews on Twitter, LinkedIn, and Slack.",
     "category": "improvement",
     "requestedBy": [],
-    "pr": 23
+    "pr": [20, 21]
   },
   {
-    "id": "2025-11-07-temporal-ui",
-    "date": "2025-11-07",
-    "title": "Temporal Cloud Integration",
-    "description": "Configured Temporal UI to point to Temporal Cloud for production workflows. Enables easy monitoring and debugging of background task execution.",
-    "category": "infra",
-    "requestedBy": []
-  },
-  {
-    "id": "2025-11-07-capacity-limits",
-    "date": "2025-11-07",
-    "title": "Dynamic Capacity Management",
-    "description": "Implemented configurable user capacity limits with environment variable support. Allows flexible scaling control as the platform grows.",
+    "id": "2025-11-06-ci-cd-optimization",
+    "date": "2025-11-06",
+    "title": "CI/CD Pipeline Optimization",
+    "description": "Complete overhaul of deployment infrastructure: Docker layer caching with native GitHub Actions backend, integrated security scanning, helmfile v2 integration, simplified GKE authentication, and automated multi-environment deployments to production.",
     "category": "infra",
     "requestedBy": [],
-    "pr": 26
+    "pr": [14, 19]
   },
   {
-    "id": "2025-11-06-social-sharing",
-    "date": "2025-11-06",
-    "title": "Social Sharing Optimization",
-    "description": "Added OpenGraph meta tags for beautiful link previews when sharing Torale on social media platforms like Twitter, LinkedIn, and Slack.",
-    "category": "improvement",
-    "requestedBy": [],
-    "pr": 20
-  },
-  {
-    "id": "2025-11-06-security-patch",
-    "date": "2025-11-06",
-    "title": "Security: esbuild CVE Patch",
-    "description": "Patched esbuild CORS vulnerability to enhance frontend security. Keeping dependencies up-to-date and secure.",
-    "category": "fix",
-    "requestedBy": [],
-    "pr": 21
-  },
-  {
-    "id": "2025-11-06-ci-optimization",
-    "date": "2025-11-06",
-    "title": "CI/CD Layer Caching",
-    "description": "Optimized CI/CD pipeline with Docker layer caching and integrated security scanning. Deployments are now significantly faster while maintaining security standards.",
-    "category": "infra",
-    "requestedBy": []
-  },
-  {
-    "id": "2025-11-06-helm-secrets",
-    "date": "2025-11-06",
-    "title": "External Secret Management",
-    "description": "Removed Helm secrets template to enforce external secret management best practices. Secrets are now managed securely outside version control.",
-    "category": "infra",
-    "requestedBy": []
-  },
-  {
-    "id": "2025-11-06-gha-cache",
-    "date": "2025-11-06",
-    "title": "Native GitHub Actions Cache",
-    "description": "Migrated to Docker's native GitHub Actions cache backend for simpler and more reliable build caching. Reduced manual cache management complexity.",
-    "category": "infra",
-    "requestedBy": []
-  },
-  {
-    "id": "2025-11-06-gke-credentials",
-    "date": "2025-11-06",
-    "title": "Simplified GKE Authentication",
-    "description": "Refactored GKE authentication to use get-gke-credentials action for simpler, more secure cluster access. Includes gke-gcloud-auth-plugin for kubectl compatibility.",
-    "category": "infra",
-    "requestedBy": []
-  },
-  {
-    "id": "2025-11-06-helmfile-action",
-    "date": "2025-11-06",
-    "title": "Helmfile v2 Integration",
-    "description": "Upgraded to helmfile-action v2 with integrated Helm and plugins. Streamlined deployment process with better dependency management.",
-    "category": "infra",
-    "requestedBy": []
-  },
-  {
-    "id": "2025-11-06-gcp-pipeline",
-    "date": "2025-11-06",
-    "title": "GCP Kubernetes CI/CD",
-    "description": "Set up complete CI/CD pipeline for GCP Kubernetes deployments with automated builds, security scanning, and multi-environment support. Production deployments are now fully automated.",
-    "category": "infra",
-    "requestedBy": [],
-    "pr": 14
-  },
-  {
-    "id": "2025-11-05-task-templates",
+    "id": "2025-11-05-v2-launch",
     "date": "2025-11-05",
-    "title": "Task Templates",
-    "description": "Choose from pre-built monitoring templates like Product Release Tracker, Price Monitoring, and Availability Alerts. Get started faster with smart defaults and auto-filled configurations for common use cases.",
+    "title": "Torale V2: Grounded Search Platform",
+    "description": "Major platform evolution to grounded search monitoring. Create tasks that intelligently monitor the web using Google Search + LLM analysis. Features task templates, runtime frontend configuration, Temporal Cloud integration, and state-based change detection.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": 13
+  },
+  {
+    "id": "2025-11-06-landing-page",
+    "date": "2025-11-06",
+    "title": "Modern Landing Page",
+    "description": "Launched beautiful new landing page with scroll animations, clear use cases, and modern design. Features honest, fun copy that explains what Torale does and how it helps. Now easier than ever to understand and get started.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": [16, 17]
+  },
+  {
+    "id": "2025-11-04-clerk-authentication",
+    "date": "2025-11-04",
+    "title": "Clerk Authentication System",
+    "description": "Complete authentication overhaul with Clerk integration. OAuth support for Google and GitHub, email/password login, API key management for CLI access, and no-auth development mode. Simplified user model with secure session management.",
     "category": "feature",
     "requestedBy": []
   },
   {
-    "id": "2025-11-04-landing-page",
+    "id": "2025-11-04-kubernetes-deployment",
     "date": "2025-11-04",
-    "title": "Modern Landing Page",
-    "description": "Launched a beautiful new landing page with scroll animations, clear use cases, and a modern design. Now it's easier than ever to understand what Torale does and get started.",
+    "title": "GKE Production Deployment",
+    "description": "Production infrastructure on Google Kubernetes Engine with Cloud SQL PostgreSQL, Helm orchestration, multi-stage Docker builds, and comprehensive deployment scripts. Includes detailed documentation for setup and management.",
+    "category": "infra",
+    "requestedBy": []
+  },
+  {
+    "id": "2025-11-04-frontend-dashboard",
+    "date": "2025-11-04",
+    "title": "React Dashboard with Real API Integration",
+    "description": "Fully functional React dashboard with Clerk authentication, real-time task management, execution history, and notification viewing. Built with TypeScript, Vite, and shadcn/ui components for a modern, type-safe experience.",
     "category": "feature",
+    "requestedBy": []
+  },
+  {
+    "id": "2025-11-04-grounded-search-executor",
+    "date": "2025-11-04",
+    "title": "Grounded Search Monitoring System",
+    "description": "Core monitoring engine using Google Search + Gemini LLM for intelligent web monitoring. Features state comparison for change detection, condition evaluation, source attribution, and configurable notification behavior (once/always/track_state).",
+    "category": "feature",
+    "requestedBy": []
+  },
+  {
+    "id": "2025-11-03-temporal-scheduling",
+    "date": "2025-11-03",
+    "title": "Automatic Temporal Scheduling",
+    "description": "Integrated Temporal for automatic cron-based task execution. Create monitoring tasks with custom schedules and let Temporal handle reliable, distributed execution with built-in retries and error handling.",
+    "category": "feature",
+    "requestedBy": []
+  },
+  {
+    "id": "2025-11-03-postgresql-migration",
+    "date": "2025-11-03",
+    "title": "PostgreSQL with FastAPI Users",
+    "description": "Migrated from Supabase to self-hosted PostgreSQL with FastAPI Users authentication. Includes Docker Compose support, Alembic migrations, and comprehensive testing framework. Full control over database and user management.",
+    "category": "infra",
+    "requestedBy": []
+  },
+  {
+    "id": "2025-07-01-service-decomposition",
+    "date": "2025-07-01",
+    "title": "Service Architecture Decomposition",
+    "description": "Refactored monolithic backend into decomposed services: content discovery service with Supabase integration, notification service with email/webhook support, and Gemini-powered standardization. Improved modularity and maintainability.",
+    "category": "infra",
+    "requestedBy": [],
+    "pr": 11
+  },
+  {
+    "id": "2025-06-11-torale-rebrand",
+    "date": "2025-06-11",
+    "title": "AmbiAlert → Torale Rebrand",
+    "description": "Complete project rebrand from AmbiAlert to Torale. New name, new logo, modernized frontend with beautiful landing page, improved sign-in UX, and consistent branding across platform. Fresh identity for our monitoring platform.",
+    "category": "improvement",
+    "requestedBy": [],
+    "pr": 10
+  },
+  {
+    "id": "2025-06-11-gen-2-backend",
+    "date": "2025-06-11",
+    "title": "Generation 2 Backend Architecture",
+    "description": "Major backend refactor with improved service architecture, better error handling, enhanced API design, and comprehensive testing. Linting fixes across Python and TypeScript codebases for code quality consistency.",
+    "category": "infra",
+    "requestedBy": [],
+    "pr": 9
+  },
+  {
+    "id": "2025-05-13-documentation-testing",
+    "date": "2025-05-13",
+    "title": "Documentation & Testing Framework",
+    "description": "Comprehensive documentation overhaul and testing framework setup. Added linting enforcement for Python (ruff) and TypeScript (eslint), CI pipeline for automated testing, and detailed project documentation.",
+    "category": "infra",
+    "requestedBy": []
+  },
+  {
+    "id": "2025-05-09-frontend-foundation",
+    "date": "2025-05-09",
+    "title": "Frontend Foundation",
+    "description": "Implemented core frontend architecture with authentication, API client, state management, and CRUD operations for monitored sources. Built with React, TypeScript, and modern state management patterns.",
+    "category": "feature",
+    "requestedBy": []
+  },
+  {
+    "id": "2025-05-07-perplexity-integration",
+    "date": "2025-05-07",
+    "title": "Perplexity API Integration",
+    "description": "Added Perplexity API for enhanced search capabilities. Includes example implementations and test harness for evaluating search quality across different providers.",
+    "category": "feature",
+    "requestedBy": []
+  },
+  {
+    "id": "2025-04-14-authentication-v1",
+    "date": "2025-04-14",
+    "title": "Authentication System V1",
+    "description": "Initial authentication system implementation with user registration, login, session management, and protected routes. Foundation for secure user access to monitoring platform.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": [6, 7]
+  },
+  {
+    "id": "2025-03-30-massive-refactor",
+    "date": "2025-03-30",
+    "title": "Platform Architecture Refactor",
+    "description": "Massive refactor establishing modern platform architecture. Introduced service-oriented design, improved database schema, enhanced API structure, and better separation of concerns across backend components.",
+    "category": "infra",
+    "requestedBy": [],
+    "pr": 1
+  },
+  {
+    "id": "2025-02-07-project-genesis",
+    "date": "2025-02-07",
+    "title": "Project Genesis",
+    "description": "Initial project setup with UV package manager, beautiful documentation site, comprehensive testing framework, and foundational architecture. Established code quality standards with ruff linting and modern Python tooling.",
+    "category": "infra",
     "requestedBy": []
   }
 ]
