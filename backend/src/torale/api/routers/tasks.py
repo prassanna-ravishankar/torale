@@ -87,7 +87,7 @@ async def _validate_and_extract_notifications(
             # else: webhook_secret stays None to preserve existing secret
 
     extracted = {
-        "notification_channels": notification_channels if notification_channels else None,
+        "notification_channels": notification_channels,
         "notification_email": notification_email,
         "webhook_url": webhook_url,
         "webhook_secret": webhook_secret,

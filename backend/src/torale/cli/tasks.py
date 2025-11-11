@@ -158,10 +158,7 @@ def get_task(task_id: str):
             if task.notifications:
                 print("[cyan]Notifications:[/cyan]")
                 for notif in task.notifications:
-                    print(
-                        f"  - {notif.type}: {notif.address or notif.url}"
-                    )
-
+                    print(f"  - {notif.type}: {notif.address or notif.url}")
 
             print("[cyan]Config:[/cyan]")
             print(json.dumps(task.config, indent=2))
