@@ -93,7 +93,7 @@ export function ErrorsList() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground font-mono truncate">
+                      <p className="text-xs text-muted-foreground font-mono truncate" title={errorExec.task_id}>
                         Task ID: {errorExec.task_id}
                       </p>
                     </div>
