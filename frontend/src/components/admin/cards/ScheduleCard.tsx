@@ -18,7 +18,7 @@ export function ScheduleCard({ schedule }: ScheduleCardProps) {
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-xs truncate">{schedule.schedule_id}</p>
+            <p className="font-mono text-xs truncate" title={schedule.schedule_id}>{schedule.schedule_id}</p>
             <p className="font-mono text-xs text-muted-foreground mt-1">
               {schedule.spec || 'N/A'}
             </p>
