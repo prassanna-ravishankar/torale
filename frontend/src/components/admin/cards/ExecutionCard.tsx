@@ -30,7 +30,7 @@ export function ExecutionCard({ execution }: ExecutionCardProps) {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium break-words">{execution.search_query}</p>
-            <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">{execution.user_email}</p>
+            <p className="text-xs text-muted-foreground font-mono truncate mt-0.5" title={execution.user_email}>{execution.user_email}</p>
           </div>
           <Badge
             variant={
