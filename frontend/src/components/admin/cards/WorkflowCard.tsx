@@ -30,7 +30,7 @@ export function WorkflowCard({ workflow }: WorkflowCardProps) {
               rel="noopener noreferrer"
               className="flex items-center gap-1 hover:text-primary hover:underline"
             >
-              <span className="font-mono text-xs truncate">{workflow.workflow_id}</span>
+              <span className="font-mono text-xs truncate" title={workflow.workflow_id}>{workflow.workflow_id}</span>
               <ExternalLink className="h-3 w-3 flex-shrink-0" />
             </a>
             <p className="text-sm text-muted-foreground mt-1">{workflow.workflow_type}</p>
