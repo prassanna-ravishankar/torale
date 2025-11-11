@@ -24,6 +24,78 @@ CurrentUser = CurrentUserOrTestUser
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
+async def _validate_and_extract_notifications(
+    notifications: list,
+    old_webhook_url: str | None = None,
+) -> tuple[list[dict], dict[str, any]]:
+    """
+    Validate notifications and extract fields for database storage.
+
+    Args:
+        notifications: List of notification dicts or Pydantic models
+        old_webhook_url: Previous webhook URL (for updates). If provided and URL hasn't changed,
+                        webhook_secret will be None to preserve existing secret.
+
+    Returns:
+        Tuple of (validated_notifications, extracted_fields) where extracted_fields contains:
+        - notification_channels: list of channel types
+        - notification_email: email address or None
+        - webhook_url: webhook URL or None
+        - webhook_secret: webhook secret or None (None means keep existing)
+
+    Raises:
+        HTTPException: If validation fails or duplicate types found
+    """
+    # Validate each notification
+    validated_notifications = []
+    for notif in notifications:
+        # Convert to dict if it's a Pydantic model
+        notif_dict = notif.model_dump() if hasattr(notif, "model_dump") else notif
+        try:
+            validated = await validate_notification(notif_dict)
+            validated_notifications.append(validated)
+        except NotificationValidationError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid notification: {str(e)}"
+            ) from e
+
+    # Validate no duplicate notification types (PR #27 schema supports 1 email + 1 webhook max)
+    notification_types = [n.get("type") for n in validated_notifications]
+    if len(notification_types) != len(set(notification_types)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Multiple notifications of the same type are not supported. Please provide at most one email and one webhook notification.",
+        )
+
+    # Extract notification channels and webhook config for database
+    notification_channels = []
+    notification_email = None
+    webhook_url = None
+    webhook_secret = None
+
+    for notif in validated_notifications:
+        notif_type = notif.get("type")
+        if notif_type == "email":
+            notification_channels.append("email")
+            notification_email = notif.get("address")
+        elif notif_type == "webhook":
+            notification_channels.append("webhook")
+            webhook_url = notif.get("url")
+            # Only generate new secret if URL changed or it's a new webhook
+            if old_webhook_url is None or old_webhook_url != webhook_url:
+                webhook_secret = secrets.token_urlsafe(32)
+            # else: webhook_secret stays None to preserve existing secret
+
+    extracted = {
+        "notification_channels": notification_channels if notification_channels else None,
+        "notification_email": notification_email,
+        "webhook_url": webhook_url,
+        "webhook_secret": webhook_secret,
+    }
+
+    return validated_notifications, extracted
+
+
 def parse_task_row(row) -> dict:
     """Parse a task row from the database, converting JSON strings to dicts"""
     task_dict = dict(row)
@@ -75,41 +147,10 @@ def parse_execution_row(row) -> dict:
 
 @router.post("/", response_model=Task)
 async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depends(get_db)):
-    # Validate notifications before creating task
-    validated_notifications = []
-    for notif in task.notifications:
-        try:
-            validated = await validate_notification(notif.model_dump())
-            validated_notifications.append(validated)
-        except NotificationValidationError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid notification: {str(e)}"
-            ) from e
-
-    # Validate no duplicate notification types (PR #27 schema supports 1 email + 1 webhook max)
-    notification_types = [n.get("type") for n in validated_notifications]
-    if len(notification_types) != len(set(notification_types)):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Multiple notifications of the same type are not supported. Please provide at most one email and one webhook notification.",
-        )
-
-    # Extract notification channels and webhook config from JSONB for compatibility with PR #27 schema
-    notification_channels = []
-    notification_email = None
-    webhook_url = None
-    webhook_secret = None
-
-    for notif in validated_notifications:
-        notif_type = notif.get("type")
-        if notif_type == "email":
-            notification_channels.append("email")
-            notification_email = notif.get("address")
-        elif notif_type == "webhook":
-            notification_channels.append("webhook")
-            webhook_url = notif.get("url")
-            # Generate HMAC secret for webhook signing (Stripe-compatible)
-            webhook_secret = secrets.token_urlsafe(32)
+    # Validate notifications and extract fields for database
+    validated_notifications, extracted = await _validate_and_extract_notifications(
+        task.notifications
+    )
 
     # Create task in database, populating BOTH schema approaches for compatibility
     query = """
@@ -134,10 +175,10 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         task.condition_description,
         task.notify_behavior,
         json.dumps(validated_notifications),
-        notification_channels if notification_channels else None,
-        notification_email,
-        webhook_url,
-        webhook_secret,
+        extracted["notification_channels"],
+        extracted["notification_email"],
+        extracted["webhook_url"],
+        extracted["webhook_secret"],
     )
 
     if not row:
@@ -254,52 +295,22 @@ async def update_task(
 
     # Validate notifications if provided
     if "notifications" in update_data:
-        validated_notifications = []
-        for notif in update_data["notifications"]:
-            try:
-                # notif is already a dict from model_dump
-                validated = await validate_notification(notif)
-                validated_notifications.append(validated)
-            except NotificationValidationError as e:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid notification: {str(e)}",
-                ) from e
+        # Get old webhook URL to check if it changed
+        old_webhook_url = existing.get("webhook_url")
 
-        # Validate no duplicate notification types (PR #27 schema supports 1 email + 1 webhook max)
-        notification_types = [n.get("type") for n in validated_notifications]
-        if len(notification_types) != len(set(notification_types)):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Multiple notifications of the same type are not supported. Please provide at most one email and one webhook notification.",
-            )
+        # Validate and extract notification fields
+        validated_notifications, extracted = await _validate_and_extract_notifications(
+            update_data["notifications"], old_webhook_url=old_webhook_url
+        )
 
         update_data["notifications"] = validated_notifications
+        update_data["notification_channels"] = extracted["notification_channels"]
+        update_data["notification_email"] = extracted["notification_email"]
+        update_data["webhook_url"] = extracted["webhook_url"]
 
-        # Extract notification channels and webhook config for PR #27 schema compatibility
-        notification_channels = []
-        notification_email = None
-        webhook_url = None
-        webhook_secret = None
-
-        for notif in validated_notifications:
-            notif_type = notif.get("type")
-            if notif_type == "email":
-                notification_channels.append("email")
-                notification_email = notif.get("address")
-            elif notif_type == "webhook":
-                notification_channels.append("webhook")
-                webhook_url = notif.get("url")
-                # Generate new secret when webhook URL changes
-                webhook_secret = secrets.token_urlsafe(32)
-
-        # Add mapped fields to update data
-        update_data["notification_channels"] = (
-            notification_channels if notification_channels else None
-        )
-        update_data["notification_email"] = notification_email
-        update_data["webhook_url"] = webhook_url
-        update_data["webhook_secret"] = webhook_secret
+        # Only update webhook_secret if it was generated (URL changed)
+        if extracted["webhook_secret"] is not None:
+            update_data["webhook_secret"] = extracted["webhook_secret"]
 
     # Build dynamic UPDATE query
     set_clauses = []

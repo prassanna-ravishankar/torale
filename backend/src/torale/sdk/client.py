@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
 
@@ -79,7 +80,10 @@ class ToraleClient:
                 with open(config_path) as f:
                     config = json.load(f)
                     return config.get("api_key")
-            except Exception:
+            except (OSError, JSONDecodeError):
+                # OSError covers IOError, PermissionError, etc.
+                # JSONDecodeError for malformed JSON
+                # Config file is optional, so ignore if it's missing, malformed, or unreadable
                 pass
 
         return None
@@ -98,7 +102,10 @@ class ToraleClient:
                 with open(config_path) as f:
                     config = json.load(f)
                     return config.get("api_url", "http://localhost:8000")
-            except Exception:
+            except (OSError, JSONDecodeError):
+                # OSError covers IOError, PermissionError, etc.
+                # JSONDecodeError for malformed JSON
+                # Config file is optional, so ignore if it's missing, malformed, or unreadable
                 pass
 
         return "http://localhost:8000"

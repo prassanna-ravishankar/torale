@@ -7,7 +7,7 @@ Full implementation will be added in a separate PR.
 
 from typing import Any
 
-from pydantic import EmailStr
+from pydantic import EmailStr, TypeAdapter
 from pydantic import ValidationError as PydanticValidationError
 
 
@@ -51,9 +51,9 @@ async def validate_notification(notification: dict[str, Any]) -> dict[str, Any]:
         if not address:
             raise NotificationValidationError("Email address required")
 
-        # Validate email format using Pydantic EmailStr
+        # Validate email format using Pydantic's public API
         try:
-            EmailStr._validate(address)
+            TypeAdapter(EmailStr).validate_python(address)
         except PydanticValidationError as e:
             raise NotificationValidationError(f"Invalid email format: {str(e)}") from e
 
