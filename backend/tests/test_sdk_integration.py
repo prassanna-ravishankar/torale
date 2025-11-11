@@ -34,7 +34,7 @@ def check_api_available() -> bool:
     api_url = os.getenv("TORALE_API_URL", "http://localhost:8000")
     try:
         # Try to connect to the API (any response means it's up)
-        response = httpx.get(f"{api_url}/api/v1/tasks", timeout=2.0, follow_redirects=True)
+        httpx.get(f"{api_url}/api/v1/tasks", timeout=2.0, follow_redirects=True)
         # Any HTTP response (even 401/403) means API is running
         return True
     except (httpx.ConnectError, httpx.TimeoutException):
