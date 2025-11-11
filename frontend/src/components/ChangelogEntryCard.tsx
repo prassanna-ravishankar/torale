@@ -17,6 +17,9 @@ export function ChangelogEntryCard({ entry, isEven }: ChangelogEntryCardProps) {
     year: "numeric",
   });
 
+  // Normalize PR to always be an array for rendering
+  const prs = entry.pr ? (Array.isArray(entry.pr) ? entry.pr : [entry.pr]) : [];
+
   const content = (
     <motion.div
       className="rounded-lg border-2 overflow-hidden"
@@ -36,16 +39,21 @@ export function ChangelogEntryCard({ entry, isEven }: ChangelogEntryCardProps) {
         <CardHeader className="p-6 relative">
           <div className={`flex flex-col ${isEven ? "items-end" : "items-start"}`}>
             <div className="flex items-center gap-2 mb-1">
-              {isEven && entry.pr && (
-                <a
-                  href={`${GITHUB_REPO_URL}/pull/${entry.pr}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] font-mono text-muted-foreground/70 hover:text-primary hover:underline transition-colors"
-                  title="View PR on GitHub"
-                >
-                  #{entry.pr}
-                </a>
+              {isEven && prs.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {prs.map((pr, idx) => (
+                    <a
+                      key={pr}
+                      href={`${GITHUB_REPO_URL}/pull/${pr}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-mono text-muted-foreground/70 hover:text-primary hover:underline transition-colors"
+                      title="View PR on GitHub"
+                    >
+                      #{pr}{idx < prs.length - 1 && ','}
+                    </a>
+                  ))}
+                </div>
               )}
               <span className={`text-[9px] font-semibold uppercase tracking-wide text-primary ${isEven ? "order-2" : ""}`}>
                 {getCategoryLabel(entry.category)}
@@ -53,16 +61,21 @@ export function ChangelogEntryCard({ entry, isEven }: ChangelogEntryCardProps) {
               <span className="text-xs text-muted-foreground">
                 {formattedDate}
               </span>
-              {!isEven && entry.pr && (
-                <a
-                  href={`${GITHUB_REPO_URL}/pull/${entry.pr}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] font-mono text-muted-foreground/70 hover:text-primary hover:underline transition-colors"
-                  title="View PR on GitHub"
-                >
-                  #{entry.pr}
-                </a>
+              {!isEven && prs.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {prs.map((pr, idx) => (
+                    <a
+                      key={pr}
+                      href={`${GITHUB_REPO_URL}/pull/${pr}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-mono text-muted-foreground/70 hover:text-primary hover:underline transition-colors"
+                      title="View PR on GitHub"
+                    >
+                      #{pr}{idx < prs.length - 1 && ','}
+                    </a>
+                  ))}
+                </div>
               )}
             </div>
             <div className={`flex items-center gap-3 mb-2 ${isEven ? "flex-row-reverse" : ""}`}>

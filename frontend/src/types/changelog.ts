@@ -5,5 +5,5 @@ export interface ChangelogEntry {
   description: string;
   category: "feature" | "improvement" | "fix" | "infra" | "research";
   requestedBy: string[];
-  pr?: number;
+  pr?: number | number[];
 }
