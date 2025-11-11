@@ -1,8 +1,9 @@
 from datetime import datetime
 from enum import Enum
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ExecutorType(str, Enum):
@@ -22,6 +23,22 @@ class TaskStatus(str, Enum):
     FAILED = "failed"
 
 
+# Notification Models
+class NotificationConfig(BaseModel):
+    """Configuration for a notification channel."""
+
+    type: Literal["email", "webhook"]
+
+    # Email-specific fields
+    address: str | None = None
+    template: str | None = None
+
+    # Webhook-specific fields
+    url: str | None = None
+    method: str = "POST"
+    headers: dict[str, str] | None = None
+
+
 class TaskBase(BaseModel):
     name: str
     schedule: str
@@ -33,6 +50,9 @@ class TaskBase(BaseModel):
     search_query: str | None = None
     condition_description: str | None = None
     notify_behavior: NotifyBehavior = NotifyBehavior.ONCE
+
+    # Notification configuration
+    notifications: list[NotificationConfig] = Field(default_factory=list)
 
 
 class TaskCreate(TaskBase):
@@ -50,6 +70,7 @@ class TaskUpdate(BaseModel):
     search_query: str | None = None
     condition_description: str | None = None
     notify_behavior: NotifyBehavior | None = None
+    notifications: list[NotificationConfig] | None = None
 
 
 class Task(TaskBase):

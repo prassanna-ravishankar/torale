@@ -1,5 +1,6 @@
 import json
 import logging
+import secrets
 from uuid import UUID
 
 import grpc
@@ -11,6 +12,7 @@ from torale.api.auth import CurrentUserOrTestUser
 from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.core.models import Task, TaskCreate, TaskExecution, TaskUpdate
+from torale.notifications import NotificationValidationError, validate_notification
 from torale.workers.workflows import TaskExecutionRequest, TaskExecutionWorkflow
 
 logger = logging.getLogger(__name__)
@@ -20,6 +22,78 @@ logger = logging.getLogger(__name__)
 CurrentUser = CurrentUserOrTestUser
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+
+async def _validate_and_extract_notifications(
+    notifications: list,
+    old_webhook_url: str | None = None,
+) -> tuple[list[dict], dict[str, any]]:
+    """
+    Validate notifications and extract fields for database storage.
+
+    Args:
+        notifications: List of notification dicts or Pydantic models
+        old_webhook_url: Previous webhook URL (for updates). If provided and URL hasn't changed,
+                        webhook_secret will be None to preserve existing secret.
+
+    Returns:
+        Tuple of (validated_notifications, extracted_fields) where extracted_fields contains:
+        - notification_channels: list of channel types
+        - notification_email: email address or None
+        - webhook_url: webhook URL or None
+        - webhook_secret: webhook secret or None (None means keep existing)
+
+    Raises:
+        HTTPException: If validation fails or duplicate types found
+    """
+    # Validate each notification
+    validated_notifications = []
+    for notif in notifications:
+        # Convert to dict if it's a Pydantic model
+        notif_dict = notif.model_dump() if hasattr(notif, "model_dump") else notif
+        try:
+            validated = await validate_notification(notif_dict)
+            validated_notifications.append(validated)
+        except NotificationValidationError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid notification: {str(e)}"
+            ) from e
+
+    # Validate no duplicate notification types (PR #27 schema supports 1 email + 1 webhook max)
+    notification_types = [n.get("type") for n in validated_notifications]
+    if len(notification_types) != len(set(notification_types)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Multiple notifications of the same type are not supported. Please provide at most one email and one webhook notification.",
+        )
+
+    # Extract notification channels and webhook config for database
+    notification_channels = []
+    notification_email = None
+    webhook_url = None
+    webhook_secret = None
+
+    for notif in validated_notifications:
+        notif_type = notif.get("type")
+        if notif_type == "email":
+            notification_channels.append("email")
+            notification_email = notif.get("address")
+        elif notif_type == "webhook":
+            notification_channels.append("webhook")
+            webhook_url = notif.get("url")
+            # Only generate new secret if URL changed or it's a new webhook
+            if old_webhook_url is None or old_webhook_url != webhook_url:
+                webhook_secret = secrets.token_urlsafe(32)
+            # else: webhook_secret stays None to preserve existing secret
+
+    extracted = {
+        "notification_channels": notification_channels,
+        "notification_email": notification_email,
+        "webhook_url": webhook_url,
+        "webhook_secret": webhook_secret,
+    }
+
+    return validated_notifications, extracted
 
 
 def parse_task_row(row) -> dict:
@@ -32,6 +106,11 @@ def parse_task_row(row) -> dict:
     if isinstance(task_dict.get("last_known_state"), str):
         task_dict["last_known_state"] = (
             json.loads(task_dict["last_known_state"]) if task_dict["last_known_state"] else None
+        )
+    # Parse notifications if it's a string
+    if isinstance(task_dict.get("notifications"), str):
+        task_dict["notifications"] = (
+            json.loads(task_dict["notifications"]) if task_dict["notifications"] else []
         )
     return task_dict
 
@@ -68,13 +147,19 @@ def parse_execution_row(row) -> dict:
 
 @router.post("/", response_model=Task)
 async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depends(get_db)):
-    # Create task in database
+    # Validate notifications and extract fields for database
+    validated_notifications, extracted = await _validate_and_extract_notifications(
+        task.notifications
+    )
+
+    # Create task in database, populating BOTH schema approaches for compatibility
     query = """
         INSERT INTO tasks (
             user_id, name, schedule, executor_type, config, is_active,
-            search_query, condition_description, notify_behavior
+            search_query, condition_description, notify_behavior, notifications,
+            notification_channels, notification_email, webhook_url, webhook_secret
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING *
     """
 
@@ -89,6 +174,11 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         task.search_query,
         task.condition_description,
         task.notify_behavior,
+        json.dumps(validated_notifications),
+        extracted["notification_channels"],
+        extracted["notification_email"],
+        extracted["webhook_url"],
+        extracted["webhook_secret"],
     )
 
     if not row:
@@ -203,6 +293,25 @@ async def update_task(
     if not update_data:
         return Task(**parse_task_row(existing))
 
+    # Validate notifications if provided
+    if "notifications" in update_data:
+        # Get old webhook URL to check if it changed
+        old_webhook_url = existing.get("webhook_url")
+
+        # Validate and extract notification fields
+        validated_notifications, extracted = await _validate_and_extract_notifications(
+            update_data["notifications"], old_webhook_url=old_webhook_url
+        )
+
+        update_data["notifications"] = validated_notifications
+        update_data["notification_channels"] = extracted["notification_channels"]
+        update_data["notification_email"] = extracted["notification_email"]
+        update_data["webhook_url"] = extracted["webhook_url"]
+
+        # Only update webhook_secret if it was generated (URL changed)
+        if extracted["webhook_secret"] is not None:
+            update_data["webhook_secret"] = extracted["webhook_secret"]
+
     # Build dynamic UPDATE query
     set_clauses = []
     params = []
@@ -210,6 +319,9 @@ async def update_task(
 
     for field, value in update_data.items():
         if field == "config":
+            set_clauses.append(f"{field} = ${param_num}")
+            params.append(json.dumps(value))
+        elif field == "notifications":
             set_clauses.append(f"{field} = ${param_num}")
             params.append(json.dumps(value))
         elif field == "notify_behavior":
