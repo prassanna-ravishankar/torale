@@ -369,12 +369,24 @@ class TestSDKContextManager:
 
     def test_context_manager_basic(self):
         """Test basic context manager usage."""
+        # Skip if API not available or NOAUTH not set
+        if not check_api_available():
+            pytest.skip("API server not available (start with `just dev`)")
+        if not os.getenv("TORALE_NOAUTH"):
+            pytest.skip("TORALE_NOAUTH not set (required for integration tests)")
+
         with Torale() as client:
             tasks = client.tasks.list()
             assert isinstance(tasks, list)
 
     def test_context_manager_creates_task(self):
         """Test creating a task within context manager."""
+        # Skip if API not available or NOAUTH not set
+        if not check_api_available():
+            pytest.skip("API server not available (start with `just dev`)")
+        if not os.getenv("TORALE_NOAUTH"):
+            pytest.skip("TORALE_NOAUTH not set (required for integration tests)")
+
         task_id = None
 
         with Torale() as client:
@@ -395,6 +407,12 @@ class TestSDKContextManager:
 
     def test_multiple_sequential_context_managers(self):
         """Test using multiple context managers sequentially."""
+        # Skip if API not available or NOAUTH not set
+        if not check_api_available():
+            pytest.skip("API server not available (start with `just dev`)")
+        if not os.getenv("TORALE_NOAUTH"):
+            pytest.skip("TORALE_NOAUTH not set (required for integration tests)")
+
         task_id = None
 
         # Create task in first context
@@ -421,6 +439,10 @@ class TestSDKConfiguration:
 
     def test_sdk_respects_api_url_env_var(self, monkeypatch):
         """Test that SDK respects TORALE_API_URL environment variable."""
+        # Need NOAUTH for client initialization
+        if not os.getenv("TORALE_NOAUTH"):
+            pytest.skip("TORALE_NOAUTH not set (required for integration tests)")
+
         custom_url = "http://custom-api:9000"
         monkeypatch.setenv("TORALE_API_URL", custom_url)
 
@@ -447,6 +469,10 @@ class TestSDKConfiguration:
 
     def test_sdk_with_explicit_api_url(self):
         """Test creating SDK client with explicit api_url."""
+        # Need NOAUTH for client initialization
+        if not os.getenv("TORALE_NOAUTH"):
+            pytest.skip("TORALE_NOAUTH not set (required for integration tests)")
+
         client = Torale(api_url="http://localhost:8000")
         assert client.api_url == "http://localhost:8000"
         client.close()
