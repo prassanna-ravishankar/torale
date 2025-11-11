@@ -24,8 +24,8 @@ export function QueryCard({ query }: QueryCardProps) {
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h3 className="font-medium text-sm truncate">{query.name}</h3>
-            <p className="text-xs text-muted-foreground font-mono truncate">{query.user_email}</p>
+            <h3 className="font-medium text-sm truncate" title={query.name}>{query.name}</h3>
+            <p className="text-xs text-muted-foreground font-mono truncate" title={query.user_email}>{query.user_email}</p>
           </div>
           <div className="flex gap-1 flex-shrink-0">
             <Badge variant={query.is_active ? 'default' : 'secondary'} className="text-xs">
