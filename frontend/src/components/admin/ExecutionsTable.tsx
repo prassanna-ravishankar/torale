@@ -13,6 +13,7 @@ import { api } from '@/lib/api'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatDistanceToNow } from 'date-fns'
 import { formatDuration } from '@/lib/utils'
+import { ExecutionCard } from './cards/ExecutionCard'
 
 interface GroundingSource {
   title: string
@@ -81,13 +82,13 @@ export function ExecutionsTable() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Execution History</CardTitle>
-            <CardDescription>View all task executions across users</CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+          <div className="min-w-0">
+            <CardTitle className="text-lg sm:text-xl">Execution History</CardTitle>
+            <CardDescription className="text-sm">View all task executions across users</CardDescription>
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
@@ -100,7 +101,9 @@ export function ExecutionsTable() {
         </div>
       </CardHeader>
       <CardContent>
-        <Table>
+        {/* Desktop Table View */}
+        <div className="hidden md:block">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>User</TableHead>
@@ -160,6 +163,16 @@ export function ExecutionsTable() {
             )}
           </TableBody>
         </Table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="block md:hidden space-y-4">
+          {executions.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground py-8">No executions found</p>
+          ) : (
+            executions.map((execution) => <ExecutionCard key={execution.id} execution={execution} />)
+          )}
+        </div>
       </CardContent>
     </Card>
   )

@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { api } from '@/lib/api'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { QueryCard } from './cards/QueryCard'
 
 interface Query {
   id: string
@@ -69,19 +70,21 @@ export function QueriesTable() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>All User Queries</CardTitle>
-            <CardDescription>Monitor all search queries and conditions across users</CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+          <div className="min-w-0">
+            <CardTitle className="text-lg sm:text-xl">All User Queries</CardTitle>
+            <CardDescription className="text-sm">Monitor all search queries and conditions across users</CardDescription>
           </div>
           <div className="flex items-center space-x-2">
             <Switch id="active-only" checked={activeOnly} onCheckedChange={setActiveOnly} />
-            <Label htmlFor="active-only">Active only</Label>
+            <Label htmlFor="active-only" className="text-sm whitespace-nowrap">Active only</Label>
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        <Table>
+        {/* Desktop Table View */}
+        <div className="hidden md:block">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>User</TableHead>
@@ -130,6 +133,16 @@ export function QueriesTable() {
             )}
           </TableBody>
         </Table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="block md:hidden space-y-4">
+          {queries.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground py-8">No queries found</p>
+          ) : (
+            queries.map((query) => <QueryCard key={query.id} query={query} />)
+          )}
+        </div>
       </CardContent>
     </Card>
   )

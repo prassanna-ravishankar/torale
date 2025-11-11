@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
+import { UserCard } from './cards/UserCard'
 
 interface User {
   id: string
@@ -92,8 +93,8 @@ export function UsersTable() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Platform Capacity</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-lg sm:text-xl">Platform Capacity</CardTitle>
+          <CardDescription className="text-sm">
             {data.capacity.used} / {data.capacity.total} seats used • {data.capacity.available} available
           </CardDescription>
         </CardHeader>
@@ -101,11 +102,13 @@ export function UsersTable() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>Manage platform users and view their activity</CardDescription>
+          <CardTitle className="text-lg sm:text-xl">All Users</CardTitle>
+          <CardDescription className="text-sm">Manage platform users and view their activity</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Email</TableHead>
@@ -157,6 +160,18 @@ export function UsersTable() {
               )}
             </TableBody>
           </Table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="block md:hidden space-y-4">
+            {data.users.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground py-8">No users found</p>
+            ) : (
+              data.users.map((user) => (
+                <UserCard key={user.id} user={user} onDeactivate={handleDeactivate} />
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

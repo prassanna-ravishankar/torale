@@ -14,6 +14,8 @@ import { api } from '@/lib/api'
 import { formatDistanceToNow } from 'date-fns'
 import { ExternalLink } from 'lucide-react'
 import { formatDuration } from '@/lib/utils'
+import { WorkflowCard } from './cards/WorkflowCard'
+import { ScheduleCard } from './cards/ScheduleCard'
 
 interface Workflow {
   workflow_id: string
@@ -88,11 +90,13 @@ export function TemporalMonitor() {
       <TabsContent value="workflows">
         <Card>
           <CardHeader>
-            <CardTitle>Recent Workflows</CardTitle>
-            <CardDescription>Last 24 hours of workflow executions</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Recent Workflows</CardTitle>
+            <CardDescription className="text-sm">Last 24 hours of workflow executions</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
+            {/* Desktop Table View */}
+            <div className="hidden md:block">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Workflow ID</TableHead>
@@ -154,6 +158,18 @@ export function TemporalMonitor() {
                 )}
               </TableBody>
             </Table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="block md:hidden space-y-4">
+              {workflows.length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground py-8">No recent workflows</p>
+              ) : (
+                workflows.map((workflow) => (
+                  <WorkflowCard key={`${workflow.workflow_id}-${workflow.run_id}`} workflow={workflow} />
+                ))
+              )}
+            </div>
           </CardContent>
         </Card>
       </TabsContent>
@@ -161,11 +177,13 @@ export function TemporalMonitor() {
       <TabsContent value="schedules">
         <Card>
           <CardHeader>
-            <CardTitle>Active Schedules</CardTitle>
-            <CardDescription>Temporal schedules managing task executions</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Active Schedules</CardTitle>
+            <CardDescription className="text-sm">Temporal schedules managing task executions</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
+            {/* Desktop Table View */}
+            <div className="hidden md:block">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Schedule ID</TableHead>
@@ -199,6 +217,16 @@ export function TemporalMonitor() {
                 )}
               </TableBody>
             </Table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="block md:hidden space-y-4">
+              {schedules.length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground py-8">No active schedules</p>
+              ) : (
+                schedules.map((schedule) => <ScheduleCard key={schedule.schedule_id} schedule={schedule} />)
+              )}
+            </div>
           </CardContent>
         </Card>
       </TabsContent>
