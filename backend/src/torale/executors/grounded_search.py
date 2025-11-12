@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import UTC, datetime
 
 from torale.core.config import settings
 from torale.executors import TaskExecutor
@@ -43,7 +44,7 @@ class GroundedSearchExecutor(TaskExecutor):
             "condition_description": "A specific date has been announced",
             "model": "gemini-2.5-flash",  # optional
             "last_known_state": {...},  # optional, for state comparison
-            "last_execution_time": "2024-11-10 14:30:00",  # optional, for temporal context
+            "last_execution_datetime": datetime,  # optional, datetime object for temporal context
         }
 
         Returns:
@@ -72,14 +73,14 @@ class GroundedSearchExecutor(TaskExecutor):
         condition_description = config["condition_description"]
         model = config.get("model", "gemini-2.5-flash")
         last_known_state = config.get("last_known_state")
-        last_execution_time = config.get("last_execution_time")
+        last_execution_datetime = config.get("last_execution_datetime")
 
         try:
             # Step 1: Perform grounded search with temporal context
             search_result = await self._grounded_search(
                 search_query=search_query,
                 model=model,
-                last_execution_time=last_execution_time
+                last_execution_datetime=last_execution_datetime
             )
 
             # Step 2: Evaluate if condition is met
@@ -120,30 +121,37 @@ class GroundedSearchExecutor(TaskExecutor):
         self,
         search_query: str,
         model: str,
-        last_execution_time: str | None = None
+        last_execution_datetime: datetime | None = None
     ) -> dict:
         """
         Perform grounded search using Gemini with Google Search.
 
+        Args:
+            search_query: The search query
+            model: Gemini model to use
+            last_execution_datetime: Timezone-aware datetime of last successful execution (optional)
+
         Returns answer and grounding sources.
         """
-        from datetime import datetime
-
         from google.genai import types
 
         # Add temporal context to search query
-        current_datetime = datetime.now().strftime("%B %d, %Y at %I:%M %p %Z")
+        current_datetime = datetime.now(UTC).strftime("%B %d, %Y at %I:%M %p UTC")
 
-        if last_execution_time:
+        if last_execution_datetime:
+            # Format last execution time consistently
+            last_execution_formatted = last_execution_datetime.strftime("%B %d, %Y at %I:%M %p UTC")
+            last_date = last_execution_datetime.strftime("%B %d, %Y")  # Robust date extraction
+
             # Subsequent runs: prioritize information published since last check
             temporal_context = f"""CRITICAL TEMPORAL REQUIREMENT - YOU MUST FOLLOW THIS:
 - Current date and time: {current_datetime}
-- Last checked: {last_execution_time}
-- YOU MUST ONLY report information that was published, announced, or updated AFTER {last_execution_time}
-- IGNORE all information from before {last_execution_time}, even if it seems relevant
-- If the search returns results from BEFORE {last_execution_time}, you must respond: "No new updates since last check on {last_execution_time}"
+- Last checked: {last_execution_formatted}
+- YOU MUST ONLY report information that was published, announced, or updated AFTER {last_execution_formatted}
+- IGNORE all information from before {last_execution_formatted}, even if it seems relevant
+- If the search returns results from BEFORE {last_execution_formatted}, you must respond: "No new updates since last check on {last_execution_formatted}"
 - DO NOT report events from August 2025 if we already checked in November 2025
-- Focus your search specifically on: news after:{last_execution_time.split(' at ')[0]}"""
+- Focus your search specifically on: news after:{last_date}"""
         else:
             # First run: prioritize most recent information
             temporal_context = f"""IMPORTANT TEMPORAL CONTEXT:
@@ -156,9 +164,8 @@ class GroundedSearchExecutor(TaskExecutor):
         compression_instruction = "Provide a CONCISE summary (2-4 sentences). Focus ONLY on key facts and recent developments."
 
         # Modify search query to include date filter for subsequent runs
-        if last_execution_time:
-            # Extract date from last_execution_time (e.g., "November 12, 2025 at 07:56 AM UTC" -> "November 12, 2025")
-            last_date = last_execution_time.split(' at ')[0]
+        if last_execution_datetime:
+            last_date = last_execution_datetime.strftime("%B %d, %Y")
             modified_query = f"{search_query} (published after {last_date} OR announced after {last_date} OR news after {last_date})"
         else:
             modified_query = search_query
@@ -166,7 +173,7 @@ class GroundedSearchExecutor(TaskExecutor):
         contextualized_query = f"{temporal_context}\n\nQuery: {modified_query}\n\n{compression_instruction}"
 
         # Log the query being sent to Gemini for debugging
-        logger.info(f"Sending to Gemini with temporal context - Last execution: {last_execution_time}")
+        logger.info(f"Sending to Gemini with temporal context - Last execution: {last_execution_datetime}")
         logger.info(f"Full query: {contextualized_query[:500]}...")  # Log first 500 chars
 
         response = await self.client.aio.models.generate_content(
@@ -242,7 +249,7 @@ class GroundedSearchExecutor(TaskExecutor):
 
         from google.genai import types
 
-        current_date = datetime.now().strftime("%Y-%m-%d")
+        current_date = datetime.now(UTC).strftime("%Y-%m-%d")
 
         evaluation_prompt = f"""Based on the search results below, determine if the following condition is met.
 

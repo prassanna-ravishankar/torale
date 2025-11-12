@@ -2,12 +2,9 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { ExternalLink, CheckCircle2, XCircle } from 'lucide-react';
-
-interface GroundingSource {
-  url: string;
-  title: string;
-}
+import { CheckCircle2, XCircle } from 'lucide-react';
+import { GroundingSourceList } from '@/components/ui/GroundingSourceList';
+import type { GroundingSource } from '@/types';
 
 interface SearchPreviewProps {
   answer: string;
@@ -73,38 +70,7 @@ export const SearchPreview: React.FC<SearchPreviewProps> = ({
       </Card>
 
       {/* Grounding Sources */}
-      {groundingSources && groundingSources.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Sources:</p>
-          <div className="space-y-2">
-            {groundingSources.map((source, idx) => {
-              const isRedirectUrl = source.url?.includes('vertexaisearch.cloud.google.com');
-
-              return (
-                <a
-                  key={idx}
-                  href={source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-start gap-2 p-2 rounded-md hover:bg-muted transition-colors group"
-                >
-                  <ExternalLink className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground group-hover:text-primary" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm group-hover:text-primary">
-                      {source.title}
-                    </p>
-                    {!isRedirectUrl && (
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {source.url}
-                      </p>
-                    )}
-                  </div>
-                </a>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <GroundingSourceList sources={groundingSources} />
 
       {/* Current State (if provided) */}
       {currentState && Object.keys(currentState).length > 0 && (
