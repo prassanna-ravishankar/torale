@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { Clock, Bell } from 'lucide-react';
 import { CronDisplay } from '@/components/ui/CronDisplay';
+import { CustomScheduleDialog } from '@/components/ui/CustomScheduleDialog';
 
 type NotifyBehavior = 'once' | 'always' | 'track_state';
 
@@ -21,6 +22,7 @@ const SCHEDULE_PRESETS = [
   { value: '0 */3 * * *', label: 'Every 3 hours' },
   { value: '0 * * * *', label: 'Every hour' },
   { value: '0 0 * * 1', label: 'Weekly on Monday' },
+  { value: '__custom__', label: 'Custom schedule...', isSpecial: true },
 ];
 
 export const WizardStepSchedule: React.FC<WizardStepScheduleProps> = ({
@@ -29,6 +31,33 @@ export const WizardStepSchedule: React.FC<WizardStepScheduleProps> = ({
   notifyBehavior,
   onNotifyBehaviorChange,
 }) => {
+  const [customDialogOpen, setCustomDialogOpen] = useState(false);
+
+  // Check if current schedule is a preset
+  const isCustomSchedule = !SCHEDULE_PRESETS.slice(0, -1).some((p) => p.value === schedule);
+
+  // Get display value for select
+  const getSelectValue = () => {
+    if (isCustomSchedule) {
+      return '__custom__';
+    }
+    return schedule;
+  };
+
+  // Handle schedule selection from dropdown
+  const handleScheduleChange = (value: string) => {
+    if (value === '__custom__') {
+      setCustomDialogOpen(true);
+    } else {
+      onScheduleChange(value);
+    }
+  };
+
+  // Handle custom schedule save
+  const handleCustomScheduleSave = (cronString: string) => {
+    onScheduleChange(cronString);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -46,7 +75,7 @@ export const WizardStepSchedule: React.FC<WizardStepScheduleProps> = ({
           Check Frequency
           <span className="text-destructive">*</span>
         </Label>
-        <Select value={schedule} onValueChange={onScheduleChange} required>
+        <Select value={getSelectValue()} onValueChange={handleScheduleChange} required>
           <SelectTrigger id="schedule">
             <SelectValue placeholder="Select a schedule" />
           </SelectTrigger>
@@ -58,6 +87,11 @@ export const WizardStepSchedule: React.FC<WizardStepScheduleProps> = ({
             ))}
           </SelectContent>
         </Select>
+        {isCustomSchedule && (
+          <p className="text-xs text-muted-foreground">
+            Using custom schedule: <span className="font-mono">{schedule}</span>
+          </p>
+        )}
         <p className="text-xs text-muted-foreground">
           How often should we check for updates?
         </p>
@@ -136,6 +170,14 @@ export const WizardStepSchedule: React.FC<WizardStepScheduleProps> = ({
           </li>
         </ul>
       </Card>
+
+      {/* Custom Schedule Dialog */}
+      <CustomScheduleDialog
+        open={customDialogOpen}
+        onOpenChange={setCustomDialogOpen}
+        initialValue={schedule}
+        onSave={handleCustomScheduleSave}
+      />
     </div>
   );
 };

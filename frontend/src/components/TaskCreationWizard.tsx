@@ -225,7 +225,7 @@ export const TaskCreationWizard: React.FC<TaskCreationWizardProps> = ({
         is_active: true,
         run_immediately: true, // Execute immediately
         notifications: [],
-      });
+      } as any);
 
       toast.success('Task created! Running first check...');
       onSuccess(task);
