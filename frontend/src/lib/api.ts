@@ -99,14 +99,39 @@ class ApiClient {
     }
   }
 
-  async executeTask(id: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${id}/execute`, {
+  async executeTask(id: string, suppressNotifications: boolean = false): Promise<TaskExecution> {
+    const url = suppressNotifications
+      ? `${this.baseUrl}/api/v1/tasks/${id}/execute?suppress_notifications=true`
+      : `${this.baseUrl}/api/v1/tasks/${id}/execute`
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
     })
-    if (!response.ok) {
-      throw new Error(`Failed to execute task: ${response.status}`)
-    }
+    return this.handleResponse(response)
+  }
+
+  async previewSearch(
+    searchQuery: string,
+    conditionDescription?: string,
+    model: string = 'gemini-2.0-flash-exp'
+  ): Promise<{
+    answer: string
+    condition_met: boolean
+    inferred_condition?: string
+    grounding_sources: Array<{ url: string; title: string }>
+    current_state: any
+  }> {
+    const response = await fetch(`${this.baseUrl}/api/v1/tasks/preview`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({
+        search_query: searchQuery,
+        condition_description: conditionDescription,
+        model,
+      }),
+    })
+    return this.handleResponse(response)
   }
 
   // Task execution endpoints

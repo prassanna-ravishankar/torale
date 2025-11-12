@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import signal
 import sys
 
@@ -8,6 +9,12 @@ from temporalio.worker import Worker
 from torale.core.config import settings
 from torale.workers.activities import execute_task, send_notification
 from torale.workers.workflows import TaskExecutionWorkflow
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 
 async def main():

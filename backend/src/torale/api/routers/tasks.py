@@ -5,6 +5,7 @@ from uuid import UUID
 
 import grpc
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from temporalio.client import Client, Schedule, ScheduleActionStartWorkflow, ScheduleSpec
 from temporalio.service import RPCError
 
@@ -222,6 +223,37 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
                 detail=f"Failed to create schedule: {str(e)}",
             ) from e
 
+    # Execute task immediately if requested
+    if task.run_immediately:
+        try:
+            # Create execution record
+            execution_query = """
+                INSERT INTO task_executions (task_id, status)
+                VALUES ($1, $2)
+                RETURNING id
+            """
+            execution_row = await db.fetch_one(execution_query, row["id"], "pending")
+
+            if execution_row:
+                # Trigger workflow
+                client = await get_temporal_client()
+                await client.start_workflow(
+                    TaskExecutionWorkflow.run,
+                    TaskExecutionRequest(
+                        task_id=task_id,
+                        execution_id=str(execution_row["id"]),
+                        user_id=str(user.id),
+                        task_name=task.name,
+                        suppress_notifications=False,  # First run should notify
+                    ),
+                    id=f"task-{task_id}-{execution_row['id']}",
+                    task_queue="torale-tasks",
+                )
+                logger.info(f"Started immediate execution for task {task_id}")
+        except Exception as e:
+            # Log error but don't fail task creation
+            logger.error(f"Failed to start immediate execution for task {task_id}: {str(e)}")
+
     return Task(**parse_task_row(row))
 
 
@@ -247,6 +279,126 @@ async def list_tasks(
         rows = await db.fetch_all(query, user.id)
 
     return [Task(**parse_task_row(row)) for row in rows]
+
+
+class PreviewSearchRequest(BaseModel):
+    search_query: str = Field(..., description="The search query to test")
+    condition_description: str | None = Field(None, description="Optional condition to evaluate")
+    model: str = Field("gemini-2.0-flash-exp", description="Model to use for search")
+
+
+@router.post("/preview")
+async def preview_search(
+    request: PreviewSearchRequest,
+    user: CurrentUser,
+):
+    """
+    Preview a search query without creating a task.
+
+    This endpoint allows users to test their search query and see results before
+    committing to creating a monitoring task. It executes the grounded search
+    executor but doesn't save anything to the database.
+
+    Args:
+        search_query: The search query to test
+        condition_description: Optional condition to evaluate (if not provided, LLM will infer)
+        model: Model to use for search (default: gemini-2.0-flash-exp)
+
+    Returns:
+        {
+            "answer": "The search result answer",
+            "condition_met": bool,
+            "inferred_condition": "LLM-inferred condition" (if condition_description not provided),
+            "grounding_sources": [{url, title}, ...],
+            "current_state": {...}
+        }
+    """
+    from torale.executors.grounded_search import GroundedSearchExecutor
+
+    try:
+        executor = GroundedSearchExecutor()
+
+        # If no condition provided, have LLM infer it from the query
+        condition_description = request.condition_description
+        if not condition_description:
+            condition_description = await _infer_condition_from_query(request.search_query, request.model)
+            inferred = True
+        else:
+            inferred = False
+
+        # Execute the search
+        config = {
+            "search_query": request.search_query,
+            "condition_description": condition_description,
+            "model": request.model,
+        }
+
+        result = await executor.execute(config)
+
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=result.get("error", "Search execution failed"),
+            )
+
+        # Return results with inferred condition if applicable
+        response = {
+            "answer": result["answer"],
+            "condition_met": result["condition_met"],
+            "grounding_sources": result["grounding_sources"],
+            "current_state": result["current_state"],
+        }
+
+        if inferred:
+            response["inferred_condition"] = condition_description
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Preview search failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to preview search: {str(e)}",
+        ) from e
+
+
+async def _infer_condition_from_query(search_query: str, model: str) -> str:
+    """
+    Use LLM to infer what the monitoring condition should be based on the search query.
+
+    For example:
+    - "When is iPhone 16 coming out?" → "A specific release date has been announced"
+    - "Is GPT-5 available yet?" → "GPT-5 is officially available or released"
+    """
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(api_key=settings.google_api_key)
+
+    inference_prompt = f"""Based on this search query, infer what condition the user wants to monitor for.
+
+Search Query: {search_query}
+
+What condition or change would indicate this information is available or has been announced?
+
+Respond with just a clear, concise condition description (1 sentence).
+
+Examples:
+- Query: "When is the next iPhone release?" → "A specific release date or month has been officially announced"
+- Query: "Is GPT-5 available?" → "GPT-5 is officially released and available"
+- Query: "What's the price of PS5?" → "A clear price is listed"
+
+Condition:"""
+
+    response = await client.aio.models.generate_content(
+        model=model,
+        contents=inference_prompt,
+        config=types.GenerateContentConfig(
+            max_output_tokens=100,
+        ),
+    )
+
+    return response.text.strip()
 
 
 @router.get("/{task_id}", response_model=Task)
@@ -509,7 +661,21 @@ async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(g
 
 
 @router.post("/{task_id}/execute", response_model=TaskExecution)
-async def execute_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
+async def execute_task(
+    task_id: UUID,
+    user: CurrentUser,
+    db: Database = Depends(get_db),
+    suppress_notifications: bool = False,
+):
+    """
+    Execute a task manually.
+
+    Args:
+        task_id: ID of the task to execute
+        suppress_notifications: If True, don't send notifications (preview mode)
+
+    This is used both for "Run Now" (preview) and scheduled executions.
+    """
     # Verify task exists and belongs to user
     task_query = """
         SELECT id, name FROM tasks
@@ -549,6 +715,7 @@ async def execute_task(task_id: UUID, user: CurrentUser, db: Database = Depends(
                 execution_id=str(row["id"]),
                 user_id=str(user.id),
                 task_name=task["name"],
+                suppress_notifications=suppress_notifications,
             ),
             id=f"task-{task_id}-{row['id']}",
             task_queue="torale-tasks",

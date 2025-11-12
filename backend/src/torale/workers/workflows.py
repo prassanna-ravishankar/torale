@@ -11,6 +11,7 @@ class TaskExecutionRequest:
     execution_id: str
     user_id: str
     task_name: str
+    suppress_notifications: bool = False  # For preview/manual runs
 
 
 @workflow.defn
@@ -32,12 +33,13 @@ class TaskExecutionWorkflow:
             retry_policy=retry_policy,
         )
 
-        # Send notification
-        await workflow.execute_activity(
-            "send_notification",
-            args=[request.user_id, request.task_name, result],
-            start_to_close_timeout=timedelta(minutes=1),
-            retry_policy=retry_policy,
-        )
+        # Send notification only if not suppressed (preview mode)
+        if not request.suppress_notifications:
+            await workflow.execute_activity(
+                "send_notification",
+                args=[request.user_id, request.task_name, result],
+                start_to_close_timeout=timedelta(minutes=1),
+                retry_policy=retry_policy,
+            )
 
         return result
