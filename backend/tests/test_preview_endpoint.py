@@ -30,7 +30,7 @@ class TestPreviewEndpoint:
         request = PreviewSearchRequest(
             search_query="When is iPhone 16 being released?",
             condition_description="A specific date is announced",
-            model="gemini-2.0-flash-exp"
+            model="gemini-2.0-flash-exp",
         )
 
         mock_executor_result = {
@@ -38,7 +38,7 @@ class TestPreviewEndpoint:
             "answer": "September 2024",
             "condition_met": True,
             "grounding_sources": [{"url": "https://apple.com", "title": "Apple"}],
-            "current_state": {"date": "September 2024"}
+            "current_state": {"date": "September 2024"},
         }
 
         mock_executor = AsyncMock()
@@ -46,13 +46,15 @@ class TestPreviewEndpoint:
 
         mock_genai_client = MagicMock()
 
-        with patch("torale.api.routers.tasks.GroundedSearchExecutor", return_value=mock_executor):
+        with patch(
+            "torale.executors.grounded_search.GroundedSearchExecutor", return_value=mock_executor
+        ):
             result = await preview_search(request, mock_user, mock_genai_client)
 
         # Should return executor results
         assert result["answer"] == "September 2024"
         assert result["condition_met"] is True
-        assert result["inferred"] is False
+        assert "inferred_condition" not in result  # Condition was provided, not inferred
         assert "grounding_sources" in result
 
     @pytest.mark.asyncio
@@ -69,17 +71,17 @@ class TestPreviewEndpoint:
         mock_user.id = uuid4()
 
         request = PreviewSearchRequest(
-            search_query="When is iPhone 16 being released?",
-            model="gemini-2.0-flash-exp"
+            search_query="When is iPhone 16 being released?", model="gemini-2.0-flash-exp"
         )
 
         # Mock condition inference
-        mock_genai_client = MagicMock()
-        mock_model = MagicMock()
         mock_response = MagicMock()
         mock_response.text = "A specific release date is announced"
-        mock_model.generate_content.return_value = mock_response
-        mock_genai_client.get_generative_model.return_value = mock_model
+
+        mock_generate = AsyncMock(return_value=mock_response)
+
+        mock_genai_client = MagicMock()
+        mock_genai_client.aio.models.generate_content = mock_generate
 
         # Mock executor
         mock_executor_result = {
@@ -87,17 +89,19 @@ class TestPreviewEndpoint:
             "answer": "September 2024",
             "condition_met": True,
             "grounding_sources": [],
-            "current_state": {}
+            "current_state": {},
         }
 
         mock_executor = AsyncMock()
         mock_executor.execute.return_value = mock_executor_result
 
-        with patch("torale.api.routers.tasks.GroundedSearchExecutor", return_value=mock_executor):
+        with patch(
+            "torale.executors.grounded_search.GroundedSearchExecutor", return_value=mock_executor
+        ):
             result = await preview_search(request, mock_user, mock_genai_client)
 
         # Should indicate condition was inferred
-        assert result["inferred"] is True
+        assert "inferred_condition" in result
         assert result["inferred_condition"] == "A specific release date is announced"
 
     @pytest.mark.asyncio
@@ -116,13 +120,14 @@ class TestPreviewEndpoint:
         mock_user.id = uuid4()
 
         request = PreviewSearchRequest(
-            search_query="When is iPhone 16 being released?",
-            model="gemini-2.0-flash-exp"
+            search_query="When is iPhone 16 being released?", model="gemini-2.0-flash-exp"
         )
 
         # Mock failing genai client
         mock_genai_client = MagicMock()
-        mock_genai_client.get_generative_model.side_effect = Exception("API error")
+        mock_genai_client.aio.models.generate_content = AsyncMock(
+            side_effect=Exception("API error")
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await preview_search(request, mock_user, mock_genai_client)
@@ -144,21 +149,20 @@ class TestConditionInference:
         """
         from torale.api.routers.tasks import _infer_condition_from_query
 
-        mock_genai_client = MagicMock()
-        mock_model = MagicMock()
         mock_response = MagicMock()
         mock_response.text = "A release date is officially announced"
-        mock_model.generate_content.return_value = mock_response
-        mock_genai_client.get_generative_model.return_value = mock_model
+
+        mock_generate = AsyncMock(return_value=mock_response)
+
+        mock_genai_client = MagicMock()
+        mock_genai_client.aio.models.generate_content = mock_generate
 
         result = await _infer_condition_from_query(
-            "When is the new iPhone coming out?",
-            "gemini-2.0-flash-exp",
-            mock_genai_client
+            "When is the new iPhone coming out?", "gemini-2.0-flash-exp", mock_genai_client
         )
 
         assert result == "A release date is officially announced"
-        assert mock_model.generate_content.called
+        assert mock_generate.called
 
     @pytest.mark.asyncio
     async def test_inference_handles_llm_errors(self):
@@ -171,13 +175,13 @@ class TestConditionInference:
         from torale.api.routers.tasks import _infer_condition_from_query
 
         mock_genai_client = MagicMock()
-        mock_genai_client.get_generative_model.side_effect = Exception("API rate limit")
+        mock_genai_client.aio.models.generate_content = AsyncMock(
+            side_effect=Exception("API rate limit")
+        )
 
         with pytest.raises(Exception) as exc_info:
             await _infer_condition_from_query(
-                "test query",
-                "gemini-2.0-flash-exp",
-                mock_genai_client
+                "test query", "gemini-2.0-flash-exp", mock_genai_client
             )
 
         assert "API rate limit" in str(exc_info.value)

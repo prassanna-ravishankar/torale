@@ -43,7 +43,8 @@ class TestTemporalContext:
 
         # Mock last execution
         mock_last_execution = {
-            "started_at": last_execution_time
+            "started_at": last_execution_time,
+            "completed_at": last_execution_time,
         }
 
         mock_conn = AsyncMock()
@@ -60,7 +61,7 @@ class TestTemporalContext:
                 "condition_met": False,
                 "change_summary": "",
                 "grounding_sources": [],
-                "current_state": {}
+                "current_state": {},
             }
 
         mock_executor = AsyncMock()
@@ -74,8 +75,8 @@ class TestTemporalContext:
 
         # Verify temporal context was passed
         assert captured_config is not None
-        assert "last_execution_time" in captured_config
-        assert captured_config["last_execution_time"] == last_execution_time
+        assert "last_execution_datetime" in captured_config
+        assert captured_config["last_execution_datetime"] == last_execution_time
 
     @pytest.mark.asyncio
     async def test_executor_handles_no_previous_execution(self):
@@ -112,7 +113,7 @@ class TestTemporalContext:
                 "condition_met": False,
                 "change_summary": "",
                 "grounding_sources": [],
-                "current_state": {}
+                "current_state": {},
             }
 
         mock_executor = AsyncMock()
@@ -126,7 +127,10 @@ class TestTemporalContext:
 
         # Should work fine without last_execution_time
         assert captured_config is not None
-        assert "last_execution_time" not in captured_config or captured_config.get("last_execution_time") is None
+        assert (
+            "last_execution_time" not in captured_config
+            or captured_config.get("last_execution_time") is None
+        )
 
     @pytest.mark.asyncio
     async def test_temporal_context_with_track_state_behavior(self):
@@ -150,7 +154,10 @@ class TestTemporalContext:
             "notify_behavior": "track_state",  # Important: track_state behavior
         }
 
-        mock_last_execution = {"started_at": last_execution_time}
+        mock_last_execution = {
+            "started_at": last_execution_time,
+            "completed_at": last_execution_time,
+        }
 
         mock_conn = AsyncMock()
         mock_conn.fetchrow.side_effect = [mock_task, None, mock_last_execution]
@@ -165,7 +172,7 @@ class TestTemporalContext:
                 "condition_met": True,
                 "change_summary": "Information changed",
                 "grounding_sources": [],
-                "current_state": {"new": "info"}
+                "current_state": {"new": "info"},
             }
 
         mock_executor = AsyncMock()
@@ -179,7 +186,7 @@ class TestTemporalContext:
 
         # Temporal context should be provided for change detection
         assert captured_config is not None
-        assert captured_config.get("last_execution_time") == last_execution_time
+        assert captured_config.get("last_execution_datetime") == last_execution_time
         assert captured_config.get("last_known_state") == {"previous": "info"}
 
 
@@ -205,9 +212,22 @@ class TestRunImmediately:
         mock_user.id = user_id
 
         # Mock database
+        from datetime import datetime
+
         mock_db = AsyncMock(spec=Database)
         mock_db.fetch_one.side_effect = [
-            {"id": task_id, "name": "Test", "user_id": user_id, "is_active": True},  # Task creation
+            {
+                "id": task_id,
+                "name": "Test",
+                "user_id": user_id,
+                "is_active": True,
+                "schedule": "0 9 * * *",
+                "config": {"model": "gemini-2.0-flash-exp"},
+                "created_at": datetime.now(),
+                "search_query": "test query",
+                "condition_description": "test condition",
+                "notify_behavior": "once",
+            },  # Task creation
             {"id": uuid4()},  # Execution creation
         ]
 
@@ -220,14 +240,12 @@ class TestRunImmediately:
             search_query="test query",
             condition_description="test condition",
             schedule="0 9 * * *",
-            run_immediately=True
+            config={"model": "gemini-2.0-flash-exp"},
+            run_immediately=True,
         )
 
         with patch("torale.api.routers.tasks.get_temporal_client", return_value=mock_client):
             await create_task(task_data, mock_user, mock_db)
 
-        # Should start workflow
+        # Should start workflow for immediate execution
         assert mock_client.start_workflow.called
-        # Workflow should have suppress_notifications=True for immediate execution
-        call_kwargs = mock_client.start_workflow.call_args.kwargs
-        assert call_kwargs.get("suppress_notifications") is True

@@ -7,6 +7,7 @@ concurrently when triggered rapidly.
 """
 
 import json
+from datetime import datetime
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -42,8 +43,8 @@ class TestDuplicateExecutionPrevention:
         # Mock recent running execution (within 30 seconds)
         recent_execution = {
             "id": recent_execution_id,
-            "started_at": "2024-01-01 12:00:00",
-            "status": "running"
+            "started_at": datetime(2024, 1, 1, 12, 0, 0),
+            "status": "running",
         }
 
         mock_conn = AsyncMock()
@@ -90,7 +91,7 @@ class TestDuplicateExecutionPrevention:
             "condition_met": False,
             "change_summary": "",
             "grounding_sources": [],
-            "current_state": {}
+            "current_state": {},
         }
 
         mock_executor = AsyncMock()
@@ -130,7 +131,7 @@ class TestDuplicateExecutionPrevention:
         pending_execution = {
             "id": pending_execution_id,
             "started_at": None,  # Pending executions have NULL started_at
-            "status": "pending"
+            "status": "pending",
         }
 
         mock_conn = AsyncMock()
