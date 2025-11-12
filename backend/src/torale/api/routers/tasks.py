@@ -434,7 +434,9 @@ async def _start_task_execution(
 
 
 async def _infer_condition_from_query(
-    search_query: str, model: str, genai_client=Depends(get_genai_client)
+    search_query: str,
+    model: str,
+    genai_client,
 ) -> str:
     """
     Use LLM to infer what the monitoring condition should be based on the search query.
@@ -446,7 +448,7 @@ async def _infer_condition_from_query(
     Args:
         search_query: The user's search query
         model: Gemini model to use
-        genai_client: Injected singleton Genai client
+        genai_client: Genai client instance (passed from parent endpoint)
     """
     from google.genai import types
 

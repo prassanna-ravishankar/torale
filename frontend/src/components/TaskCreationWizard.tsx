@@ -14,7 +14,7 @@ import { WizardStepSchedule } from '@/components/wizard/WizardStepSchedule';
 import { WizardNavigation } from '@/components/wizard/WizardNavigation';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
-import type { Task, TaskTemplate } from '@/types';
+import type { Task, TaskCreatePayload, TaskTemplate } from '@/types';
 
 type WizardStep = 'template' | 'query' | 'preview' | 'schedule';
 type NotifyBehavior = 'once' | 'always' | 'track_state';
@@ -212,7 +212,7 @@ export const TaskCreationWizard: React.FC<TaskCreationWizardProps> = ({
       // Use inferred condition if user didn't provide one
       const finalCondition = conditionDescription || previewResult?.inferred_condition || '';
 
-      const task = await api.createTask({
+      const taskPayload: TaskCreatePayload = {
         name,
         search_query: searchQuery,
         condition_description: finalCondition,
@@ -225,7 +225,9 @@ export const TaskCreationWizard: React.FC<TaskCreationWizardProps> = ({
         is_active: true,
         run_immediately: true, // Execute immediately
         notifications: [],
-      } as any);
+      };
+
+      const task = await api.createTask(taskPayload);
 
       toast.success('Task created! Running first check...');
       onSuccess(task);

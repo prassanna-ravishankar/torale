@@ -19,6 +19,23 @@ export interface Task {
   updated_at: string | null;
 }
 
+/**
+ * Payload type for creating a new task.
+ * Includes fields that are only used during creation and not returned in Task.
+ */
+export interface TaskCreatePayload {
+  name: string;
+  search_query: string;
+  condition_description: string;
+  schedule: string;
+  notify_behavior: NotifyBehavior;
+  executor_type: ExecutorType;
+  config: Record<string, any>;
+  is_active: boolean;
+  run_immediately?: boolean;  // Execute task immediately after creation
+  notifications?: any[];  // Notification configurations (optional)
+}
+
 export interface GroundingSource {
   url: string;
   title: string;

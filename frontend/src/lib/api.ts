@@ -1,4 +1,4 @@
-import type { Task, TaskExecution, TaskTemplate, User } from '@/types'
+import type { Task, TaskCreatePayload, TaskExecution, TaskTemplate, User } from '@/types'
 
 interface ApiError {
   detail: string
@@ -71,7 +71,7 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
-  async createTask(task: Partial<Task>): Promise<Task> {
+  async createTask(task: TaskCreatePayload): Promise<Task> {
     const response = await fetch(`${this.baseUrl}/api/v1/tasks/`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
