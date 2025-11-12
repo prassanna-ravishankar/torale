@@ -13,20 +13,21 @@ interface WizardStepTemplateProps {
   selectedTemplate?: TaskTemplate | null;
 }
 
+// Icon mappings for templates based on keywords - defined at module level to avoid recreation on every render
+const ICON_MAPPINGS = [
+  { keywords: ['concert', 'ticket', 'music', 'event'], icon: Music },
+  { keywords: ['swimming', 'pool', 'summer', 'seasonal'], icon: Waves },
+  { keywords: ['ps5', 'playstation', 'stock', 'gaming'], icon: Gamepad2 },
+  { keywords: ['framework', 'react', 'code', 'software'], icon: Code2 },
+  { keywords: ['ai', 'gpt', 'model', 'robot', 'claude'], icon: Bot },
+  { keywords: ['gpu', 'graphics', 'cpu', 'nvidia', 'hardware'], icon: Cpu },
+];
+
 // Icon mapping based on keywords in template name/description/category
 const getTemplateIcon = (template: TaskTemplate) => {
-  const iconMappings = [
-    { keywords: ['concert', 'ticket', 'music', 'event'], icon: Music },
-    { keywords: ['swimming', 'pool', 'summer', 'seasonal'], icon: Waves },
-    { keywords: ['ps5', 'playstation', 'stock', 'gaming'], icon: Gamepad2 },
-    { keywords: ['framework', 'react', 'code', 'software'], icon: Code2 },
-    { keywords: ['ai', 'gpt', 'model', 'robot', 'claude'], icon: Bot },
-    { keywords: ['gpu', 'graphics', 'cpu', 'nvidia', 'hardware'], icon: Cpu },
-  ];
-
   const searchText = `${template.name} ${template.description} ${template.category}`.toLowerCase();
 
-  for (const mapping of iconMappings) {
+  for (const mapping of ICON_MAPPINGS) {
     if (mapping.keywords.some((keyword) => searchText.includes(keyword))) {
       return mapping.icon;
     }
