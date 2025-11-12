@@ -22,7 +22,13 @@ class TestPreviewEndpoint:
         Scenario: User provides both query and condition.
         Expected: Returns search results without inferring condition.
         """
+        import os
+
         from torale.api.routers.tasks import PreviewSearchRequest, preview_search
+
+        # Skip test if GOOGLE_API_KEY not configured (GroundedSearchExecutor requires it)
+        if not os.getenv("GOOGLE_API_KEY"):
+            pytest.skip("GOOGLE_API_KEY not configured")
 
         mock_user = MagicMock()
         mock_user.id = uuid4()
@@ -65,7 +71,13 @@ class TestPreviewEndpoint:
         Scenario: User only provides query, no condition.
         Expected: System infers condition using LLM.
         """
+        import os
+
         from torale.api.routers.tasks import PreviewSearchRequest, preview_search
+
+        # Skip test if GOOGLE_API_KEY not configured (GroundedSearchExecutor requires it)
+        if not os.getenv("GOOGLE_API_KEY"):
+            pytest.skip("GOOGLE_API_KEY not configured")
 
         mock_user = MagicMock()
         mock_user.id = uuid4()
@@ -112,9 +124,15 @@ class TestPreviewEndpoint:
         Scenario: LLM fails to infer condition.
         Expected: Returns HTTP 500 with helpful error message.
         """
+        import os
+
         from fastapi import HTTPException
 
         from torale.api.routers.tasks import PreviewSearchRequest, preview_search
+
+        # Skip test if GOOGLE_API_KEY not configured (GroundedSearchExecutor requires it)
+        if not os.getenv("GOOGLE_API_KEY"):
+            pytest.skip("GOOGLE_API_KEY not configured")
 
         mock_user = MagicMock()
         mock_user.id = uuid4()
