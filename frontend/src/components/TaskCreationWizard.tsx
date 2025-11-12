@@ -271,9 +271,10 @@ export const TaskCreationWizard: React.FC<TaskCreationWizardProps> = ({
             <WizardStepQuery
               searchQuery={searchQuery}
               onSearchQueryChange={(value) => {
-                // Clear condition when query changes to force re-inference in preview
+                // Clear condition and preview results when query changes to prevent stale data
                 if (value !== searchQuery) {
                   setConditionDescription('');
+                  setPreviewResult(null);
                 }
                 setSearchQuery(value);
                 if (validationErrors.searchQuery) {
