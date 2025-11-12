@@ -63,6 +63,10 @@ supabase/functions/.env
 # Application
 .torale/
 *.log
+
+# PyPI packaging (copy of root README)
+backend/README.md
+
 # Kubernetes / Helm
 helm/torale/secrets/*.yaml
 .cloud-sql-info

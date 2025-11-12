@@ -12,6 +12,14 @@ Monitor the web for specific conditions using Google Search + LLM analysis, then
 - **Event Tracking**: "Let me know when GPT-5 launch date is confirmed"
 - **Price Monitoring**: "Tell me when iPhone 15 price drops below $500"
 
+## Installation
+
+```bash
+pip install torale
+```
+
+Get started at **[torale.ai](https://torale.ai)** or see the [Quick Start](#quick-start) guide below.
+
 ## How It Works
 
 1. **Create a monitoring task** with a search query and condition
@@ -21,13 +29,89 @@ Monitor the web for specific conditions using Google Search + LLM analysis, then
 
 ## Quick Start
 
-### 1. Install Dependencies
+### Option 1: Use the Hosted Service (Recommended)
+
+The fastest way to get started is using the hosted service at **[torale.ai](https://torale.ai)**:
+
+1. **Sign up** at https://torale.ai (Google/GitHub OAuth or email)
+2. **Create monitoring tasks** via the web dashboard
+3. **Get notified** when conditions are met
+
+### Option 2: Install the CLI
+
+Install the Torale CLI to manage tasks from your terminal:
+
+```bash
+pip install torale
+```
+
+**Configure authentication:**
+
+```bash
+# Generate an API key at https://torale.ai (or your self-hosted instance)
+torale auth set-api-key
+
+# Create your first monitoring task
+torale task create "iPhone Release Monitor" \
+  --schedule "0 9 * * *" \
+  --prompt "Search for iPhone release date announcements"
+
+# List all tasks
+torale task list
+
+# View task notifications
+torale notifications TASK_ID
+```
+
+### Option 3: Use the Python SDK
+
+Integrate Torale into your Python applications:
+
+```bash
+pip install torale
+```
+
+```python
+from torale.sdk import ToraleClient
+
+# Initialize client with your API key
+client = ToraleClient(
+    api_key="sk_your_api_key_here",
+    base_url="https://api.torale.ai"  # or http://localhost:8000 for self-hosted
+)
+
+# Create a monitoring task
+task = client.tasks.create(
+    name="iPhone Release Monitor",
+    schedule="0 9 * * *",
+    executor_type="llm_grounded_search",
+    search_query="When is the next iPhone being released?",
+    condition_description="A specific release date has been announced",
+    notify_behavior="once",
+    config={"model": "gemini-2.0-flash-exp"}
+)
+
+# Get task status
+task = client.tasks.get(task.id)
+print(f"Task status: {task.is_active}")
+
+# List all notifications
+notifications = client.tasks.get_notifications(task.id)
+for notification in notifications:
+    print(f"[{notification.created_at}] {notification.message}")
+```
+
+### Option 4: Self-Hosted Setup
+
+Run Torale on your own infrastructure:
+
+#### 1. Install Dependencies
 ```bash
 pip install uv
 uv sync
 ```
 
-### 2. Set up Environment
+#### 2. Set up Environment
 ```bash
 cp .env.example .env
 ```
@@ -36,7 +120,7 @@ Edit `.env` with your API keys:
 - **Database**: PostgreSQL connection string (local default works)
 - **Secret Key**: Generate with `openssl rand -hex 32`
 
-### 3. Start Services
+#### 3. Start Services
 ```bash
 # Start all services (PostgreSQL + Temporal + API + Workers)
 docker compose up -d
@@ -45,9 +129,7 @@ docker compose up -d
 docker compose ps
 ```
 
-### 4. Create Your First Monitoring Task
-
-**Option A: Using the Web Interface** (Recommended)
+#### 4. Access the Web Interface
 ```bash
 # Start frontend
 cd frontend && npm run dev
@@ -57,23 +139,7 @@ cd frontend && npm run dev
 # Create tasks via the dashboard UI
 ```
 
-**Option B: Using the CLI**
-```bash
-# Generate API key in web dashboard first (http://localhost:3000)
-# Then configure CLI:
-torale auth set-api-key
-
-# Create monitoring task
-torale task create "iPhone Release Monitor" \
-  --schedule "0 9 * * *" \
-  --prompt "Search for iPhone release date announcements"
-
-# Or for local development without auth:
-export TORALE_NOAUTH=1
-torale task list
-```
-
-**Option C: Using the API directly**
+#### 5. Or use the API directly
 ```bash
 # Use your API key from the web dashboard
 curl -X POST http://localhost:8000/api/v1/tasks \
@@ -90,18 +156,6 @@ curl -X POST http://localhost:8000/api/v1/tasks \
       "model": "gemini-2.0-flash-exp"
     }
   }'
-```
-
-### 5. Check Notifications
-```bash
-# Using CLI
-torale notifications TASK_ID
-
-# Or view in web dashboard at http://localhost:3000
-
-# Or via API with your API key
-curl http://localhost:8000/api/v1/tasks/TASK_ID/notifications \
-  -H "Authorization: Bearer sk_your_api_key_here"
 ```
 
 ## Frontend

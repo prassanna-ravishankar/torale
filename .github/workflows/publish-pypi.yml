@@ -53,6 +53,9 @@ jobs:
         working-directory: ./backend
         run: uv version ${{ steps.version.outputs.version }}
 
+      - name: Sync README to backend directory
+        run: cp README.md backend/README.md
+
       - name: Build package
         working-directory: ./backend
         run: uv build --no-sources
