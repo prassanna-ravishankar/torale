@@ -305,20 +305,18 @@ async def preview_search(
 
         # If no condition provided, have LLM infer it from the query
         condition_description = request.condition_description
+        inferred = not condition_description
         if not condition_description:
             try:
                 condition_description = await _infer_condition_from_query(
                     request.search_query, request.model, genai_client
                 )
-                inferred = True
             except Exception as e:
                 logger.error(f"Failed to infer condition from query: {str(e)}")
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Failed to automatically determine what to look for in the search. Please provide a specific condition description.",
                 ) from e
-        else:
-            inferred = False
 
         # Execute the search
         config = {
