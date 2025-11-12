@@ -55,6 +55,8 @@ jobs:
 
       - name: Build package
         working-directory: ./backend
+        # Only build binary wheels and exclude source distributions for PyPI publishing.
+        # This avoids uploading sdist (.tar.gz) files, which may not be needed for this project.
         run: uv build --no-sources
 
       - name: Verify package
