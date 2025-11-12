@@ -10,6 +10,7 @@ from temporalio.client import Client, Schedule, ScheduleActionStartWorkflow, Sch
 from temporalio.service import RPCError
 
 from torale.api.auth import CurrentUserOrTestUser
+from torale.api.dependencies import get_genai_client
 from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.core.models import Task, TaskCreate, TaskExecution, TaskUpdate
@@ -226,30 +227,13 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
     # Execute task immediately if requested
     if task.run_immediately:
         try:
-            # Create execution record
-            execution_query = """
-                INSERT INTO task_executions (task_id, status)
-                VALUES ($1, $2)
-                RETURNING id
-            """
-            execution_row = await db.fetch_one(execution_query, row["id"], "pending")
-
-            if execution_row:
-                # Trigger workflow
-                client = await get_temporal_client()
-                await client.start_workflow(
-                    TaskExecutionWorkflow.run,
-                    TaskExecutionRequest(
-                        task_id=task_id,
-                        execution_id=str(execution_row["id"]),
-                        user_id=str(user.id),
-                        task_name=task.name,
-                        suppress_notifications=False,  # First run should notify
-                    ),
-                    id=f"task-{task_id}-{execution_row['id']}",
-                    task_queue="torale-tasks",
-                )
-                logger.info(f"Started immediate execution for task {task_id}")
+            await _start_task_execution(
+                task_id=task_id,
+                task_name=task.name,
+                user_id=str(user.id),
+                db=db,
+                suppress_notifications=False,  # First run should notify
+            )
         except Exception as e:
             # Log error but don't fail task creation
             logger.error(f"Failed to start immediate execution for task {task_id}: {str(e)}")
@@ -291,6 +275,7 @@ class PreviewSearchRequest(BaseModel):
 async def preview_search(
     request: PreviewSearchRequest,
     user: CurrentUser,
+    genai_client = Depends(get_genai_client),
 ):
     """
     Preview a search query without creating a task.
@@ -321,7 +306,11 @@ async def preview_search(
         # If no condition provided, have LLM infer it from the query
         condition_description = request.condition_description
         if not condition_description:
-            condition_description = await _infer_condition_from_query(request.search_query, request.model)
+            condition_description = await _infer_condition_from_query(
+                request.search_query,
+                request.model,
+                genai_client
+            )
             inferred = True
         else:
             inferred = False
@@ -354,26 +343,116 @@ async def preview_search(
 
         return response
 
+    except HTTPException:
+        # Re-raise HTTP exceptions from nested calls
+        raise
+    except ValueError as e:
+        # Handle configuration/validation errors
+        logger.error(f"Preview search validation error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid search configuration: {str(e)}",
+        ) from e
     except Exception as e:
-        logger.error(f"Preview search failed: {str(e)}")
+        # Catch unexpected errors and log full traceback
+        logger.exception(f"Unexpected error during preview search: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to preview search: {str(e)}",
+            detail="An unexpected error occurred during search preview. Please try again.",
         ) from e
 
 
-async def _infer_condition_from_query(search_query: str, model: str) -> str:
+async def _start_task_execution(
+    task_id: str,
+    task_name: str,
+    user_id: str,
+    db: Database,
+    suppress_notifications: bool = False,
+) -> dict:
+    """
+    Helper function to create execution record and start Temporal workflow.
+
+    This centralizes the logic for starting task executions, used by both
+    the create_task endpoint (when run_immediately=True) and the execute_task endpoint.
+
+    Args:
+        task_id: UUID of the task to execute
+        task_name: Name of the task
+        user_id: UUID of the user
+        db: Database connection
+        suppress_notifications: Whether to suppress notifications (preview mode)
+
+    Returns:
+        dict with execution record data
+
+    Raises:
+        HTTPException if execution creation or workflow start fails
+    """
+    # Create execution record
+    execution_query = """
+        INSERT INTO task_executions (task_id, status)
+        VALUES ($1, $2)
+        RETURNING id, task_id, status, started_at, completed_at, result, error_message, created_at
+    """
+
+    execution_row = await db.fetch_one(execution_query, UUID(task_id), "pending")
+
+    if not execution_row:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to create execution record",
+        )
+
+    # Start Temporal workflow
+    try:
+        client = await get_temporal_client()
+        await client.start_workflow(
+            TaskExecutionWorkflow.run,
+            TaskExecutionRequest(
+                task_id=task_id,
+                execution_id=str(execution_row["id"]),
+                user_id=user_id,
+                task_name=task_name,
+                suppress_notifications=suppress_notifications,
+            ),
+            id=f"task-{task_id}-{execution_row['id']}",
+            task_queue="torale-tasks",
+        )
+        logger.info(f"Started execution {execution_row['id']} for task {task_id}")
+    except Exception as e:
+        # If workflow fails to start, update execution status
+        await db.execute(
+            "UPDATE task_executions SET status = $1, error_message = $2 WHERE id = $3",
+            "failed",
+            f"Failed to start workflow: {str(e)}",
+            execution_row["id"],
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to start execution workflow: {str(e)}",
+        ) from e
+
+    return dict(execution_row)
+
+
+async def _infer_condition_from_query(
+    search_query: str,
+    model: str,
+    genai_client = Depends(get_genai_client)
+) -> str:
     """
     Use LLM to infer what the monitoring condition should be based on the search query.
 
     For example:
     - "When is iPhone 16 coming out?" → "A specific release date has been announced"
     - "Is GPT-5 available yet?" → "GPT-5 is officially available or released"
-    """
-    from google import genai
-    from google.genai import types
 
-    client = genai.Client(api_key=settings.google_api_key)
+    Args:
+        search_query: The user's search query
+        model: Gemini model to use
+        genai_client: Injected singleton Genai client
+    """
+    from google.genai import types
 
     inference_prompt = f"""Based on this search query, infer what condition the user wants to monitor for.
 
@@ -390,7 +469,7 @@ Examples:
 
 Condition:"""
 
-    response = await client.aio.models.generate_content(
+    response = await genai_client.aio.models.generate_content(
         model=model,
         contents=inference_prompt,
         config=types.GenerateContentConfig(
@@ -690,48 +769,14 @@ async def execute_task(
             detail="Task not found",
         )
 
-    # Create execution record
-    execution_query = """
-        INSERT INTO task_executions (task_id, status)
-        VALUES ($1, $2)
-        RETURNING id, task_id, status, started_at, completed_at, result, error_message, created_at
-    """
-
-    row = await db.fetch_one(execution_query, task_id, "pending")
-
-    if not row:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to create execution",
-        )
-
-    # Trigger Temporal workflow for actual execution
-    try:
-        client = await get_temporal_client()
-        await client.start_workflow(
-            TaskExecutionWorkflow.run,
-            TaskExecutionRequest(
-                task_id=str(task_id),
-                execution_id=str(row["id"]),
-                user_id=str(user.id),
-                task_name=task["name"],
-                suppress_notifications=suppress_notifications,
-            ),
-            id=f"task-{task_id}-{row['id']}",
-            task_queue="torale-tasks",
-        )
-    except Exception as e:
-        # If workflow fails to start, update execution status
-        await db.execute(
-            "UPDATE task_executions SET status = $1, error_message = $2 WHERE id = $3",
-            "failed",
-            f"Failed to start workflow: {str(e)}",
-            row["id"],
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to start task execution: {str(e)}",
-        ) from e
+    # Use helper to create execution and start workflow
+    row = await _start_task_execution(
+        task_id=str(task_id),
+        task_name=task["name"],
+        user_id=str(user.id),
+        db=db,
+        suppress_notifications=suppress_notifications,
+    )
 
     return TaskExecution(**parse_execution_row(row))
 
