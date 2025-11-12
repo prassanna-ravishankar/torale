@@ -19,6 +19,7 @@ interface WizardStepScheduleProps {
 const SCHEDULE_PRESETS = [
   { value: '0 9 * * *', label: 'Daily at 9:00 AM' },
   { value: '0 */6 * * *', label: 'Every 6 hours' },
+  { value: '0 */4 * * *', label: 'Every 4 hours' },
   { value: '0 */3 * * *', label: 'Every 3 hours' },
   { value: '0 * * * *', label: 'Every hour' },
   { value: '0 0 * * 1', label: 'Weekly on Monday' },
