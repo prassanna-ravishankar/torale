@@ -4,6 +4,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { Clock, Bell } from 'lucide-react';
+import { CronDisplay } from '@/components/ui/CronDisplay';
 
 type NotifyBehavior = 'once' | 'always' | 'track_state';
 
@@ -43,8 +44,9 @@ export const WizardStepSchedule: React.FC<WizardStepScheduleProps> = ({
         <Label htmlFor="schedule" className="flex items-center gap-2">
           <Clock className="h-4 w-4" />
           Check Frequency
+          <span className="text-destructive">*</span>
         </Label>
-        <Select value={schedule} onValueChange={onScheduleChange}>
+        <Select value={schedule} onValueChange={onScheduleChange} required>
           <SelectTrigger id="schedule">
             <SelectValue placeholder="Select a schedule" />
           </SelectTrigger>
@@ -120,11 +122,9 @@ export const WizardStepSchedule: React.FC<WizardStepScheduleProps> = ({
       <Card className="p-4 bg-muted/50">
         <p className="text-sm font-medium mb-2">Summary:</p>
         <ul className="text-sm text-muted-foreground space-y-1">
-          <li>
+          <li className="flex items-center gap-1">
             • We'll check{' '}
-            <span className="text-foreground font-medium">
-              {SCHEDULE_PRESETS.find(p => p.value === schedule)?.label.toLowerCase() || schedule}
-            </span>
+            <CronDisplay cron={schedule} showRaw={false} className="text-foreground font-medium lowercase" />
           </li>
           <li>
             • You'll be notified{' '}

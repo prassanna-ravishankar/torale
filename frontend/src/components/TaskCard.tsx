@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { CronDisplay } from '@/components/ui/CronDisplay';
 import { cn } from '@/lib/utils';
 
 interface TaskCardProps {
@@ -95,7 +96,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       <CardContent className="space-y-2 pb-3">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Clock className="h-4 w-4 shrink-0" />
-          <span className="font-mono text-xs">{task.schedule}</span>
+          <CronDisplay cron={task.schedule} className="text-xs" />
         </div>
 
         {task.condition_met && task.last_known_state && (
