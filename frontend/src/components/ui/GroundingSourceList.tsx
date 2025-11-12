@@ -21,32 +21,25 @@ export const GroundingSourceList: React.FC<GroundingSourceListProps> = ({
     <div className="space-y-2">
       {showTitle && <p className="text-sm font-medium">{title}</p>}
       <div className="space-y-2">
-        {sources.map((source, idx) => {
-          // Don't show Vertex AI redirect URLs in the UI
-          const isRedirectUrl = source.url?.includes('vertexaisearch.cloud.google.com');
-
-          return (
-            <a
-              key={idx}
-              href={source.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-start gap-2 p-2 rounded-md hover:bg-muted transition-colors group"
-            >
-              <ExternalLink className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground group-hover:text-primary" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm group-hover:text-primary">
-                  {source.title}
-                </p>
-                {!isRedirectUrl && (
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {source.url}
-                  </p>
-                )}
-              </div>
-            </a>
-          );
-        })}
+        {sources.map((source, idx) => (
+          <a
+            key={idx}
+            href={source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-start gap-2 p-2 rounded-md hover:bg-muted transition-colors group"
+          >
+            <ExternalLink className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground group-hover:text-primary" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm group-hover:text-primary">
+                {source.title}
+              </p>
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                {source.url}
+              </p>
+            </div>
+          </a>
+        ))}
       </div>
     </div>
   );

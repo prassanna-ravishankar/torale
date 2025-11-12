@@ -33,8 +33,8 @@ export const WizardStepSchedule: React.FC<WizardStepScheduleProps> = ({
 }) => {
   const [customDialogOpen, setCustomDialogOpen] = useState(false);
 
-  // Check if current schedule is a preset
-  const isCustomSchedule = !SCHEDULE_PRESETS.slice(0, -1).some((p) => p.value === schedule);
+  // Check if current schedule is a preset (exclude the custom option itself)
+  const isCustomSchedule = !SCHEDULE_PRESETS.filter((p) => p.value !== '__custom__').some((p) => p.value === schedule);
 
   // Get display value for select
   const getSelectValue = () => {

@@ -204,10 +204,12 @@ class GroundedSearchExecutor(TaskExecutor):
                             uri = getattr(chunk.web, "uri", "")
                             title = getattr(chunk.web, "title", "")
 
+                            # Filter out Vertex AI redirect URLs (Gemini internal infrastructure)
+                            # These aren't useful for end users
+                            if "vertexaisearch.cloud.google.com" in uri:
+                                continue
+
                             # The title from Gemini is just the domain (e.g., "britannica.com")
-                            # The URI contains Vertex AI redirect URLs which aren't user-friendly
-                            # For now, use the title as-is (it's the cleanest identifier we have)
-                            # and keep the redirect URL for linking purposes
                             source = {
                                 "url": uri,
                                 "title": title or self._extract_domain_from_uri(uri),
