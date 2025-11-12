@@ -20,7 +20,7 @@ ENV UV_LINK_MODE=copy
 # ---- DEPENDENCY CACHE LAYER ----
 # Only copy lockfiles - this layer is cached until dependencies change
 # Code changes won't invalidate this layer, making rebuilds much faster
-COPY pyproject.toml uv.lock ./
+COPY backend/pyproject.toml backend/uv.lock ./
 
 # Install dependencies without installing the project itself
 # This creates .venv with all dependencies
@@ -28,9 +28,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 # ---- APPLICATION CODE ----
-# Copy source code - this layer invalidates on any code change
+# Copy README from root for PyPI metadata
+COPY README.md ./
+
+# Copy backend source code - this layer invalidates on any code change
 # But since dependencies are already installed above, this is fast
-COPY . /app
+COPY backend/ /app/
 
 # Install the project itself (links to already-installed dependencies)
 RUN --mount=type=cache,target=/root/.cache/uv \

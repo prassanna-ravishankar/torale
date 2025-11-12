@@ -29,6 +29,9 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "backend/uv.lock"
 
+      - name: Copy README for package metadata
+        run: cp README.md backend/README.md
+
       - name: Install dependencies
         working-directory: ./backend
         run: uv sync --all-extras
@@ -58,6 +61,9 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "backend/uv.lock"
+
+      - name: Copy README for package metadata
+        run: cp README.md backend/README.md
 
       - name: Install dependencies
         working-directory: ./backend

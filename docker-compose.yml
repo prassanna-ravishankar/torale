@@ -65,7 +65,9 @@ services:
   # Runs once before API container starts
 
   init-migrations:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
       - DATABASE_URL=postgresql://torale:torale@postgres:5432/torale
       - SECRET_KEY=${SECRET_KEY}
@@ -93,7 +95,9 @@ services:
   # Production uses GKE with Cloud SQL
 
   api:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
     environment:
@@ -122,7 +126,9 @@ services:
       - ./backend/src:/app/src
 
   workers:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
       - DATABASE_URL=postgresql://torale:torale@postgres:5432/torale
       - SECRET_KEY=${SECRET_KEY}

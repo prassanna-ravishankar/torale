@@ -46,7 +46,7 @@ jobs:
       matrix:
         include:
           - component: api
-            context: backend
+            context: .
             dockerfile: backend/Dockerfile
           - component: frontend
             context: frontend
