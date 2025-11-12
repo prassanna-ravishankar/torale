@@ -6,6 +6,8 @@ import { CheckCircle2, XCircle } from 'lucide-react';
 import { GroundingSourceList } from '@/components/ui/GroundingSourceList';
 import type { GroundingSource } from '@/types';
 
+const MAX_DISPLAYED_ITEMS = 3;
+
 interface SearchPreviewProps {
   answer: string;
   conditionMet: boolean;
@@ -83,8 +85,8 @@ export const SearchPreview: React.FC<SearchPreviewProps> = ({
                   {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}:
                 </span>{' '}
                 {Array.isArray(value) ? (
-                  value.length > 3 ? (
-                    <span className="text-xs">{value.slice(0, 3).join(', ')} and {value.length - 3} more</span>
+                  value.length > MAX_DISPLAYED_ITEMS ? (
+                    <span className="text-xs">{value.slice(0, MAX_DISPLAYED_ITEMS).join(', ')} and {value.length - MAX_DISPLAYED_ITEMS} more</span>
                   ) : (
                     <span className="text-xs">{value.join(', ')}</span>
                   )

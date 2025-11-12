@@ -213,11 +213,11 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
             <WizardStepQuery
               searchQuery={searchQuery}
               onSearchQueryChange={(value) => {
-                setSearchQuery(value);
                 // Clear condition when query changes to force re-inference
-                if (task && value !== task.search_query) {
+                if (value !== searchQuery) {
                   setConditionDescription('');
                 }
+                setSearchQuery(value);
                 if (validationErrors.searchQuery) {
                   setValidationErrors((prev) => ({ ...prev, searchQuery: '' }));
                 }

@@ -87,7 +87,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               )}
             </div>
             <p className="text-sm text-muted-foreground line-clamp-2">
-              "{task.search_query}"
+              &ldquo;{task.search_query}&rdquo;
             </p>
           </div>
         </div>
