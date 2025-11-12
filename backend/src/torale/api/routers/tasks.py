@@ -275,7 +275,7 @@ class PreviewSearchRequest(BaseModel):
 async def preview_search(
     request: PreviewSearchRequest,
     user: CurrentUser,
-    genai_client = Depends(get_genai_client),
+    genai_client=Depends(get_genai_client),
 ):
     """
     Preview a search query without creating a task.
@@ -307,9 +307,7 @@ async def preview_search(
         condition_description = request.condition_description
         if not condition_description:
             condition_description = await _infer_condition_from_query(
-                request.search_query,
-                request.model,
-                genai_client
+                request.search_query, request.model, genai_client
             )
             inferred = True
         else:
@@ -436,9 +434,7 @@ async def _start_task_execution(
 
 
 async def _infer_condition_from_query(
-    search_query: str,
-    model: str,
-    genai_client = Depends(get_genai_client)
+    search_query: str, model: str, genai_client=Depends(get_genai_client)
 ) -> str:
     """
     Use LLM to infer what the monitoring condition should be based on the search query.

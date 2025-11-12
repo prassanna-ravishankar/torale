@@ -60,13 +60,13 @@ class NovuService:
             # Convert markdown answer to HTML for email rendering
             try:
                 import markdown
+
                 answer_html = markdown.markdown(
-                    answer,
-                    extensions=['nl2br', 'fenced_code', 'tables']
+                    answer, extensions=["nl2br", "fenced_code", "tables"]
                 )
             except ImportError:
                 logger.warning("markdown library not installed - using plain text")
-                answer_html = answer.replace('\n', '<br>')
+                answer_html = answer.replace("\n", "<br>")
 
             # Transform grounding sources: url → uri for Novu template compatibility
             formatted_sources = [

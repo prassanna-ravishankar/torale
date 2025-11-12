@@ -80,7 +80,7 @@ class GroundedSearchExecutor(TaskExecutor):
             search_result = await self._grounded_search(
                 search_query=search_query,
                 model=model,
-                last_execution_datetime=last_execution_datetime
+                last_execution_datetime=last_execution_datetime,
             )
 
             # Step 2: Evaluate if condition is met
@@ -118,10 +118,7 @@ class GroundedSearchExecutor(TaskExecutor):
             }
 
     async def _grounded_search(
-        self,
-        search_query: str,
-        model: str,
-        last_execution_datetime: datetime | None = None
+        self, search_query: str, model: str, last_execution_datetime: datetime | None = None
     ) -> dict:
         """
         Perform grounded search using Gemini with Google Search.
@@ -170,10 +167,14 @@ class GroundedSearchExecutor(TaskExecutor):
         else:
             modified_query = search_query
 
-        contextualized_query = f"{temporal_context}\n\nQuery: {modified_query}\n\n{compression_instruction}"
+        contextualized_query = (
+            f"{temporal_context}\n\nQuery: {modified_query}\n\n{compression_instruction}"
+        )
 
         # Log the query being sent to Gemini for debugging
-        logger.info(f"Sending to Gemini with temporal context - Last execution: {last_execution_datetime}")
+        logger.info(
+            f"Sending to Gemini with temporal context - Last execution: {last_execution_datetime}"
+        )
         logger.info(f"Full query: {contextualized_query[:500]}...")  # Log first 500 chars
 
         response = await self.client.aio.models.generate_content(

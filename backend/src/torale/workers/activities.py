@@ -58,7 +58,11 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
         )
 
         if recent_running:
-            started_at_str = recent_running['started_at'].isoformat() if recent_running['started_at'] else "pending"
+            started_at_str = (
+                recent_running["started_at"].isoformat()
+                if recent_running["started_at"]
+                else "pending"
+            )
             logger.warning(
                 f"Task {task_id} has a recent execution (status: {recent_running.get('status', 'unknown')}, started: {started_at_str}). "
                 f"Skipping duplicate execution to prevent race condition."
@@ -67,7 +71,7 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
             return {
                 "status": "skipped",
                 "reason": "Recent execution already in progress",
-                "existing_execution_id": str(recent_running['id'])
+                "existing_execution_id": str(recent_running["id"]),
             }
 
         # Parse config if it's a JSON string

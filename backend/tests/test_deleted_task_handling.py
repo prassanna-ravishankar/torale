@@ -186,7 +186,11 @@ class TestDeletedTaskHandling:
         # Mock database connection
         mock_conn = AsyncMock()
         # First fetchrow call gets the task, second one checks for recent running (should be None)
-        mock_conn.fetchrow.side_effect = [mock_task, None, None]  # task, recent_running check, last_execution check
+        mock_conn.fetchrow.side_effect = [
+            mock_task,
+            None,
+            None,
+        ]  # task, recent_running check, last_execution check
         mock_conn.execute.return_value = None
 
         # Mock executor result
