@@ -5,17 +5,19 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
-import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WizardStepQuery } from '@/components/wizard/WizardStepQuery';
 import { WizardStepPreview } from '@/components/wizard/WizardStepPreview';
 import { WizardStepSchedule } from '@/components/wizard/WizardStepSchedule';
-import { WizardNavigation } from '@/components/wizard/WizardNavigation';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import type { Task } from '@/types';
+import { Loader2 } from 'lucide-react';
 
-type WizardStep = 'query' | 'preview' | 'schedule';
+type EditTab = 'query' | 'schedule';
 type NotifyBehavior = 'once' | 'always' | 'track_state';
 
 interface PreviewResult {
@@ -39,8 +41,8 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   task,
   onSuccess,
 }) => {
-  // Wizard state
-  const [currentStep, setCurrentStep] = useState<WizardStep>('query');
+  // Tab state
+  const [activeTab, setActiveTab] = useState<EditTab>('query');
 
   // Form data
   const [name, setName] = useState('');
@@ -71,7 +73,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   useEffect(() => {
     if (!open) {
       setTimeout(() => {
-        setCurrentStep('query');
+        setActiveTab('query');
         setValidationErrors({});
         setPreviewResult(null);
         setPreviewError('');
@@ -79,13 +81,8 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
     }
   }, [open]);
 
-  // Step helpers
-  const stepOrder: WizardStep[] = ['query', 'preview', 'schedule'];
-  const currentStepIndex = stepOrder.indexOf(currentStep);
-  const totalSteps = stepOrder.length;
-
   // Validation
-  const validateQueryStep = (): boolean => {
+  const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
     if (!name.trim()) {
@@ -99,14 +96,14 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
     }
 
     setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
 
-  const validatePreviewStep = (): boolean => {
-    if (!previewResult) {
-      toast.error('Please preview your search results before continuing');
+    if (Object.keys(errors).length > 0) {
+      // Switch to query tab to show errors
+      setActiveTab('query');
+      toast.error('Please fix the validation errors');
       return false;
     }
+
     return true;
   };
 
@@ -133,36 +130,18 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
     }
   };
 
-  // Navigation handlers
-  const handleNext = async () => {
-    if (currentStep === 'query') {
-      if (validateQueryStep()) {
-        setCurrentStep('preview');
-      }
-    } else if (currentStep === 'preview') {
-      if (validatePreviewStep()) {
-        setCurrentStep('schedule');
-      }
-    } else if (currentStep === 'schedule') {
-      await handleUpdate();
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep === 'preview') {
-      setCurrentStep('query');
-    } else if (currentStep === 'schedule') {
-      setCurrentStep('preview');
-    }
-  };
-
   const handleEditQuery = () => {
-    setCurrentStep('query');
+    setActiveTab('query');
   };
 
   // Update task
   const handleUpdate = async () => {
     if (!task) return;
+
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
 
     setIsUpdating(true);
 
@@ -200,74 +179,78 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Edit Task</DialogTitle>
           <DialogDescription>
-            Update your monitoring task in {totalSteps} steps
+            Update your monitoring task settings. Switch between tabs to edit different sections.
           </DialogDescription>
-          <div className="pt-4">
-            <Progress value={((currentStepIndex + 1) / totalSteps) * 100} />
-          </div>
         </DialogHeader>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto min-h-0 px-1">
-          {currentStep === 'query' && (
-            <WizardStepQuery
-              searchQuery={searchQuery}
-              onSearchQueryChange={(value) => {
-                // Clear condition when query changes to force re-inference
-                if (value !== searchQuery) {
-                  setConditionDescription('');
-                }
-                setSearchQuery(value);
-                if (validationErrors.searchQuery) {
-                  setValidationErrors((prev) => ({ ...prev, searchQuery: '' }));
-                }
-              }}
-              name={name}
-              onNameChange={(value) => {
-                setName(value);
-                if (validationErrors.name) {
-                  setValidationErrors((prev) => ({ ...prev, name: '' }));
-                }
-              }}
-              errors={validationErrors}
-            />
-          )}
+        {/* Tabbed Content */}
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as EditTab)} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="query">Query & Condition</TabsTrigger>
+            <TabsTrigger value="schedule">Schedule & Notifications</TabsTrigger>
+          </TabsList>
 
-          {currentStep === 'preview' && (
-            <WizardStepPreview
-              searchQuery={searchQuery}
-              conditionDescription={conditionDescription}
-              onConditionDescriptionChange={setConditionDescription}
-              previewResult={previewResult}
-              isLoading={isPreviewLoading}
-              onPreview={handlePreview}
-              onEditQuery={handleEditQuery}
-              error={previewError}
-            />
-          )}
+          <div className="flex-1 overflow-y-auto min-h-0 mt-4 px-1">
+            <TabsContent value="query" className="m-0 space-y-6">
+              <WizardStepQuery
+                searchQuery={searchQuery}
+                onSearchQueryChange={(value) => {
+                  // Clear condition and preview when query changes
+                  if (value !== searchQuery) {
+                    setConditionDescription('');
+                    setPreviewResult(null);
+                  }
+                  setSearchQuery(value);
+                  if (validationErrors.searchQuery) {
+                    setValidationErrors((prev) => ({ ...prev, searchQuery: '' }));
+                  }
+                }}
+                name={name}
+                onNameChange={(value) => {
+                  setName(value);
+                  if (validationErrors.name) {
+                    setValidationErrors((prev) => ({ ...prev, name: '' }));
+                  }
+                }}
+                errors={validationErrors}
+              />
 
-          {currentStep === 'schedule' && (
-            <WizardStepSchedule
-              schedule={schedule}
-              onScheduleChange={setSchedule}
-              notifyBehavior={notifyBehavior}
-              onNotifyBehaviorChange={setNotifyBehavior}
-            />
-          )}
-        </div>
+              {/* Preview Section (Optional) */}
+              <div className="border-t pt-6">
+                <WizardStepPreview
+                  searchQuery={searchQuery}
+                  conditionDescription={conditionDescription}
+                  onConditionDescriptionChange={setConditionDescription}
+                  previewResult={previewResult}
+                  isLoading={isPreviewLoading}
+                  onPreview={handlePreview}
+                  onEditQuery={handleEditQuery}
+                  error={previewError}
+                />
+              </div>
+            </TabsContent>
 
-        {/* Footer Navigation */}
-        <WizardNavigation
-          currentStep={currentStepIndex + 1}
-          totalSteps={totalSteps}
-          onNext={handleNext}
-          onBack={handleBack}
-          onCancel={() => onOpenChange(false)}
-          nextLabel={currentStep === 'schedule' ? 'Update Task' : undefined}
-          isNextDisabled={false}
-          isLoading={isUpdating}
-          showBack={currentStep !== 'query'}
-        />
+            <TabsContent value="schedule" className="m-0">
+              <WizardStepSchedule
+                schedule={schedule}
+                onScheduleChange={setSchedule}
+                notifyBehavior={notifyBehavior}
+                onNotifyBehaviorChange={setNotifyBehavior}
+              />
+            </TabsContent>
+          </div>
+        </Tabs>
+
+        {/* Footer */}
+        <DialogFooter className="flex-shrink-0">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUpdating}>
+            Cancel
+          </Button>
+          <Button onClick={handleUpdate} disabled={isUpdating}>
+            {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Update Task
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
