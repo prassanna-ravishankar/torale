@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write  # Required for trusted publishing (optional, more secure)
+      id-token: write  # Required for trusted publishing
     
     steps:
       - name: Checkout repository
@@ -55,8 +55,6 @@ jobs:
 
       - name: Build package
         working-directory: ./backend
-        # Only build binary wheels and exclude source distributions for PyPI publishing.
-        # This avoids uploading sdist (.tar.gz) files, which may not be needed for this project.
         run: uv build --no-sources
 
       - name: Verify package
@@ -69,8 +67,5 @@ jobs:
 
       - name: Publish to PyPI
         working-directory: ./backend
-        env:
-          # Use API token if trusted publishing is not configured
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: uv publish
 
