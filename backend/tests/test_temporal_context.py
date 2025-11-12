@@ -224,7 +224,7 @@ class TestRunImmediately:
         )
 
         with patch("torale.api.routers.tasks.get_temporal_client", return_value=mock_client):
-            result = await create_task(task_data, mock_user, mock_db)
+            await create_task(task_data, mock_user, mock_db)
 
         # Should start workflow
         assert mock_client.start_workflow.called
