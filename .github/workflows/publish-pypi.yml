@@ -1,0 +1,74 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on tags like v1.0.0, v0.2.1, etc.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.0 or v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  publish:
+    name: Build and publish to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for trusted publishing (optional, more secure)
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all tags
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # For manual dispatch, use the input version
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # For tag push, extract version from tag (remove 'v' prefix if present)
+            VERSION="${GITHUB_REF#refs/tags/}"
+            VERSION="${VERSION#v}"  # Remove 'v' prefix if present
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
+
+      - name: Update version in pyproject.toml
+        working-directory: ./backend
+        run: uv version ${{ steps.version.outputs.version }}
+
+      - name: Build package
+        working-directory: ./backend
+        run: uv build --no-sources
+
+      - name: Verify package
+        working-directory: ./backend
+        run: |
+          # List built packages to verify
+          ls -la dist/
+          echo "Built packages:"
+          find dist/ -type f
+
+      - name: Publish to PyPI
+        working-directory: ./backend
+        env:
+          # Use API token if trusted publishing is not configured
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: uv publish
+
