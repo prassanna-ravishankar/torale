@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { CronDisplay } from '@/components/ui/CronDisplay'
 
 interface Query {
   id: string
@@ -53,7 +54,7 @@ export function QueryCard({ query }: QueryCardProps) {
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
             <div>
               <span className="text-muted-foreground">Schedule:</span>{' '}
-              <span className="font-mono">{query.schedule}</span>
+              <CronDisplay cron={query.schedule} showRaw={false} className="text-xs" />
             </div>
             <div>
               <span className="text-muted-foreground">Executions:</span>{' '}

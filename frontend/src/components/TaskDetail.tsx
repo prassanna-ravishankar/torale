@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { ExecutionTimeline } from "@/components/ExecutionTimeline";
 import { StateComparison } from "@/components/StateComparison";
+import { CronDisplay } from "@/components/ui/CronDisplay";
 import {
   ArrowLeft,
   Clock,
@@ -191,7 +192,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             </div>
           </CardHeader>
           <CardContent>
-            <p className="font-mono text-sm">{task.schedule}</p>
+            <CronDisplay cron={task.schedule} className="text-sm" />
           </CardContent>
         </Card>
 
