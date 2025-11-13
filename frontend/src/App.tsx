@@ -80,7 +80,7 @@ export default function App() {
   }
 
   const handleBackToDashboard = () => {
-    navigate('/')
+    navigate('/dashboard')
   }
 
   return (
@@ -124,7 +124,17 @@ export default function App() {
         />
         <Route
           path="/"
-          element={<HomeRoute onTaskClick={handleTaskClick} />}
+          element={<Landing />}
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Dashboard onTaskClick={handleTaskClick} />
+              </AppLayout>
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/tasks/:taskId"
@@ -155,29 +165,7 @@ export default function App() {
 function TaskDetailRoute({ onBack, onDeleted }: { onBack: () => void; onDeleted: () => void }) {
   const { taskId } = useParams()
   if (!taskId) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/dashboard" replace />
   }
   return <TaskDetail taskId={taskId} onBack={onBack} onDeleted={onDeleted} />
-}
-
-function HomeRoute({ onTaskClick }: { onTaskClick: (taskId: string) => void }) {
-  const { isLoaded, isAuthenticated } = useAuth()
-
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
-
-  if (isAuthenticated) {
-    return (
-      <AppLayout>
-        <Dashboard onTaskClick={onTaskClick} />
-      </AppLayout>
-    )
-  }
-
-  return <Landing />
 }

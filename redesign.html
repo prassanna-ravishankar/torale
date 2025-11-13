@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>τorale - Make the web work for you</title>
+
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Load three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- Configure Tailwind & Fonts -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Roboto Mono', 'monospace'],
+                    },
+                    colors: {
+                        'brand-red': '#FF0000',
+                        'brand-grid': '#F0F0F0',
+                        'brand-grey': '#666666',
+                    }
+                },
+            },
+        }
+    </script>
+
+    <!-- Global Styles -->
+    <style>
+        /* Import Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Roboto+Mono:wght@400&display=swap');
+
+        /* Sharp corners */
+        * { border-radius: 0 !important; }
+
+        /* Remove default body background */
+        body {
+            background-color: #FFFFFF;
+        }
+
+        /* Full-page particle canvas */
+        #particle-vignette-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0; /* Behind everything */
+        }
+
+        /* Vignette overlay - softer, more visible center */
+        .vignette-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1; /* Above particles, below content */
+            /* Fades to white at edges, clear on center-right */
+            background: radial-gradient(circle at 75% 50%, 
+                rgba(255,255,255,0) 0%, 
+                rgba(255,255,255,0.6) 45%, /* Softer fade */
+                rgba(255,255,255,1) 70%);
+            pointer-events: none; /* Allow clicks through */
+        }
+
+        /* L-shaped corner brackets for sections */
+        .agno-section {
+            position: relative;
+            padding: 4rem 1.5rem; /* 64px 24px */
+        }
+        .agno-section-bracket::before,
+        .agno-section-bracket::after {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+        }
+        .agno-section-bracket::before {
+            top: 24px;
+            left: 24px;
+            border-top: 2px solid #000;
+            border-left: 2px solid #000;
+        }
+        .agno-section-bracket::after {
+            bottom: 24px;
+            right: 24px;
+            border-bottom: 2px solid #000;
+            border-right: 2px solid #000;
+        }
+
+        /* Blinking Red Underscore */
+        .blinking-underscore {
+            display: inline;
+            position: relative;
+        }
+        .blinking-underscore::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -0.15em;
+            width: 100%;
+            height: 0.1em;
+            background-color: #FF0000; /* brand-red */
+            animation: blink 1.2s infinite steps(1, start);
+        }
+        @keyframes blink {
+            50% { background-color: transparent; }
+        }
+
+        /* Section fade-in on scroll */
+        .fade-in-section {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+            will-change: opacity, transform;
+        }
+        .fade-in-section.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Code tabs */
+        .code-tab-btn.code-active-tab {
+            color: #FF0000; /* brand-red */
+            border-bottom: 1px solid #FF0000;
+        }
+        .code-tab-btn {
+            border-bottom: 1px solid transparent;
+        }
+    </style>
+</head>
+<body class="bg-white text-black font-sans antialiased">
+
+    <!-- Particle Background -->
+    <canvas id="particle-vignette-canvas"></canvas>
+    <!-- Vignette Overlay -->
+    <div class="vignette-overlay"></div>
+
+    <!-- Wrapper -->
+    <!-- bg-transparent is key. Sections inside will be bg-white for readability -->
+    <div class="max-w-7xl mx-auto bg-transparent relative z-10">
+
+        <!-- Module: Header -->
+        <!-- Added bg-white and border to lift it off the background -->
+        <header class="p-6 flex justify-between items-center sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b border-brand-grid">
+            <!-- Logo -->
+            <a href="#" class="flex items-center gap-3">
+                <img src="https://torale.ai/brand/svg/logo-cropped.svg" alt="Torale Logo" class="h-8 w-auto">
+                <span class="text-2xl font-bold tracking-widest text-black">τorale</span>
+            </a>
+            
+            <!-- Nav -->
+            <nav class="hidden md:flex items-center gap-6 font-mono text-sm">
+                <a href="#how-it-works" class="hover:text-brand-red">How it Works</a>
+                <a href="#code" class="hover:text-brand-red">API & CLI</a>
+                <a href="#pricing" class="hover:text-brand-red">Pricing</a>
+            </nav>
+
+            <!-- Primary CTA -->
+            <a href="#pricing" class="bg-brand-red text-white uppercase font-bold py-3 px-5 text-sm tracking-wide hidden sm:block">
+                [ + Get Started ]
+            </a>
+        </header>
+
+        <!-- Module 1: Hero -->
+        <!-- This section is transparent to the particle background -->
+        <section class="agno-section grid grid-cols-1 md:grid-cols-2 items-center gap-8 min-h-[70vh]">
+            <!-- Hero Text (floats over the effect) -->
+            <div class="md:pl-10">
+                <h1 class="text-5xl md:text-7xl font-bold mb-6">
+                    Make the web work for <span class="blinking-underscore">you</span>
+                </h1>
+                <p class="text-xl text-brand-grey mb-8">
+                    Grounded AI monitoring that watches the web, so you don't have to.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <a href="#pricing" class="bg-brand-red text-white uppercase font-bold py-3 px-6 text-sm tracking-wide text-center">
+                        [ + Get Started ]
+                    </a>
+                    <a href="https://github.com/your-repo/torale" target="_blank" class="bg-white text-black border border-black uppercase font-bold py-3 px-6 text-sm tracking-wide text-center">
+                        [ + View on Github ]
+                    </a>
+                </div>
+            </div>
+            
+            <!-- This column is now empty, the background provides the visual -->
+            <div></div>
+        </section>
+
+        <!-- Module 2: How It Works -->
+        <!-- bg-white is CRITICAL for readability over the particle field -->
+        <section id="how-it-works" class="agno-section fade-in-section bg-white border-y border-brand-grid">
+            <h2 class="text-3xl font-bold text-center mb-12">How It Works</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 max-w-6xl mx-auto">
+                <!-- Step 1 -->
+                <div class="text-center">
+                    <h3 class="font-mono text-brand-red text-lg mb-2">[ 1. Create Task ]</h3>
+                    <p class="text-brand-grey">Define a search query and the specific condition you want to monitor.</p>
+                </div>
+                <!-- Step 2 -->
+                <div class="text-center">
+                    <h3 class="font-mono text-brand-red text-lg mb-2">[ 2. Run Search ]</h3>
+                    <p class="text-brand-grey">Torale runs scheduled, grounded Google searches via the Gemini API.</p>
+                </div>
+                <!-- Step 3 -->
+                <div class="text-center">
+                    <h3 class="font-mono text-brand-red text-lg mb-2">[ 3. Evaluate ]</h3>
+                    <p class="text-brand-grey">An LLM evaluates the search results to see if your condition is met.</p>
+                </div>
+                <!-- Step 4 -->
+                <div class="text-center">
+                    <h3 class="font-mono text-brand-red text-lg mb-2">[ 4. Get Notified ]</h3>
+                    <p class="text-brand-grey">Receive an alert via Web UI, API, or CLI the moment it triggers.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Module 3: Code -->
+        <section id="code" class="agno-section agno-section-bracket fade-in-section bg-white p-6 md:p-12">
+            <h2 class="text-3xl font-bold text-center mb-4">Built for Developers</h2>
+            <p class="text-center text-brand-grey mb-12">Create, manage, and monitor from your terminal.</p>
+            
+            <div class="max-w-3xl mx-auto bg-black text-white p-6">
+                <!-- Code Tabs -->
+                <div id="code-tabs" class="flex gap-x-6 mb-4 font-mono text-sm">
+                    <button data-tab="cli" class="code-tab-btn code-active-tab pb-2">[ CLI ]</button>
+                    <button data-tab="api" class="code-tab-btn text-brand-grey pb-2">API (curl)</button>
+                    <button data-tab="quickstart" class="code-tab-btn text-brand-grey pb-2">Install</button>
+                </div>
+                
+                <!-- Code Content -->
+                <pre class="font-mono text-sm overflow-x-auto">
+                    <!-- CLI Content -->
+                    <code id="cli-content" class="code-content">
+<span class="text-brand-red">$</span> torale auth set-api-key
+
+<span class="text-brand-red">$</span> torale task create "iPhone Release Monitor" \
+    --schedule "0 9 * * *" \
+    --prompt "Search for iPhone release date announcements"
+                    </code>
+                    <!-- API Content -->
+                    <code id="api-content" class="code-content hidden">
+<span class="text-brand-red">$</span> curl -X POST http://localhost:8000/api/v1/tasks \
+     -H "Authorization: Bearer sk_your_api_key_here" \
+     -H "Content-Type: application/json" \
+     -d '{
+          "name": "iPhone Release Monitor",
+          "schedule": "0 9 * * *",
+          "search_query": "When is the next iPhone being released?",
+          "condition_description": "A specific release date has been announced"
+      }'
+                    </code>
+                    <!-- Install Content -->
+                    <code id="quickstart-content" class="code-content hidden">
+<span class="text-brand-red"># 1. Start all services</span>
+<span class="text-brand-red">$</span> docker compose up -d
+
+<span class="text-brand-red"># 2. Start frontend</span>
+<span class="text-brand-red">$</span> cd frontend && npm run dev
+
+<span class="text-brand-red"># 3. Open http://localhost:3000</span>
+                    </code>
+                </pre>
+            </div>
+        </section>
+
+        <!-- Module 4: Pricing -->
+        <section id="pricing" class="agno-section fade-in-section bg-white border-y border-brand-grid">
+            <h2 class="text-3xl font-bold text-center mb-12">Pricing</h2>
+            <div class="max-w-md mx-auto border-2 border-black p-8 text-center">
+                <h3 class="font-bold text-2xl mb-2">Free</h3>
+                <p class="text-lg text-brand-grey mb-6">"Free till I figure things out."</p>
+                <ul class="space-y-2 mb-6 text-left">
+                    <li class="flex items-center gap-2 font-mono text-sm">
+                        <span class="text-brand-red">[+]</span> Open-Source
+                    </li>
+                    <li class="flex items-center gap-2 font-mono text-sm">
+                        <span class="text-brand-red">[+]</span> Unlimited Monitors
+                    </li>
+                    <li class="flex items-center gap-2 font-mono text-sm">
+                        <span class="text-brand-red">[+]</span> Community Support
+                    </li>
+                </ul>
+                <a href="#" class="bg-black text-white uppercase font-bold py-3 px-6 text-sm tracking-wide w-full text-center block">
+                    [ + Get Started for Free ]
+                </a>
+            </div>
+        </section>
+
+        <!-- Module 5: Footer -->
+        <footer class="p-6 md:p-12 bg-white">
+            <div class="text-center text-sm text-brand-grey">
+                τorale is an open-source project.
+            </div>
+        </footer>
+
+    </div> <!-- /Wrapper -->
+
+    <!-- JavaScript for Interactions -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // --- Code Tabs ---
+            const codeTabs = document.getElementById('code-tabs');
+            if (codeTabs) {
+                codeTabs.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('code-tab-btn')) {
+                        const targetTab = e.target.getAttribute('data-tab');
+                        
+                        // Update tab active state
+                        codeTabs.querySelectorAll('.code-tab-btn').forEach(btn => {
+                            btn.classList.remove('code-active-tab');
+                            btn.classList.add('text-brand-grey');
+                            btn.classList.remove('text-brand-red');
+                        });
+                        e.target.classList.add('code-active-tab');
+                        e.target.classList.remove('text-brand-grey');
+                        e.target.classList.add('text-brand-red');
+                        
+                        // Update content active state
+                        document.querySelectorAll('.code-content').forEach(content => {
+                            content.classList.add('hidden');
+                        });
+                        document.getElementById(`${targetTab}-content`).classList.remove('hidden');
+                    }
+                });
+            }
+
+            // --- Scroll Animations ---
+            const sections = document.querySelectorAll('.fade-in-section');
+            const observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                    }
+                });
+            }, { threshold: 0.1 });
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+
+            // --- Full-Page Particle Animation ---
+            initParticleVignette();
+        });
+
+        /**
+         * Initializes the three.js full-page particle vignette animation
+         */
+        function initParticleVignette() {
+            const canvas = document.getElementById('particle-vignette-canvas');
+            if (!canvas) return;
+
+            let scene, camera, renderer, particles, positions;
+            const particleCount = 10000;
+            const flowSpeed = 0.01; // Slower speed
+
+            function init() {
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+                camera.position.z = 10; // Start further back
+
+                renderer = new THREE.WebGLRenderer({
+                    canvas: canvas,
+                    alpha: true
+                });
+                renderer.setPixelRatio(window.devicePixelRatio);
+                renderer.setSize(window.innerWidth, window.innerHeight);
+
+                // Particle Geometry
+                const geometry = new THREE.BufferGeometry();
+                positions = new Float32Array(particleCount * 3);
+
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 30; // x
+                    positions[i * 3 + 1] = (Math.random() - 0.5) * 30; // y
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 30; // z (start spread out)
+                }
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+                // Particle Material (Glowing Red)
+                const material = new THREE.PointsMaterial({
+                    color: 0xFF0000, // brand-red
+                    size: 0.025, // Slightly larger
+                    blending: THREE.AdditiveBlending, // Glow effect
+                    transparent: true,
+                    opacity: 1.0 // More visible
+                });
+
+                particles = new THREE.Points(geometry, material);
+                scene.add(particles);
+
+                window.addEventListener('resize', onWindowResize, false);
+            }
+
+            function onWindowResize() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+
+                // Animate particles
+                const positions = particles.geometry.attributes.position.array;
+                for (let i = 0; i < particleCount; i++) {
+                    // Move particle towards the camera
+                    positions[i * 3 + 2] += flowSpeed;
+
+                    // If particle passes camera, reset its position
+                    if (positions[i * 3 + 2] > camera.position.z) {
+                        positions[i * 3] = (Math.random() - 0.5) * 30; // x
+                        positions[i * 3 + 1] = (Math.random() - 0.5) * 30; // y
+                        positions[i * 3 + 2] = -15; // Reset back
+                    }
+                }
+                particles.geometry.attributes.position.needsUpdate = true;
+                
+                // Rotate the whole system slightly for more dynamism
+                particles.rotation.y += 0.0001;
+                particles.rotation.x += 0.0001;
+
+                renderer.render(scene, camera);
+            }
+
+            // --- Start everything ---
+            init();
+            animate();
+        }
+    </script>
+
+</body>
+</html>
