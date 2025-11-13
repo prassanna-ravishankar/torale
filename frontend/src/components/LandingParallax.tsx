@@ -87,7 +87,7 @@ export default function LandingParallax() {
         </motion.section>
 
         {/* Spacer for scroll distance */}
-        <div className="h-[100vh]" />
+        <div className="h-[25vh]" />
 
         {/* Scene 2: SYSTEM */}
         <motion.section
@@ -98,7 +98,7 @@ export default function LandingParallax() {
         </motion.section>
 
         {/* Spacer */}
-        <div className="h-[50vh]" />
+        <div className="h-[20vh]" />
 
         {/* Scene 3: CODE */}
         <motion.section
@@ -119,7 +119,7 @@ export default function LandingParallax() {
         </motion.section>
 
         {/* Spacer */}
-        <div className="h-[50vh]" />
+        <div className="h-[20vh]" />
 
         {/* Scene 4: PRICING */}
         <motion.section

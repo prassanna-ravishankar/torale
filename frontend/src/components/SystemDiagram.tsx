@@ -1,72 +1,138 @@
 import { motion, MotionValue, useTransform } from "framer-motion";
-import { Grid3x3, Database, Cpu, Bell } from "lucide-react";
 
 interface LayerData {
   id: number;
   title: string;
-  Icon: React.ElementType;
-  visual: "grid" | "bars" | "circuit" | "signal";
+  yOffset: number;
 }
 
 const layers: LayerData[] = [
-  { id: 1, title: "FOUNDATION", Icon: Grid3x3, visual: "grid" },
-  { id: 2, title: "ACQUISITION", Icon: Database, visual: "bars" },
-  { id: 3, title: "REASONING", Icon: Cpu, visual: "circuit" },
-  { id: 4, title: "SIGNAL", Icon: Bell, visual: "signal" },
+  { id: 1, title: "FOUNDATION", yOffset: -60 },
+  { id: 2, title: "ACQUISITION", yOffset: -20 },
+  { id: 3, title: "REASONING", yOffset: 20 },
+  { id: 4, title: "SIGNAL", yOffset: 60 },
 ];
 
 interface SystemDiagramProps {
   progress: MotionValue<number>;
 }
 
-// Visual representations for each layer
-const LayerVisual = ({ visual }: { visual: LayerData["visual"] }) => {
-  switch (visual) {
-    case "grid":
-      return (
-        <div className="grid grid-cols-4 gap-1 p-2">
-          {Array.from({ length: 16 }).map((_, i) => (
-            <div key={i} className="w-full aspect-square bg-black/10" />
-          ))}
-        </div>
-      );
+// 1. Foundation: Live Data Grid with flicker animation
+const FoundationVisual = () => (
+  <div className="w-full h-full p-3 grid grid-cols-6 gap-1.5">
+    {Array.from({ length: 36 }).map((_, i) => (
+      <div
+        key={i}
+        className="w-full h-full bg-black/10"
+        style={{
+          animation: `flicker 4s infinite`,
+          animationDelay: `${Math.random() * 4}s`,
+        }}
+      />
+    ))}
+  </div>
+);
 
-    case "bars":
-      return (
-        <div className="flex items-end justify-around gap-1 p-2 h-16">
-          {[60, 80, 40, 90, 70].map((height, i) => (
-            <div
-              key={i}
-              className="flex-1 bg-black/20"
-              style={{ height: `${height}%` }}
-            />
-          ))}
-        </div>
-      );
+// 2. Acquisition: Rising Data Pillars
+const AcquisitionVisual = () => (
+  <div className="w-full h-full p-4 grid grid-cols-3 gap-4">
+    {Array.from({ length: 9 }).map((_, i) => (
+      <div
+        key={i}
+        className="w-full h-full bg-black/20"
+        style={{
+          transformOrigin: "bottom",
+          animation: `rise ${2 + Math.random() * 2}s infinite alternate ease-in-out`,
+          animationDelay: `${i * 0.2}s`,
+        }}
+      />
+    ))}
+  </div>
+);
 
-    case "circuit":
-      return (
-        <div className="relative p-4">
-          <div className="absolute inset-4 border-2 border-black/10" />
-          <div className="absolute inset-6 border border-black/10" />
-          <div className="w-12 h-12 border-2 border-black/20 mx-auto" />
-        </div>
-      );
+// 3. Reasoning: Active CPU with tracers
+const ReasoningVisual = () => (
+  <div className="w-full h-full flex items-center justify-center p-4 relative">
+    {/* Horizontal tracers */}
+    <div
+      className="absolute top-1/3 left-0 w-1/4 h-0.5 bg-brand-red"
+      style={{ animation: "trace-x 2s linear infinite", animationDelay: "0s" }}
+    />
+    <div
+      className="absolute top-1/2 left-0 w-1/4 h-0.5 bg-brand-red"
+      style={{ animation: "trace-x 2s linear infinite", animationDelay: "0.5s" }}
+    />
+    <div
+      className="absolute top-2/3 left-0 w-1/4 h-0.5 bg-brand-red"
+      style={{ animation: "trace-x 2s linear infinite", animationDelay: "0.2s" }}
+    />
+    {/* Vertical tracers */}
+    <div
+      className="absolute left-1/3 top-0 w-0.5 h-1/4 bg-brand-red"
+      style={{ animation: "trace-y 1.8s linear infinite", animationDelay: "0.7s" }}
+    />
+    <div
+      className="absolute left-2/3 top-0 w-0.5 h-1/4 bg-brand-red"
+      style={{ animation: "trace-y 1.8s linear infinite", animationDelay: "0.3s" }}
+    />
 
-    case "signal":
-      return (
-        <div className="relative p-4 flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-black/10 absolute" />
-          <div className="w-16 h-16 border border-black/5 absolute" />
-          <div className="w-4 h-4 bg-black/30" />
-        </div>
-      );
+    {/* Chip Body */}
+    <div className="w-3/4 h-3/4 bg-black/70 relative flex items-center justify-center">
+      {/* Etchings */}
+      <div className="absolute w-[90%] h-[90%] border border-black/60" />
+      <div className="absolute w-[80%] h-[80%] border border-black/60" />
+
+      {/* Core */}
+      <div
+        className="w-1/2 h-1/2 bg-black/50 relative z-10"
+        style={{ animation: "pulse-core 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite" }}
+      />
+    </div>
+  </div>
+);
+
+// 4. Signal: Beacon with expanding rings
+const SignalVisual = () => (
+  <div className="w-full h-full flex items-center justify-center relative">
+    {/* Signal Rings */}
+    <div
+      className="absolute w-16 h-16 border-2 border-brand-red/70"
+      style={{ animation: "signal-ring 2.5s ease-out infinite", animationDelay: "0s" }}
+    />
+    <div
+      className="absolute w-16 h-16 border-2 border-brand-red/70"
+      style={{ animation: "signal-ring 2.5s ease-out infinite", animationDelay: "1.25s" }}
+    />
+
+    {/* Central Beacon */}
+    <div
+      className="w-8 h-8 bg-brand-red opacity-90 z-10"
+      style={{
+        animation: "pulse-core 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        boxShadow: "0 0 20px 10px rgba(255, 0, 0, 0.4)",
+      }}
+    />
+  </div>
+);
+
+// Map layer ID to visual component
+const LayerVisual = ({ layerId }: { layerId: number }) => {
+  switch (layerId) {
+    case 1:
+      return <FoundationVisual />;
+    case 2:
+      return <AcquisitionVisual />;
+    case 3:
+      return <ReasoningVisual />;
+    case 4:
+      return <SignalVisual />;
+    default:
+      return null;
   }
 };
 
 export function SystemDiagram({ progress }: SystemDiagramProps) {
   // Calculate which layer should be active based on scroll progress
-  // progress: 0 = all inactive, 0.25 = layer 1, 0.5 = layer 2, 0.75 = layer 3, 1 = layer 4
   const activeLayer = useTransform(progress, (value) => {
     if (value < 0.2) return 0; // None active initially
     if (value < 0.4) return 1;
@@ -76,54 +142,61 @@ export function SystemDiagram({ progress }: SystemDiagramProps) {
   });
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-4 font-mono">
-      {layers.map((layer, index) => {
-        // Each layer's opacity and scale based on whether it's active
-        const layerOpacity = useTransform(activeLayer, (active) =>
-          active === layer.id ? 1 : 0.4
-        );
-        const layerScale = useTransform(activeLayer, (active) =>
-          active === layer.id ? 1.05 : 1
-        );
-        const borderColor = useTransform(activeLayer, (active) =>
-          active === layer.id ? "#FF0000" : "#000000"
-        );
+    <div className="w-full max-w-md mx-auto font-mono" style={{ perspective: "1000px" }}>
+      {/* Container for 3D layers */}
+      <div className="relative w-64 h-64 mx-auto">
+        {layers.map((layer) => {
+          // Each layer's opacity, scale, and border based on whether it's active
+          const layerOpacity = useTransform(activeLayer, (active) =>
+            active === layer.id ? 1 : 0.3
+          );
+          const layerScale = useTransform(activeLayer, (active) =>
+            active === layer.id ? 1.05 : 0.9
+          );
+          const borderColor = useTransform(activeLayer, (active) =>
+            active === layer.id ? "#FF0000" : "#000000"
+          );
 
-        return (
-          <motion.div
-            key={layer.id}
-            style={{
-              opacity: layerOpacity,
-              scale: layerScale,
-            }}
-            className="relative"
-            transition={{ duration: 0.2, ease: "linear" }}
-          >
+          return (
             <motion.div
-              style={{ borderColor }}
-              className="border-2 bg-white p-4 flex items-center gap-4 transition-colors duration-200"
+              key={layer.id}
+              style={{
+                opacity: layerOpacity,
+                scale: layerScale,
+                transform: `rotateX(60deg) rotateZ(-45deg) translateY(${layer.yOffset}px)`,
+                transformStyle: "preserve-3d",
+              }}
+              className="absolute inset-0 w-64 h-64"
+              transition={{ duration: 0.7, ease: "easeInOut" }}
             >
-              {/* Layer number and icon */}
-              <div className="flex flex-col items-center gap-2 min-w-[80px]">
-                <span className="text-xl font-bold">[ {layer.id} ]</span>
-                <layer.Icon className="w-6 h-6" />
-              </div>
-
-              {/* Visual representation */}
-              <div className="flex-1 border border-black/20">
-                <LayerVisual visual={layer.visual} />
-              </div>
-
-              {/* Layer title */}
-              <div className="min-w-[120px] text-right">
-                <span className="text-sm font-bold tracking-wider">
-                  {layer.title}
-                </span>
-              </div>
+              <motion.div
+                style={{ borderColor }}
+                className="w-full h-full border-2 bg-white/50 backdrop-blur-sm overflow-hidden transition-all duration-700"
+              >
+                <LayerVisual layerId={layer.id} />
+              </motion.div>
             </motion.div>
-          </motion.div>
-        );
-      })}
+          );
+        })}
+      </div>
+
+      {/* Layer labels below */}
+      <div className="mt-12 space-y-2">
+        {layers.map((layer) => {
+          const isActive = useTransform(activeLayer, (active) => active === layer.id);
+          const textOpacity = useTransform(isActive, (active) => (active ? 1 : 0.4));
+
+          return (
+            <motion.div
+              key={layer.id}
+              style={{ opacity: textOpacity }}
+              className="text-center text-sm font-bold tracking-wider transition-opacity duration-300"
+            >
+              [ {layer.id}. {layer.title} ]
+            </motion.div>
+          );
+        })}
+      </div>
     </div>
   );
 }

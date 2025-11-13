@@ -24,21 +24,25 @@ export function useScrollProgress(containerRef: RefObject<HTMLElement>): ScrollP
     offset: ["start start", "end end"]
   });
 
-  // Scene 1: Hero (0% - 20% of scroll)
-  const heroProgress = useTransform(scrollYProgress, [0, 0.2], [0, 1]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.15, 0.2], [1, 1, 0]);
+  // Scene 1: Hero (0% - 21% of scroll)
+  // Actual: 0-100vh in ~485vh total
+  const heroProgress = useTransform(scrollYProgress, [0, 0.21], [0, 1]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.18, 0.21], [1, 1, 0]);
 
-  // Scene 2: System (20% - 50% of scroll)
-  const systemProgress = useTransform(scrollYProgress, [0.2, 0.5], [0, 1]);
-  const systemOpacity = useTransform(scrollYProgress, [0.15, 0.25, 0.45, 0.5], [0, 1, 1, 0]);
+  // Scene 2: System (26% - 46% of scroll)
+  // Actual: 125-225vh (after 25vh spacer)
+  const systemProgress = useTransform(scrollYProgress, [0.26, 0.46], [0, 1]);
+  const systemOpacity = useTransform(scrollYProgress, [0.21, 0.30, 0.42, 0.50], [0, 1, 1, 0]);
 
-  // Scene 3: Code (50% - 70% of scroll)
-  const codeProgress = useTransform(scrollYProgress, [0.5, 0.7], [0, 1]);
-  const codeOpacity = useTransform(scrollYProgress, [0.45, 0.55, 0.65, 0.7], [0, 1, 1, 0]);
+  // Scene 3: Code (51% - 71% of scroll)
+  // Actual: 245-345vh (after 20vh spacer)
+  const codeProgress = useTransform(scrollYProgress, [0.51, 0.71], [0, 1]);
+  const codeOpacity = useTransform(scrollYProgress, [0.46, 0.55, 0.67, 0.75], [0, 1, 1, 0]);
 
-  // Scene 4: Pricing (70% - 90% of scroll)
-  const pricingProgress = useTransform(scrollYProgress, [0.7, 0.9], [0, 1]);
-  const pricingOpacity = useTransform(scrollYProgress, [0.65, 0.75, 1], [0, 1, 1]);
+  // Scene 4: Pricing (76% - 95% of scroll)
+  // Actual: 365-465vh (after 20vh spacer)
+  const pricingProgress = useTransform(scrollYProgress, [0.76, 0.95], [0, 1]);
+  const pricingOpacity = useTransform(scrollYProgress, [0.71, 0.80, 1], [0, 1, 1]);
 
   return {
     scrollYProgress,
