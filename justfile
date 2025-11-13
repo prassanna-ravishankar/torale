@@ -93,10 +93,14 @@ down-v:
 
 # Build/rebuild all services
 build:
+    @echo "Copying README.md to backend/ for Docker build..."
+    @cp README.md backend/README.md
     docker compose build
 
 # Build without cache
 build-clean:
+    @echo "Copying README.md to backend/ for Docker build..."
+    @cp README.md backend/README.md
     docker compose build --no-cache
 
 # Build frontend static files (npm build)
