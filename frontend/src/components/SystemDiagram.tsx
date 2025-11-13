@@ -3,13 +3,14 @@ import { motion, MotionValue, useTransform } from "framer-motion";
 interface LayerData {
   id: number;
   title: string;
+  yOffset: number;
 }
 
 const layers: LayerData[] = [
-  { id: 1, title: "FOUNDATION" },
-  { id: 2, title: "ACQUISITION" },
-  { id: 3, title: "REASONING" },
-  { id: 4, title: "SIGNAL" },
+  { id: 1, title: "FOUNDATION", yOffset: -60 },
+  { id: 2, title: "ACQUISITION", yOffset: -20 },
+  { id: 3, title: "REASONING", yOffset: 20 },
+  { id: 4, title: "SIGNAL", yOffset: 60 },
 ];
 
 interface SystemDiagramProps {
@@ -141,16 +142,16 @@ export function SystemDiagram({ progress }: SystemDiagramProps) {
   });
 
   return (
-    <div className="w-full max-w-4xl mx-auto font-mono">
-      {/* Horizontal row of layers */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="w-full max-w-md mx-auto font-mono" style={{ perspective: "1000px" }}>
+      {/* Vertically stacked layers with 3D transforms */}
+      <div className="relative w-64 h-64 mx-auto" style={{ transformStyle: "preserve-3d" }}>
         {layers.map((layer) => {
           // Each layer's opacity, scale, and border based on whether it's active
           const layerOpacity = useTransform(activeLayer, (active) =>
             active === layer.id ? 1 : 0.3
           );
           const layerScale = useTransform(activeLayer, (active) =>
-            active === layer.id ? 1.05 : 0.95
+            active === layer.id ? 1.05 : 0.9
           );
           const borderColor = useTransform(activeLayer, (active) =>
             active === layer.id ? "#FF0000" : "#000000"
@@ -163,12 +164,16 @@ export function SystemDiagram({ progress }: SystemDiagramProps) {
                 opacity: layerOpacity,
                 scale: layerScale,
               }}
-              className="flex flex-col"
+              className="absolute inset-0 w-64 h-64"
               transition={{ duration: 0.7, ease: "easeInOut" }}
             >
               <motion.div
-                style={{ borderColor }}
-                className="w-full aspect-square border-2 bg-white/50 backdrop-blur-sm overflow-hidden transition-all duration-700"
+                style={{
+                  borderColor,
+                  transform: `rotateX(60deg) rotateZ(-45deg) translateY(${layer.yOffset}px)`,
+                  transformStyle: "preserve-3d",
+                }}
+                className="w-full h-full border-2 bg-white/50 backdrop-blur-sm overflow-hidden transition-all duration-700"
               >
                 <LayerVisual layerId={layer.id} />
               </motion.div>
