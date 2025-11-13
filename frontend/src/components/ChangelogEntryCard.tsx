@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { Card, CardHeader } from "@/components/ui/card";
 import { ChangelogEntry } from "@/types/changelog";
 import { getCategoryIcon, getCategoryLabel, formatChangelogDate } from "@/utils/changelog";
 import { GITHUB_REPO_URL } from "@/constants/links";
@@ -22,81 +21,61 @@ export function ChangelogEntryCard({ entry, isEven }: ChangelogEntryCardProps) {
 
   const content = (
     <motion.div
-      className="rounded-lg border-2 overflow-hidden"
-      initial={{ borderColor: "hsl(var(--border))" }}
-      whileInView={{ borderColor: "hsl(var(--primary))", scale: 1.02 }}
-      viewport={{ once: true, margin: "-200px" }}
-      transition={{ duration: 0.3 }}
+      className="border-2 border-black bg-white"
+      initial={{ borderColor: "#000000" }}
+      whileInView={{ borderColor: "#FF0000" }}
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ duration: 0.2 }}
     >
-      <Card className="border-0">
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true, margin: "-200px" }}
-          transition={{ duration: 0.3 }}
-        />
-        <CardHeader className="p-6 relative">
-          <div className={`flex flex-col ${isEven ? "items-end" : "items-start"}`}>
-            <div className="flex items-center gap-2 mb-1">
-              {isEven && prs.length > 0 && (
-                <div className="flex items-center gap-1">
-                  {prs.map((pr, idx) => (
-                    <a
-                      key={pr}
-                      href={`${GITHUB_REPO_URL}/pull/${pr}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[10px] font-mono text-muted-foreground/70 hover:text-primary hover:underline transition-colors"
-                      title="View PR on GitHub"
-                    >
-                      #{pr}{idx < prs.length - 1 && ','}
-                    </a>
-                  ))}
-                </div>
-              )}
-              <span className={`text-[9px] font-semibold uppercase tracking-wide text-primary ${isEven ? "order-2" : ""}`}>
-                {getCategoryLabel(entry.category)}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {formattedDate}
-              </span>
-              {!isEven && prs.length > 0 && (
-                <div className="flex items-center gap-1">
-                  {prs.map((pr, idx) => (
-                    <a
-                      key={pr}
-                      href={`${GITHUB_REPO_URL}/pull/${pr}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[10px] font-mono text-muted-foreground/70 hover:text-primary hover:underline transition-colors"
-                      title="View PR on GitHub"
-                    >
-                      #{pr}{idx < prs.length - 1 && ','}
-                    </a>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className={`flex items-center gap-3 mb-2 ${isEven ? "flex-row-reverse" : ""}`}>
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/15 transition-colors">
-                <IconComponent className="h-5 w-5 text-primary" />
-              </div>
-              <h3 className="text-lg font-bold group-hover:text-primary transition-colors">
-                {entry.title}
-              </h3>
-            </div>
-            <p className={`text-sm text-muted-foreground leading-relaxed ${isEven ? "text-right" : ""}`}>
-              {entry.description}
-            </p>
-            {entry.requestedBy.length > 0 && (
-              <p className="text-xs text-muted-foreground/70 mt-3">
-                Requested by {entry.requestedBy.join(", ")}
-              </p>
-            )}
+      <div className="p-6">
+        {/* Row 1: Category Badge + Date */}
+        <div className="flex items-center gap-3 mb-3 flex-wrap">
+          <div className="border-2 border-black px-2 py-1 flex items-center gap-2">
+            <IconComponent className="h-4 w-4 text-brand-red" />
+            <span className="font-mono text-xs uppercase tracking-wider font-bold">
+              [ {getCategoryLabel(entry.category)} ]
+            </span>
           </div>
-        </CardHeader>
-      </Card>
+          <span className="font-mono text-xs text-brand-grey uppercase tracking-wide">
+            {formattedDate}
+          </span>
+        </div>
+
+        {/* Row 2: Title */}
+        <h3 className="text-xl font-bold mb-2 hover:text-brand-red transition-colors">
+          {entry.title}
+        </h3>
+
+        {/* Row 3: PR Links (always after title) */}
+        {prs.length > 0 && (
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            {prs.map((pr, idx) => (
+              <a
+                key={pr}
+                href={`${GITHUB_REPO_URL}/pull/${pr}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-xs text-black hover:text-brand-red transition-colors font-medium"
+                title="View PR on GitHub"
+              >
+                [ PR #{pr} ]
+              </a>
+            ))}
+          </div>
+        )}
+
+        {/* Row 4: Description */}
+        <p className="text-sm text-brand-grey leading-relaxed">
+          {entry.description}
+        </p>
+
+        {/* Row 5: Requested By */}
+        {entry.requestedBy.length > 0 && (
+          <p className="font-mono text-xs text-brand-grey mt-3">
+            [ Requested by: {entry.requestedBy.join(", ")} ]
+          </p>
+        )}
+      </div>
     </motion.div>
   );
 
@@ -104,7 +83,7 @@ export function ChangelogEntryCard({ entry, isEven }: ChangelogEntryCardProps) {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
       {isEven ? (
         <>
-          <div className="text-right">{content}</div>
+          <div>{content}</div>
           <div className="hidden md:block" />
         </>
       ) : (
