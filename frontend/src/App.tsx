@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-do
 import { SignIn, SignUp } from '@clerk/clerk-react'
 import { Dashboard } from '@/components/Dashboard'
 import { TaskDetail } from '@/components/TaskDetail'
-import Landing from '@/components/Landing'
+import Landing from '@/components/LandingParallax'
 import Changelog from '@/components/Changelog'
 import { Header } from '@/components/Header'
 import { Admin } from '@/pages/Admin'
