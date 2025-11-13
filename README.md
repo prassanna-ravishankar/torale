@@ -234,20 +234,29 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 - Temporal Cloud integration (production)
 - Frontend dashboard with task management
 - GKE deployment with cost optimization
+- **Live Search Preview** - Test queries before creating tasks (#37)
+- **Immediate Task Execution** - Run monitoring tasks instantly after creation (#36)
+- **Fixed Grounding Source Display** - Clean domain names instead of Vertex AI redirect URLs (#38)
+- **Multi-step Task Creation Wizard** - Improved UX with template selection, query configuration, scheduling, and preview
+- **Smart Schedule UI** - Human-readable cron display, visual schedule builder, quick presets
+- **Task Editing** - Edit monitoring tasks without recreating them
+- **Temporal Context for Change Detection** - Better change detection with LLM awareness of execution history
 
 ### 🚧 In Progress
-- Enhanced grounding source display
 - Historical state comparison UI
 - External notifications (email/SMS)
 
 ### 📋 Future Roadmap
 - **Shareable Tasks**: Share monitoring tasks with rich OpenGraph previews
-- External notifications (email/SMS via NotificationAPI)
+- External notifications (email/SMS/Slack via webhooks)
 - Browser automation for dynamic sites
 - Price tracking with charts
 - Multi-step conditional workflows
 - Template marketplace
 - Team/organization support
+- Natural language schedule input ("every weekday at 9am")
+- Timezone selection and display
+- Advanced scheduling (date ranges, skip holidays)
 
 ## Known Issues
 
@@ -429,6 +438,7 @@ DELETE /auth/api-keys/{id}                 # Revoke API key
 
 ### Tasks
 ```
+POST   /api/v1/tasks/preview               # Preview search query (test without creating task)
 POST   /api/v1/tasks                       # Create monitoring task
 GET    /api/v1/tasks                       # List tasks
 GET    /api/v1/tasks/{id}                  # Get task details
