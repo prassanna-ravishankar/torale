@@ -57,6 +57,23 @@ class NovuService:
         try:
             import novu_py
 
+            # Convert markdown answer to HTML for email rendering
+            try:
+                import markdown
+
+                answer_html = markdown.markdown(
+                    answer, extensions=["nl2br", "fenced_code", "tables"]
+                )
+            except ImportError:
+                logger.warning("markdown library not installed - using plain text")
+                answer_html = answer.replace("\n", "<br>")
+
+            # Transform grounding sources: url → uri for Novu template compatibility
+            formatted_sources = [
+                {"uri": s.get("url", ""), "title": s.get("title", "Unknown")}
+                for s in grounding_sources[:5]  # Limit to 5 sources
+            ]
+
             # Trigger Novu workflow
             response = await self._client.trigger_async(
                 trigger_event_request_dto=novu_py.TriggerEventRequestDto(
@@ -68,9 +85,9 @@ class NovuService:
                     payload={
                         "task_name": task_name,
                         "search_query": search_query,
-                        "answer": answer,
+                        "answer": answer_html,  # Send HTML-formatted answer
                         "change_summary": change_summary or "Condition met",
-                        "grounding_sources": grounding_sources[:5],  # Limit to 5 sources
+                        "grounding_sources": formatted_sources,
                         "task_id": task_id,
                         "execution_id": execution_id,
                     },

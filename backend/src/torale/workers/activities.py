@@ -42,6 +42,38 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
                 "message": f"Task {task_id} was deleted but schedule still exists",
             }
 
+        # Check for recently running executions to prevent duplicates
+        recent_running = await conn.fetchrow(
+            """
+            SELECT id, started_at, status FROM task_executions
+            WHERE task_id = $1
+            AND status IN ($2, $3)
+            AND (started_at > NOW() - INTERVAL '30 seconds' OR started_at IS NULL)
+            ORDER BY started_at DESC NULLS FIRST
+            LIMIT 1
+            """,
+            UUID(task_id),
+            TaskStatus.PENDING.value,
+            TaskStatus.RUNNING.value,
+        )
+
+        if recent_running:
+            started_at_str = (
+                recent_running["started_at"].isoformat()
+                if recent_running["started_at"]
+                else "pending"
+            )
+            logger.warning(
+                f"Task {task_id} has a recent execution (status: {recent_running.get('status', 'unknown')}, started: {started_at_str}). "
+                f"Skipping duplicate execution to prevent race condition."
+            )
+            # Return early to prevent duplicate execution
+            return {
+                "status": "skipped",
+                "reason": "Recent execution already in progress",
+                "existing_execution_id": str(recent_running["id"]),
+            }
+
         # Parse config if it's a JSON string
         config = task["config"]
         if isinstance(config, str):
@@ -76,6 +108,26 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
             UUID(execution_id),
         )
 
+        # Get last execution time for temporal context
+        last_execution_row = await conn.fetchrow(
+            """
+            SELECT completed_at
+            FROM task_executions
+            WHERE task_id = $1 AND status = $2
+            ORDER BY completed_at DESC
+            LIMIT 1
+            """,
+            UUID(task_id),
+            TaskStatus.SUCCESS.value,
+        )
+
+        last_execution_datetime = None
+        if last_execution_row and last_execution_row["completed_at"]:
+            last_execution_datetime = last_execution_row["completed_at"]
+            logger.info(f"Task {task_id}: Found last execution at {last_execution_datetime}")
+        else:
+            logger.info(f"Task {task_id}: No previous successful execution found - first run")
+
         # Execute based on executor type
         executor_result = None
         try:
@@ -86,6 +138,7 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
                     "search_query": task["search_query"],
                     "condition_description": task["condition_description"],
                     "last_known_state": last_known_state,
+                    "last_execution_datetime": last_execution_datetime,  # Add temporal context as datetime object
                 }
 
                 executor = GroundedSearchExecutor()

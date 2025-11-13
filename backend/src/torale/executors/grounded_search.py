@@ -1,7 +1,11 @@
 import json
+import logging
+from datetime import UTC, datetime
 
 from torale.core.config import settings
 from torale.executors import TaskExecutor
+
+logger = logging.getLogger(__name__)
 
 
 class GroundedSearchExecutor(TaskExecutor):
@@ -40,6 +44,7 @@ class GroundedSearchExecutor(TaskExecutor):
             "condition_description": "A specific date has been announced",
             "model": "gemini-2.5-flash",  # optional
             "last_known_state": {...},  # optional, for state comparison
+            "last_execution_datetime": datetime,  # optional, datetime object for temporal context
         }
 
         Returns:
@@ -68,10 +73,15 @@ class GroundedSearchExecutor(TaskExecutor):
         condition_description = config["condition_description"]
         model = config.get("model", "gemini-2.5-flash")
         last_known_state = config.get("last_known_state")
+        last_execution_datetime = config.get("last_execution_datetime")
 
         try:
-            # Step 1: Perform grounded search
-            search_result = await self._grounded_search(search_query=search_query, model=model)
+            # Step 1: Perform grounded search with temporal context
+            search_result = await self._grounded_search(
+                search_query=search_query,
+                model=model,
+                last_execution_datetime=last_execution_datetime,
+            )
 
             # Step 2: Evaluate if condition is met
             condition_result = await self._evaluate_condition(
@@ -107,19 +117,65 @@ class GroundedSearchExecutor(TaskExecutor):
                 "condition_description": condition_description,
             }
 
-    async def _grounded_search(self, search_query: str, model: str) -> dict:
+    async def _grounded_search(
+        self, search_query: str, model: str, last_execution_datetime: datetime | None = None
+    ) -> dict:
         """
         Perform grounded search using Gemini with Google Search.
 
+        Args:
+            search_query: The search query
+            model: Gemini model to use
+            last_execution_datetime: Timezone-aware datetime of last successful execution (optional)
+
         Returns answer and grounding sources.
         """
-        from datetime import datetime
-
         from google.genai import types
 
-        # Add current date and time context to search query
-        current_datetime = datetime.now().strftime("%B %d, %Y at %I:%M %p %Z")
-        contextualized_query = f"Current date and time: {current_datetime}. {search_query}"
+        # Add temporal context to search query
+        current_datetime = datetime.now(UTC).strftime("%B %d, %Y at %I:%M %p UTC")
+
+        if last_execution_datetime:
+            # Format last execution time consistently
+            last_execution_formatted = last_execution_datetime.strftime("%B %d, %Y at %I:%M %p UTC")
+            last_date = last_execution_datetime.strftime("%B %d, %Y")  # Robust date extraction
+
+            # Subsequent runs: prioritize information published since last check
+            temporal_context = f"""CRITICAL TEMPORAL REQUIREMENT - YOU MUST FOLLOW THIS:
+- Current date and time: {current_datetime}
+- Last checked: {last_execution_formatted}
+- YOU MUST ONLY report information that was published, announced, or updated AFTER {last_execution_formatted}
+- IGNORE all information from before {last_execution_formatted}, even if it seems relevant
+- If the search returns results from BEFORE {last_execution_formatted}, you must respond: "No new updates since last check on {last_execution_formatted}"
+- DO NOT report events from August 2025 if we already checked in November 2025
+- Focus your search specifically on: news after:{last_date}"""
+        else:
+            # First run: prioritize most recent information
+            temporal_context = f"""IMPORTANT TEMPORAL CONTEXT:
+- Current date and time: {current_datetime}
+- This is the FIRST check
+- Search for and prioritize the most RECENT and UP-TO-DATE information available
+- Focus on latest news, announcements, and current status"""
+
+        # Add instruction to be concise for email consumption
+        compression_instruction = "Provide a CONCISE summary (2-4 sentences). Focus ONLY on key facts and recent developments."
+
+        # Modify search query to include date filter for subsequent runs
+        if last_execution_datetime:
+            last_date = last_execution_datetime.strftime("%B %d, %Y")
+            modified_query = f"{search_query} (published after {last_date} OR announced after {last_date} OR news after {last_date})"
+        else:
+            modified_query = search_query
+
+        contextualized_query = (
+            f"{temporal_context}\n\nQuery: {modified_query}\n\n{compression_instruction}"
+        )
+
+        # Log the query being sent to Gemini for debugging
+        logger.info(
+            f"Sending to Gemini with temporal context - Last execution: {last_execution_datetime}"
+        )
+        logger.info(f"Full query: {contextualized_query[:500]}...")  # Log first 500 chars
 
         response = await self.client.aio.models.generate_content(
             model=model,
@@ -145,13 +201,44 @@ class GroundedSearchExecutor(TaskExecutor):
                 if hasattr(metadata, "grounding_chunks") and metadata.grounding_chunks:
                     for chunk in metadata.grounding_chunks:
                         if hasattr(chunk, "web") and chunk.web:
+                            uri = getattr(chunk.web, "uri", "")
+                            title = getattr(chunk.web, "title", "")
+
+                            # Filter out Vertex AI redirect URLs (Gemini internal infrastructure)
+                            # These aren't useful for end users
+                            if "vertexaisearch.cloud.google.com" in uri:
+                                continue
+
+                            # The title from Gemini is just the domain (e.g., "britannica.com")
                             source = {
-                                "url": getattr(chunk.web, "uri", ""),
-                                "title": getattr(chunk.web, "title", ""),
+                                "url": uri,
+                                "title": title or self._extract_domain_from_uri(uri),
                             }
                             grounding_sources.append(source)
 
         return {"answer": answer, "grounding_sources": grounding_sources}
+
+    def _extract_domain_from_uri(self, uri: str) -> str:
+        """
+        Extract a clean domain name from a URI for display purposes.
+
+        Handles Vertex AI redirect URLs like:
+        https://vertexaisearch.cloud.google.com/grounding-api-redirect/...
+        """
+        try:
+            from urllib.parse import urlparse
+
+            parsed = urlparse(uri)
+            domain = parsed.netloc or uri
+
+            # Remove common prefixes
+            for prefix in ["www.", "m."]:
+                if domain.startswith(prefix):
+                    domain = domain[len(prefix) :]
+
+            return domain
+        except Exception:
+            return uri
 
     async def _evaluate_condition(
         self, search_query: str, search_answer: str, condition_description: str, model: str
@@ -159,9 +246,13 @@ class GroundedSearchExecutor(TaskExecutor):
         """
         Use LLM to evaluate if condition is met based on search results.
 
-        Returns condition_met (bool) and extracted current_state (dict).
+        Returns condition_met (bool) and extracted current_state (dict) with timestamps.
         """
+        from datetime import datetime
+
         from google.genai import types
+
+        current_date = datetime.now(UTC).strftime("%Y-%m-%d")
 
         evaluation_prompt = f"""Based on the search results below, determine if the following condition is met.
 
@@ -179,6 +270,10 @@ Please respond in JSON format:
     "current_state": {{
         // Extract key facts as structured data
         // For example: {{"release_date": "September 12", "confirmed": true}}
+        "_metadata": {{
+            "captured_at": "{current_date}",
+            "state_hash": "hash_of_key_fields"  // Simple hash/concat of main state fields for change detection
+        }}
     }}
 }}
 
@@ -204,19 +299,37 @@ Be precise - only set condition_met to true if the condition is definitively met
         """
         Compare previous and current states to generate change summary.
 
-        Returns human-readable summary of what changed.
+        Returns human-readable summary of what changed, or None if no meaningful changes detected.
         """
         from google.genai import types
 
-        comparison_prompt = f"""Compare these two states and summarize what changed in 1-2 sentences.
+        # Quick check: if state hashes match, no change
+        prev_hash = previous_state.get("_metadata", {}).get("state_hash", "")
+        curr_hash = current_state.get("_metadata", {}).get("state_hash", "")
 
-Previous State:
+        if prev_hash and curr_hash and prev_hash == curr_hash:
+            # States are identical
+            return None
+
+        # Get previous capture date for temporal context
+        prev_date = previous_state.get("_metadata", {}).get("captured_at", "unknown date")
+
+        comparison_prompt = f"""Compare these two states and identify what factual information has CHANGED.
+
+Previous State (from {prev_date}):
 {json.dumps(previous_state, indent=2)}
 
 Current State:
 {json.dumps(current_state, indent=2)}
 
-Provide a concise summary of the key changes (e.g., "Release date changed from unknown to September 12, 2024")."""
+Has any factual information actually changed? Focus on:
+- New announcements or confirmations that didn't exist before
+- Changed dates, prices, specifications, or status
+- Information that represents a REAL UPDATE, not just rephrasing
+
+If NOTHING has meaningfully changed (just rephrased or still same info), respond with exactly: "No new changes detected."
+
+Otherwise, provide a concise 1-2 sentence summary of what changed."""
 
         response = await self.client.aio.models.generate_content(
             model=model,
@@ -226,4 +339,10 @@ Provide a concise summary of the key changes (e.g., "Release date changed from u
             ),
         )
 
-        return response.text.strip()
+        change_text = response.text.strip()
+
+        # If LLM says no changes, return None
+        if "no new changes" in change_text.lower() or "nothing has changed" in change_text.lower():
+            return None
+
+        return change_text

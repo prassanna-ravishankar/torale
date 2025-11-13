@@ -229,11 +229,12 @@ class TaskExecutor(ABC):
 
 ### Grounded Search Executor
 The `GroundedSearchExecutor` performs:
-1. **Grounded Search**: Queries Google Search via Gemini's grounding feature
-2. **Answer Extraction**: LLM synthesizes answer from search results
+1. **Grounded Search**: Queries Google Search via Gemini's grounding feature with temporal context
+2. **Answer Extraction**: LLM synthesizes answer from search results (concise 2-4 sentences for email)
 3. **Condition Evaluation**: LLM determines if trigger condition is met
-4. **State Comparison**: Compares with `last_known_state` to detect changes
-5. **Source Attribution**: Extracts and stores grounding citations
+4. **State Comparison**: Compares with `last_known_state` to detect meaningful changes
+5. **Source Attribution**: Extracts and stores grounding citations (with filtering of Vertex AI infrastructure URLs)
+6. **Temporal Awareness**: Provides LLM with last execution time to improve change detection and reduce noise
 
 ### Task Configuration Format
 ```json
@@ -310,6 +311,7 @@ DELETE /auth/api-keys/{id}              # Revoke API key
 
 ### REST Endpoints
 ```
+POST   /api/v1/tasks/preview            # Preview search query without creating task (new)
 POST   /api/v1/tasks                    # Create monitoring task
 GET    /api/v1/tasks                    # List tasks
 GET    /api/v1/tasks/{id}               # Get task details
@@ -486,10 +488,17 @@ GCP_REGION=us-central1
 - **Frontend**: React dashboard with Clerk authentication
 - **Cost Optimization**: Spot pods (60-91% savings), zonal Cloud SQL
 - **Admin Console**: Full platform monitoring with 8 admin endpoints (stats, queries, executions, Temporal workflows/schedules, errors, users, user management)
+- **Live Search Preview** (#37): `/api/v1/tasks/preview` endpoint allows testing queries before creating tasks
+- **Immediate Task Execution** (#36): `run_immediately` flag executes tasks instantly after creation
+- **Fixed Grounding Source Display** (#38): Clean domain names instead of Vertex AI redirect URLs, filtering of internal infrastructure URLs
+- **Multi-step Task Creation Wizard**: Improved UX with template selection, query configuration, scheduling, and preview steps
+- **Smart Schedule UI**: Human-readable cron display with `cronstrue`, visual schedule builder, quick presets, real-time validation
+- **Task Editing**: Full editing capabilities without recreating tasks (query, condition, schedule, notifications)
+- **Temporal Context**: LLM now has awareness of last execution time for better change detection and noise reduction
 
 ### 🚧 In Progress
-- **Enhanced UI**: Grounding source display and historical state comparison
-- **Testing**: Additional E2E tests for monitoring use cases
+- **Historical state comparison UI**: Visual representation of state changes over time
+- **Testing**: Additional E2E tests for new UX features
 
 ### 📋 Future Work
 - **External Notifications**: NotificationAPI integration for email/SMS
@@ -619,7 +628,7 @@ git push origin main
 ### Enhanced Monitoring Capabilities
 - **Browser Automation**: Monitor dynamic websites (Playwright integration)
 - **Price Tracking**: Track price changes with historical charts
-- **Availability Monitoring**: Stock alerts, event tickets, reservations
+- **Availabilityx Monitoring**: Stock alerts, event tickets, reservations
 - **Multi-source Aggregation**: Combine results from multiple searches
 - **Custom Scrapers**: User-defined extraction rules for specific websites
 

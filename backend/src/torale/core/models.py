@@ -60,6 +60,7 @@ class TaskCreate(TaskBase):
 
     search_query: str  # Make required for creation
     condition_description: str  # Make required for creation
+    run_immediately: bool = False  # Execute task immediately after creation
 
 
 class TaskUpdate(BaseModel):

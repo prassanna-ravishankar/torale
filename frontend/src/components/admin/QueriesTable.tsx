@@ -13,6 +13,7 @@ import { api } from '@/lib/api'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { QueryCard } from './cards/QueryCard'
+import { CronDisplay } from '@/components/ui/CronDisplay'
 
 interface Query {
   id: string
@@ -113,7 +114,9 @@ export function QueriesTable() {
                   <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
                     {query.condition_description}
                   </TableCell>
-                  <TableCell className="font-mono text-xs">{query.schedule}</TableCell>
+                  <TableCell className="text-xs">
+                    <CronDisplay cron={query.schedule} showRaw={false} className="text-xs" />
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Badge variant={query.is_active ? 'default' : 'secondary'}>

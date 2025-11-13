@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react'
-import api from '@/lib/api'
-import type { Task } from '@/types'
-import { TaskCard } from '@/components/TaskCard'
-import { TaskCreationDialog } from '@/components/TaskCreationDialog'
-import { Button } from '@/components/ui/button'
-import { Plus, Bell, RefreshCw, Loader2 } from 'lucide-react'
-import { Alert } from '@/components/ui/alert'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { toast } from 'sonner'
-import { useAuth } from '@/contexts/AuthContext'
+import React, { useState, useEffect } from 'react';
+import api from '@/lib/api';
+import type { Task } from '@/types';
+import { TaskCard } from '@/components/TaskCard';
+import { TaskCreationWizard } from '@/components/TaskCreationWizard';
+import { TaskPreviewModal } from '@/components/TaskPreviewModal';
+import { TaskEditDialog } from '@/components/TaskEditDialog';
+import { Button } from '@/components/ui/button';
+import { Plus, Bell, RefreshCw, Loader2 } from 'lucide-react';
+import { Alert } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DashboardProps {
   onTaskClick: (taskId: string) => void;
@@ -18,32 +20,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<"all" | "active" | "triggered">(
-    "all"
-  );
-  const { syncUser } = useAuth()
+  const [previewTask, setPreviewTask] = useState<Task | null>(null);
+  const [editTask, setEditTask] = useState<Task | null>(null);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'triggered'>('all');
+  const { syncUser } = useAuth();
 
   const loadTasks = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const data = await api.getTasks()
-      setTasks(data)
+      const data = await api.getTasks();
+      setTasks(data);
     } catch (error) {
-      console.error('Failed to load tasks:', error)
-      toast.error('Failed to load tasks')
+      console.error('Failed to load tasks:', error);
+      toast.error('Failed to load tasks');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
     // Sync user with backend on first load (creates user record if needed)
     // Only available in Clerk mode, no-op in no-auth mode
     if (syncUser) {
-      syncUser().catch(error => {
-        console.error('Failed to sync user:', error)
+      syncUser().catch((error) => {
+        console.error('Failed to sync user:', error);
         // Don't show error to user - sync will retry on next API call
-      })
+      });
     }
 
     loadTasks();
@@ -51,40 +53,52 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
 
   const handleToggleTask = async (id: string, isActive: boolean) => {
     try {
-      await api.updateTask(id, { is_active: isActive })
-      await loadTasks()
-      toast.success(isActive ? 'Task activated' : 'Task paused')
+      await api.updateTask(id, { is_active: isActive });
+      await loadTasks();
+      toast.success(isActive ? 'Task activated' : 'Task paused');
     } catch (error) {
-      console.error('Failed to toggle task:', error)
-      toast.error('Failed to update task')
+      console.error('Failed to toggle task:', error);
+      toast.error('Failed to update task');
     }
-  }
+  };
 
   const handleDeleteTask = async (id: string) => {
     try {
-      await api.deleteTask(id)
-      await loadTasks()
-      toast.success('Task deleted')
+      await api.deleteTask(id);
+      await loadTasks();
+      toast.success('Task deleted');
     } catch (error) {
-      console.error('Failed to delete task:', error)
-      toast.error('Failed to delete task')
+      console.error('Failed to delete task:', error);
+      toast.error('Failed to delete task');
     }
-  }
+  };
 
-  const handleExecuteTask = async (id: string) => {
-    try {
-      await api.executeTask(id)
-      toast.success('Task execution started')
-      await loadTasks()
-    } catch (error) {
-      console.error('Failed to execute task:', error)
-      toast.error('Failed to execute task')
+  const handleExecuteTask = (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (task) {
+      setPreviewTask(task);
     }
-  }
+  };
+
+  const handleEditTask = (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (task) {
+      setEditTask(task);
+    }
+  };
+
+  const handleTaskCreated = (task: Task) => {
+    loadTasks();
+    toast.success('Task created! First execution started...');
+  };
+
+  const handleTaskUpdated = (task: Task) => {
+    loadTasks();
+  };
 
   const filteredTasks = tasks.filter((task) => {
-    if (activeFilter === "active") return task.is_active;
-    if (activeFilter === "triggered") return task.condition_met;
+    if (activeFilter === 'active') return task.is_active;
+    if (activeFilter === 'triggered') return task.condition_met;
     return true;
   });
 
@@ -123,8 +137,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
           <Bell className="h-4 w-4" />
           <div className="ml-2">
             <p>
-              You have {triggeredCount} task{triggeredCount > 1 ? "s" : ""} with
-              triggered conditions.
+              You have {triggeredCount} task{triggeredCount > 1 ? 's' : ''} with triggered
+              conditions.
             </p>
           </div>
         </Alert>
@@ -132,16 +146,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
 
       <Tabs
         value={activeFilter}
-        onValueChange={(v) => setActiveFilter(v as "all" | "active" | "triggered")}
+        onValueChange={(v) => setActiveFilter(v as 'all' | 'active' | 'triggered')}
       >
         <TabsList>
           <TabsTrigger value="all">All Tasks ({tasks.length})</TabsTrigger>
           <TabsTrigger value="active">
             Active ({tasks.filter((t) => t.is_active).length})
           </TabsTrigger>
-          <TabsTrigger value="triggered">
-            Triggered ({triggeredCount})
-          </TabsTrigger>
+          <TabsTrigger value="triggered">Triggered ({triggeredCount})</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeFilter} className="mt-6">
@@ -151,19 +163,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
                 <Bell className="h-12 w-12 mx-auto text-muted-foreground" />
               </div>
               <h3 className="mb-2">
-                {activeFilter === "all" && "No monitoring tasks yet"}
-                {activeFilter === "active" && "No active tasks"}
-                {activeFilter === "triggered" && "No triggered conditions"}
+                {activeFilter === 'all' && 'No monitoring tasks yet'}
+                {activeFilter === 'active' && 'No active tasks'}
+                {activeFilter === 'triggered' && 'No triggered conditions'}
               </h3>
               <p className="text-muted-foreground mb-6">
-                {activeFilter === "all" &&
-                  "Create your first task to start monitoring the web"}
-                {activeFilter === "active" &&
-                  "Activate a task to start monitoring"}
-                {activeFilter === "triggered" &&
-                  "No tasks have met their trigger conditions yet"}
+                {activeFilter === 'all' && 'Create your first task to start monitoring the web'}
+                {activeFilter === 'active' && 'Activate a task to start monitoring'}
+                {activeFilter === 'triggered' && 'No tasks have met their trigger conditions yet'}
               </p>
-              {activeFilter === "all" && (
+              {activeFilter === 'all' && (
                 <Button onClick={() => setIsCreating(true)}>
                   <Plus className="mr-2 h-4 w-4" />
                   Create Your First Task
@@ -179,6 +188,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
                   onToggle={handleToggleTask}
                   onDelete={handleDeleteTask}
                   onExecute={handleExecuteTask}
+                  onEdit={handleEditTask}
                   onClick={onTaskClick}
                 />
               ))}
@@ -187,11 +197,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
         </TabsContent>
       </Tabs>
 
-      <TaskCreationDialog
+      {/* Task Creation Wizard */}
+      <TaskCreationWizard
         open={isCreating}
         onOpenChange={setIsCreating}
-        onTaskCreated={loadTasks}
+        onSuccess={handleTaskCreated}
       />
+
+      {/* Task Preview Modal (Run Now) */}
+      {previewTask && (
+        <TaskPreviewModal
+          open={!!previewTask}
+          onOpenChange={(open) => !open && setPreviewTask(null)}
+          task={previewTask}
+          onEdit={handleEditTask}
+          onViewHistory={onTaskClick}
+        />
+      )}
+
+      {/* Task Edit Dialog */}
+      {editTask && (
+        <TaskEditDialog
+          open={!!editTask}
+          onOpenChange={(open) => !open && setEditTask(null)}
+          task={editTask}
+          onSuccess={handleTaskUpdated}
+        />
+      )}
     </div>
   );
 };
