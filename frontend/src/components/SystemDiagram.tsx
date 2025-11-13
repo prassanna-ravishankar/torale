@@ -3,14 +3,13 @@ import { motion, MotionValue, useTransform } from "framer-motion";
 interface LayerData {
   id: number;
   title: string;
-  yOffset: number;
 }
 
 const layers: LayerData[] = [
-  { id: 1, title: "FOUNDATION", yOffset: -60 },
-  { id: 2, title: "ACQUISITION", yOffset: -20 },
-  { id: 3, title: "REASONING", yOffset: 20 },
-  { id: 4, title: "SIGNAL", yOffset: 60 },
+  { id: 1, title: "FOUNDATION" },
+  { id: 2, title: "ACQUISITION" },
+  { id: 3, title: "REASONING" },
+  { id: 4, title: "SIGNAL" },
 ];
 
 interface SystemDiagramProps {
@@ -142,16 +141,16 @@ export function SystemDiagram({ progress }: SystemDiagramProps) {
   });
 
   return (
-    <div className="w-full max-w-md mx-auto font-mono" style={{ perspective: "1000px" }}>
-      {/* Container for 3D layers */}
-      <div className="relative w-64 h-64 mx-auto">
+    <div className="w-full max-w-4xl mx-auto font-mono">
+      {/* Horizontal row of layers */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {layers.map((layer) => {
           // Each layer's opacity, scale, and border based on whether it's active
           const layerOpacity = useTransform(activeLayer, (active) =>
             active === layer.id ? 1 : 0.3
           );
           const layerScale = useTransform(activeLayer, (active) =>
-            active === layer.id ? 1.05 : 0.9
+            active === layer.id ? 1.05 : 0.95
           );
           const borderColor = useTransform(activeLayer, (active) =>
             active === layer.id ? "#FF0000" : "#000000"
@@ -163,36 +162,16 @@ export function SystemDiagram({ progress }: SystemDiagramProps) {
               style={{
                 opacity: layerOpacity,
                 scale: layerScale,
-                transform: `rotateX(60deg) rotateZ(-45deg) translateY(${layer.yOffset}px)`,
-                transformStyle: "preserve-3d",
               }}
-              className="absolute inset-0 w-64 h-64"
+              className="flex flex-col"
               transition={{ duration: 0.7, ease: "easeInOut" }}
             >
               <motion.div
                 style={{ borderColor }}
-                className="w-full h-full border-2 bg-white/50 backdrop-blur-sm overflow-hidden transition-all duration-700"
+                className="w-full aspect-square border-2 bg-white/50 backdrop-blur-sm overflow-hidden transition-all duration-700"
               >
                 <LayerVisual layerId={layer.id} />
               </motion.div>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Layer labels below */}
-      <div className="mt-12 space-y-2">
-        {layers.map((layer) => {
-          const isActive = useTransform(activeLayer, (active) => active === layer.id);
-          const textOpacity = useTransform(isActive, (active) => (active ? 1 : 0.4));
-
-          return (
-            <motion.div
-              key={layer.id}
-              style={{ opacity: textOpacity }}
-              className="text-center text-sm font-bold tracking-wider transition-opacity duration-300"
-            >
-              [ {layer.id}. {layer.title} ]
             </motion.div>
           );
         })}
