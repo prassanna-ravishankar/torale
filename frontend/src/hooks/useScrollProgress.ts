@@ -1,5 +1,18 @@
-import { useScroll, useTransform, MotionValue } from "framer-motion";
+import { useScroll, MotionValue } from "framer-motion";
 import { RefObject, useLayoutEffect, useState } from "react";
+import {
+  SceneRange,
+  CROSS_FADE_DURATION,
+  clamp01,
+  useRangeTransform,
+  createCrossFadeOpacity,
+  createFirstSceneOpacity,
+  createLastSceneOpacity,
+} from "@/utils/scrollProgress";
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 export interface ScrollProgress {
   heroProgress: MotionValue<number>;
@@ -13,8 +26,13 @@ export interface ScrollProgress {
 }
 
 type SceneKey = "hero" | "system" | "code" | "pricing";
-type SceneRanges = Record<SceneKey, { start: number; end: number }>;
+type SceneRanges = Record<SceneKey, SceneRange>;
 
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+// Default fallback ranges (used until layout is measured)
 const DEFAULT_RANGES: SceneRanges = {
   hero: { start: 0, end: 0.25 },
   system: { start: 0.25, end: 0.5 },
@@ -22,27 +40,27 @@ const DEFAULT_RANGES: SceneRanges = {
   pricing: { start: 0.75, end: 1 },
 };
 
-const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
-
-// Helper to map scroll progress to a scene's 0-1 progress
-const useRangeTransform = (
-  scrollYProgress: MotionValue<number>,
-  range: { start: number; end: number }
-) => {
-  return useTransform(scrollYProgress, [range.start, range.end], [0, 1], {
-    clamp: true,
-  });
-};
+// ============================================================================
+// MAIN HOOK
+// ============================================================================
 
 export function useScrollProgress(
   containerRef: RefObject<HTMLElement>
 ): ScrollProgress {
+  // ---------------------------------------------------------------------------
+  // 1. Setup framer-motion scroll tracking
+  // ---------------------------------------------------------------------------
+
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"],
   });
 
   const [sceneRanges, setSceneRanges] = useState<SceneRanges>(DEFAULT_RANGES);
+
+  // ---------------------------------------------------------------------------
+  // 2. Calculate dynamic scroll ranges based on actual DOM layout
+  // ---------------------------------------------------------------------------
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
@@ -51,6 +69,7 @@ export function useScrollProgress(
       const container = containerRef.current;
       if (!container) return;
 
+      // Find all scene sections and the footer
       const sections = Array.from(
         container.querySelectorAll<HTMLElement>("[data-scene]")
       );
@@ -58,24 +77,21 @@ export function useScrollProgress(
 
       if (!sections.length || !footer) return;
 
+      // Calculate total scrollable distance
       const scrollableHeight = Math.max(
         container.scrollHeight - window.innerHeight,
         1
       );
 
-      // Get the 0-1 start point of each scene
+      // Get normalized (0-1) start position of each section
       const heroStart = 0;
-      const systemStart =
-        sections[1].offsetTop / scrollableHeight;
-      const codeStart =
-        sections[2].offsetTop / scrollableHeight;
-      const pricingStart =
-        sections[3].offsetTop / scrollableHeight;
-      // The "end" is where the footer begins
-      const footerStart =
-        footer.offsetTop / scrollableHeight;
+      const systemStart = sections[1].offsetTop / scrollableHeight;
+      const codeStart = sections[2].offsetTop / scrollableHeight;
+      const pricingStart = sections[3].offsetTop / scrollableHeight;
+      const footerStart = footer.offsetTop / scrollableHeight;
 
-      // Ensure ranges are contiguous (end = next start)
+      // Make ranges contiguous: each scene's end = next scene's start
+      // This eliminates "dead zones" between scenes
       const nextRanges: SceneRanges = {
         hero: { start: heroStart, end: systemStart },
         system: { start: systemStart, end: codeStart },
@@ -83,7 +99,7 @@ export function useScrollProgress(
         pricing: { start: pricingStart, end: footerStart },
       };
 
-      // Clamp all values
+      // Clamp all values to 0-1 range
       Object.keys(nextRanges).forEach((key) => {
         const k = key as SceneKey;
         nextRanges[k].start = clamp01(nextRanges[k].start);
@@ -98,57 +114,52 @@ export function useScrollProgress(
     return () => window.removeEventListener("resize", updateRanges);
   }, [containerRef]);
 
-  // Scene-specific progress (0-1)
+  // ---------------------------------------------------------------------------
+  // 3. Create progress motion values (0-1 within each scene)
+  // ---------------------------------------------------------------------------
+
   const heroProgress = useRangeTransform(scrollYProgress, sceneRanges.hero);
   const systemProgress = useRangeTransform(scrollYProgress, sceneRanges.system);
   const codeProgress = useRangeTransform(scrollYProgress, sceneRanges.code);
   const pricingProgress = useRangeTransform(scrollYProgress, sceneRanges.pricing);
 
-  // Cross-fade duration (as a 0-1 percentage)
-  const fade = 0.02; // A very small 2% cross-fade
+  // ---------------------------------------------------------------------------
+  // 4. Create opacity motion values for cross-fade effect
+  // ---------------------------------------------------------------------------
 
-  // Clean Cross-fade Opacity Logic
-  const heroOpacity = useTransform(
+  const fade = CROSS_FADE_DURATION;
+
+  // Hero: Fades out as system starts (no fade-in since it's first)
+  const heroOpacity = createFirstSceneOpacity(
     scrollYProgress,
-    [sceneRanges.hero.end - fade, sceneRanges.hero.end],
-    [1, 0],
-    { clamp: true }
+    sceneRanges.system.start,
+    fade
   );
 
-  const systemOpacity = useTransform(
+  // System: Fades in and out
+  const systemOpacity = createCrossFadeOpacity(
     scrollYProgress,
-    [
-      sceneRanges.system.start - fade,
-      sceneRanges.system.start + fade,
-      sceneRanges.system.end - fade,
-      sceneRanges.system.end,
-    ],
-    [0, 1, 1, 0],
-    { clamp: true }
+    sceneRanges.system,
+    fade
   );
 
-  const codeOpacity = useTransform(
+  // Code: Fades in and out
+  const codeOpacity = createCrossFadeOpacity(
     scrollYProgress,
-    [
-      sceneRanges.code.start - fade,
-      sceneRanges.code.start + fade,
-      sceneRanges.code.end - fade,
-      sceneRanges.code.end,
-    ],
-    [0, 1, 1, 0],
-    { clamp: true }
+    sceneRanges.code,
+    fade
   );
 
-  const pricingOpacity = useTransform(
+  // Pricing: Fades in and stays visible (no fade-out since it's last)
+  const pricingOpacity = createLastSceneOpacity(
     scrollYProgress,
-    // Fade in and stay visible
-    [
-      sceneRanges.pricing.start - fade,
-      sceneRanges.pricing.start + fade,
-    ],
-    [0, 1],
-    { clamp: true }
+    sceneRanges.pricing,
+    fade
   );
+
+  // ---------------------------------------------------------------------------
+  // 5. Return all motion values
+  // ---------------------------------------------------------------------------
 
   return {
     heroProgress,

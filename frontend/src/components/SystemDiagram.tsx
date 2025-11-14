@@ -1,23 +1,21 @@
 import { motion } from "framer-motion";
+import { LAYER_CONFIGS } from "@/constants/landing";
 
-interface LayerData {
-  id: number;
-  title: string;
-  yOffset: number;
-}
-
-const layers: LayerData[] = [
-  { id: 1, title: "FOUNDATION", yOffset: -60 },
-  { id: 2, title: "ACQUISITION", yOffset: -20 },
-  { id: 3, title: "REASONING", yOffset: 20 },
-  { id: 4, title: "SIGNAL", yOffset: 60 },
-];
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface SystemDiagramProps {
   activeLayer: number;
 }
 
-// 1. Foundation: Live Data Grid with flicker animation
+// ============================================================================
+// LAYER VISUAL COMPONENTS
+// ============================================================================
+
+/**
+ * Foundation: Live Data Grid with flicker animation
+ */
 const FoundationVisual = () => (
   <div className="w-full h-full p-3 grid grid-cols-6 gap-1.5">
     {Array.from({ length: 36 }).map((_, i) => (
@@ -33,7 +31,9 @@ const FoundationVisual = () => (
   </div>
 );
 
-// 2. Acquisition: Rising Data Pillars
+/**
+ * Acquisition: Rising Data Pillars
+ */
 const AcquisitionVisual = () => (
   <div className="w-full h-full p-4 grid grid-cols-3 gap-4">
     {Array.from({ length: 9 }).map((_, i) => (
@@ -50,7 +50,9 @@ const AcquisitionVisual = () => (
   </div>
 );
 
-// 3. Reasoning: Active CPU with tracers
+/**
+ * Reasoning: Active CPU with tracers
+ */
 const ReasoningVisual = () => (
   <div className="w-full h-full flex items-center justify-center p-4 relative">
     {/* Horizontal tracers */}
@@ -91,7 +93,9 @@ const ReasoningVisual = () => (
   </div>
 );
 
-// 4. Signal: Beacon with expanding rings
+/**
+ * Signal: Beacon with expanding rings
+ */
 const SignalVisual = () => (
   <div className="w-full h-full flex items-center justify-center relative">
     {/* Signal Rings */}
@@ -115,7 +119,9 @@ const SignalVisual = () => (
   </div>
 );
 
-// Map layer ID to visual component
+/**
+ * Maps layer ID to its visual component
+ */
 const LayerVisual = ({ layerId }: { layerId: number }) => {
   switch (layerId) {
     case 1:
@@ -131,12 +137,16 @@ const LayerVisual = ({ layerId }: { layerId: number }) => {
   }
 };
 
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
 export function SystemDiagram({ activeLayer }: SystemDiagramProps) {
   return (
     <div className="w-full max-w-md mx-auto font-mono" style={{ perspective: "1000px" }}>
       {/* Vertically stacked layers with 3D transforms */}
       <div className="relative w-64 h-64 mx-auto" style={{ transformStyle: "preserve-3d" }}>
-        {layers.map((layer) => {
+        {LAYER_CONFIGS.map((layer) => {
           const isActive = activeLayer === layer.id;
 
           return (
