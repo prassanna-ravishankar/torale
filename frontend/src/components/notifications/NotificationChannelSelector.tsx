@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Mail, Webhook, ChevronDown, Settings2, AlertCircle, ExternalLink } from 'lucide-react';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -29,8 +29,8 @@ export const NotificationChannelSelector: React.FC<NotificationChannelSelectorPr
   value,
   onChange,
 }) => {
-  const { user: clerkUser } = useUser();
-  const clerkEmail = clerkUser?.primaryEmailAddress?.emailAddress;
+  const { user } = useAuth();
+  const clerkEmail = user?.email;
 
   const [emailEnabled, setEmailEnabled] = useState(true); // Default to email enabled
   const [webhookEnabled, setWebhookEnabled] = useState(false);
@@ -53,7 +53,7 @@ export const NotificationChannelSelector: React.FC<NotificationChannelSelectorPr
     if (emailEnabled) {
       notifications.push({
         type: 'email',
-        address: selectedEmail === 'default' ? undefined : selectedEmail,
+        address: selectedEmail === 'default' ? clerkEmail : selectedEmail,
       });
     }
 
@@ -65,7 +65,7 @@ export const NotificationChannelSelector: React.FC<NotificationChannelSelectorPr
     }
 
     onChange(notifications);
-  }, [emailEnabled, webhookEnabled, selectedEmail, customWebhookUrl, useDefaultWebhook]);
+  }, [emailEnabled, webhookEnabled, selectedEmail, customWebhookUrl, useDefaultWebhook, clerkEmail]);
 
   const loadVerifiedEmails = async () => {
     setIsLoadingEmails(true);

@@ -285,7 +285,7 @@ class ApiClient {
 
   // Email Verification endpoints
   async sendVerificationCode(email: string): Promise<{ message: string; expires_at: string }> {
-    const response = await fetch(`${this.baseUrl}/email-verification/send`, {
+    const response = await fetch(`${this.baseUrl}/api/v1/email-verification/send`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify({ email }),
@@ -294,7 +294,7 @@ class ApiClient {
   }
 
   async verifyEmailCode(email: string, code: string): Promise<{ message: string; email: string }> {
-    const response = await fetch(`${this.baseUrl}/email-verification/verify`, {
+    const response = await fetch(`${this.baseUrl}/api/v1/email-verification/verify`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify({ email, code }),
@@ -303,7 +303,7 @@ class ApiClient {
   }
 
   async getVerifiedEmails(): Promise<{ verified_emails: string[] }> {
-    const response = await fetch(`${this.baseUrl}/email-verification/verified-emails`, {
+    const response = await fetch(`${this.baseUrl}/api/v1/email-verification/verified-emails`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
@@ -311,7 +311,7 @@ class ApiClient {
 
   async removeVerifiedEmail(email: string): Promise<{ message: string }> {
     const encodedEmail = encodeURIComponent(email)
-    const response = await fetch(`${this.baseUrl}/email-verification/verified-emails/${encodedEmail}`, {
+    const response = await fetch(`${this.baseUrl}/api/v1/email-verification/verified-emails/${encodedEmail}`, {
       method: 'DELETE',
       headers: await this.getAuthHeaders(),
     })
@@ -320,14 +320,14 @@ class ApiClient {
 
   // Webhook endpoints
   async getWebhookConfig(): Promise<WebhookConfig> {
-    const response = await fetch(`${this.baseUrl}/webhooks/config`, {
+    const response = await fetch(`${this.baseUrl}/api/v1/webhooks/config`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }
 
   async updateWebhookConfig(url: string, enabled: boolean = true): Promise<WebhookConfig> {
-    const response = await fetch(`${this.baseUrl}/webhooks/config`, {
+    const response = await fetch(`${this.baseUrl}/api/v1/webhooks/config`, {
       method: 'PUT',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify({ url, enabled }),
@@ -336,7 +336,7 @@ class ApiClient {
   }
 
   async testWebhook(url?: string, secret?: string): Promise<{ message: string; delivery_id: string }> {
-    const response = await fetch(`${this.baseUrl}/webhooks/test`, {
+    const response = await fetch(`${this.baseUrl}/api/v1/webhooks/test`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify({ url, secret }),
@@ -354,7 +354,7 @@ class ApiClient {
     if (params?.limit) queryParams.set('limit', params.limit.toString())
     if (params?.offset) queryParams.set('offset', params.offset.toString())
 
-    const url = `${this.baseUrl}/webhooks/deliveries${queryParams.toString() ? `?${queryParams}` : ''}`
+    const url = `${this.baseUrl}/api/v1/webhooks/deliveries${queryParams.toString() ? `?${queryParams}` : ''}`
     const response = await fetch(url, {
       headers: await this.getAuthHeaders(),
     })
@@ -374,7 +374,7 @@ class ApiClient {
     if (params?.limit) queryParams.set('limit', params.limit.toString())
     if (params?.offset) queryParams.set('offset', params.offset.toString())
 
-    const url = `${this.baseUrl}/notifications/sends${queryParams.toString() ? `?${queryParams}` : ''}`
+    const url = `${this.baseUrl}/api/v1/notifications/sends${queryParams.toString() ? `?${queryParams}` : ''}`
     const response = await fetch(url, {
       headers: await this.getAuthHeaders(),
     })
