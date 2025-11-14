@@ -51,9 +51,13 @@ export function useScrollProgress(
   // 1. Setup framer-motion scroll tracking
   // ---------------------------------------------------------------------------
 
-  // Track document-level scroll (0 = top of page, 1 = bottom of page)
-  // This matches our range calculations which use offsetTop / scrollHeight
-  const { scrollYProgress } = useScroll();
+  // Track container movement through viewport
+  // scrollYProgress goes from 0 (container top hits viewport top)
+  // to 1 (container bottom hits viewport bottom)
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"],
+  });
 
   const [sceneRanges, setSceneRanges] = useState<SceneRanges>(DEFAULT_RANGES);
 
@@ -76,18 +80,18 @@ export function useScrollProgress(
 
       if (!sections.length || !footer) return;
 
-      // Calculate total scrollable distance (document-level)
-      const scrollableHeight = Math.max(
-        document.documentElement.scrollHeight - window.innerHeight,
-        1
-      );
+      // Calculate total container height
+      // scrollYProgress goes 0→1 as container moves through viewport
+      // So we normalize section positions against container's total height
+      const containerHeight = container.scrollHeight;
 
-      // Get normalized (0-1) start position of each section
+      // Get normalized (0-1) positions within the container
+      // These positions match the scrollYProgress coordinate system
       const heroStart = 0;
-      const systemStart = sections[1].offsetTop / scrollableHeight;
-      const codeStart = sections[2].offsetTop / scrollableHeight;
-      const pricingStart = sections[3].offsetTop / scrollableHeight;
-      const footerStart = footer.offsetTop / scrollableHeight;
+      const systemStart = sections[1].offsetTop / containerHeight;
+      const codeStart = sections[2].offsetTop / containerHeight;
+      const pricingStart = sections[3].offsetTop / containerHeight;
+      const footerStart = footer.offsetTop / containerHeight;
 
       // Make ranges contiguous: each scene's end = next scene's start
       // This eliminates "dead zones" between scenes
