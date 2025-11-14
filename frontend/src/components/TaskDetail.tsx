@@ -10,6 +10,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { ExecutionTimeline } from "@/components/ExecutionTimeline";
 import { StateComparison } from "@/components/StateComparison";
 import { CronDisplay } from "@/components/ui/CronDisplay";
+import { NotificationChannelBadges } from "@/components/notifications/NotificationChannelBadges";
 import {
   ArrowLeft,
   Clock,
@@ -18,6 +19,8 @@ import {
   Play,
   Loader2,
   Trash2,
+  Mail,
+  Webhook,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -183,7 +186,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -204,7 +207,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             </div>
           </CardHeader>
           <CardContent>
-            <p>{task.condition_description}</p>
+            <p className="text-sm">{task.condition_description}</p>
           </CardContent>
         </Card>
 
@@ -212,17 +215,61 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Bell className="h-4 w-4" />
-              <p>Notification Behavior</p>
+              <p>When to Notify</p>
             </div>
           </CardHeader>
           <CardContent>
-            <p className="capitalize mb-3">{task.notify_behavior.replace("_", " ")}</p>
-            <div className="flex items-center gap-2">
+            <p className="capitalize text-sm">
+              {task.notify_behavior === 'once' && 'Once only'}
+              {task.notify_behavior === 'always' && 'Every time'}
+              {task.notify_behavior === 'track_state' && 'On changes'}
+            </p>
+            <div className="flex items-center gap-2 mt-3">
               <Switch checked={task.is_active} onCheckedChange={handleToggle} />
               <span className="text-sm text-muted-foreground">
                 {task.is_active ? "Active" : "Paused"}
               </span>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Mail className="h-4 w-4" />
+              <p>Notification Channels</p>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {task.notification_channels && task.notification_channels.length > 0 ? (
+              <div className="space-y-3">
+                <NotificationChannelBadges
+                  channels={task.notification_channels}
+                  notificationEmail={task.notification_email}
+                  webhookUrl={task.webhook_url}
+                />
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  {task.notification_channels.includes('email') && (
+                    <div className="flex items-start gap-1.5">
+                      <Mail className="h-3 w-3 mt-0.5 shrink-0" />
+                      <span className="truncate">
+                        {task.notification_email || 'Default (Clerk email)'}
+                      </span>
+                    </div>
+                  )}
+                  {task.notification_channels.includes('webhook') && (
+                    <div className="flex items-start gap-1.5">
+                      <Webhook className="h-3 w-3 mt-0.5 shrink-0" />
+                      <span className="truncate">
+                        {task.webhook_url || 'Default webhook'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No channels configured</p>
+            )}
           </CardContent>
         </Card>
       </div>

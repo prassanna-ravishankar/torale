@@ -11,12 +11,13 @@ import { WizardStepTemplate } from '@/components/wizard/WizardStepTemplate';
 import { WizardStepQuery } from '@/components/wizard/WizardStepQuery';
 import { WizardStepPreview } from '@/components/wizard/WizardStepPreview';
 import { WizardStepSchedule } from '@/components/wizard/WizardStepSchedule';
+import { WizardStepHowNotify } from '@/components/wizard/WizardStepHowNotify';
 import { WizardNavigation } from '@/components/wizard/WizardNavigation';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
-import type { Task, TaskCreatePayload, TaskTemplate } from '@/types';
+import type { Task, TaskCreatePayload, TaskTemplate, NotificationConfig } from '@/types';
 
-type WizardStep = 'template' | 'query' | 'preview' | 'schedule';
+type WizardStep = 'template' | 'query' | 'preview' | 'schedule' | 'howNotify';
 type NotifyBehavior = 'once' | 'always' | 'track_state';
 
 interface PreviewResult {
@@ -50,6 +51,9 @@ export const TaskCreationWizard: React.FC<TaskCreationWizardProps> = ({
   const [conditionDescription, setConditionDescription] = useState('');
   const [schedule, setSchedule] = useState('0 9 * * *'); // Default: daily at 9am
   const [notifyBehavior, setNotifyBehavior] = useState<NotifyBehavior>('track_state');
+  const [notifications, setNotifications] = useState<NotificationConfig[]>([
+    { type: 'email' }, // Default to email notifications
+  ]);
 
   // UI state
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -83,6 +87,7 @@ export const TaskCreationWizard: React.FC<TaskCreationWizardProps> = ({
         setConditionDescription('');
         setSchedule('0 9 * * *');
         setNotifyBehavior('track_state');
+        setNotifications([{ type: 'email' }]);
         setValidationErrors({});
         setPreviewResult(null);
         setPreviewError('');
@@ -91,7 +96,7 @@ export const TaskCreationWizard: React.FC<TaskCreationWizardProps> = ({
   }, [open]);
 
   // Step helpers
-  const stepOrder: WizardStep[] = ['template', 'query', 'preview', 'schedule'];
+  const stepOrder: WizardStep[] = ['template', 'query', 'preview', 'schedule', 'howNotify'];
   const currentStepIndex = stepOrder.indexOf(currentStep);
   const totalSteps = stepOrder.length;
 
@@ -186,6 +191,8 @@ export const TaskCreationWizard: React.FC<TaskCreationWizardProps> = ({
         setCurrentStep('schedule');
       }
     } else if (currentStep === 'schedule') {
+      setCurrentStep('howNotify');
+    } else if (currentStep === 'howNotify') {
       await handleCreate();
     }
   };
@@ -197,6 +204,8 @@ export const TaskCreationWizard: React.FC<TaskCreationWizardProps> = ({
       setCurrentStep('query');
     } else if (currentStep === 'schedule') {
       setCurrentStep('preview');
+    } else if (currentStep === 'howNotify') {
+      setCurrentStep('schedule');
     }
   };
 
@@ -224,7 +233,7 @@ export const TaskCreationWizard: React.FC<TaskCreationWizardProps> = ({
         },
         is_active: true,
         run_immediately: true, // Execute immediately
-        notifications: [],
+        notifications,
       };
 
       const task = await api.createTask(taskPayload);
@@ -315,6 +324,13 @@ export const TaskCreationWizard: React.FC<TaskCreationWizardProps> = ({
               onNotifyBehaviorChange={setNotifyBehavior}
             />
           )}
+
+          {currentStep === 'howNotify' && (
+            <WizardStepHowNotify
+              notifications={notifications}
+              onNotificationsChange={setNotifications}
+            />
+          )}
         </div>
 
         {/* Footer Navigation - Hidden on template step */}
@@ -325,7 +341,7 @@ export const TaskCreationWizard: React.FC<TaskCreationWizardProps> = ({
             onNext={handleNext}
             onBack={handleBack}
             onCancel={() => onOpenChange(false)}
-            nextLabel={currentStep === 'schedule' ? 'Create Task' : undefined}
+            nextLabel={currentStep === 'howNotify' ? 'Create Task' : undefined}
             isNextDisabled={false}
             isLoading={isCreating}
             showBack={true}

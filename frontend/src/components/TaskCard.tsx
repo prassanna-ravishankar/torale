@@ -21,6 +21,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { CronDisplay } from '@/components/ui/CronDisplay';
+import { NotificationChannelBadges } from '@/components/notifications/NotificationChannelBadges';
 import { cn } from '@/lib/utils';
 
 interface TaskCardProps {
@@ -98,6 +99,14 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <Clock className="h-4 w-4 shrink-0" />
           <CronDisplay cron={task.schedule} className="text-xs" />
         </div>
+
+        {task.notification_channels && task.notification_channels.length > 0 && (
+          <NotificationChannelBadges
+            channels={task.notification_channels}
+            notificationEmail={task.notification_email}
+            webhookUrl={task.webhook_url}
+          />
+        )}
 
         {task.condition_met && task.last_known_state && (
           <div className="p-2.5 bg-primary/5 rounded-md border border-primary/20">

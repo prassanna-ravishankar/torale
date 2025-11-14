@@ -1,6 +1,8 @@
 export type TaskStatus = "pending" | "running" | "success" | "failed";
 export type NotifyBehavior = "once" | "always" | "track_state";
 export type ExecutorType = "llm_grounded_search";
+export type NotificationChannelType = "email" | "webhook";
+export type NotificationDeliveryStatus = "success" | "failed" | "retrying";
 
 export interface Task {
   id: string;
@@ -17,6 +19,10 @@ export interface Task {
   last_notified_at: string | null;
   created_at: string;
   updated_at: string | null;
+  // Notification channels
+  notification_channels: NotificationChannelType[];
+  notification_email: string | null;
+  webhook_url: string | null;
 }
 
 /**
@@ -33,7 +39,7 @@ export interface TaskCreatePayload {
   config: Record<string, any>;
   is_active: boolean;
   run_immediately?: boolean;  // Execute task immediately after creation
-  notifications?: any[];  // Notification configurations (optional)
+  notifications?: NotificationConfig[];  // Notification configurations (optional)
 }
 
 export interface GroundingSource {
@@ -83,4 +89,93 @@ export interface TaskTemplate {
   is_active: boolean;
   created_at: string;
   updated_at: string | null;
+}
+
+// Notification System Types
+
+/**
+ * Notification configuration for task creation
+ * Matches backend NotificationConfig model
+ */
+export interface NotificationConfig {
+  type: "email" | "webhook";
+  // Email fields
+  address?: string;
+  template?: string;
+  // Webhook fields
+  url?: string;
+  method?: string;
+  headers?: Record<string, string>;
+}
+
+/**
+ * Simplified notification channel for UI selection
+ */
+export interface NotificationChannel {
+  type: NotificationChannelType;
+  email?: string; // For email channel
+  webhookUrl?: string; // For webhook channel
+  useDefault?: boolean; // Use user-level defaults
+}
+
+/**
+ * User-level webhook configuration
+ */
+export interface WebhookConfig {
+  url: string | null;
+  secret: string | null;
+  enabled: boolean;
+}
+
+/**
+ * Email verification state
+ */
+export interface EmailVerification {
+  email: string;
+  code: string;
+  expiresAt: string;
+  attemptsLeft: number;
+}
+
+/**
+ * Webhook delivery record
+ */
+export interface WebhookDelivery {
+  id: string;
+  task_id: string;
+  execution_id: string;
+  webhook_url: string;
+  status: NotificationDeliveryStatus;
+  http_status_code: number | null;
+  response_body: string | null;
+  error_message: string | null;
+  attempts: number;
+  next_retry_at: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/**
+ * Email notification send record
+ */
+export interface NotificationSend {
+  id: string;
+  user_id: string;
+  task_id: string;
+  execution_id: string;
+  notification_type: NotificationChannelType;
+  recipient: string; // email address or webhook URL
+  status: NotificationDeliveryStatus;
+  error_message: string | null;
+  created_at: string;
+}
+
+/**
+ * User with verified emails (for settings page)
+ */
+export interface UserWithNotifications extends User {
+  verified_notification_emails: string[];
+  webhook_url: string | null;
+  webhook_secret: string | null;
+  webhook_enabled: boolean;
 }
