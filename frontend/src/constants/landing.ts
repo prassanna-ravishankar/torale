@@ -62,12 +62,12 @@ export const LAYER_CONFIGS: LayerConfig[] = [
 
 /**
  * Maps scroll progress (0-1) to active layer ID
- * Layers complete by ~0.9 to allow dwell time before fade-out starts
+ * All layers complete by ~0.75, leaving dwell time before fade-out at ~0.93
  */
 export function getLayerFromProgress(value: number): number {
-  if (value < 0.18) return 0;
-  if (value < 0.36) return 1;
-  if (value < 0.54) return 2;
-  if (value < 0.72) return 3;
+  if (value < 0.15) return 0;
+  if (value < 0.30) return 1;
+  if (value < 0.45) return 2;
+  if (value < 0.60) return 3;
   return 4;
 }
