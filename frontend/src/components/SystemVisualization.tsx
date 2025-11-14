@@ -1,4 +1,5 @@
-import { motion, MotionValue, useTransform } from "framer-motion";
+import { useState } from "react";
+import { AnimatePresence, motion, MotionValue, useMotionValueEvent } from "framer-motion";
 import { SystemDiagram } from "./SystemDiagram";
 
 interface LayerInfo {
@@ -49,22 +50,32 @@ const CornerBracket = ({ className }: { className: string }) => (
   <div className={`absolute w-3 h-3 border-brand-red ${className}`} />
 );
 
+const getLayerFromProgress = (value: number): number => {
+  if (value < 0.2) return 0;
+  if (value < 0.4) return 1;
+  if (value < 0.6) return 2;
+  if (value < 0.8) return 3;
+  return 4;
+};
+
 export function SystemVisualization({ progress }: SystemVisualizationProps) {
-  // Determine active layer for text display
-  const activeLayerId = useTransform(progress, (value) => {
-    if (value < 0.2) return 0;
-    if (value < 0.4) return 1;
-    if (value < 0.6) return 2;
-    if (value < 0.8) return 3;
-    return 4;
+  const [activeLayer, setActiveLayer] = useState<LayerInfo["id"]>(0);
+
+  useMotionValueEvent(progress, "change", (value) => {
+    const normalized = Math.max(0, Math.min(1, value ?? 0));
+    const next = getLayerFromProgress(normalized);
+    setActiveLayer((prev) => (prev === next ? prev : next));
   });
 
+  const activeLayerInfo =
+    layerInfo.find((layer) => layer.id === activeLayer) ?? layerInfo[0];
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 md:p-8">
+    <div className="h-full flex items-center justify-center p-4 md:p-8">
       <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
         {/* Left: Diagram */}
         <div className="flex items-center justify-center">
-          <SystemDiagram progress={progress} />
+          <SystemDiagram activeLayer={activeLayer} />
         </div>
 
         {/* Right: Text Content */}
@@ -73,37 +84,29 @@ export function SystemVisualization({ progress }: SystemVisualizationProps) {
             {/* Render all titles */}
             <div className="space-y-4">
               {layerInfo.map((layer) => {
-                const isActive = useTransform(
-                  activeLayerId,
-                  (id) => id === layer.id
-                );
-                const textOpacity = useTransform(isActive, (active) =>
-                  active ? 1 : 0.4
-                );
-                const textScale = useTransform(isActive, (active) =>
-                  active ? 1 : 0.95
-                );
-                const bracketOpacity = useTransform(isActive, (active) =>
-                  active ? 1 : 0
-                );
+                const isActive = activeLayer === layer.id;
 
                 return (
                   <div key={layer.id} className="relative">
                     {/* Corner Brackets - only visible when active */}
-                    <motion.div style={{ opacity: bracketOpacity }}>
-                      <CornerBracket className="top-0 left-0 border-t-2 border-l-2 transition-opacity duration-300" />
-                      <CornerBracket className="top-0 right-0 border-t-2 border-r-2 transition-opacity duration-300" />
-                      <CornerBracket className="bottom-0 left-0 border-b-2 border-l-2 transition-opacity duration-300" />
-                      <CornerBracket className="bottom-0 right-0 border-b-2 border-r-2 transition-opacity duration-300" />
+                    <motion.div
+                      animate={{ opacity: isActive ? 1 : 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <CornerBracket className="top-0 left-0 border-t-2 border-l-2" />
+                      <CornerBracket className="top-0 right-0 border-t-2 border-r-2" />
+                      <CornerBracket className="bottom-0 left-0 border-b-2 border-l-2" />
+                      <CornerBracket className="bottom-0 right-0 border-b-2 border-r-2" />
                     </motion.div>
 
                     {/* Title */}
                     <motion.h3
-                      style={{
-                        opacity: textOpacity,
-                        scale: textScale,
+                      animate={{
+                        opacity: isActive ? 1 : 0.4,
+                        scale: isActive ? 1 : 0.95,
                       }}
-                      className="text-xl md:text-2xl font-bold mb-2 tracking-wider py-2 px-4 transition-all duration-300"
+                      transition={{ duration: 0.3 }}
+                      className="text-xl md:text-2xl font-bold mb-2 tracking-wider py-2 px-4"
                     >
                       {layer.title}
                     </motion.h3>
@@ -116,32 +119,19 @@ export function SystemVisualization({ progress }: SystemVisualizationProps) {
             <hr className="border-brand-grid w-1/4" />
 
             {/* Active description with fade-in animation */}
-            <div className="min-h-[80px]">
-              {layerInfo.map((layer) => {
-                const isActive = useTransform(
-                  activeLayerId,
-                  (id) => id === layer.id
-                );
-                const descOpacity = useTransform(isActive, (active) =>
-                  active ? 1 : 0
-                );
-                const descHeight = useTransform(isActive, (active) =>
-                  active ? "auto" : "0px"
-                );
-
-                return (
-                  <motion.p
-                    key={layer.id}
-                    style={{
-                      opacity: descOpacity,
-                      height: descHeight,
-                    }}
-                    className="text-brand-grey leading-relaxed overflow-hidden"
-                  >
-                    {layer.description}
-                  </motion.p>
-                );
-              })}
+            <div className="min-h-[80px] relative">
+              <AnimatePresence mode="wait">
+                <motion.p
+                  key={activeLayerInfo.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-brand-grey leading-relaxed"
+                >
+                  {activeLayerInfo.description}
+                </motion.p>
+              </AnimatePresence>
             </div>
           </div>
         </div>

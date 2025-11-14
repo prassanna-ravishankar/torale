@@ -1,4 +1,4 @@
-import { motion, MotionValue, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 
 interface LayerData {
   id: number;
@@ -14,7 +14,7 @@ const layers: LayerData[] = [
 ];
 
 interface SystemDiagramProps {
-  progress: MotionValue<number>;
+  activeLayer: number;
 }
 
 // 1. Foundation: Live Data Grid with flicker animation
@@ -131,47 +131,31 @@ const LayerVisual = ({ layerId }: { layerId: number }) => {
   }
 };
 
-export function SystemDiagram({ progress }: SystemDiagramProps) {
-  // Calculate which layer should be active based on scroll progress
-  const activeLayer = useTransform(progress, (value) => {
-    if (value < 0.2) return 0; // None active initially
-    if (value < 0.4) return 1;
-    if (value < 0.6) return 2;
-    if (value < 0.8) return 3;
-    return 4;
-  });
-
+export function SystemDiagram({ activeLayer }: SystemDiagramProps) {
   return (
     <div className="w-full max-w-md mx-auto font-mono" style={{ perspective: "1000px" }}>
       {/* Vertically stacked layers with 3D transforms */}
       <div className="relative w-64 h-64 mx-auto" style={{ transformStyle: "preserve-3d" }}>
         {layers.map((layer) => {
-          // Each layer's opacity, scale, and border based on whether it's active
-          const layerOpacity = useTransform(activeLayer, (active) =>
-            active === layer.id ? 1 : 0.3
-          );
-          const layerScale = useTransform(activeLayer, (active) =>
-            active === layer.id ? 1.05 : 0.9
-          );
-          const borderColor = useTransform(activeLayer, (active) =>
-            active === layer.id ? "#FF0000" : "#000000"
-          );
+          const isActive = activeLayer === layer.id;
 
           return (
             <motion.div
               key={layer.id}
-              style={{
-                opacity: layerOpacity,
-                scale: layerScale,
+              animate={{
+                opacity: isActive ? 1 : 0.3,
+                scale: isActive ? 1.05 : 0.9,
               }}
               className="absolute inset-0 w-64 h-64"
               transition={{ duration: 0.7, ease: "easeInOut" }}
             >
               <motion.div
                 style={{
-                  borderColor,
                   transform: `rotateX(60deg) rotateZ(-45deg) translateY(${layer.yOffset}px)`,
                   transformStyle: "preserve-3d",
+                }}
+                animate={{
+                  borderColor: isActive ? "#FF0000" : "#000000",
                 }}
                 className="w-full h-full border-2 bg-white/50 backdrop-blur-sm overflow-hidden transition-all duration-700"
               >

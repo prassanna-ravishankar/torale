@@ -1,5 +1,5 @@
 import { useScroll, useTransform, MotionValue } from "framer-motion";
-import { RefObject } from "react";
+import { RefObject, useLayoutEffect, useState } from "react";
 
 export interface ScrollProgress {
   // Raw scroll progress (0 to 1)
@@ -18,31 +18,152 @@ export interface ScrollProgress {
   pricingOpacity: MotionValue<number>;
 }
 
-export function useScrollProgress(containerRef: RefObject<HTMLElement>): ScrollProgress {
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"]
+type SceneKey = "hero" | "system" | "code" | "pricing";
+
+interface SceneRange {
+  start: number;
+  end: number;
+}
+
+type SceneRanges = Record<SceneKey, SceneRange>;
+
+const DEFAULT_RANGES: SceneRanges = {
+  hero: { start: 0, end: 0.24 },
+  system: { start: 0.24, end: 0.5 },
+  code: { start: 0.5, end: 0.76 },
+  pricing: { start: 0.76, end: 1 },
+};
+
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+
+const useRangeTransform = (
+  scrollYProgress: MotionValue<number>,
+  range: SceneRange
+) =>
+  useTransform(scrollYProgress, [range.start, range.end], [0, 1], {
+    clamp: true,
   });
 
-  // Scene 1: Hero (0% - 21% of scroll)
-  // Actual: 0-100vh in ~485vh total
-  const heroProgress = useTransform(scrollYProgress, [0, 0.21], [0, 1]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.18, 0.21], [1, 1, 0]);
+const useOpacityTransform = (
+  scrollYProgress: MotionValue<number>,
+  range: SceneRange,
+  fade: number = 0.08,
+  keepTailVisible = false
+) => {
+  const fadeInStart = clamp01(range.start - fade);
+  const fadeOutEnd = keepTailVisible ? 1 : clamp01(range.end + fade);
 
-  // Scene 2: System (26% - 46% of scroll)
-  // Actual: 125-225vh (after 25vh spacer)
-  const systemProgress = useTransform(scrollYProgress, [0.26, 0.46], [0, 1]);
-  const systemOpacity = useTransform(scrollYProgress, [0.21, 0.30, 0.42, 0.50], [0, 1, 1, 0]);
+  const input = keepTailVisible
+    ? [fadeInStart, range.start, range.end]
+    : [fadeInStart, range.start, range.end, fadeOutEnd];
 
-  // Scene 3: Code (51% - 71% of scroll)
-  // Actual: 245-345vh (after 20vh spacer)
-  const codeProgress = useTransform(scrollYProgress, [0.51, 0.71], [0, 1]);
-  const codeOpacity = useTransform(scrollYProgress, [0.46, 0.55, 0.67, 0.75], [0, 1, 1, 0]);
+  const output = keepTailVisible ? [0, 1, 1] : [0, 1, 1, 0];
 
-  // Scene 4: Pricing (76% - 95% of scroll)
-  // Actual: 365-465vh (after 20vh spacer)
-  const pricingProgress = useTransform(scrollYProgress, [0.76, 0.95], [0, 1]);
-  const pricingOpacity = useTransform(scrollYProgress, [0.71, 0.80, 1], [0, 1, 1]);
+  return useTransform(scrollYProgress, input, output, { clamp: true });
+};
+
+export function useScrollProgress(
+  containerRef: RefObject<HTMLElement>
+): ScrollProgress {
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"],
+  });
+
+  const [sceneRanges, setSceneRanges] = useState<SceneRanges>(DEFAULT_RANGES);
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const updateRanges = () => {
+      const container = containerRef.current;
+      if (!container) {
+        return;
+      }
+
+      const sections = Array.from(
+        container.querySelectorAll<HTMLElement>("[data-scene]")
+      );
+
+      if (!sections.length) {
+        return;
+      }
+
+      const scrollableHeight = Math.max(
+        container.scrollHeight - window.innerHeight,
+        1
+      );
+
+      const nextRanges: Partial<SceneRanges> = {};
+
+      sections.forEach((section) => {
+        const scene = section.dataset.scene as SceneKey | undefined;
+        if (!scene) {
+          return;
+        }
+
+        const start = clamp01(section.offsetTop / scrollableHeight);
+        const end = clamp01(
+          (section.offsetTop + section.offsetHeight) / scrollableHeight
+        );
+
+        if (end <= start) {
+          nextRanges[scene] = {
+            start,
+            end: clamp01(start + 0.0001),
+          };
+        } else {
+          nextRanges[scene] = { start, end };
+        }
+      });
+
+      if (Object.keys(nextRanges).length) {
+        setSceneRanges((prev) => ({ ...prev, ...nextRanges }));
+      }
+    };
+
+    updateRanges();
+    window.addEventListener("resize", updateRanges);
+
+    return () => {
+      window.removeEventListener("resize", updateRanges);
+    };
+  }, [containerRef]);
+
+  const heroProgress = useRangeTransform(scrollYProgress, sceneRanges.hero);
+  const heroOpacity = useOpacityTransform(
+    scrollYProgress,
+    sceneRanges.hero,
+    0.08
+  );
+
+  const systemProgress = useRangeTransform(
+    scrollYProgress,
+    sceneRanges.system
+  );
+  const systemOpacity = useOpacityTransform(
+    scrollYProgress,
+    sceneRanges.system
+  );
+
+  const codeProgress = useRangeTransform(scrollYProgress, sceneRanges.code);
+  const codeOpacity = useOpacityTransform(
+    scrollYProgress,
+    sceneRanges.code
+  );
+
+  const pricingProgress = useRangeTransform(
+    scrollYProgress,
+    sceneRanges.pricing
+  );
+  const pricingOpacity = useOpacityTransform(
+    scrollYProgress,
+    sceneRanges.pricing,
+    0.08,
+    true
+  );
 
   return {
     scrollYProgress,
