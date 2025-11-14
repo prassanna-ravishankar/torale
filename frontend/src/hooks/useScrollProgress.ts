@@ -51,10 +51,9 @@ export function useScrollProgress(
   // 1. Setup framer-motion scroll tracking
   // ---------------------------------------------------------------------------
 
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"],
-  });
+  // Track document-level scroll (0 = top of page, 1 = bottom of page)
+  // This matches our range calculations which use offsetTop / scrollHeight
+  const { scrollYProgress } = useScroll();
 
   const [sceneRanges, setSceneRanges] = useState<SceneRanges>(DEFAULT_RANGES);
 
@@ -77,9 +76,9 @@ export function useScrollProgress(
 
       if (!sections.length || !footer) return;
 
-      // Calculate total scrollable distance
+      // Calculate total scrollable distance (document-level)
       const scrollableHeight = Math.max(
-        container.scrollHeight - window.innerHeight,
+        document.documentElement.scrollHeight - window.innerHeight,
         1
       );
 
