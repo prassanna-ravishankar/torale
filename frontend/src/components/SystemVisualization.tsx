@@ -104,6 +104,7 @@ export function SystemVisualization({ progress }: SystemVisualizationProps) {
                       animate={{
                         opacity: isActive ? 1 : 0.4,
                         scale: isActive ? 1 : 0.95,
+                        color: isActive ? "#FF0000" : "#000000",
                       }}
                       transition={{ duration: 0.3 }}
                       className="text-xl md:text-2xl font-bold mb-2 tracking-wider py-2 px-4"
