@@ -76,7 +76,7 @@ class TasksResource:
             "executor_type": "llm_grounded_search",
         }
 
-        response = self.client.post("/api/v1/tasks", json=data)
+        response = self.client.post("/api/v1/tasks/", json=data)
         return Task(**response)
 
     def list(self, active: bool | None = None) -> list[Task]:
@@ -98,7 +98,7 @@ class TasksResource:
         if active is not None:
             params["is_active"] = active
 
-        response = self.client.get("/api/v1/tasks", params=params)
+        response = self.client.get("/api/v1/tasks/", params=params)
         return [Task(**task_data) for task_data in response]
 
     def get(self, task_id: str | UUID) -> Task:

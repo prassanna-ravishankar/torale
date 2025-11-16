@@ -91,12 +91,17 @@ class ToraleAsyncClient:
 
     def _load_api_url(self) -> str:
         """Load API URL from environment or config file."""
-        # Try environment variable first
+        # Try environment variable first (highest priority)
         api_url = os.getenv("TORALE_API_URL")
         if api_url:
             return api_url
 
-        # Try config file
+        # Dev/NoAuth mode takes precedence over config file
+        # This allows --local flag to override saved config
+        if self.dev_mode or self.noauth_mode:
+            return "http://localhost:8000"
+
+        # Try config file (lower priority than dev mode)
         config_path = Path.home() / ".torale" / "config.json"
         if config_path.exists():
             try:
@@ -107,9 +112,7 @@ class ToraleAsyncClient:
             except (OSError, JSONDecodeError):
                 pass
 
-        # Default based on mode
-        if self.dev_mode or self.noauth_mode:
-            return "http://localhost:8000"
+        # Default to production
         return "https://api.torale.ai"
 
     def _handle_response(self, response: httpx.Response) -> Any:

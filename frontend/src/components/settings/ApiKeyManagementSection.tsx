@@ -32,7 +32,7 @@ import type { ApiKey } from '@/types';
 export const ApiKeyManagementSection: React.FC = () => {
   const { user } = useAuth();
   const userRole = user?.publicMetadata?.role as string | undefined;
-  const isDeveloper = userRole === 'developer';
+  const isDeveloper = userRole === 'developer' || userRole === 'admin';
 
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [isLoading, setIsLoading] = useState(true);
