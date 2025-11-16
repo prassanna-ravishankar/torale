@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Mail, Plus, Trash2, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import { Loader2, Mail, Plus, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import { useUser } from '@clerk/clerk-react';
@@ -28,7 +28,6 @@ export const EmailManagementSection: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [emailToDelete, setEmailToDelete] = useState<string | null>(null);
-  const [rateLimitInfo, setRateLimitInfo] = useState<string>('');
 
   useEffect(() => {
     loadVerifiedEmails();
@@ -49,7 +48,6 @@ export const EmailManagementSection: React.FC = () => {
 
   const handleEmailVerified = (email: string) => {
     setVerifiedEmails((prev) => [...prev, email]);
-    setRateLimitInfo('');
   };
 
   const handleDeleteClick = (email: string) => {
@@ -73,12 +71,6 @@ export const EmailManagementSection: React.FC = () => {
   };
 
   const handleAddEmailClick = () => {
-    // Check rate limit info
-    const recentVerifications = verifiedEmails.length;
-    if (recentVerifications >= 3) {
-      setRateLimitInfo('You can verify up to 3 emails per hour. Please try again later.');
-      return;
-    }
     setShowVerificationModal(true);
   };
 
@@ -162,14 +154,6 @@ export const EmailManagementSection: React.FC = () => {
                     No custom emails added yet. Click "Add Email" to verify a custom notification
                     address.
                   </AlertDescription>
-                </Alert>
-              )}
-
-              {/* Rate Limit Warning */}
-              {rateLimitInfo && (
-                <Alert variant="destructive">
-                  <Clock className="h-4 w-4" />
-                  <AlertDescription>{rateLimitInfo}</AlertDescription>
                 </Alert>
               )}
 
