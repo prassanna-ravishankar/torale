@@ -48,7 +48,7 @@ class TestTemporalContext:
         }
 
         mock_conn = AsyncMock()
-        mock_conn.fetchrow.side_effect = [mock_task, None, mock_last_execution]
+        mock_conn.fetchrow.side_effect = [mock_task, mock_last_execution]
         mock_conn.execute.return_value = None
 
         # Mock executor to capture config
@@ -160,7 +160,7 @@ class TestTemporalContext:
         }
 
         mock_conn = AsyncMock()
-        mock_conn.fetchrow.side_effect = [mock_task, None, mock_last_execution]
+        mock_conn.fetchrow.side_effect = [mock_task, mock_last_execution]
         mock_conn.execute.return_value = None
 
         captured_config = None

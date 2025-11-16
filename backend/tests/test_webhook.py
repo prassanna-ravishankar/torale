@@ -55,8 +55,9 @@ class TestWebhookSignature:
         """Test that secret generation creates secure random string."""
         secret = WebhookSignature.generate_secret()
 
-        assert len(secret) == 64  # 32 bytes = 64 hex characters
-        assert all(c in "0123456789abcdef" for c in secret)
+        assert len(secret) == 43  # 32 bytes = 43 URL-safe base64 characters
+        # URL-safe base64 uses A-Z, a-z, 0-9, -, _
+        assert all(c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" for c in secret)
 
     def test_different_secrets(self):
         """Test that multiple calls generate different secrets."""
@@ -66,7 +67,7 @@ class TestWebhookSignature:
     def test_sign_creates_valid_signature(self):
         """Test that signing creates expected format."""
         secret = "test_secret_key"
-        payload = {"test": "data"}
+        payload = json.dumps({"test": "data"})
         timestamp = 1234567890
 
         signature = WebhookSignature.sign(payload, secret, timestamp)
@@ -81,7 +82,7 @@ class TestWebhookSignature:
     def test_sign_uses_hmac_sha256(self):
         """Test that signature uses HMAC-SHA256."""
         secret = "test_secret_key"
-        payload = {"test": "data"}
+        payload = json.dumps({"test": "data"})
         timestamp = 1234567890
 
         signature = WebhookSignature.sign(payload, secret, timestamp)
@@ -90,7 +91,7 @@ class TestWebhookSignature:
         sig_part = signature.split("v1=")[1]
 
         # Compute expected signature
-        signed_payload = f"{timestamp}.{json.dumps(payload, separators=(',', ':'))}"
+        signed_payload = f"{timestamp}.{payload}"
         expected_sig = hmac.new(
             secret.encode(),
             signed_payload.encode(),
@@ -102,7 +103,7 @@ class TestWebhookSignature:
     def test_verify_valid_signature(self):
         """Test verification of valid signature."""
         secret = "test_secret_key"
-        payload = {"test": "data"}
+        payload = json.dumps({"test": "data"})
         timestamp = int(datetime.now(timezone.utc).timestamp())
 
         signature = WebhookSignature.sign(payload, secret, timestamp)
@@ -114,7 +115,7 @@ class TestWebhookSignature:
     def test_verify_invalid_signature(self):
         """Test verification rejects invalid signature."""
         secret = "test_secret_key"
-        payload = {"test": "data"}
+        payload = json.dumps({"test": "data"})
         timestamp = int(datetime.now(timezone.utc).timestamp())
 
         # Create signature with different secret
@@ -127,7 +128,7 @@ class TestWebhookSignature:
     def test_verify_malformed_signature(self):
         """Test verification rejects malformed signature."""
         secret = "test_secret_key"
-        payload = {"test": "data"}
+        payload = json.dumps({"test": "data"})
 
         result = WebhookSignature.verify(payload, "invalid_format", secret)
 
@@ -136,7 +137,7 @@ class TestWebhookSignature:
     def test_verify_expired_timestamp(self):
         """Test verification rejects old timestamps (>5 min)."""
         secret = "test_secret_key"
-        payload = {"test": "data"}
+        payload = json.dumps({"test": "data"})
         # Timestamp from 10 minutes ago
         old_timestamp = int(datetime.now(timezone.utc).timestamp()) - 600
 
@@ -149,7 +150,7 @@ class TestWebhookSignature:
     def test_verify_within_tolerance(self):
         """Test verification accepts timestamps within tolerance."""
         secret = "test_secret_key"
-        payload = {"test": "data"}
+        payload = json.dumps({"test": "data"})
         # Timestamp from 2 minutes ago
         recent_timestamp = int(datetime.now(timezone.utc).timestamp()) - 120
 
@@ -165,24 +166,79 @@ class TestBuildWebhookPayload:
 
     def test_payload_structure(self, sample_task, sample_execution):
         """Test that payload has correct structure."""
-        payload = build_webhook_payload(sample_task, sample_execution)
+        task_dict = {
+            "id": sample_task.id,
+            "name": sample_task.name,
+            "search_query": sample_task.search_query,
+            "condition_description": sample_task.condition_description,
+        }
+        execution_dict = {
+            "condition_met": sample_execution.condition_met,
+            "change_summary": sample_execution.change_summary,
+            "completed_at": sample_execution.completed_at,
+        }
+        result_dict = {
+            "answer": "Test answer",
+            "grounding_sources": sample_execution.grounding_sources,
+        }
 
-        assert "event" in payload
-        assert "task" in payload
-        assert "execution" in payload
-        assert "timestamp" in payload
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, result_dict
+        )
+
+        assert payload.event_type == "task.condition_met"
+        assert "task" in payload.data
+        assert "execution" in payload.data
+        assert "result" in payload.data
+        assert payload.created_at > 0
 
     def test_event_type(self, sample_task, sample_execution):
         """Test event type is correct."""
-        payload = build_webhook_payload(sample_task, sample_execution)
+        task_dict = {
+            "id": sample_task.id,
+            "name": sample_task.name,
+            "search_query": sample_task.search_query,
+            "condition_description": sample_task.condition_description,
+        }
+        execution_dict = {
+            "condition_met": sample_execution.condition_met,
+            "change_summary": sample_execution.change_summary,
+            "completed_at": sample_execution.completed_at,
+        }
+        result_dict = {
+            "answer": "Test answer",
+            "grounding_sources": sample_execution.grounding_sources,
+        }
 
-        assert payload["event"] == "task.condition_met"
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, result_dict
+        )
+
+        assert payload.event_type == "task.condition_met"
 
     def test_task_data(self, sample_task, sample_execution):
         """Test task data includes necessary fields."""
-        payload = build_webhook_payload(sample_task, sample_execution)
+        task_dict = {
+            "id": sample_task.id,
+            "name": sample_task.name,
+            "search_query": sample_task.search_query,
+            "condition_description": sample_task.condition_description,
+        }
+        execution_dict = {
+            "condition_met": sample_execution.condition_met,
+            "change_summary": sample_execution.change_summary,
+            "completed_at": sample_execution.completed_at,
+        }
+        result_dict = {
+            "answer": "Test answer",
+            "grounding_sources": sample_execution.grounding_sources,
+        }
 
-        task_data = payload["task"]
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, result_dict
+        )
+
+        task_data = payload.data["task"]
         assert task_data["id"] == str(sample_task.id)
         assert task_data["name"] == sample_task.name
         assert task_data["search_query"] == sample_task.search_query
@@ -190,41 +246,70 @@ class TestBuildWebhookPayload:
 
     def test_execution_data(self, sample_task, sample_execution):
         """Test execution data includes necessary fields."""
-        payload = build_webhook_payload(sample_task, sample_execution)
+        task_dict = {
+            "id": sample_task.id,
+            "name": sample_task.name,
+            "search_query": sample_task.search_query,
+            "condition_description": sample_task.condition_description,
+        }
+        execution_dict = {
+            "condition_met": sample_execution.condition_met,
+            "change_summary": sample_execution.change_summary,
+            "completed_at": sample_execution.completed_at,
+        }
+        result_dict = {
+            "answer": "Test answer",
+            "grounding_sources": sample_execution.grounding_sources,
+        }
 
-        exec_data = payload["execution"]
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, result_dict
+        )
+
+        exec_data = payload.data["execution"]
         assert exec_data["id"] == str(sample_execution.id)
-        assert exec_data["status"] == sample_execution.status
         assert exec_data["condition_met"] == sample_execution.condition_met
         assert exec_data["change_summary"] == sample_execution.change_summary
-        assert exec_data["grounding_sources"] == sample_execution.grounding_sources
 
     def test_timestamp_format(self, sample_task, sample_execution):
-        """Test timestamp is in ISO format."""
-        payload = build_webhook_payload(sample_task, sample_execution)
+        """Test timestamp is Unix timestamp."""
+        task_dict = {
+            "id": sample_task.id,
+            "name": sample_task.name,
+            "search_query": sample_task.search_query,
+            "condition_description": sample_task.condition_description,
+        }
+        execution_dict = {
+            "condition_met": sample_execution.condition_met,
+            "change_summary": sample_execution.change_summary,
+            "completed_at": sample_execution.completed_at,
+        }
+        result_dict = {
+            "answer": "Test answer",
+            "grounding_sources": sample_execution.grounding_sources,
+        }
 
-        # Should be parseable as ISO datetime
-        timestamp = datetime.fromisoformat(payload["timestamp"].replace("Z", "+00:00"))
-        assert isinstance(timestamp, datetime)
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, result_dict
+        )
+
+        # created_at should be Unix timestamp (int)
+        assert isinstance(payload.created_at, int)
+        assert payload.created_at > 0
 
 
 class TestWebhookDeliveryService:
     """Tests for WebhookDeliveryService class."""
 
     @pytest.fixture
-    def mock_db(self):
-        """Mock database session."""
-        return AsyncMock()
-
-    @pytest.fixture
-    def delivery_service(self, mock_db):
+    def delivery_service(self):
         """Create webhook delivery service instance."""
-        return WebhookDeliveryService(mock_db)
+        return WebhookDeliveryService()
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_successful_delivery(
-        self, mock_post, delivery_service, mock_db, sample_task, sample_execution
+        self, mock_post, delivery_service, sample_task, sample_execution
     ):
         """Test successful webhook delivery."""
         mock_response = MagicMock()
@@ -232,96 +317,150 @@ class TestWebhookDeliveryService:
         mock_response.text = "OK"
         mock_post.return_value = mock_response
 
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
-        mock_db.refresh = AsyncMock()
+        task_dict = {
+            "id": sample_task.id,
+            "name": sample_task.name,
+            "search_query": sample_task.search_query,
+            "condition_description": sample_task.condition_description,
+        }
+        execution_dict = {
+            "condition_met": sample_execution.condition_met,
+            "change_summary": sample_execution.change_summary,
+            "completed_at": sample_execution.completed_at,
+        }
+        result_dict = {
+            "answer": "Test answer",
+            "grounding_sources": sample_execution.grounding_sources,
+        }
 
-        payload = build_webhook_payload(sample_task, sample_execution)
-        delivery = await delivery_service.deliver(
-            sample_task,
-            sample_execution,
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, result_dict
+        )
+        success, http_status, error_msg, signature = await delivery_service.deliver(
+            sample_task.webhook_url,
             payload,
             secret="test_secret",
         )
 
-        assert delivery.status == "success"
-        assert delivery.http_status_code == 200
-        assert delivery.response_body == "OK"
-        assert delivery.retry_count == 0
+        assert success is True
+        assert http_status == 200
+        assert error_msg is None
+        assert signature is not None
         mock_post.assert_called_once()
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_failed_delivery_retries(
-        self, mock_post, delivery_service, mock_db, sample_task, sample_execution
+        self, mock_post, delivery_service, sample_task, sample_execution
     ):
-        """Test that failed delivery triggers retries."""
+        """Test that failed delivery returns error status."""
         # First call fails with 500
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_response.text = "Internal Server Error"
         mock_post.return_value = mock_response
 
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
-        mock_db.refresh = AsyncMock()
+        task_dict = {
+            "id": sample_task.id,
+            "name": sample_task.name,
+            "search_query": sample_task.search_query,
+            "condition_description": sample_task.condition_description,
+        }
+        execution_dict = {
+            "condition_met": sample_execution.condition_met,
+            "change_summary": sample_execution.change_summary,
+            "completed_at": sample_execution.completed_at,
+        }
+        result_dict = {
+            "answer": "Test answer",
+            "grounding_sources": sample_execution.grounding_sources,
+        }
 
-        payload = build_webhook_payload(sample_task, sample_execution)
-        delivery = await delivery_service.deliver(
-            sample_task,
-            sample_execution,
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, result_dict
+        )
+        success, http_status, error_msg, signature = await delivery_service.deliver(
+            sample_task.webhook_url,
             payload,
             secret="test_secret",
         )
 
-        assert delivery.status == "retrying"
-        assert delivery.http_status_code == 500
-        assert delivery.retry_count == 0
-        assert delivery.next_retry_at is not None
+        assert success is False
+        assert http_status == 500
+        assert "HTTP 500" in error_msg
+        assert signature is not None
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_delivery_timeout(
-        self, mock_post, delivery_service, mock_db, sample_task, sample_execution
+        self, mock_post, delivery_service, sample_task, sample_execution
     ):
         """Test that delivery has 10-second timeout."""
-        import asyncio
+        import httpx
 
-        mock_post.side_effect = asyncio.TimeoutError()
+        mock_post.side_effect = httpx.TimeoutException("Timeout")
 
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
-        mock_db.refresh = AsyncMock()
+        task_dict = {
+            "id": sample_task.id,
+            "name": sample_task.name,
+            "search_query": sample_task.search_query,
+            "condition_description": sample_task.condition_description,
+        }
+        execution_dict = {
+            "condition_met": sample_execution.condition_met,
+            "change_summary": sample_execution.change_summary,
+            "completed_at": sample_execution.completed_at,
+        }
+        result_dict = {
+            "answer": "Test answer",
+            "grounding_sources": sample_execution.grounding_sources,
+        }
 
-        payload = build_webhook_payload(sample_task, sample_execution)
-        delivery = await delivery_service.deliver(
-            sample_task,
-            sample_execution,
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, result_dict
+        )
+        success, http_status, error_msg, signature = await delivery_service.deliver(
+            sample_task.webhook_url,
             payload,
             secret="test_secret",
         )
 
-        assert delivery.status == "failed"
-        assert "timeout" in delivery.error_message.lower()
+        assert success is False
+        assert http_status is None
+        assert "timeout" in error_msg.lower()
+        assert signature is not None
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_delivery_includes_headers(
-        self, mock_post, delivery_service, mock_db, sample_task, sample_execution
+        self, mock_post, delivery_service, sample_task, sample_execution
     ):
         """Test that delivery includes required headers."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_post.return_value = mock_response
 
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
-        mock_db.refresh = AsyncMock()
+        task_dict = {
+            "id": sample_task.id,
+            "name": sample_task.name,
+            "search_query": sample_task.search_query,
+            "condition_description": sample_task.condition_description,
+        }
+        execution_dict = {
+            "condition_met": sample_execution.condition_met,
+            "change_summary": sample_execution.change_summary,
+            "completed_at": sample_execution.completed_at,
+        }
+        result_dict = {
+            "answer": "Test answer",
+            "grounding_sources": sample_execution.grounding_sources,
+        }
 
-        payload = build_webhook_payload(sample_task, sample_execution)
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, result_dict
+        )
         await delivery_service.deliver(
-            sample_task,
-            sample_execution,
+            sample_task.webhook_url,
             payload,
             secret="test_secret",
         )
@@ -335,35 +474,49 @@ class TestWebhookDeliveryService:
         assert "X-Torale-Signature" in headers
         assert "X-Torale-Event" in headers
         assert headers["X-Torale-Event"] == "task.condition_met"
-        assert "X-Torale-Delivery-ID" in headers
+        assert "X-Torale-Delivery" in headers
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
-    async def test_delivery_records_attempt(
-        self, mock_post, delivery_service, mock_db, sample_task, sample_execution
+    async def test_delivery_returns_result_tuple(
+        self, mock_post, delivery_service, sample_task, sample_execution
     ):
-        """Test that delivery is recorded in database."""
+        """Test that delivery returns proper result tuple."""
         mock_response = MagicMock()
         mock_response.status_code = 200
+        mock_response.text = "OK"
         mock_post.return_value = mock_response
 
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
-        mock_db.refresh = AsyncMock()
+        task_dict = {
+            "id": sample_task.id,
+            "name": sample_task.name,
+            "search_query": sample_task.search_query,
+            "condition_description": sample_task.condition_description,
+        }
+        execution_dict = {
+            "condition_met": sample_execution.condition_met,
+            "change_summary": sample_execution.change_summary,
+            "completed_at": sample_execution.completed_at,
+        }
+        result_dict = {
+            "answer": "Test answer",
+            "grounding_sources": sample_execution.grounding_sources,
+        }
 
-        payload = build_webhook_payload(sample_task, sample_execution)
-        delivery = await delivery_service.deliver(
-            sample_task,
-            sample_execution,
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, result_dict
+        )
+        result = await delivery_service.deliver(
+            sample_task.webhook_url,
             payload,
             secret="test_secret",
         )
 
-        # Verify database operations
-        mock_db.add.assert_called_once()
-        mock_db.commit.assert_called_once()
-
-        # Verify delivery record
-        assert delivery.task_id == sample_task.id
-        assert delivery.execution_id == sample_execution.id
-        assert delivery.webhook_url == sample_task.webhook_url
+        # Verify result tuple structure
+        assert isinstance(result, tuple)
+        assert len(result) == 4
+        success, http_status, error_msg, signature = result
+        assert success is True
+        assert http_status == 200
+        assert error_msg is None
+        assert isinstance(signature, str)

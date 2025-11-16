@@ -9,7 +9,7 @@ from fastapi import HTTPException
 from torale.api.routers.webhooks import (
     get_user_webhook_config,
     update_user_webhook_config,
-    test_webhook,
+    test_webhook as webhook_test_handler,
     list_webhook_deliveries,
     WebhookConfig,
     WebhookTestRequest,
@@ -42,12 +42,14 @@ class TestGetUserWebhookConfig:
         mock_db.fetch_one.return_value = {
             "webhook_url": "https://example.com/webhook",
             "webhook_enabled": True,
+            "webhook_secret": "test_secret_123",
         }
 
         result = await get_user_webhook_config(mock_user, mock_db)
 
-        assert result["webhook_url"] == "https://example.com/webhook"
+        assert result["url"] == "https://example.com/webhook"
         assert result["enabled"] is True
+        assert result["secret"] == "test_secret_123"
 
     @pytest.mark.asyncio
     async def test_get_disabled_config(self, mock_user, mock_db):
@@ -56,23 +58,30 @@ class TestGetUserWebhookConfig:
         mock_db.fetch_one.return_value = {
             "webhook_url": "https://example.com/webhook",
             "webhook_enabled": False,
+            "webhook_secret": "test_secret_123",
         }
 
         result = await get_user_webhook_config(mock_user, mock_db)
 
-        assert result["webhook_url"] == "https://example.com/webhook"
+        assert result["url"] == "https://example.com/webhook"
         assert result["enabled"] is False
+        assert result["secret"] == "test_secret_123"
 
     @pytest.mark.asyncio
     async def test_get_no_config(self, mock_user, mock_db):
         """Test getting webhook config when none exists."""
         # Mock: user has no webhook configured
-        mock_db.fetch_one.return_value = {"webhook_url": None, "webhook_enabled": False}
+        mock_db.fetch_one.return_value = {
+            "webhook_url": None,
+            "webhook_enabled": False,
+            "webhook_secret": None,
+        }
 
         result = await get_user_webhook_config(mock_user, mock_db)
 
-        assert result["webhook_url"] is None
+        assert result["url"] is None
         assert result["enabled"] is False
+        assert result["secret"] is None
 
 
 class TestUpdateUserWebhookConfig:
@@ -93,8 +102,9 @@ class TestUpdateUserWebhookConfig:
         ):
             result = await update_user_webhook_config(config, mock_user, mock_db)
 
-            assert result["success"] is True
-            assert result["webhook_secret"] == "generated_secret_123"
+            assert result["enabled"] is True
+            assert result["secret"] == "generated_secret_123"
+            assert result["url"] == "https://example.com/webhook"
 
             # Verify database update was called
             mock_db.execute.assert_called_once()
@@ -112,8 +122,9 @@ class TestUpdateUserWebhookConfig:
 
         result = await update_user_webhook_config(config, mock_user, mock_db)
 
-        assert result["success"] is True
-        assert result["webhook_secret"] == "existing_secret"
+        assert result["enabled"] is True
+        assert result["secret"] == "existing_secret"
+        assert result["url"] == "https://example.com/webhook"
 
         # Verify database update preserves existing secret
         call_args = mock_db.execute.call_args[0]
@@ -130,8 +141,9 @@ class TestUpdateUserWebhookConfig:
 
         result = await update_user_webhook_config(config, mock_user, mock_db)
 
-        assert result["success"] is True
-        assert result["webhook_secret"] is None  # Secret not returned when disabled
+        assert result["enabled"] is False
+        assert result["secret"] == "existing_secret"  # Secret is always returned now
+        assert result["url"] == "https://example.com/webhook"
 
     @pytest.mark.asyncio
     async def test_update_webhook_url(self, mock_user, mock_db):
@@ -167,7 +179,7 @@ class TestTestWebhook:
         with patch(
             "torale.api.routers.webhooks.WebhookDeliveryService", return_value=mock_service
         ):
-            result = await test_webhook(test_req, mock_user)
+            result = await webhook_test_handler(test_req, mock_user)
 
             assert result["success"] is True
             assert "200" in result["message"]
@@ -192,7 +204,7 @@ class TestTestWebhook:
             "torale.api.routers.webhooks.WebhookDeliveryService", return_value=mock_service
         ):
             with pytest.raises(HTTPException) as exc_info:
-                await test_webhook(test_req, mock_user)
+                await webhook_test_handler(test_req, mock_user)
 
             assert exc_info.value.status_code == 400
             assert "Connection timeout" in exc_info.value.detail
@@ -223,7 +235,7 @@ class TestTestWebhook:
         with patch(
             "torale.api.routers.webhooks.WebhookDeliveryService", return_value=mock_service
         ):
-            await test_webhook(test_req, mock_user)
+            await webhook_test_handler(test_req, mock_user)
 
 
 class TestListWebhookDeliveries:

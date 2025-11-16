@@ -330,16 +330,16 @@ class ApiClient {
     const response = await fetch(`${this.baseUrl}/api/v1/webhooks/config`, {
       method: 'PUT',
       headers: await this.getAuthHeaders(),
-      body: JSON.stringify({ url, enabled }),
+      body: JSON.stringify({ webhook_url: url, enabled }),
     })
     return this.handleResponse(response)
   }
 
-  async testWebhook(url?: string, secret?: string): Promise<{ message: string; delivery_id: string }> {
+  async testWebhook(url: string, secret: string): Promise<{ success: boolean; message: string }> {
     const response = await fetch(`${this.baseUrl}/api/v1/webhooks/test`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
-      body: JSON.stringify({ url, secret }),
+      body: JSON.stringify({ webhook_url: url, webhook_secret: secret }),
     })
     return this.handleResponse(response)
   }

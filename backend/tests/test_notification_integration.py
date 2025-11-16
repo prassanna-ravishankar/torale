@@ -71,67 +71,92 @@ class TestEmailVerificationFlow:
     @pytest.mark.asyncio
     async def test_complete_verification_flow(self, sample_user):
         """Test full email verification flow: send → verify → use."""
-        mock_db = AsyncMock()
+        mock_conn = AsyncMock()
 
         # Step 1: User requests verification code
-        service = EmailVerificationService(mock_db)
-
         # Mock: no recent verifications (rate limit check passes)
-        mock_db.execute = AsyncMock(return_value=MagicMock(scalar=lambda: 0))
+        mock_conn.fetchval = AsyncMock(return_value=0)
 
-        can_send = await service.can_send_verification(
-            sample_user.id, "custom@example.com"
+        can_send, error = await EmailVerificationService.can_send_verification(
+            mock_conn, str(sample_user.id)
         )
         assert can_send is True
+        assert error is None
 
         # Step 2: Verification code is created
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
-        mock_db.refresh = AsyncMock()
+        mock_conn.execute = AsyncMock()
 
-        code = "123456"
-        verification = await service.create_verification(
-            sample_user.id, "custom@example.com", code
-        )
-
-        assert verification.code == code
-        assert verification.attempts_left == 5
-        assert verification.is_verified is False
-
-        # Step 3: User verifies with correct code
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none = lambda: verification
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        success = await service.verify_code(
-            sample_user.id, "custom@example.com", code
+        success, code, error = await EmailVerificationService.create_verification(
+            mock_conn, str(sample_user.id), "custom@example.com"
         )
 
         assert success is True
-        assert verification.is_verified is True
+        assert len(code) == 6
+        assert code.isdigit()
+        assert error is None
+
+        # Step 3: User verifies with correct code
+        from datetime import datetime, timedelta
+
+        class MockTransaction:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                pass
+
+        mock_conn.transaction = MagicMock(return_value=MockTransaction())
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "id": uuid4(),
+                "user_id": sample_user.id,
+                "email": "custom@example.com",
+                "verification_code": code,
+                "expires_at": datetime.utcnow() + timedelta(minutes=10),
+                "attempts": 0,
+                "verified": False,
+            }
+        )
+
+        success, error = await EmailVerificationService.verify_code(
+            mock_conn, str(sample_user.id), "custom@example.com", code
+        )
+
+        assert success is True
+        assert error is None
 
         # Step 4: Email is now verified and can be used
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none = lambda: verification
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "clerk_email": sample_user.email,
+                "in_verified_array": True,  # Email is in verified list
+            }
+        )
 
-        is_verified = await service.is_email_verified(
-            sample_user, "custom@example.com"
+        is_verified = await EmailVerificationService.is_email_verified(
+            mock_conn, str(sample_user.id), "custom@example.com"
         )
         assert is_verified is True
 
     @pytest.mark.asyncio
     async def test_clerk_email_bypass(self, sample_user):
         """Test that Clerk email is automatically verified."""
-        mock_db = AsyncMock()
-        service = EmailVerificationService(mock_db)
+        mock_conn = AsyncMock()
+
+        # Mock: email matches clerk_email
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "clerk_email": sample_user.email,
+                "in_verified_array": False,
+            }
+        )
 
         # Clerk email should be verified without any verification record
-        is_verified = await service.is_email_verified(sample_user, sample_user.email)
+        is_verified = await EmailVerificationService.is_email_verified(
+            mock_conn, str(sample_user.id), sample_user.email
+        )
 
         assert is_verified is True
-        # No database query should have been made
-        mock_db.execute.assert_not_called()
 
 
 class TestWebhookNotificationFlow:
@@ -143,24 +168,41 @@ class TestWebhookNotificationFlow:
         self, mock_post, sample_task_with_notifications, sample_execution
     ):
         """Test full webhook flow: condition met → payload built → signed → delivered."""
-        mock_db = AsyncMock()
+        import json
 
         # Step 1: Build webhook payload from execution
+        task_dict = {
+            "id": sample_task_with_notifications.id,
+            "name": sample_task_with_notifications.name,
+            "search_query": sample_task_with_notifications.search_query,
+            "condition_description": sample_task_with_notifications.condition_description,
+        }
+        execution_dict = {
+            "condition_met": sample_execution.condition_met,
+            "change_summary": sample_execution.change_summary,
+            "completed_at": sample_execution.completed_at,
+        }
+        result_dict = {
+            "answer": "Test answer",
+            "grounding_sources": sample_execution.grounding_sources,
+        }
+
         payload = build_webhook_payload(
-            sample_task_with_notifications, sample_execution
+            str(sample_execution.id), task_dict, execution_dict, result_dict
         )
 
-        assert payload["event"] == "task.condition_met"
-        assert payload["task"]["id"] == str(sample_task_with_notifications.id)
-        assert payload["execution"]["condition_met"] is True
+        assert payload.event_type == "task.condition_met"
+        assert payload.data["task"]["id"] == str(sample_task_with_notifications.id)
+        assert payload.data["execution"]["condition_met"] is True
 
         # Step 2: Sign payload
         secret = "test_secret_key"
         timestamp = int(datetime.now(timezone.utc).timestamp())
-        signature = WebhookSignature.sign(payload, secret, timestamp)
+        payload_json = payload.model_dump_json()
+        signature = WebhookSignature.sign(payload_json, secret, timestamp)
 
         # Step 3: Verify signature (simulating recipient verification)
-        is_valid = WebhookSignature.verify(payload, signature, secret)
+        is_valid = WebhookSignature.verify(payload_json, signature, secret)
         assert is_valid is True
 
         # Step 4: Deliver webhook
@@ -169,21 +211,16 @@ class TestWebhookNotificationFlow:
         mock_response.text = "OK"
         mock_post.return_value = mock_response
 
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
-        mock_db.refresh = AsyncMock()
-
-        service = WebhookDeliveryService(mock_db)
-        delivery = await service.deliver(
-            sample_task_with_notifications,
-            sample_execution,
+        service = WebhookDeliveryService()
+        success, http_status, error_msg, sig = await service.deliver(
+            sample_task_with_notifications.webhook_url,
             payload,
             secret=secret,
         )
 
-        assert delivery.status == "success"
-        assert delivery.http_status_code == 200
-        assert delivery.webhook_url == sample_task_with_notifications.webhook_url
+        assert success is True
+        assert http_status == 200
+        assert error_msg is None
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
@@ -191,35 +228,43 @@ class TestWebhookNotificationFlow:
         self, mock_post, sample_task_with_notifications, sample_execution
     ):
         """Test webhook retry logic when delivery fails."""
-        mock_db = AsyncMock()
-
         # Mock: Initial delivery fails with 500
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_response.text = "Internal Server Error"
         mock_post.return_value = mock_response
 
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
-        mock_db.refresh = AsyncMock()
+        task_dict = {
+            "id": sample_task_with_notifications.id,
+            "name": sample_task_with_notifications.name,
+            "search_query": sample_task_with_notifications.search_query,
+            "condition_description": sample_task_with_notifications.condition_description,
+        }
+        execution_dict = {
+            "condition_met": sample_execution.condition_met,
+            "change_summary": sample_execution.change_summary,
+            "completed_at": sample_execution.completed_at,
+        }
+        result_dict = {
+            "answer": "Test answer",
+            "grounding_sources": sample_execution.grounding_sources,
+        }
 
         payload = build_webhook_payload(
-            sample_task_with_notifications, sample_execution
+            str(sample_execution.id), task_dict, execution_dict, result_dict
         )
 
-        service = WebhookDeliveryService(mock_db)
-        delivery = await service.deliver(
-            sample_task_with_notifications,
-            sample_execution,
+        service = WebhookDeliveryService()
+        success, http_status, error_msg, sig = await service.deliver(
+            sample_task_with_notifications.webhook_url,
             payload,
             secret="test_secret",
         )
 
-        # Should be marked for retry
-        assert delivery.status == "retrying"
-        assert delivery.http_status_code == 500
-        assert delivery.next_retry_at is not None
-        assert delivery.retry_count == 0
+        # Should fail with 500
+        assert success is False
+        assert http_status == 500
+        assert "HTTP 500" in error_msg
 
 
 class TestNotificationSpamPrevention:
@@ -228,60 +273,47 @@ class TestNotificationSpamPrevention:
     @pytest.mark.asyncio
     async def test_email_rate_limiting(self, sample_user):
         """Test that email verification is rate limited."""
-        mock_db = AsyncMock()
-        service = EmailVerificationService(mock_db)
+        mock_conn = AsyncMock()
 
         # Mock: User has sent 3 verifications in the last hour (at limit)
-        mock_db.execute = AsyncMock(return_value=MagicMock(scalar=lambda: 3))
+        mock_conn.fetchval = AsyncMock(return_value=3)
 
-        can_send = await service.can_send_verification(
-            sample_user.id, "test@example.com"
+        can_send, error = await EmailVerificationService.can_send_verification(
+            mock_conn, str(sample_user.id)
         )
 
         assert can_send is False
+        assert "Too many verification requests" in error
 
     @pytest.mark.asyncio
     async def test_notification_daily_limit(self, sample_user):
         """Test daily notification limit (100/day)."""
-        mock_db = AsyncMock()
-        service = EmailVerificationService(mock_db)
+        mock_conn = AsyncMock()
 
         # Mock: User has sent 100 notifications today (at limit)
-        mock_result = MagicMock()
-        mock_result.scalar = lambda: 100
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        mock_conn.fetchval = AsyncMock(return_value=100)
 
-        can_send = await service.check_spam_limits(
-            sample_user.id, "test@example.com"
+        allowed, error = await EmailVerificationService.check_spam_limits(
+            mock_conn, str(sample_user.id), "test@example.com"
         )
 
-        assert can_send is False
+        assert allowed is False
+        assert "Daily notification limit" in error
 
     @pytest.mark.asyncio
     async def test_notification_hourly_limit(self, sample_user):
         """Test hourly notification limit (10/hour)."""
-        mock_db = AsyncMock()
-        service = EmailVerificationService(mock_db)
+        mock_conn = AsyncMock()
 
-        def side_effect(*args, **kwargs):
-            mock_result = MagicMock()
-            if not hasattr(side_effect, "call_count"):
-                side_effect.call_count = 0
-            side_effect.call_count += 1
+        # Mock fetchval: 50 daily (OK), 10 hourly (at limit)
+        mock_conn.fetchval = AsyncMock(side_effect=[50, 10])
 
-            if side_effect.call_count == 1:
-                mock_result.scalar = lambda: 50  # Under daily limit
-            else:
-                mock_result.scalar = lambda: 10  # At hourly limit
-            return mock_result
-
-        mock_db.execute = AsyncMock(side_effect=side_effect)
-
-        can_send = await service.check_spam_limits(
-            sample_user.id, "test@example.com"
+        allowed, error = await EmailVerificationService.check_spam_limits(
+            mock_conn, str(sample_user.id), "test@example.com"
         )
 
-        assert can_send is False
+        assert allowed is False
+        assert "Too many notifications" in error
 
 
 class TestMultiChannelNotification:
@@ -293,8 +325,6 @@ class TestMultiChannelNotification:
         self, mock_post, sample_user, sample_task_with_notifications, sample_execution
     ):
         """Test that task can notify via both email and webhook."""
-        mock_db = AsyncMock()
-
         # Verify task has both channels configured
         assert "email" in sample_task_with_notifications.notification_channels
         assert "webhook" in sample_task_with_notifications.notification_channels
@@ -306,36 +336,51 @@ class TestMultiChannelNotification:
         mock_response.status_code = 200
         mock_post.return_value = mock_response
 
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
-        mock_db.refresh = AsyncMock()
+        task_dict = {
+            "id": sample_task_with_notifications.id,
+            "name": sample_task_with_notifications.name,
+            "search_query": sample_task_with_notifications.search_query,
+            "condition_description": sample_task_with_notifications.condition_description,
+        }
+        execution_dict = {
+            "condition_met": sample_execution.condition_met,
+            "change_summary": sample_execution.change_summary,
+            "completed_at": sample_execution.completed_at,
+        }
+        result_dict = {
+            "answer": "Test answer",
+            "grounding_sources": sample_execution.grounding_sources,
+        }
 
         payload = build_webhook_payload(
-            sample_task_with_notifications, sample_execution
+            str(sample_execution.id), task_dict, execution_dict, result_dict
         )
 
-        webhook_service = WebhookDeliveryService(mock_db)
-        webhook_delivery = await webhook_service.deliver(
-            sample_task_with_notifications,
-            sample_execution,
+        webhook_service = WebhookDeliveryService()
+        success, http_status, error_msg, sig = await webhook_service.deliver(
+            sample_task_with_notifications.webhook_url,
             payload,
             secret="test_secret",
         )
 
-        assert webhook_delivery.status == "success"
+        assert success is True
+        assert http_status == 200
 
         # Test email verification for custom email
-        email_service = EmailVerificationService(mock_db)
+        mock_conn = AsyncMock()
 
-        # Mock: Email is verified
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none = lambda: MagicMock(
-            is_verified=True, email="custom@example.com"
+        # Mock: Email is verified (in verified array)
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "clerk_email": sample_user.email,
+                "in_verified_array": True,
+            }
         )
-        mock_db.execute = AsyncMock(return_value=mock_result)
 
-        is_verified = await email_service.is_email_verified(
-            sample_user, sample_task_with_notifications.notification_email
+        is_verified = await EmailVerificationService.is_email_verified(
+            mock_conn,
+            str(sample_user.id),
+            sample_task_with_notifications.notification_email,
         )
 
         assert is_verified is True

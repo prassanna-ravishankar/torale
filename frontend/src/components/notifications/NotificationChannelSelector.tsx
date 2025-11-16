@@ -29,7 +29,7 @@ export const NotificationChannelSelector: React.FC<NotificationChannelSelectorPr
   value,
   onChange,
 }) => {
-  const { user } = useAuth();
+  const { user, isLoaded, isAuthenticated } = useAuth();
   const clerkEmail = user?.email;
 
   const [emailEnabled, setEmailEnabled] = useState(true); // Default to email enabled
@@ -38,13 +38,18 @@ export const NotificationChannelSelector: React.FC<NotificationChannelSelectorPr
   const [selectedEmail, setSelectedEmail] = useState<string>('default');
   const [customWebhookUrl, setCustomWebhookUrl] = useState('');
   const [useDefaultWebhook, setUseDefaultWebhook] = useState(true);
+  const [defaultWebhookUrl, setDefaultWebhookUrl] = useState<string | null>(null);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [isLoadingEmails, setIsLoadingEmails] = useState(false);
+  const [isLoadingWebhook, setIsLoadingWebhook] = useState(false);
 
-  // Load verified emails
+  // Load verified emails and webhook config only after authentication is ready
   useEffect(() => {
-    loadVerifiedEmails();
-  }, []);
+    if (isLoaded && isAuthenticated) {
+      loadVerifiedEmails();
+      loadDefaultWebhook();
+    }
+  }, [isLoaded, isAuthenticated]);
 
   // Update parent when selections change
   useEffect(() => {
@@ -58,14 +63,17 @@ export const NotificationChannelSelector: React.FC<NotificationChannelSelectorPr
     }
 
     if (webhookEnabled) {
-      notifications.push({
-        type: 'webhook',
-        url: useDefaultWebhook ? undefined : customWebhookUrl || undefined,
-      });
+      const webhookUrl = useDefaultWebhook ? defaultWebhookUrl : customWebhookUrl;
+      if (webhookUrl) {
+        notifications.push({
+          type: 'webhook',
+          url: webhookUrl,
+        });
+      }
     }
 
     onChange(notifications);
-  }, [emailEnabled, webhookEnabled, selectedEmail, customWebhookUrl, useDefaultWebhook, clerkEmail]);
+  }, [emailEnabled, webhookEnabled, selectedEmail, customWebhookUrl, useDefaultWebhook, defaultWebhookUrl, clerkEmail]);
 
   const loadVerifiedEmails = async () => {
     setIsLoadingEmails(true);
@@ -76,6 +84,20 @@ export const NotificationChannelSelector: React.FC<NotificationChannelSelectorPr
       console.error('Failed to load verified emails:', err);
     } finally {
       setIsLoadingEmails(false);
+    }
+  };
+
+  const loadDefaultWebhook = async () => {
+    setIsLoadingWebhook(true);
+    try {
+      const response = await api.getWebhookConfig();
+      if (response.enabled && response.url) {
+        setDefaultWebhookUrl(response.url);
+      }
+    } catch (err: any) {
+      console.error('Failed to load webhook config:', err);
+    } finally {
+      setIsLoadingWebhook(false);
     }
   };
 
@@ -115,7 +137,7 @@ export const NotificationChannelSelector: React.FC<NotificationChannelSelectorPr
               checked={webhookEnabled}
               onCheckedChange={(checked) => setWebhookEnabled(checked as boolean)}
             />
-            <div className="flex-1 space-y-1">
+            <div className="flex-1 space-y-2">
               <div className="flex items-center gap-2">
                 <Webhook className="h-4 w-4" />
                 <Label htmlFor="webhook-channel" className="font-medium cursor-pointer">
@@ -125,6 +147,18 @@ export const NotificationChannelSelector: React.FC<NotificationChannelSelectorPr
               <p className="text-sm text-muted-foreground">
                 Send notifications to your configured webhook endpoint
               </p>
+              {webhookEnabled && useDefaultWebhook && !defaultWebhookUrl && (
+                <Alert variant="destructive" className="py-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    No default webhook configured. Please{' '}
+                    <Link to="/settings/notifications" className="underline font-medium">
+                      configure a webhook
+                    </Link>{' '}
+                    or use a custom URL below.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </div>
         </Card>

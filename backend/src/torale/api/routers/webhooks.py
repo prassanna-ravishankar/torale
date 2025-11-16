@@ -37,13 +37,17 @@ class WebhookTestRequest(BaseModel):
 
 
 # User-level webhook endpoints
-@router.get("/config", response_model=WebhookConfig)
+@router.get("/config")
 async def get_user_webhook_config(user: CurrentUser, db: Database = Depends(get_db)):
     """Get user's default webhook configuration."""
     row = await db.fetch_one(
-        "SELECT webhook_url, webhook_enabled FROM users WHERE id = $1", user.id
+        "SELECT webhook_url, webhook_enabled, webhook_secret FROM users WHERE id = $1", user.id
     )
-    return {"webhook_url": row["webhook_url"], "enabled": row["webhook_enabled"]}
+    return {
+        "url": str(row["webhook_url"]) if row["webhook_url"] else None,
+        "secret": row["webhook_secret"],
+        "enabled": row["webhook_enabled"],
+    }
 
 
 @router.put("/config")
@@ -53,14 +57,14 @@ async def update_user_webhook_config(
     """
     Update user's default webhook configuration.
 
-    Generates new secret if webhook is being enabled for the first time.
+    Generates new secret if webhook URL is provided and no secret exists.
     """
     # Get current config
     current = await db.fetch_one("SELECT webhook_secret FROM users WHERE id = $1", user.id)
 
-    # Generate secret if enabling webhook for first time
+    # Generate secret if webhook URL provided and no secret exists
     secret = current["webhook_secret"]
-    if config.enabled and not secret:
+    if config.webhook_url and not secret:
         secret = WebhookSignature.generate_secret()
 
     # Update config
@@ -76,7 +80,13 @@ async def update_user_webhook_config(
         user.id,
     )
 
-    return {"success": True, "webhook_secret": secret if config.enabled else None}
+    # Return complete config (frontend expects url, secret, enabled)
+    # Always return secret if it exists (user needs it to configure their webhook endpoint)
+    return {
+        "url": str(config.webhook_url) if config.webhook_url else None,
+        "secret": secret,
+        "enabled": config.enabled,
+    }
 
 
 @router.post("/test")

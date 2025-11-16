@@ -122,7 +122,7 @@ export const EmailManagementSection: React.FC = () => {
               )}
 
               {/* Custom Verified Emails */}
-              {verifiedEmails.map((email) => (
+              {verifiedEmails.filter(email => email !== clerkEmail).map((email) => (
                 <div key={email} className="flex items-center justify-between rounded-lg border p-4">
                   <div className="flex items-center gap-3">
                     <div className="rounded-full bg-secondary p-2">
@@ -155,7 +155,7 @@ export const EmailManagementSection: React.FC = () => {
               ))}
 
               {/* No Custom Emails Message */}
-              {verifiedEmails.length === 0 && (
+              {verifiedEmails.filter(email => email !== clerkEmail).length === 0 && (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>

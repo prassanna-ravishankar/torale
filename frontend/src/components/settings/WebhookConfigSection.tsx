@@ -81,9 +81,14 @@ export const WebhookConfigSection: React.FC = () => {
   };
 
   const handleTest = async () => {
+    if (!config.url || !config.secret) {
+      toast.error('Webhook URL and secret are required');
+      return;
+    }
+
     setIsTesting(true);
     try {
-      const response = await api.testWebhook();
+      const response = await api.testWebhook(config.url, config.secret);
       toast.success('Test webhook sent successfully!');
     } catch (err: any) {
       toast.error(err.message || 'Failed to send test webhook');

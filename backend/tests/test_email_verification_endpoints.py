@@ -29,9 +29,24 @@ def mock_user():
 @pytest.fixture
 def mock_db():
     """Create a mock database connection."""
-    db = AsyncMock()
+    from unittest.mock import MagicMock
+
+    db = MagicMock()
     conn = AsyncMock()
-    db.get_connection.return_value = conn
+
+    # Mock the acquire() context manager
+    class MockAcquire:
+        async def __aenter__(self):
+            return conn
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+    db.acquire = MagicMock(return_value=MockAcquire())
+    db.fetch_one = AsyncMock()
+    db.fetch_val = AsyncMock()
+    db.execute = AsyncMock()
+    db.get_connection = AsyncMock(return_value=conn)  # Keep for backward compatibility
     return db
 
 
@@ -42,7 +57,9 @@ class TestSendVerificationEmail:
     async def test_send_to_new_email(self, mock_user, mock_db):
         """Test sending verification code to new email."""
         request = VerificationRequest(email="new@example.com")
-        conn = await mock_db.get_connection()
+
+        # Get the connection that will be returned by the context manager
+        conn = await mock_db.acquire().__aenter__()
 
         # Mock: email not already verified
         with patch(
@@ -106,7 +123,7 @@ class TestSendVerificationEmail:
     async def test_user_name_fallback(self, mock_user, mock_db):
         """Test fallback to email prefix when user has no first name."""
         request = VerificationRequest(email="new@example.com")
-        conn = await mock_db.get_connection()
+        conn = await mock_db.acquire().__aenter__()
 
         with patch(
             "torale.api.routers.email_verification.EmailVerificationService.is_email_verified",
@@ -202,10 +219,8 @@ class TestListVerifiedEmails:
     @pytest.mark.asyncio
     async def test_list_only_clerk_email(self, mock_user, mock_db):
         """Test listing when only Clerk email is verified."""
-        conn = await mock_db.get_connection()
-
         # Mock: only Clerk email, no custom verified emails
-        conn.fetchrow.return_value = {
+        mock_db.fetch_one.return_value = {
             "email": "user@example.com",
             "verified_notification_emails": None,
         }
@@ -219,10 +234,8 @@ class TestListVerifiedEmails:
     @pytest.mark.asyncio
     async def test_list_with_custom_emails(self, mock_user, mock_db):
         """Test listing with both Clerk and custom verified emails."""
-        conn = await mock_db.get_connection()
-
         # Mock: Clerk email + custom verified emails
-        conn.fetchrow.return_value = {
+        mock_db.fetch_one.return_value = {
             "email": "user@example.com",
             "verified_notification_emails": ["custom1@example.com", "custom2@example.com"],
         }
@@ -238,10 +251,8 @@ class TestListVerifiedEmails:
     @pytest.mark.asyncio
     async def test_deduplication(self, mock_user, mock_db):
         """Test that duplicate emails are removed."""
-        conn = await mock_db.get_connection()
-
         # Mock: Clerk email appears in both places (shouldn't happen, but handle gracefully)
-        conn.fetchrow.return_value = {
+        mock_db.fetch_one.return_value = {
             "email": "user@example.com",
             "verified_notification_emails": ["user@example.com", "custom@example.com"],
         }
@@ -259,23 +270,19 @@ class TestRemoveVerifiedEmail:
     @pytest.mark.asyncio
     async def test_remove_custom_email(self, mock_user, mock_db):
         """Test removing a custom verified email."""
-        conn = await mock_db.get_connection()
-
         # Mock: Clerk email lookup
-        conn.fetchval.return_value = "user@example.com"
+        mock_db.fetch_val.return_value = "user@example.com"
 
         result = await remove_verified_email("custom@example.com", mock_user, mock_db)
 
         assert result["message"] == "Email removed from verified list"
-        conn.execute.assert_called_once()
+        mock_db.execute.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_cannot_remove_clerk_email(self, mock_user, mock_db):
         """Test that Clerk email cannot be removed."""
-        conn = await mock_db.get_connection()
-
         # Mock: Clerk email lookup
-        conn.fetchval.return_value = "user@example.com"
+        mock_db.fetch_val.return_value = "user@example.com"
 
         with pytest.raises(HTTPException) as exc_info:
             await remove_verified_email("user@example.com", mock_user, mock_db)
@@ -286,13 +293,11 @@ class TestRemoveVerifiedEmail:
     @pytest.mark.asyncio
     async def test_remove_nonexistent_email(self, mock_user, mock_db):
         """Test removing an email that wasn't verified (should succeed silently)."""
-        conn = await mock_db.get_connection()
-
         # Mock: Clerk email lookup
-        conn.fetchval.return_value = "user@example.com"
+        mock_db.fetch_val.return_value = "user@example.com"
 
         # Should still succeed (array_remove is idempotent)
         result = await remove_verified_email("notverified@example.com", mock_user, mock_db)
 
         assert result["message"] == "Email removed from verified list"
-        conn.execute.assert_called_once()
+        mock_db.execute.assert_called_once()
