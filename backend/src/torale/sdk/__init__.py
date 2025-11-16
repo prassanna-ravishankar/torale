@@ -6,6 +6,7 @@ Beautiful, Pythonic API for creating and managing monitoring tasks.
 
 from __future__ import annotations
 
+from torale.sdk.async_client import ToraleAsyncClient
 from torale.sdk.builders import MonitorBuilder, monitor
 from torale.sdk.client import ToraleClient
 from torale.sdk.exceptions import (
@@ -17,6 +18,7 @@ from torale.sdk.exceptions import (
     ValidationError,
 )
 from torale.sdk.resources import TasksResource
+from torale.sdk.resources.async_tasks import AsyncTasksResource
 
 
 class Torale(ToraleClient):
@@ -93,11 +95,60 @@ class Torale(ToraleClient):
         return MonitorBuilder(self, search_query)
 
 
+class ToraleAsync(ToraleAsyncClient):
+    """
+    Async Torale SDK client for non-blocking I/O.
+
+    Provides access to all Torale API resources with async/await support.
+    Use this client in async contexts for better performance with concurrent operations.
+
+    Example:
+        >>> import asyncio
+        >>> from torale import ToraleAsync
+        >>>
+        >>> async def main():
+        ...     async with ToraleAsync(api_key="sk_...") as client:
+        ...         # Create tasks concurrently
+        ...         task1 = client.tasks.create(
+        ...             name="Monitor 1",
+        ...             search_query="Query 1",
+        ...             condition_description="Condition 1"
+        ...         )
+        ...         task2 = client.tasks.create(
+        ...             name="Monitor 2",
+        ...             search_query="Query 2",
+        ...             condition_description="Condition 2"
+        ...         )
+        ...         # Wait for both to complete
+        ...         results = await asyncio.gather(task1, task2)
+        ...
+        >>> asyncio.run(main())
+    """
+
+    def __init__(
+        self, api_key: str | None = None, api_url: str | None = None, timeout: float = 60.0
+    ):
+        """
+        Initialize async Torale SDK client.
+
+        Args:
+            api_key: API key for authentication
+            api_url: Base URL for API (defaults to https://api.torale.ai)
+            timeout: Request timeout in seconds
+        """
+        super().__init__(api_key=api_key, api_url=api_url, timeout=timeout)
+
+        # Initialize async resources
+        self.tasks = AsyncTasksResource(self)
+
+
 __all__ = [
     "Torale",
+    "ToraleAsync",
     "monitor",
     "MonitorBuilder",
     "TasksResource",
+    "AsyncTasksResource",
     "ToraleError",
     "AuthenticationError",
     "NotFoundError",

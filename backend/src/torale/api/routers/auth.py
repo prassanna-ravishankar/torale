@@ -11,7 +11,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from torale.api.clerk_auth import ClerkUser, get_current_user
+from torale.api.clerk_auth import ClerkUser, get_current_user, require_developer
 from torale.api.users import User, UserRead, get_async_session
 
 router = APIRouter()
@@ -182,12 +182,13 @@ class CreateAPIKeyResponse(BaseModel):
 @router.post("/api-keys", response_model=CreateAPIKeyResponse)
 async def create_api_key(
     request: CreateAPIKeyRequest,
-    clerk_user: ClerkUser = Depends(get_current_user),
+    clerk_user: ClerkUser = Depends(require_developer),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
     Generate a new API key for CLI authentication.
 
+    Requires developer role in Clerk publicMetadata.
     Returns the full key once - store it securely!
     """
     # Get user from database
@@ -200,6 +201,22 @@ async def create_api_key(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found. Please sync user first.",
+        )
+
+    # Check for existing active API key
+    existing_key_result = await session.execute(
+        text("""
+        SELECT id FROM api_keys
+        WHERE user_id = :user_id AND is_active = true
+        """),
+        {"user_id": user.id},
+    )
+    existing_key = existing_key_result.first()
+
+    if existing_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You already have an active API key. Please revoke it before creating a new one.",
         )
 
     # Generate random API key

@@ -1,4 +1,4 @@
-"""Torale SDK client."""
+"""Async Torale SDK client."""
 
 from __future__ import annotations
 
@@ -13,11 +13,12 @@ import httpx
 from torale.sdk.exceptions import APIError, AuthenticationError, NotFoundError, ValidationError
 
 
-class ToraleClient:
+class ToraleAsyncClient:
     """
-    Base client for interacting with the Torale API.
+    Async client for interacting with the Torale API.
 
     Handles authentication, request/response processing, and error handling.
+    Supports async/await patterns for non-blocking I/O.
     """
 
     def __init__(
@@ -27,7 +28,7 @@ class ToraleClient:
         timeout: float = 60.0,
     ):
         """
-        Initialize Torale client.
+        Initialize async Torale client.
 
         Args:
             api_key: API key for authentication. If not provided, will try to load from:
@@ -65,7 +66,7 @@ class ToraleClient:
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
-        self.http_client = httpx.Client(
+        self.http_client = httpx.AsyncClient(
             base_url=self.api_url, headers=headers, timeout=timeout, follow_redirects=True
         )
 
@@ -84,9 +85,6 @@ class ToraleClient:
                     config = json.load(f)
                     return config.get("api_key")
             except (OSError, JSONDecodeError):
-                # OSError covers IOError, PermissionError, etc.
-                # JSONDecodeError for malformed JSON
-                # Config file is optional, so ignore if it's missing, malformed, or unreadable
                 pass
 
         return None
@@ -107,9 +105,6 @@ class ToraleClient:
                     if "api_url" in config:
                         return config["api_url"]
             except (OSError, JSONDecodeError):
-                # OSError covers IOError, PermissionError, etc.
-                # JSONDecodeError for malformed JSON
-                # Config file is optional, so ignore if it's missing, malformed, or unreadable
                 pass
 
         # Default based on mode
@@ -122,59 +117,63 @@ class ToraleClient:
         try:
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
-            # Try to parse error response
-            error_data = None  # Initialize to ensure it's always defined
+            error_data = None
             try:
                 error_data = response.json()
-                error_message = error_data.get("detail", str(e))
-            except Exception:
-                error_message = str(e)
+            except json.JSONDecodeError:
+                pass
 
-            # Raise appropriate exception based on status code
-            if response.status_code == 401:
-                raise AuthenticationError(error_message) from e
-            elif response.status_code == 404:
-                raise NotFoundError(error_message) from e
-            elif response.status_code == 400 or response.status_code == 422:
-                raise ValidationError(error_message) from e
+            status_code = response.status_code
+
+            if status_code == 401:
+                detail = error_data.get("detail") if error_data else "Unauthorized"
+                raise AuthenticationError(detail) from e
+            elif status_code == 404:
+                detail = error_data.get("detail") if error_data else "Not found"
+                raise NotFoundError(detail) from e
+            elif status_code in (400, 422):
+                detail = error_data.get("detail") if error_data else "Validation error"
+                raise ValidationError(detail) from e
             else:
-                raise APIError(
-                    error_message, status_code=response.status_code, response=error_data
-                ) from e
+                detail = error_data.get("detail") if error_data else str(e)
+                raise APIError(detail, status_code=status_code, response=error_data) from e
 
-        # Return JSON response
-        return response.json()
+        try:
+            return response.json()
+        except json.JSONDecodeError as e:
+            raise APIError("Failed to decode JSON response") from e
 
-    def get(self, path: str, **kwargs) -> Any:
+    async def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
         """Make GET request."""
-        response = self.http_client.get(path, **kwargs)
+        response = await self.http_client.get(path, params=params)
         return self._handle_response(response)
 
-    def post(self, path: str, **kwargs) -> Any:
+    async def post(self, path: str, json: dict[str, Any] | None = None) -> Any:
         """Make POST request."""
-        response = self.http_client.post(path, **kwargs)
+        response = await self.http_client.post(path, json=json)
         return self._handle_response(response)
 
-    def put(self, path: str, **kwargs) -> Any:
+    async def put(self, path: str, json: dict[str, Any] | None = None) -> Any:
         """Make PUT request."""
-        response = self.http_client.put(path, **kwargs)
+        response = await self.http_client.put(path, json=json)
         return self._handle_response(response)
 
-    def delete(self, path: str, **kwargs) -> Any:
+    async def delete(self, path: str) -> Any:
         """Make DELETE request."""
-        response = self.http_client.delete(path, **kwargs)
+        response = await self.http_client.delete(path)
+        # DELETE may return 204 No Content
         if response.status_code == 204:
             return None
         return self._handle_response(response)
 
-    def close(self):
+    async def close(self):
         """Close HTTP client."""
-        self.http_client.close()
+        await self.http_client.aclose()
 
-    def __enter__(self):
-        """Context manager entry."""
+    async def __aenter__(self):
+        """Async context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit."""
-        self.close()
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        await self.close()

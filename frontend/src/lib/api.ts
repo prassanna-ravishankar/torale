@@ -8,6 +8,8 @@ import type {
   WebhookConfig,
   WebhookDelivery,
   NotificationSend,
+  ApiKey,
+  CreateApiKeyResponse,
 } from '@/types'
 
 interface ApiError {
@@ -384,6 +386,31 @@ class ApiClient {
   // Get user with notification settings
   async getUserWithNotifications(): Promise<UserWithNotifications> {
     const response = await fetch(`${this.baseUrl}/auth/me`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  // API Key Management endpoints
+  async createApiKey(name: string): Promise<CreateApiKeyResponse> {
+    const response = await fetch(`${this.baseUrl}/auth/api-keys`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ name }),
+    })
+    return this.handleResponse(response)
+  }
+
+  async getApiKeys(): Promise<ApiKey[]> {
+    const response = await fetch(`${this.baseUrl}/auth/api-keys`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async revokeApiKey(keyId: string): Promise<{ status: string }> {
+    const response = await fetch(`${this.baseUrl}/auth/api-keys/${keyId}`, {
+      method: 'DELETE',
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)

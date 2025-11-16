@@ -179,3 +179,24 @@ export interface UserWithNotifications extends User {
   webhook_secret: string | null;
   webhook_enabled: boolean;
 }
+
+/**
+ * API Key for CLI authentication
+ */
+export interface ApiKey {
+  id: string;
+  user_id: string;
+  key_prefix: string;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+  is_active: boolean;
+}
+
+/**
+ * API Key creation response (includes full key once)
+ */
+export interface CreateApiKeyResponse {
+  key: string; // Full key shown only once
+  key_info: ApiKey;
+}

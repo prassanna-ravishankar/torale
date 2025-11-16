@@ -98,6 +98,65 @@ def create_task(
             raise typer.Exit(1) from e
 
 
+@task_app.command("preview")
+def preview_search(
+    query: str = typer.Option(..., "--query", "-q", help="Search query to test"),
+    condition: str | None = typer.Option(None, "--condition", "-c", help="Condition to evaluate (optional, will be inferred if not provided)"),
+    model: str = typer.Option("gemini-2.0-flash-exp", "--model", "-m", help="LLM model to use"),
+):
+    """
+    Preview a search query without creating a task.
+
+    Test your search query and see results before committing to creating
+    a monitoring task. This is useful for validating your query and condition.
+
+    Example:
+        torale task preview \\
+            --query "When is iPhone 16 being released?" \\
+            --condition "A specific release date is announced"
+    """
+    with get_client() as client:
+        try:
+            result = client.tasks.preview(
+                search_query=query,
+                condition_description=condition,
+                model=model,
+            )
+
+            print("[green]✓ Search preview complete![/green]")
+            print()
+
+            # Display answer
+            print("[bold cyan]Answer:[/bold cyan]")
+            print(result["answer"])
+            print()
+
+            # Display condition status
+            if result["condition_met"]:
+                print("[bold green]✓ Condition MET[/bold green]")
+            else:
+                print("[bold yellow]✗ Condition NOT met[/bold yellow]")
+            print()
+
+            # Display inferred condition if applicable
+            if "inferred_condition" in result:
+                print("[bold cyan]Inferred Condition:[/bold cyan]")
+                print(result["inferred_condition"])
+                print()
+
+            # Display grounding sources
+            if result.get("grounding_sources"):
+                print("[bold cyan]Sources:[/bold cyan]")
+                for idx, source in enumerate(result["grounding_sources"], 1):
+                    print(f"{idx}. {source.get('title', 'Untitled')}")
+                    print(f"   {source.get('url', '')}")
+                print()
+
+        except ToraleError as e:
+            print(f"[red]✗ Failed to preview search: {str(e)}[/red]")
+            raise typer.Exit(1) from e
+
+
 @task_app.command("list")
 def list_tasks(
     active_only: bool = typer.Option(False, "--active", help="Show only active tasks"),
