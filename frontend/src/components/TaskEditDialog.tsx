@@ -178,7 +178,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
         condition_description: finalCondition,
         schedule,
         notify_behavior: notifyBehavior,
-        notifications,
       });
 
       toast.success('Task updated successfully');
