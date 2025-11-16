@@ -366,15 +366,15 @@ async def require_developer(
     credentials: HTTPAuthorizationCredentials = Security(security),
 ) -> ClerkUser:
     """
-    Require developer role for accessing developer endpoints.
+    Require developer or admin role for accessing developer endpoints.
 
     This dependency:
     1. Authenticates the user (via Clerk JWT or API key)
     2. Fetches the user's public metadata from Clerk
-    3. Verifies that publicMetadata.role === "developer"
+    3. Verifies that publicMetadata.role === "developer" or "admin"
 
     Raises:
-        HTTPException: 403 if user is not a developer
+        HTTPException: 403 if user is not a developer or admin
 
     Example:
         @router.post("/auth/api-keys")
@@ -394,9 +394,10 @@ async def require_developer(
     try:
         clerk_user = clerk_client.users.get(user_id=user.clerk_user_id)
 
-        # Check if user has developer role in publicMetadata
+        # Check if user has developer or admin role in publicMetadata
         public_metadata = clerk_user.public_metadata or {}
-        if public_metadata.get("role") != "developer":
+        role = public_metadata.get("role")
+        if role not in ["developer", "admin"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Developer access required. Please contact support to enable API access.",

@@ -627,7 +627,7 @@ async def update_user_role(
 
     # Check if user exists and get their clerk_user_id
     check_result = await session.execute(
-        text("SELECT clerk_user_id FROM users WHERE id = :user_id"),
+        text("SELECT clerk_user_id, email FROM users WHERE id = :user_id"),
         {"user_id": user_id},
     )
     user_row = check_result.first()
@@ -638,6 +638,7 @@ async def update_user_role(
         )
 
     target_clerk_user_id = user_row[0]
+    target_email = user_row[1]
 
     # Prevent admins from changing their own role
     if admin.clerk_user_id == target_clerk_user_id:
@@ -645,6 +646,24 @@ async def update_user_role(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You cannot change your own role",
         )
+
+    # Skip Clerk update for test users (from NoAuth mode)
+    if target_clerk_user_id == "test_user_noauth":
+        return {
+            "status": "updated",
+            "user_id": str(user_id),
+            "role": role,
+            "note": "Test user - role not persisted to Clerk",
+        }
+
+    # In NoAuth mode, skip Clerk update (role is not persisted)
+    if settings.torale_noauth:
+        return {
+            "status": "updated",
+            "user_id": str(user_id),
+            "role": role,
+            "note": "NoAuth mode - role not persisted to Clerk",
+        }
 
     # Update role in Clerk publicMetadata
     if not clerk_client:
@@ -679,7 +698,6 @@ async def update_user_role(
         }
 
     except Exception as e:
-        print(f"Failed to update user role in Clerk: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update user role: {str(e)}",
