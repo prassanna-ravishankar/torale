@@ -31,9 +31,7 @@ def check_api_available() -> bool:
         return True
 
 
-pytestmark = pytest.mark.skipif(
-    not check_api_available(), reason="API server not available"
-)
+pytestmark = pytest.mark.skipif(not check_api_available(), reason="API server not available")
 
 
 @pytest.fixture
@@ -210,10 +208,7 @@ class TestCLIAuthentication:
 
         assert result.returncode == 0
         # Should show some authentication status
-        assert (
-            "authenticated" in result.stdout.lower()
-            or "noauth" in result.stdout.lower()
-        )
+        assert "authenticated" in result.stdout.lower() or "noauth" in result.stdout.lower()
 
 
 class TestCLITaskManagement:
@@ -268,9 +263,7 @@ class TestCLIErrorHandling:
         output = result.stdout + result.stderr
         # Error should mention "not found" or "failed", not just be empty
         assert (
-            "not found" in output.lower()
-            or "failed" in output.lower()
-            or "error" in output.lower()
+            "not found" in output.lower() or "failed" in output.lower() or "error" in output.lower()
         ), f"Expected error message in output: {output}"
 
     def test_help_command_works(self):

@@ -37,9 +37,7 @@ def check_api_available() -> bool:
         return True
 
 
-pytestmark = pytest.mark.skipif(
-    not check_api_available(), reason="API server not available"
-)
+pytestmark = pytest.mark.skipif(not check_api_available(), reason="API server not available")
 
 
 class TestAdminUsersEndpoint:
@@ -109,9 +107,7 @@ class TestUpdateUserRole:
         pytest.skip("Requires Clerk test authentication setup")
 
     @pytest.mark.asyncio
-    async def test_update_user_role_validates_role_values(
-        self, mock_admin_clerk_user
-    ):
+    async def test_update_user_role_validates_role_values(self, mock_admin_clerk_user):
         """Test that only valid roles are accepted."""
         # This test verifies role validation logic
         pytest.skip("Requires Clerk test authentication setup with admin role")
@@ -180,9 +176,7 @@ class TestRoleUpdateIntegration:
             yield mock_clerk
 
     @pytest.mark.asyncio
-    async def test_successful_role_update_to_developer(
-        self, mock_clerk_with_update
-    ):
+    async def test_successful_role_update_to_developer(self, mock_clerk_with_update):
         """Test successful role update to developer."""
         pytest.skip("Requires Clerk test authentication setup with admin role")
 
@@ -197,9 +191,7 @@ class TestRoleUpdateIntegration:
         pytest.skip("Requires Clerk test authentication setup with admin role")
 
     @pytest.mark.asyncio
-    async def test_role_update_updates_clerk_metadata(
-        self, mock_clerk_with_update
-    ):
+    async def test_role_update_updates_clerk_metadata(self, mock_clerk_with_update):
         """Test that role updates are properly stored in Clerk publicMetadata."""
         pytest.skip("Requires Clerk test authentication setup with admin role")
 

@@ -35,9 +35,7 @@ def check_api_available() -> bool:
         return True
 
 
-pytestmark = pytest.mark.skipif(
-    not check_api_available(), reason="API server not available"
-)
+pytestmark = pytest.mark.skipif(not check_api_available(), reason="API server not available")
 
 
 class TestAPIKeyCreation:
@@ -71,18 +69,14 @@ class TestAPIKeyCreation:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     @pytest.mark.asyncio
-    async def test_create_api_key_with_developer_role(
-        self, mock_clerk_user_developer
-    ):
+    async def test_create_api_key_with_developer_role(self, mock_clerk_user_developer):
         """Test successful API key creation with developer role."""
         # This would require proper test authentication setup
         # Skipping for now as it needs Clerk test tokens
         pytest.skip("Requires Clerk test authentication setup")
 
     @pytest.mark.asyncio
-    async def test_create_api_key_without_developer_role_fails(
-        self, mock_clerk_user_no_role
-    ):
+    async def test_create_api_key_without_developer_role_fails(self, mock_clerk_user_no_role):
         """Test that API key creation fails without developer role."""
         # This would require proper test authentication setup
         # Skipping for now as it needs Clerk test tokens
@@ -140,9 +134,7 @@ class TestAPIKeyRevocation:
     def test_revoke_api_key_requires_authentication(self):
         """Test that revoking API keys requires authentication."""
         fake_key_id = "550e8400-e29b-41d4-a716-446655440000"
-        response = httpx.delete(
-            f"{API_BASE_URL}/auth/api-keys/{fake_key_id}", timeout=5.0
-        )
+        response = httpx.delete(f"{API_BASE_URL}/auth/api-keys/{fake_key_id}", timeout=5.0)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     @pytest.mark.asyncio

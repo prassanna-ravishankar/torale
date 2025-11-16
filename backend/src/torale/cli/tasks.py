@@ -101,7 +101,12 @@ def create_task(
 @task_app.command("preview")
 def preview_search(
     query: str = typer.Option(..., "--query", "-q", help="Search query to test"),
-    condition: str | None = typer.Option(None, "--condition", "-c", help="Condition to evaluate (optional, will be inferred if not provided)"),
+    condition: str | None = typer.Option(
+        None,
+        "--condition",
+        "-c",
+        help="Condition to evaluate (optional, will be inferred if not provided)",
+    ),
     model: str = typer.Option("gemini-2.0-flash-exp", "--model", "-m", help="LLM model to use"),
 ):
     """

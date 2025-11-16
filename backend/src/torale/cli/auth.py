@@ -31,7 +31,9 @@ def load_config() -> dict:
 @auth_app.command("set-api-key")
 def set_api_key(
     api_key: str = typer.Option(..., prompt=True, hide_input=True),
-    api_url: str = typer.Option("https://api.torale.ai", help="API URL (use http://localhost:8000 for local dev)"),
+    api_url: str = typer.Option(
+        "https://api.torale.ai", help="API URL (use http://localhost:8000 for local dev)"
+    ),
 ):
     """Set your API key for CLI authentication
 

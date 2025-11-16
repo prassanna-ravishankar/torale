@@ -148,7 +148,9 @@ class AsyncTasksResource:
 
     async def executions(self, task_id: str | UUID, limit: int = 100) -> list[TaskExecution]:
         """Get task execution history (async)."""
-        response = await self.client.get(f"/api/v1/tasks/{task_id}/executions", params={"limit": limit})
+        response = await self.client.get(
+            f"/api/v1/tasks/{task_id}/executions", params={"limit": limit}
+        )
         return [TaskExecution(**exec_data) for exec_data in response]
 
     async def notifications(self, task_id: str | UUID, limit: int = 100) -> list[TaskExecution]:
