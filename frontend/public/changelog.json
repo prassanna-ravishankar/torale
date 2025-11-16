@@ -1,5 +1,23 @@
 [
   {
+    "id": "2025-11-16-notification-settings",
+    "date": "2025-11-16",
+    "title": "Notification Settings & Email Verification",
+    "description": "Manage how you get notified. Configure email delivery with verification, set up webhooks with secret signing, and view your notification history. Choose notification channels when creating tasks.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": 70
+  },
+  {
+    "id": "2025-11-13-task-wizard",
+    "date": "2025-11-13",
+    "title": "New Task Creation Wizard",
+    "description": "Creating tasks is now easier with a guided wizard. Browse templates, preview results before saving, and get smarter change detection that only notifies you about genuinely new information.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": 68
+  },
+  {
     "id": "2025-11-11-mobile-admin-console",
     "date": "2025-11-11",
     "title": "Mobile-Friendly Admin Console",
