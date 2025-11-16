@@ -627,7 +627,7 @@ async def update_user_role(
 
     # Check if user exists and get their clerk_user_id
     check_result = await session.execute(
-        text("SELECT clerk_user_id, email FROM users WHERE id = :user_id"),
+        text("SELECT clerk_user_id FROM users WHERE id = :user_id"),
         {"user_id": user_id},
     )
     user_row = check_result.first()
@@ -638,7 +638,6 @@ async def update_user_role(
         )
 
     target_clerk_user_id = user_row[0]
-    target_email = user_row[1]
 
     # Prevent admins from changing their own role
     if admin.clerk_user_id == target_clerk_user_id:
