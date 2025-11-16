@@ -4,15 +4,16 @@ These tests verify the end-to-end notification flow from task execution
 to webhook delivery and email verification.
 """
 
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+import pytest
+
 from torale.core.email_verification import EmailVerificationService
 from torale.core.webhook import (
-    WebhookSignature,
     WebhookDeliveryService,
+    WebhookSignature,
     build_webhook_payload,
 )
 
@@ -25,8 +26,8 @@ def sample_user():
     user.clerk_user_id = "user_test123"
     user.email = "user@example.com"
     user.is_active = True
-    user.created_at = datetime.now(timezone.utc)
-    user.updated_at = datetime.now(timezone.utc)
+    user.created_at = datetime.now(UTC)
+    user.updated_at = datetime.now(UTC)
     return user
 
 
@@ -60,8 +61,8 @@ def sample_execution(sample_task_with_notifications):
     execution.result = {"answer": "Test answer"}
     execution.change_summary = "Test change detected"
     execution.grounding_sources = [{"url": "https://example.com", "title": "Example"}]
-    execution.started_at = datetime.now(timezone.utc)
-    execution.completed_at = datetime.now(timezone.utc)
+    execution.started_at = datetime.now(UTC)
+    execution.completed_at = datetime.now(UTC)
     return execution
 
 
@@ -168,7 +169,6 @@ class TestWebhookNotificationFlow:
         self, mock_post, sample_task_with_notifications, sample_execution
     ):
         """Test full webhook flow: condition met → payload built → signed → delivered."""
-        import json
 
         # Step 1: Build webhook payload from execution
         task_dict = {
@@ -197,7 +197,7 @@ class TestWebhookNotificationFlow:
 
         # Step 2: Sign payload
         secret = "test_secret_key"
-        timestamp = int(datetime.now(timezone.utc).timestamp())
+        timestamp = int(datetime.now(UTC).timestamp())
         payload_json = payload.model_dump_json()
         signature = WebhookSignature.sign(payload_json, secret, timestamp)
 

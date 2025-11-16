@@ -1,16 +1,17 @@
 """Tests for webhook signing and delivery."""
 
-import pytest
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
-import json
-import hmac
 import hashlib
+import hmac
+import json
+from datetime import UTC, datetime
+from unittest.mock import MagicMock, patch
+from uuid import uuid4
+
+import pytest
 
 from torale.core.webhook import (
-    WebhookSignature,
     WebhookDeliveryService,
+    WebhookSignature,
     build_webhook_payload,
 )
 
@@ -43,8 +44,8 @@ def sample_execution(sample_task):
     execution.result = {"answer": "Test answer"}
     execution.change_summary = "Test change"
     execution.grounding_sources = [{"url": "https://example.com", "title": "Example"}]
-    execution.started_at = datetime.now(timezone.utc)
-    execution.completed_at = datetime.now(timezone.utc)
+    execution.started_at = datetime.now(UTC)
+    execution.completed_at = datetime.now(UTC)
     return execution
 
 
@@ -57,7 +58,9 @@ class TestWebhookSignature:
 
         assert len(secret) == 43  # 32 bytes = 43 URL-safe base64 characters
         # URL-safe base64 uses A-Z, a-z, 0-9, -, _
-        assert all(c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" for c in secret)
+        assert all(
+            c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" for c in secret
+        )
 
     def test_different_secrets(self):
         """Test that multiple calls generate different secrets."""
@@ -104,7 +107,7 @@ class TestWebhookSignature:
         """Test verification of valid signature."""
         secret = "test_secret_key"
         payload = json.dumps({"test": "data"})
-        timestamp = int(datetime.now(timezone.utc).timestamp())
+        timestamp = int(datetime.now(UTC).timestamp())
 
         signature = WebhookSignature.sign(payload, secret, timestamp)
 
@@ -116,7 +119,7 @@ class TestWebhookSignature:
         """Test verification rejects invalid signature."""
         secret = "test_secret_key"
         payload = json.dumps({"test": "data"})
-        timestamp = int(datetime.now(timezone.utc).timestamp())
+        timestamp = int(datetime.now(UTC).timestamp())
 
         # Create signature with different secret
         signature = WebhookSignature.sign(payload, "wrong_secret", timestamp)
@@ -139,7 +142,7 @@ class TestWebhookSignature:
         secret = "test_secret_key"
         payload = json.dumps({"test": "data"})
         # Timestamp from 10 minutes ago
-        old_timestamp = int(datetime.now(timezone.utc).timestamp()) - 600
+        old_timestamp = int(datetime.now(UTC).timestamp()) - 600
 
         signature = WebhookSignature.sign(payload, secret, old_timestamp)
 
@@ -152,7 +155,7 @@ class TestWebhookSignature:
         secret = "test_secret_key"
         payload = json.dumps({"test": "data"})
         # Timestamp from 2 minutes ago
-        recent_timestamp = int(datetime.now(timezone.utc).timestamp()) - 120
+        recent_timestamp = int(datetime.now(UTC).timestamp()) - 120
 
         signature = WebhookSignature.sign(payload, secret, recent_timestamp)
 

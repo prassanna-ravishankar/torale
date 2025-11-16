@@ -307,7 +307,7 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
             else:
                 activity.logger.error(f"Failed to send email: {novu_result.get('error')}")
                 email_status = "failed"
-                email_error = str(novu_result.get('error'))
+                email_error = str(novu_result.get("error"))
 
             # Track notification send with status
             await conn.execute(

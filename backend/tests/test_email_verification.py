@@ -1,9 +1,10 @@
 """Tests for email verification service."""
 
-import pytest
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+
+import pytest
 
 from torale.core.email_verification import EmailVerificationService
 
@@ -23,8 +24,8 @@ def sample_user():
     user.clerk_user_id = "user_test123"
     user.email = "user@example.com"
     user.is_active = True
-    user.created_at = datetime.now(timezone.utc)
-    user.updated_at = datetime.now(timezone.utc)
+    user.created_at = datetime.now(UTC)
+    user.updated_at = datetime.now(UTC)
     return user
 
 
@@ -52,7 +53,9 @@ class TestCanSendVerification:
         """Test that first verification is always allowed."""
         mock_conn.fetchval = AsyncMock(return_value=0)
 
-        can_send, error = await EmailVerificationService.can_send_verification(mock_conn, str(sample_user.id))
+        can_send, error = await EmailVerificationService.can_send_verification(
+            mock_conn, str(sample_user.id)
+        )
 
         assert can_send is True
         assert error is None
@@ -63,7 +66,9 @@ class TestCanSendVerification:
         # Return 3 recent verifications
         mock_conn.fetchval = AsyncMock(return_value=3)
 
-        can_send, error = await EmailVerificationService.can_send_verification(mock_conn, str(sample_user.id))
+        can_send, error = await EmailVerificationService.can_send_verification(
+            mock_conn, str(sample_user.id)
+        )
 
         assert can_send is False
         assert "Too many verification requests" in error
@@ -74,7 +79,9 @@ class TestCanSendVerification:
         # Return 2 recent verifications (under limit)
         mock_conn.fetchval = AsyncMock(return_value=2)
 
-        can_send, error = await EmailVerificationService.can_send_verification(mock_conn, str(sample_user.id))
+        can_send, error = await EmailVerificationService.can_send_verification(
+            mock_conn, str(sample_user.id)
+        )
 
         assert can_send is True
         assert error is None
@@ -125,25 +132,29 @@ class TestVerifyCode:
     @pytest.mark.asyncio
     async def test_successful_verification(self, mock_conn, sample_user):
         """Test successful code verification."""
+
         # Mock transaction context
         class MockTransaction:
             async def __aenter__(self):
                 return self
+
             async def __aexit__(self, exc_type, exc_val, exc_tb):
                 pass
 
         mock_conn.transaction = MagicMock(return_value=MockTransaction())
 
         # Mock verification record (not expired, has attempts left, correct code)
-        mock_conn.fetchrow = AsyncMock(return_value={
-            "id": uuid4(),
-            "user_id": sample_user.id,
-            "email": "test@example.com",
-            "verification_code": "123456",
-            "expires_at": datetime.utcnow() + timedelta(minutes=10),
-            "attempts": 0,
-            "verified": False,
-        })
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "id": uuid4(),
+                "user_id": sample_user.id,
+                "email": "test@example.com",
+                "verification_code": "123456",
+                "expires_at": datetime.utcnow() + timedelta(minutes=10),
+                "attempts": 0,
+                "verified": False,
+            }
+        )
         mock_conn.execute = AsyncMock()
 
         success, error = await EmailVerificationService.verify_code(
@@ -156,22 +167,26 @@ class TestVerifyCode:
     @pytest.mark.asyncio
     async def test_invalid_code(self, mock_conn, sample_user):
         """Test verification with wrong code."""
+
         class MockTransaction:
             async def __aenter__(self):
                 return self
+
             async def __aexit__(self, exc_type, exc_val, exc_tb):
                 pass
 
         mock_conn.transaction = MagicMock(return_value=MockTransaction())
-        mock_conn.fetchrow = AsyncMock(return_value={
-            "id": uuid4(),
-            "user_id": sample_user.id,
-            "email": "test@example.com",
-            "verification_code": "123456",
-            "expires_at": datetime.utcnow() + timedelta(minutes=10),
-            "attempts": 0,
-            "verified": False,
-        })
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "id": uuid4(),
+                "user_id": sample_user.id,
+                "email": "test@example.com",
+                "verification_code": "123456",
+                "expires_at": datetime.utcnow() + timedelta(minutes=10),
+                "attempts": 0,
+                "verified": False,
+            }
+        )
         mock_conn.execute = AsyncMock()
 
         success, error = await EmailVerificationService.verify_code(
@@ -184,22 +199,26 @@ class TestVerifyCode:
     @pytest.mark.asyncio
     async def test_expired_code(self, mock_conn, sample_user):
         """Test verification with expired code."""
+
         class MockTransaction:
             async def __aenter__(self):
                 return self
+
             async def __aexit__(self, exc_type, exc_val, exc_tb):
                 pass
 
         mock_conn.transaction = MagicMock(return_value=MockTransaction())
-        mock_conn.fetchrow = AsyncMock(return_value={
-            "id": uuid4(),
-            "user_id": sample_user.id,
-            "email": "test@example.com",
-            "verification_code": "123456",
-            "expires_at": datetime.utcnow() - timedelta(minutes=1),  # Already expired
-            "attempts": 0,
-            "verified": False,
-        })
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "id": uuid4(),
+                "user_id": sample_user.id,
+                "email": "test@example.com",
+                "verification_code": "123456",
+                "expires_at": datetime.utcnow() - timedelta(minutes=1),  # Already expired
+                "attempts": 0,
+                "verified": False,
+            }
+        )
 
         success, error = await EmailVerificationService.verify_code(
             mock_conn, str(sample_user.id), "test@example.com", "123456"
@@ -211,22 +230,26 @@ class TestVerifyCode:
     @pytest.mark.asyncio
     async def test_no_attempts_left(self, mock_conn, sample_user):
         """Test verification when no attempts remaining."""
+
         class MockTransaction:
             async def __aenter__(self):
                 return self
+
             async def __aexit__(self, exc_type, exc_val, exc_tb):
                 pass
 
         mock_conn.transaction = MagicMock(return_value=MockTransaction())
-        mock_conn.fetchrow = AsyncMock(return_value={
-            "id": uuid4(),
-            "user_id": sample_user.id,
-            "email": "test@example.com",
-            "verification_code": "123456",
-            "expires_at": datetime.utcnow() + timedelta(minutes=10),
-            "attempts": 5,  # Max attempts reached
-            "verified": False,
-        })
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "id": uuid4(),
+                "user_id": sample_user.id,
+                "email": "test@example.com",
+                "verification_code": "123456",
+                "expires_at": datetime.utcnow() + timedelta(minutes=10),
+                "attempts": 5,  # Max attempts reached
+                "verified": False,
+            }
+        )
 
         success, error = await EmailVerificationService.verify_code(
             mock_conn, str(sample_user.id), "test@example.com", "123456"
@@ -238,9 +261,11 @@ class TestVerifyCode:
     @pytest.mark.asyncio
     async def test_verification_not_found(self, mock_conn, sample_user):
         """Test verification when record doesn't exist."""
+
         class MockTransaction:
             async def __aenter__(self):
                 return self
+
             async def __aexit__(self, exc_type, exc_val, exc_tb):
                 pass
 
@@ -262,10 +287,12 @@ class TestIsEmailVerified:
     async def test_clerk_email_always_verified(self, mock_conn, sample_user):
         """Test that Clerk email is automatically verified."""
         # Mock return: email matches clerk_email
-        mock_conn.fetchrow = AsyncMock(return_value={
-            "clerk_email": sample_user.email,
-            "in_verified_array": False,
-        })
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "clerk_email": sample_user.email,
+                "in_verified_array": False,
+            }
+        )
 
         result = await EmailVerificationService.is_email_verified(
             mock_conn, str(sample_user.id), sample_user.email
@@ -279,10 +306,12 @@ class TestIsEmailVerified:
         custom_email = "custom@example.com"
 
         # Mock return: custom email is in verified array
-        mock_conn.fetchrow = AsyncMock(return_value={
-            "clerk_email": sample_user.email,
-            "in_verified_array": True,
-        })
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "clerk_email": sample_user.email,
+                "in_verified_array": True,
+            }
+        )
 
         result = await EmailVerificationService.is_email_verified(
             mock_conn, str(sample_user.id), custom_email
@@ -296,10 +325,12 @@ class TestIsEmailVerified:
         custom_email = "custom@example.com"
 
         # Mock return: custom email not in verified array
-        mock_conn.fetchrow = AsyncMock(return_value={
-            "clerk_email": sample_user.email,
-            "in_verified_array": False,
-        })
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "clerk_email": sample_user.email,
+                "in_verified_array": False,
+            }
+        )
 
         result = await EmailVerificationService.is_email_verified(
             mock_conn, str(sample_user.id), custom_email

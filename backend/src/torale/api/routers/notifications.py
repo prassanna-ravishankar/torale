@@ -1,7 +1,8 @@
 """Notification history API endpoints."""
 
-from fastapi import APIRouter, Depends
 from uuid import UUID
+
+from fastapi import APIRouter, Depends
 
 from torale.api.auth import CurrentUserOrTestUser
 from torale.core.database import Database, get_db

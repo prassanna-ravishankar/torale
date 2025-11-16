@@ -1,19 +1,18 @@
 """Tests for email verification API endpoints."""
 
-import pytest
-from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+import pytest
 from fastapi import HTTPException
 
 from torale.api.routers.email_verification import (
-    send_verification_email,
-    verify_email_code,
+    VerificationConfirm,
+    VerificationRequest,
     list_verified_emails,
     remove_verified_email,
-    VerificationRequest,
-    VerificationConfirm,
+    send_verification_email,
+    verify_email_code,
 )
 
 

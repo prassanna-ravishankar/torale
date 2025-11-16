@@ -1,18 +1,20 @@
 """Tests for webhook API endpoints."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4, UUID
+from uuid import UUID, uuid4
 
+import pytest
 from fastapi import HTTPException
 
 from torale.api.routers.webhooks import (
-    get_user_webhook_config,
-    update_user_webhook_config,
-    test_webhook as webhook_test_handler,
-    list_webhook_deliveries,
     WebhookConfig,
     WebhookTestRequest,
+    get_user_webhook_config,
+    list_webhook_deliveries,
+    update_user_webhook_config,
+)
+from torale.api.routers.webhooks import (
+    test_webhook as webhook_test_handler,
 )
 
 
@@ -154,7 +156,7 @@ class TestUpdateUserWebhookConfig:
         mock_db.fetch_one.return_value = {"webhook_secret": "existing_secret"}
         mock_db.execute = AsyncMock()
 
-        result = await update_user_webhook_config(config, mock_user, mock_db)
+        await update_user_webhook_config(config, mock_user, mock_db)
 
         # Verify new URL was passed to database
         call_args = mock_db.execute.call_args[0]
@@ -176,9 +178,7 @@ class TestTestWebhook:
         mock_service.deliver = AsyncMock(return_value=(True, 200, None, None))
         mock_service.close = AsyncMock()
 
-        with patch(
-            "torale.api.routers.webhooks.WebhookDeliveryService", return_value=mock_service
-        ):
+        with patch("torale.api.routers.webhooks.WebhookDeliveryService", return_value=mock_service):
             result = await webhook_test_handler(test_req, mock_user)
 
             assert result["success"] is True
@@ -195,14 +195,10 @@ class TestTestWebhook:
 
         # Mock: failed delivery
         mock_service = MagicMock()
-        mock_service.deliver = AsyncMock(
-            return_value=(False, 500, "Connection timeout", None)
-        )
+        mock_service.deliver = AsyncMock(return_value=(False, 500, "Connection timeout", None))
         mock_service.close = AsyncMock()
 
-        with patch(
-            "torale.api.routers.webhooks.WebhookDeliveryService", return_value=mock_service
-        ):
+        with patch("torale.api.routers.webhooks.WebhookDeliveryService", return_value=mock_service):
             with pytest.raises(HTTPException) as exc_info:
                 await webhook_test_handler(test_req, mock_user)
 
@@ -232,9 +228,7 @@ class TestTestWebhook:
         mock_service.deliver = AsyncMock(side_effect=capture_deliver)
         mock_service.close = AsyncMock()
 
-        with patch(
-            "torale.api.routers.webhooks.WebhookDeliveryService", return_value=mock_service
-        ):
+        with patch("torale.api.routers.webhooks.WebhookDeliveryService", return_value=mock_service):
             await webhook_test_handler(test_req, mock_user)
 
 
