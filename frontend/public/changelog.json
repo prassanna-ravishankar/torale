@@ -1,5 +1,14 @@
 [
   {
+    "id": "2025-11-17-api-portal-sdk",
+    "date": "2025-11-17",
+    "title": "Developer API Portal & SDK Examples",
+    "description": "Build with Torale programmatically. New developer portal lets admins generate API keys and manage team roles. Complete Python SDK documentation with runnable examples showing how to create tasks, check executions, and integrate Torale into your applications. Bulk role management for easier team administration.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": 76
+  },
+  {
     "id": "2025-11-16-notification-settings",
     "date": "2025-11-16",
     "title": "Notification Settings & Email Verification",
