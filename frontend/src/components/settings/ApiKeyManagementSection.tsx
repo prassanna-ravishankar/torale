@@ -26,12 +26,12 @@ import {
 import { Loader2, Key, Plus, Trash2, Copy, CheckCircle2, AlertCircle, ShieldAlert } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth } from '@/contexts/AuthContext';
 import type { ApiKey } from '@/types';
 
 export const ApiKeyManagementSection: React.FC = () => {
-  const { user: clerkUser } = useUser();
-  const userRole = clerkUser?.publicMetadata?.role as string | undefined;
+  const { user } = useAuth();
+  const userRole = user?.publicMetadata?.role as string | undefined;
   const isDeveloper = userRole === 'developer';
 
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);

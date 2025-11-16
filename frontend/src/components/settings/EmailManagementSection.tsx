@@ -16,12 +16,12 @@ import {
 import { Loader2, Mail, Plus, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { EmailVerificationModal } from './EmailVerificationModal';
 
 export const EmailManagementSection: React.FC = () => {
-  const { user: clerkUser } = useUser();
-  const clerkEmail = clerkUser?.primaryEmailAddress?.emailAddress;
+  const { user } = useAuth();
+  const clerkEmail = user?.email;
 
   const [verifiedEmails, setVerifiedEmails] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
