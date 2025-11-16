@@ -72,7 +72,7 @@ class AsyncTasksResource:
             "executor_type": "llm_grounded_search",
         }
 
-        response = await self.client.post("/api/v1/tasks", json=data)
+        response = await self.client.post("/api/v1/tasks/", json=data)
         return Task(**response)
 
     async def list(self, active: bool | None = None) -> list[Task]:
@@ -89,7 +89,7 @@ class AsyncTasksResource:
         if active is not None:
             params["is_active"] = active
 
-        response = await self.client.get("/api/v1/tasks", params=params)
+        response = await self.client.get("/api/v1/tasks/", params=params)
         return [Task(**task_data) for task_data in response]
 
     async def get(self, task_id: str | UUID) -> Task:

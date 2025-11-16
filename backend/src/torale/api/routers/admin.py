@@ -501,6 +501,18 @@ async def list_users(
         """)
     )
 
+    # Batch-fetch roles from Clerk to avoid N+1 query problem
+    role_map = {}
+    if clerk_client:
+        try:
+            clerk_users = clerk_client.users.list()
+            role_map = {
+                user.id: (user.public_metadata or {}).get("role") for user in clerk_users.data
+            }
+        except Exception as e:
+            print(f"Failed to batch-fetch users from Clerk: {e}")
+            # Continue with empty role_map
+
     users = []
     for row in result:
         user_data = {
@@ -512,18 +524,8 @@ async def list_users(
             "task_count": row[5] if row[5] else 0,
             "total_executions": row[6] if row[6] else 0,
             "conditions_met_count": row[7] if row[7] else 0,
-            "role": None,  # Default to None
+            "role": role_map.get(row[2]),  # Get role from pre-fetched map
         }
-
-        # Fetch role from Clerk publicMetadata
-        if clerk_client:
-            try:
-                clerk_user = clerk_client.users.get(user_id=row[2])
-                public_metadata = clerk_user.public_metadata or {}
-                user_data["role"] = public_metadata.get("role")
-            except Exception as e:
-                print(f"Failed to fetch role for user {row[2]}: {e}")
-                # Continue with role=None if fetch fails
 
         users.append(user_data)
 
@@ -701,6 +703,108 @@ async def update_user_role(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update user role: {str(e)}",
         ) from e
+
+
+@router.patch("/users/roles")
+async def bulk_update_user_roles(
+    data: dict,
+    admin: ClerkUser = Depends(require_admin),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Bulk update roles for multiple users.
+
+    Request body:
+    {
+        "user_ids": ["uuid1", "uuid2", ...],
+        "role": "admin" | "developer" | null
+    }
+
+    Returns:
+    {
+        "updated": 5,
+        "failed": 0,
+        "errors": []
+    }
+    """
+    user_ids = data.get("user_ids", [])
+    role = data.get("role")
+
+    # Validate role
+    if role not in ["admin", "developer", None]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Role must be "admin", "developer", or null',
+        )
+
+    if not user_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="user_ids array is required",
+        )
+
+    if not clerk_client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Clerk client not initialized",
+        )
+
+    updated_count = 0
+    failed_count = 0
+    errors = []
+
+    for user_id in user_ids:
+        try:
+            # Get user's clerk_user_id from database
+            result = await session.execute(
+                text("SELECT clerk_user_id FROM users WHERE id = :user_id"),
+                {"user_id": user_id},
+            )
+            user_row = result.first()
+
+            if not user_row:
+                failed_count += 1
+                errors.append({"user_id": user_id, "error": "User not found"})
+                continue
+
+            target_clerk_user_id = user_row[0]
+
+            # Prevent admins from changing their own role
+            if admin.clerk_user_id == target_clerk_user_id:
+                failed_count += 1
+                errors.append({"user_id": user_id, "error": "Cannot change own role"})
+                continue
+
+            # Skip test users and NoAuth mode
+            if target_clerk_user_id == "test_user_noauth" or settings.torale_noauth:
+                updated_count += 1  # Count as success but skip Clerk update
+                continue
+
+            # Update role in Clerk
+            clerk_user = clerk_client.users.get(user_id=target_clerk_user_id)
+            current_metadata = clerk_user.public_metadata or {}
+
+            if role is None:
+                current_metadata.pop("role", None)
+            else:
+                current_metadata["role"] = role
+
+            clerk_client.users.update(
+                user_id=target_clerk_user_id,
+                public_metadata=current_metadata,
+            )
+
+            updated_count += 1
+
+        except Exception as e:
+            failed_count += 1
+            errors.append({"user_id": user_id, "error": str(e)})
+
+    return {
+        "updated": updated_count,
+        "failed": failed_count,
+        "errors": errors,
+    }
 
 
 # Waitlist endpoints

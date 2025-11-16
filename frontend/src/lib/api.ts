@@ -257,6 +257,15 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
+  async bulkUpdateUserRoles(userIds: string[], role: string | null): Promise<{ updated: number; failed: number; errors: any[] }> {
+    const response = await fetch(`${this.baseUrl}/admin/users/roles`, {
+      method: 'PATCH',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ user_ids: userIds, role }),
+    })
+    return this.handleResponse(response)
+  }
+
   // Waitlist endpoints
   async getWaitlist(statusFilter?: string): Promise<any> {
     const url = statusFilter

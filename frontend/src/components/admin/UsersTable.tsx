@@ -179,32 +179,31 @@ export function UsersTable() {
     }
 
     setIsBulkUpdating(true)
-    let successCount = 0
-    let failCount = 0
 
-    for (const userId of selectedUserIds) {
-      try {
-        await api.updateUserRole(userId, roleValue)
-        successCount++
-      } catch (err) {
-        failCount++
-        console.error(`Failed to update role for user ${userId}:`, err)
+    try {
+      // Use bulk update endpoint for better performance
+      const result = await api.bulkUpdateUserRoles(Array.from(selectedUserIds), roleValue)
+
+      setIsBulkUpdating(false)
+      setShowBulkDialog(false)
+      setSelectedUserIds(new Set())
+      setBulkRole('')
+
+      if (result.updated > 0) {
+        toast.success(`Updated ${result.updated} user(s)`)
       }
-    }
+      if (result.failed > 0) {
+        toast.error(`Failed to update ${result.failed} user(s)`)
+        if (result.errors.length > 0) {
+          console.error('Bulk update errors:', result.errors)
+        }
+      }
 
-    setIsBulkUpdating(false)
-    setShowBulkDialog(false)
-    setSelectedUserIds(new Set())
-    setBulkRole('')
-
-    if (successCount > 0) {
-      toast.success(`Updated ${successCount} user(s)`)
+      loadUsers() // Reload to show updated roles
+    } catch (err) {
+      setIsBulkUpdating(false)
+      toast.error(err instanceof Error ? err.message : 'Failed to update roles')
     }
-    if (failCount > 0) {
-      toast.error(`Failed to update ${failCount} user(s)`)
-    }
-
-    loadUsers() // Reload to show updated roles
   }
 
   const getRoleBadgeVariant = (role?: string | null) => {

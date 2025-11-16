@@ -191,29 +191,28 @@ async def create_api_key(
     Requires developer role in Clerk publicMetadata.
     Returns the full key once - store it securely!
     """
-    # Get user from database
+    # Get user and check for existing active key in a single query
     result = await session.execute(
-        select(User).where(User.clerk_user_id == clerk_user.clerk_user_id)
+        text("""
+        SELECT u.id, u.clerk_user_id, u.email, COUNT(ak.id) as active_key_count
+        FROM users u
+        LEFT JOIN api_keys ak ON u.id = ak.user_id AND ak.is_active = true
+        WHERE u.clerk_user_id = :clerk_user_id
+        GROUP BY u.id, u.clerk_user_id, u.email
+        """),
+        {"clerk_user_id": clerk_user.clerk_user_id},
     )
-    user = result.scalar_one_or_none()
+    user_row = result.first()
 
-    if not user:
+    if not user_row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found. Please sync user first.",
         )
 
-    # Check for existing active API key
-    existing_key_result = await session.execute(
-        text("""
-        SELECT id FROM api_keys
-        WHERE user_id = :user_id AND is_active = true
-        """),
-        {"user_id": user.id},
-    )
-    existing_key = existing_key_result.first()
+    user_id, user_clerk_id, user_email, active_key_count = user_row
 
-    if existing_key:
+    if active_key_count > 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You already have an active API key. Please revoke it before creating a new one.",
@@ -227,7 +226,7 @@ async def create_api_key(
     # Store in database
     api_key_data = {
         "id": uuid.uuid4(),
-        "user_id": user.id,
+        "user_id": user_id,
         "key_prefix": key_prefix,
         "key_hash": key_hash,
         "name": request.name,
