@@ -10,7 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from temporalio.client import Client
 
-from torale.api.clerk_auth import ClerkUser, require_admin
+from torale.api.clerk_auth import ClerkUser, clerk_client, require_admin
 from torale.api.users import get_async_session
 from torale.core.config import settings
 
@@ -470,10 +470,11 @@ async def list_users(
     session: AsyncSession = Depends(get_async_session),
 ):
     """
-    List all platform users with statistics.
+    List all platform users with statistics and roles.
 
     Returns:
     - All user accounts with email and Clerk ID
+    - User roles from Clerk publicMetadata
     - Signup date
     - Task count per user
     - Total execution count
@@ -500,8 +501,9 @@ async def list_users(
         """)
     )
 
-    users = [
-        {
+    users = []
+    for row in result:
+        user_data = {
             "id": str(row[0]),
             "email": row[1],
             "clerk_user_id": row[2],
@@ -510,9 +512,20 @@ async def list_users(
             "task_count": row[5] if row[5] else 0,
             "total_executions": row[6] if row[6] else 0,
             "conditions_met_count": row[7] if row[7] else 0,
+            "role": None,  # Default to None
         }
-        for row in result
-    ]
+
+        # Fetch role from Clerk publicMetadata
+        if clerk_client:
+            try:
+                clerk_user = clerk_client.users.get(user_id=row[2])
+                public_metadata = clerk_user.public_metadata or {}
+                user_data["role"] = public_metadata.get("role")
+            except Exception as e:
+                print(f"Failed to fetch role for user {row[2]}: {e}")
+                # Continue with role=None if fetch fails
+
+        users.append(user_data)
 
     # Get capacity info
     active_users = sum(1 for u in users if u["is_active"])
@@ -575,6 +588,102 @@ async def deactivate_user(
         ) from e
 
     return {"status": "deactivated", "user_id": str(user_id)}
+
+
+@router.patch("/users/{user_id}/role")
+async def update_user_role(
+    user_id: UUID,
+    data: dict,
+    admin: ClerkUser = Depends(require_admin),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Update a user's role in Clerk publicMetadata.
+
+    Admins can assign roles: "admin", "developer", or null (remove role).
+
+    Safeguards:
+    - Admins cannot change their own role (prevents self-demotion)
+    - Role must be one of: "admin", "developer", or null
+
+    Path Parameters:
+    - user_id: UUID of the user to update
+
+    Request Body:
+    - role: "admin", "developer", or null
+
+    Returns:
+    - Updated user information
+    """
+    # Get role from request
+    role = data.get("role")
+
+    # Validate role
+    if role not in ["admin", "developer", None]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Role must be "admin", "developer", or null',
+        )
+
+    # Check if user exists and get their clerk_user_id
+    check_result = await session.execute(
+        text("SELECT clerk_user_id FROM users WHERE id = :user_id"),
+        {"user_id": user_id},
+    )
+    user_row = check_result.first()
+    if not user_row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    target_clerk_user_id = user_row[0]
+
+    # Prevent admins from changing their own role
+    if admin.clerk_user_id == target_clerk_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot change your own role",
+        )
+
+    # Update role in Clerk publicMetadata
+    if not clerk_client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Clerk client not initialized",
+        )
+
+    try:
+        # Update publicMetadata
+        clerk_user = clerk_client.users.get(user_id=target_clerk_user_id)
+        current_metadata = clerk_user.public_metadata or {}
+
+        # Set or remove role
+        if role is None:
+            # Remove role from metadata
+            current_metadata.pop("role", None)
+        else:
+            # Set role
+            current_metadata["role"] = role
+
+        # Update user in Clerk
+        clerk_client.users.update(
+            user_id=target_clerk_user_id,
+            public_metadata=current_metadata,
+        )
+
+        return {
+            "status": "updated",
+            "user_id": str(user_id),
+            "role": role,
+        }
+
+    except Exception as e:
+        print(f"Failed to update user role in Clerk: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update user role: {str(e)}",
+        ) from e
 
 
 # Waitlist endpoints
