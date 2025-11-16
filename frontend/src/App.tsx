@@ -7,6 +7,7 @@ import Landing from '@/components/Landing'
 import Changelog from '@/components/Changelog'
 import { Header } from '@/components/Header'
 import { Admin } from '@/pages/Admin'
+import { NotificationSettingsPage } from '@/pages/NotificationSettingsPage'
 import { CapacityGate } from '@/components/CapacityGate'
 import { WaitlistPage } from '@/components/WaitlistPage'
 import { Toaster } from '@/components/ui/sonner'
@@ -142,6 +143,16 @@ export default function App() {
             <ProtectedRoute>
               <AppLayout>
                 <Admin />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings/notifications"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <NotificationSettingsPage />
               </AppLayout>
             </ProtectedRoute>
           }

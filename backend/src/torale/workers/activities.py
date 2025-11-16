@@ -42,38 +42,6 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
                 "message": f"Task {task_id} was deleted but schedule still exists",
             }
 
-        # Check for recently running executions to prevent duplicates
-        recent_running = await conn.fetchrow(
-            """
-            SELECT id, started_at, status FROM task_executions
-            WHERE task_id = $1
-            AND status IN ($2, $3)
-            AND (started_at > NOW() - INTERVAL '30 seconds' OR started_at IS NULL)
-            ORDER BY started_at DESC NULLS FIRST
-            LIMIT 1
-            """,
-            UUID(task_id),
-            TaskStatus.PENDING.value,
-            TaskStatus.RUNNING.value,
-        )
-
-        if recent_running:
-            started_at_str = (
-                recent_running["started_at"].isoformat()
-                if recent_running["started_at"]
-                else "pending"
-            )
-            logger.warning(
-                f"Task {task_id} has a recent execution (status: {recent_running.get('status', 'unknown')}, started: {started_at_str}). "
-                f"Skipping duplicate execution to prevent race condition."
-            )
-            # Return early to prevent duplicate execution
-            return {
-                "status": "skipped",
-                "reason": "Recent execution already in progress",
-                "existing_execution_id": str(recent_running["id"]),
-            }
-
         # Parse config if it's a JSON string
         config = task["config"]
         if isinstance(config, str):
@@ -325,25 +293,35 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
                 execution_id=execution_id,
             )
 
+            # Determine status and error message
+            email_status = "success"
+            email_error = None
+
             if novu_result["success"]:
                 activity.logger.info(
                     f"Email sent to {recipient_email}: {novu_result.get('transaction_id')}"
                 )
             elif novu_result.get("skipped"):
                 activity.logger.info("Email notification skipped (Novu not configured)")
+                email_status = "skipped"
             else:
                 activity.logger.error(f"Failed to send email: {novu_result.get('error')}")
+                email_status = "failed"
+                email_error = str(novu_result.get("error"))
 
-            # Track notification send
+            # Track notification send with status
             await conn.execute(
                 """
                 INSERT INTO notification_sends
-                (user_id, task_id, recipient_email, notification_type)
-                VALUES ($1, $2, $3, 'email')
+                (user_id, task_id, execution_id, recipient_email, notification_type, status, error_message)
+                VALUES ($1, $2, $3, $4, 'email', $5, $6)
                 """,
                 UUID(user_id),
                 UUID(task_id),
+                UUID(execution_id),
                 recipient_email,
+                email_status,
+                email_error,
             )
 
         # WEBHOOK NOTIFICATION

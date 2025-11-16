@@ -1,9 +1,8 @@
 """
 Tests for duplicate execution prevention logic.
 
-The system prevents race conditions by checking for recent running executions
-before starting new ones. This ensures tasks don't execute multiple times
-concurrently when triggered rapidly.
+NOTE: De-duplication logic has been removed as it was causing execution to get stuck.
+These tests are kept for reference but skipped.
 """
 
 import json
@@ -16,8 +15,9 @@ import pytest
 from torale.workers.activities import execute_task
 
 
+@pytest.mark.skip(reason="De-duplication logic removed - was blocking executions")
 class TestDuplicateExecutionPrevention:
-    """Test suite for duplicate execution prevention logic."""
+    """Test suite for duplicate execution prevention logic (DEPRECATED)."""
 
     @pytest.mark.asyncio
     async def test_skips_duplicate_within_30_seconds(self):

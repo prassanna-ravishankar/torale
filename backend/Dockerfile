@@ -28,12 +28,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 # ---- APPLICATION CODE ----
-# Copy README from root for PyPI metadata
-COPY README.md ./
-
 # Copy backend source code - this layer invalidates on any code change
 # But since dependencies are already installed above, this is fast
 COPY backend/ /app/
+
+# Copy README from root for PyPI metadata (after backend copy to avoid overwriting)
+COPY README.md ./
 
 # Install the project itself (links to already-installed dependencies)
 RUN --mount=type=cache,target=/root/.cache/uv \

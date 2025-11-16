@@ -35,6 +35,11 @@ class Database:
         async with self.pool.acquire() as conn:
             return await conn.fetch(query, *args)
 
+    async def fetch_val(self, query: str, *args):
+        """Fetch a single value"""
+        async with self.pool.acquire() as conn:
+            return await conn.fetchval(query, *args)
+
     async def execute(self, query: str, *args):
         """Execute a query without returning results"""
         async with self.pool.acquire() as conn:
@@ -44,6 +49,10 @@ class Database:
         """Execute a query multiple times with different parameters"""
         async with self.pool.acquire() as conn:
             return await conn.executemany(query, args_list)
+
+    def acquire(self):
+        """Acquire a connection from the pool (returns context manager)"""
+        return self.pool.acquire()
 
 
 # Global database instance

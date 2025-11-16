@@ -1,6 +1,6 @@
 import React from "react";
 import { UserButton } from "@clerk/clerk-react";
-import { Shield } from "lucide-react";
+import { Shield, Bell } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,6 +29,19 @@ export const Header: React.FC = () => {
               >
                 <Shield className="h-4 w-4" />
                 Admin
+              </Button>
+            </Link>
+          )}
+
+          {user && (
+            <Link to="/settings/notifications">
+              <Button
+                variant={location.pathname === "/settings/notifications" ? "default" : "ghost"}
+                size="sm"
+                className="gap-2"
+              >
+                <Bell className="h-4 w-4" />
+                Settings
               </Button>
             </Link>
           )}

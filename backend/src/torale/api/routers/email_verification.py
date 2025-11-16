@@ -34,9 +34,7 @@ async def send_verification_email(
 
     Required before using custom email for notifications.
     """
-    conn = await db.get_connection()
-
-    try:
+    async with db.acquire() as conn:
         # Check if already verified
         if await EmailVerificationService.is_email_verified(conn, str(user.id), request.email):
             return {"message": "Email already verified"}
@@ -67,18 +65,13 @@ async def send_verification_email(
             "expires_in_minutes": EmailVerificationService.VERIFICATION_EXPIRY_MINUTES,
         }
 
-    finally:
-        await conn.close()
-
 
 @router.post("/verify")
 async def verify_email_code(
     request: VerificationConfirm, user: CurrentUser, db: Database = Depends(get_db)
 ):
     """Verify email with code."""
-    conn = await db.get_connection()
-
-    try:
+    async with db.acquire() as conn:
         success, error = await EmailVerificationService.verify_code(
             conn, str(user.id), request.email, request.code
         )
@@ -88,58 +81,43 @@ async def verify_email_code(
 
         return {"message": "Email verified successfully"}
 
-    finally:
-        await conn.close()
-
 
 @router.get("/verified-emails")
 async def list_verified_emails(user: CurrentUser, db: Database = Depends(get_db)):
     """List user's verified email addresses."""
-    conn = await db.get_connection()
+    # Get Clerk email (always trusted)
+    user_row = await db.fetch_one(
+        "SELECT email, verified_notification_emails FROM users WHERE id = $1",
+        user.id,
+    )
 
-    try:
-        # Get Clerk email (always trusted)
-        user_row = await conn.fetchrow(
-            "SELECT email, verified_notification_emails FROM users WHERE id = $1",
-            user.id,
-        )
+    clerk_email = user_row["email"]
+    verified_emails = user_row["verified_notification_emails"] or []
 
-        clerk_email = user_row["email"]
-        verified_emails = user_row["verified_notification_emails"] or []
+    # Always include Clerk email as verified
+    all_verified = list(set([clerk_email] + verified_emails))
 
-        # Always include Clerk email as verified
-        all_verified = list(set([clerk_email] + verified_emails))
-
-        return {"verified_emails": all_verified, "primary_email": clerk_email}
-
-    finally:
-        await conn.close()
+    return {"verified_emails": all_verified, "primary_email": clerk_email}
 
 
 @router.delete("/verified-emails/{email}")
 async def remove_verified_email(email: str, user: CurrentUser, db: Database = Depends(get_db)):
     """Remove email from verified list (cannot remove Clerk email)."""
-    conn = await db.get_connection()
+    # Get Clerk email
+    clerk_email = await db.fetch_val("SELECT email FROM users WHERE id = $1", user.id)
 
-    try:
-        # Get Clerk email
-        clerk_email = await conn.fetchval("SELECT email FROM users WHERE id = $1", user.id)
+    if email == clerk_email:
+        raise HTTPException(status_code=400, detail="Cannot remove primary Clerk email")
 
-        if email == clerk_email:
-            raise HTTPException(status_code=400, detail="Cannot remove primary Clerk email")
+    # Remove from verified list
+    await db.execute(
+        """
+        UPDATE users
+        SET verified_notification_emails = array_remove(verified_notification_emails, $1)
+        WHERE id = $2
+        """,
+        email,
+        user.id,
+    )
 
-        # Remove from verified list
-        await conn.execute(
-            """
-            UPDATE users
-            SET verified_notification_emails = array_remove(verified_notification_emails, $1)
-            WHERE id = $2
-            """,
-            email,
-            user.id,
-        )
-
-        return {"message": "Email removed from verified list"}
-
-    finally:
-        await conn.close()
+    return {"message": "Email removed from verified list"}

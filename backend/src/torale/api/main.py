@@ -1,11 +1,21 @@
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from torale.api.routers import admin, auth, email_verification, tasks, templates, waitlist, webhooks
+from torale.api.routers import (
+    admin,
+    auth,
+    email_verification,
+    notifications,
+    tasks,
+    templates,
+    waitlist,
+    webhooks,
+)
 from torale.api.users import get_async_session
 from torale.core.config import settings
 from torale.core.database import db
@@ -50,6 +60,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# Exception handler to ensure CORS headers are added to all responses, including errors
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Add CORS headers to HTTP exception responses."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+        },
+    )
+
+
 # Auth routes
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 
@@ -64,6 +91,7 @@ app.include_router(tasks.router, prefix="/api/v1")
 app.include_router(templates.router, prefix="/api/v1")
 app.include_router(email_verification.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
+app.include_router(notifications.router, prefix="/api/v1")
 
 
 @app.get("/health")

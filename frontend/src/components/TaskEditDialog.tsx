@@ -12,12 +12,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WizardStepQuery } from '@/components/wizard/WizardStepQuery';
 import { WizardStepPreview } from '@/components/wizard/WizardStepPreview';
 import { WizardStepSchedule } from '@/components/wizard/WizardStepSchedule';
+import { WizardStepHowNotify } from '@/components/wizard/WizardStepHowNotify';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
-import type { Task } from '@/types';
+import type { Task, NotificationConfig } from '@/types';
 import { Loader2 } from 'lucide-react';
 
-type EditTab = 'query' | 'schedule';
+type EditTab = 'query' | 'schedule' | 'notifications';
 type NotifyBehavior = 'once' | 'always' | 'track_state';
 
 interface PreviewResult {
@@ -50,6 +51,9 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   const [conditionDescription, setConditionDescription] = useState('');
   const [schedule, setSchedule] = useState('0 9 * * *');
   const [notifyBehavior, setNotifyBehavior] = useState<NotifyBehavior>('track_state');
+  const [notifications, setNotifications] = useState<NotificationConfig[]>([
+    { type: 'email' }, // Default
+  ]);
 
   // UI state
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -66,6 +70,25 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       setConditionDescription(task.condition_description || '');
       setSchedule(task.schedule);
       setNotifyBehavior(task.notify_behavior as NotifyBehavior);
+
+      // Convert task notification fields to NotificationConfig format
+      const taskNotifications: NotificationConfig[] = [];
+      if (task.notification_channels) {
+        if (task.notification_channels.includes('email')) {
+          taskNotifications.push({
+            type: 'email',
+            address: task.notification_email || undefined,
+          });
+        }
+        if (task.notification_channels.includes('webhook')) {
+          taskNotifications.push({
+            type: 'webhook',
+            url: task.webhook_url || undefined,
+          });
+        }
+      }
+      // Default to email if no channels configured
+      setNotifications(taskNotifications.length > 0 ? taskNotifications : [{ type: 'email' }]);
     }
   }, [task, open]);
 
@@ -185,9 +208,10 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
 
         {/* Tabbed Content */}
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as EditTab)} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="query">Query & Condition</TabsTrigger>
-            <TabsTrigger value="schedule">Schedule & Notifications</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="query">Query</TabsTrigger>
+            <TabsTrigger value="schedule">Schedule</TabsTrigger>
+            <TabsTrigger value="notifications">Notifications</TabsTrigger>
           </TabsList>
 
           <div className="flex-1 overflow-y-auto min-h-0 mt-4 px-1">
@@ -236,6 +260,13 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
                 onScheduleChange={setSchedule}
                 notifyBehavior={notifyBehavior}
                 onNotifyBehaviorChange={setNotifyBehavior}
+              />
+            </TabsContent>
+
+            <TabsContent value="notifications" className="m-0">
+              <WizardStepHowNotify
+                notifications={notifications}
+                onNotificationsChange={setNotifications}
               />
             </TabsContent>
           </div>

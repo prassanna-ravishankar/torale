@@ -1,4 +1,14 @@
-import type { Task, TaskCreatePayload, TaskExecution, TaskTemplate, User } from '@/types'
+import type {
+  Task,
+  TaskCreatePayload,
+  TaskExecution,
+  TaskTemplate,
+  User,
+  UserWithNotifications,
+  WebhookConfig,
+  WebhookDelivery,
+  NotificationSend,
+} from '@/types'
 
 interface ApiError {
   detail: string
@@ -271,6 +281,112 @@ class ApiClient {
     if (!response.ok) {
       throw new Error(`Failed to delete waitlist entry: ${response.status}`)
     }
+  }
+
+  // Email Verification endpoints
+  async sendVerificationCode(email: string): Promise<{ message: string; expires_at: string }> {
+    const response = await fetch(`${this.baseUrl}/api/v1/email-verification/send`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ email }),
+    })
+    return this.handleResponse(response)
+  }
+
+  async verifyEmailCode(email: string, code: string): Promise<{ message: string; email: string }> {
+    const response = await fetch(`${this.baseUrl}/api/v1/email-verification/verify`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ email, code }),
+    })
+    return this.handleResponse(response)
+  }
+
+  async getVerifiedEmails(): Promise<{ verified_emails: string[] }> {
+    const response = await fetch(`${this.baseUrl}/api/v1/email-verification/verified-emails`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async removeVerifiedEmail(email: string): Promise<{ message: string }> {
+    const encodedEmail = encodeURIComponent(email)
+    const response = await fetch(`${this.baseUrl}/api/v1/email-verification/verified-emails/${encodedEmail}`, {
+      method: 'DELETE',
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  // Webhook endpoints
+  async getWebhookConfig(): Promise<WebhookConfig> {
+    const response = await fetch(`${this.baseUrl}/api/v1/webhooks/config`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async updateWebhookConfig(url: string, enabled: boolean = true): Promise<WebhookConfig> {
+    const response = await fetch(`${this.baseUrl}/api/v1/webhooks/config`, {
+      method: 'PUT',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ webhook_url: url, enabled }),
+    })
+    return this.handleResponse(response)
+  }
+
+  async testWebhook(url: string, secret: string): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${this.baseUrl}/api/v1/webhooks/test`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ webhook_url: url, webhook_secret: secret }),
+    })
+    return this.handleResponse(response)
+  }
+
+  async getWebhookDeliveries(params?: {
+    task_id?: string
+    limit?: number
+    offset?: number
+  }): Promise<{ deliveries: WebhookDelivery[]; total: number }> {
+    const queryParams = new URLSearchParams()
+    if (params?.task_id) queryParams.set('task_id', params.task_id)
+    if (params?.limit) queryParams.set('limit', params.limit.toString())
+    if (params?.offset) queryParams.set('offset', params.offset.toString())
+
+    const url = `${this.baseUrl}/api/v1/webhooks/deliveries${queryParams.toString() ? `?${queryParams}` : ''}`
+    const response = await fetch(url, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  // Notification history endpoints
+  async getNotificationSends(params?: {
+    task_id?: string
+    notification_type?: 'email' | 'webhook'
+    limit?: number
+    offset?: number
+  }): Promise<{ sends: NotificationSend[]; total: number }> {
+    const queryParams = new URLSearchParams()
+    if (params?.task_id) queryParams.set('task_id', params.task_id)
+    if (params?.notification_type) queryParams.set('notification_type', params.notification_type)
+    if (params?.limit) queryParams.set('limit', params.limit.toString())
+    if (params?.offset) queryParams.set('offset', params.offset.toString())
+
+    const url = `${this.baseUrl}/api/v1/notifications/sends${queryParams.toString() ? `?${queryParams}` : ''}`
+    const response = await fetch(url, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  // Get user with notification settings
+  async getUserWithNotifications(): Promise<UserWithNotifications> {
+    const response = await fetch(`${this.baseUrl}/auth/me`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
   }
 }
 
