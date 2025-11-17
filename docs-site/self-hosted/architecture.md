@@ -11,14 +11,14 @@ config:
   theme: base
 ---
 flowchart TB
-    User@{ icon: "mdi:account", label: "User" }
-    Frontend@{ icon: "mdi:react", label: "Frontend" }
-    API@{ icon: "mdi:api", label: "API Service" }
-    DB@{ icon: "mdi:database", label: "PostgreSQL" }
-    Temporal@{ icon: "carbon:workflow-automation", label: "Temporal Cloud" }
-    Workers@{ icon: "mdi:cog", label: "Workers" }
-    LLM@{ icon: "mdi:brain", label: "LLM APIs" }
-    Notif@{ icon: "mdi:bell", label: "Notifications" }
+    User[User]
+    Frontend[Frontend<br/>React + TypeScript]
+    API[API Service<br/>FastAPI]
+    DB[(PostgreSQL<br/>Cloud SQL)]
+    Temporal[Temporal Cloud<br/>Workflow Engine]
+    Workers[Workers<br/>Task Execution]
+    LLM[LLM APIs<br/>Gemini/OpenAI/Anthropic]
+    Notif[Notifications<br/>In-app]
 
     User --> Frontend
     Frontend --> API

@@ -73,11 +73,11 @@ config:
   theme: base
 ---
 flowchart LR
-    A@{ icon: "mdi:file-document-plus", label: "Create Task" }
-    B@{ icon: "mdi:calendar-clock", label: "Schedule" }
-    C@{ icon: "mdi:magnify", label: "Search Web" }
-    D@{ icon: "mdi:brain", label: "Evaluate" }
-    E@{ icon: "mdi:bell-ring", label: "Notify" }
+    A[Create Task]
+    B[Schedule]
+    C[Search Web]
+    D[Evaluate]
+    E[Notify]
 
     A --> B --> C --> D --> E
 ```
