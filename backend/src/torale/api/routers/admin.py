@@ -1,5 +1,6 @@
 """Admin console API endpoints for platform management."""
 
+import asyncio
 import json
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
@@ -531,9 +532,10 @@ async def list_users(
     role_map = {}
     if clerk_client:
         try:
-            clerk_users = clerk_client.users.list()
+            clerk_users_response = await clerk_client.users.list_async()
             role_map = {
-                user.id: (user.public_metadata or {}).get("role") for user in clerk_users.data
+                user.id: (user.public_metadata or {}).get("role")
+                for user in (clerk_users_response.data if clerk_users_response else [])
             }
         except Exception as e:
             print(f"Failed to batch-fetch users from Clerk: {e}")
@@ -694,7 +696,7 @@ async def update_user_role(
 
     try:
         # Update publicMetadata
-        clerk_user = clerk_client.users.get(user_id=target_clerk_user_id)
+        clerk_user = await clerk_client.users.get_async(user_id=target_clerk_user_id)
         current_metadata = clerk_user.public_metadata or {}
 
         # Set or remove role
@@ -706,7 +708,7 @@ async def update_user_role(
             current_metadata["role"] = role
 
         # Update user in Clerk
-        clerk_client.users.update(
+        await clerk_client.users.update_async(
             user_id=target_clerk_user_id,
             public_metadata=current_metadata,
         )
@@ -777,13 +779,17 @@ async def bulk_update_user_roles(
         if clerk_ids_to_fetch and not settings.torale_noauth:
             try:
                 # Single batch API call for all users (max 100)
-                clerk_users_response = clerk_client.users.list(
+                clerk_users_response = await clerk_client.users.list_async(
                     user_id=clerk_ids_to_fetch, limit=100
                 )
                 clerk_users_map = {user.id: user for user in clerk_users_response.data}
             except Exception as e:
                 # Log warning but continue - will handle missing users individually
                 print(f"Warning: Clerk batch fetch failed: {e}")
+
+    # Prepare all update tasks for parallel execution
+    update_tasks = []
+    task_metadata = []
 
     for user_id in user_ids:
         try:
@@ -820,16 +826,30 @@ async def bulk_update_user_roles(
             else:
                 current_metadata["role"] = role
 
-            clerk_client.users.update(
+            # Create update coroutine but don't await yet - collect for parallel execution
+            update_coro = clerk_client.users.update_async(
                 user_id=target_clerk_user_id,
                 public_metadata=current_metadata,
             )
-
-            updated_count += 1
+            update_tasks.append(update_coro)
+            task_metadata.append({"user_id": user_id})
 
         except Exception as e:
+            # Validation errors tracked immediately
             failed_count += 1
             errors.append({"user_id": user_id, "error": str(e)})
+
+    # Execute all Clerk updates in parallel for massive performance improvement
+    if update_tasks:
+        results = await asyncio.gather(*update_tasks, return_exceptions=True)
+
+        # Process results - track successes and failures
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                failed_count += 1
+                errors.append({"user_id": task_metadata[i]["user_id"], "error": str(result)})
+            else:
+                updated_count += 1
 
     return {
         "updated": updated_count,
