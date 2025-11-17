@@ -166,32 +166,35 @@ export default withMermaid(
   mermaid: {
     theme: 'base',
     themeVariables: {
-      // Torale brand colors
-      primaryColor: '#203345',
-      primaryTextColor: '#fff',
-      primaryBorderColor: '#1a2836',
+      // Torale brand colors - adjusted for neo look
+      primaryColor: '#d4e4ef',
+      primaryTextColor: '#203345',
+      primaryBorderColor: '#203345',
 
-      secondaryColor: '#4f9eff',
-      secondaryTextColor: '#000',
-      secondaryBorderColor: '#3d7ec7',
+      secondaryColor: '#cfe8ff',
+      secondaryTextColor: '#1a2836',
+      secondaryBorderColor: '#4f9eff',
 
-      tertiaryColor: '#e9ebef',
-      tertiaryTextColor: '#000',
-      tertiaryBorderColor: '#d0d3d9',
+      tertiaryColor: '#fff',
+      tertiaryTextColor: '#333',
+      tertiaryBorderColor: '#ddd',
 
       // General styling
       background: '#ffffff',
-      mainBkg: '#e9ebef',
-      lineColor: '#333333',
-      textColor: '#333333',
+      mainBkg: '#d4e4ef',
+      lineColor: '#203345',
+      textColor: '#203345',
       fontFamily: 'Inter, system-ui, sans-serif',
       fontSize: '16px',
 
-      // Flowchart
+      // Flowchart - use brand blue
       nodeBorder: '#203345',
       clusterBkg: '#f5f6f8',
       clusterBorder: '#203345',
-      defaultLinkColor: '#333333'
+      defaultLinkColor: '#203345',
+
+      // Node colors
+      nodeTextColor: '#203345'
     }
   }
 })
