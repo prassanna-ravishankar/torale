@@ -529,17 +529,35 @@ async def list_users(
     )
 
     # Batch-fetch roles from Clerk to avoid N+1 query problem
+    # Handle pagination to ensure we fetch all users
     role_map = {}
     if clerk_client:
         try:
-            clerk_users_response = await clerk_client.users.list_async()
-            role_map = {
-                user.id: (user.public_metadata or {}).get("role")
-                for user in (clerk_users_response.data if clerk_users_response else [])
-            }
+            # Clerk's default limit is 10, max is 500. Use higher limit for efficiency.
+            limit = 500
+            offset = 0
+
+            while True:
+                clerk_users_response = await clerk_client.users.list_async(
+                    limit=limit, offset=offset
+                )
+
+                if not clerk_users_response or not clerk_users_response.data:
+                    break
+
+                # Add users from this page to role_map
+                for user in clerk_users_response.data:
+                    role_map[user.id] = (user.public_metadata or {}).get("role")
+
+                # Check if we've fetched all users (last page)
+                if len(clerk_users_response.data) < limit:
+                    break
+
+                offset += limit
+
         except Exception as e:
             print(f"Failed to batch-fetch users from Clerk: {e}")
-            # Continue with empty role_map
+            # Continue with a partially populated or empty role_map
 
     users = []
     for row in result:
