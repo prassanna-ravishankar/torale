@@ -7,69 +7,58 @@ export default defineConfig({
 
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }],
-    ['meta', { name: 'theme-color', content: '#3b82f6' }],
+    ['link', { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/logo-32.png' }],
+    ['link', { rel: 'icon', type: 'image/png', sizes: '64x64', href: '/logo-64.png' }],
+    ['meta', { name: 'theme-color', content: '#203345' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'Torale Documentation' }],
-    ['meta', { property: 'og:description', content: 'Grounded search monitoring platform for automated web monitoring' }],
+    ['meta', { property: 'og:description', content: 'Automated web monitoring with intelligent condition evaluation' }],
   ],
 
   themeConfig: {
     logo: '/logo.svg',
 
     nav: [
-      { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
-      { text: 'API', link: '/api/authentication', activeMatch: '/api/' },
-      { text: 'SDK', link: '/sdk/installation', activeMatch: '/sdk/' },
-      { text: 'CLI', link: '/cli/installation', activeMatch: '/cli/' },
+      { text: 'Getting Started', link: '/getting-started/', activeMatch: '/getting-started/' },
+      { text: 'User Guide', link: '/user-guide/dashboard', activeMatch: '/user-guide/' },
+      { text: 'SDK', link: '/sdk/quickstart', activeMatch: '/sdk/' },
+      { text: 'CLI', link: '/cli/quickstart', activeMatch: '/cli/' },
+      { text: 'API', link: '/api/overview', activeMatch: '/api/' },
       {
-        text: 'More',
+        text: 'Self-Hosted',
         items: [
-          { text: 'Architecture', link: '/architecture/overview' },
-          { text: 'Deployment', link: '/deployment/self-hosted' },
-          { text: 'Contributing', link: '/contributing/setup' }
+          { text: 'Docker Compose', link: '/self-hosted/docker-compose' },
+          { text: 'Kubernetes', link: '/self-hosted/kubernetes' },
+          { text: 'Architecture', link: '/self-hosted/architecture' }
         ]
       },
       { text: 'App', link: 'https://torale.ai' }
     ],
 
     sidebar: {
-      '/guide/': [
+      '/getting-started/': [
         {
-          text: 'Introduction',
+          text: 'Getting Started',
           items: [
-            { text: 'Getting Started', link: '/guide/getting-started' },
-            { text: 'How It Works', link: '/guide/how-it-works' },
-            { text: 'Use Cases', link: '/guide/use-cases' }
-          ]
-        },
-        {
-          text: 'Core Concepts',
-          items: [
-            { text: 'Creating Tasks', link: '/guide/creating-tasks' },
-            { text: 'Task Templates', link: '/guide/task-templates' },
-            { text: 'Scheduling', link: '/guide/scheduling' },
-            { text: 'Notifications', link: '/guide/notifications' },
-            { text: 'State Tracking', link: '/guide/state-tracking' }
-          ]
-        },
-        {
-          text: 'Advanced',
-          items: [
-            { text: 'Troubleshooting', link: '/guide/troubleshooting' }
+            { text: 'Overview', link: '/getting-started/' },
+            { text: 'Web Dashboard', link: '/getting-started/web-dashboard' },
+            { text: 'CLI', link: '/getting-started/cli' },
+            { text: 'Python SDK', link: '/getting-started/sdk' },
+            { text: 'Self-Hosted', link: '/getting-started/self-hosted' }
           ]
         }
       ],
 
-      '/api/': [
+      '/user-guide/': [
         {
-          text: 'API Reference',
+          text: 'User Guide',
           items: [
-            { text: 'Authentication', link: '/api/authentication' },
-            { text: 'Tasks', link: '/api/tasks' },
-            { text: 'Executions', link: '/api/executions' },
-            { text: 'Notifications', link: '/api/notifications' },
-            { text: 'Admin Endpoints', link: '/api/admin' },
-            { text: 'Error Handling', link: '/api/errors' }
+            { text: 'Dashboard Overview', link: '/user-guide/dashboard' },
+            { text: 'Creating Tasks', link: '/user-guide/creating-tasks' },
+            { text: 'Task Templates', link: '/user-guide/templates' },
+            { text: 'Managing Tasks', link: '/user-guide/managing-tasks' },
+            { text: 'Viewing Results', link: '/user-guide/results' },
+            { text: 'Notifications', link: '/user-guide/notifications' }
           ]
         }
       ],
@@ -78,50 +67,52 @@ export default defineConfig({
         {
           text: 'Python SDK',
           items: [
-            { text: 'Installation', link: '/sdk/installation' },
             { text: 'Quickstart', link: '/sdk/quickstart' },
-            { text: 'Async Client', link: '/sdk/async-client' },
-            { text: 'Examples', link: '/sdk/examples' },
-            { text: 'Error Handling', link: '/sdk/error-handling' }
+            { text: 'Authentication', link: '/sdk/authentication' },
+            { text: 'Tasks', link: '/sdk/tasks' },
+            { text: 'Preview', link: '/sdk/preview' },
+            { text: 'Async Client', link: '/sdk/async' },
+            { text: 'Error Handling', link: '/sdk/errors' }
           ]
         }
       ],
 
       '/cli/': [
         {
-          text: 'CLI Reference',
+          text: 'CLI',
           items: [
-            { text: 'Installation', link: '/cli/installation' },
+            { text: 'Quickstart', link: '/cli/quickstart' },
             { text: 'Authentication', link: '/cli/authentication' },
-            { text: 'Task Commands', link: '/cli/tasks' },
+            { text: 'Commands', link: '/cli/commands' },
             { text: 'Configuration', link: '/cli/configuration' }
           ]
         }
       ],
 
-      '/architecture/': [
+      '/api/': [
         {
-          text: 'Architecture',
+          text: 'API Reference',
           items: [
-            { text: 'System Overview', link: '/architecture/overview' },
-            { text: 'Grounded Search', link: '/architecture/grounded-search' },
-            { text: 'Temporal Workflows', link: '/architecture/temporal-workflows' },
-            { text: 'State Tracking', link: '/architecture/state-tracking' },
-            { text: 'Database Schema', link: '/architecture/database-schema' },
-            { text: 'Executor System', link: '/architecture/executors' }
+            { text: 'Overview', link: '/api/overview' },
+            { text: 'Authentication', link: '/api/authentication' },
+            { text: 'Tasks', link: '/api/tasks' },
+            { text: 'Executions', link: '/api/executions' },
+            { text: 'Notifications', link: '/api/notifications' },
+            { text: 'Admin', link: '/api/admin' },
+            { text: 'Errors', link: '/api/errors' }
           ]
         }
       ],
 
-      '/deployment/': [
+      '/self-hosted/': [
         {
-          text: 'Deployment',
+          text: 'Self-Hosted',
           items: [
-            { text: 'Self-Hosted (Docker)', link: '/deployment/self-hosted' },
-            { text: 'Kubernetes (GKE)', link: '/deployment/kubernetes' },
-            { text: 'CI/CD Setup', link: '/deployment/ci-cd' },
-            { text: 'Production Best Practices', link: '/deployment/production' },
-            { text: 'Cost Optimization', link: '/deployment/cost-optimization' }
+            { text: 'Docker Compose', link: '/self-hosted/docker-compose' },
+            { text: 'Kubernetes', link: '/self-hosted/kubernetes' },
+            { text: 'Architecture', link: '/self-hosted/architecture' },
+            { text: 'Configuration', link: '/self-hosted/configuration' },
+            { text: 'Migrations', link: '/self-hosted/migrations' }
           ]
         }
       ],
@@ -131,9 +122,8 @@ export default defineConfig({
           text: 'Contributing',
           items: [
             { text: 'Development Setup', link: '/contributing/setup' },
-            { text: 'Testing Guide', link: '/contributing/testing' },
-            { text: 'Frontend Style Guide', link: '/contributing/frontend-style' },
-            { text: 'Code Conventions', link: '/contributing/conventions' }
+            { text: 'Testing', link: '/contributing/testing' },
+            { text: 'Code Style', link: '/contributing/code-style' }
           ]
         }
       ]
