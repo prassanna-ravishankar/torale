@@ -32,4 +32,17 @@ spec:
             name: {{ include "torale.fullname" . }}-api
             port:
               number: {{ .Values.api.service.port }}
+  # Docs rule (docs.torale.ai)
+  {{- if .Values.docs.enabled }}
+  - host: {{ .Values.domains.docs }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "torale.fullname" . }}-docs
+            port:
+              number: {{ .Values.docs.service.port }}
+  {{- end }}
 {{- end }}

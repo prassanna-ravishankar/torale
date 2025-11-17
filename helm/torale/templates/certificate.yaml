@@ -9,4 +9,7 @@ spec:
   domains:
   - {{ .Values.domains.frontend }}
   - {{ .Values.domains.api }}
+  {{- if .Values.docs.enabled }}
+  - {{ .Values.domains.docs }}
+  {{- end }}
 {{- end }}
