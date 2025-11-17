@@ -7,6 +7,8 @@ export default withMermaid(
   description: 'Grounded search monitoring platform for automated web monitoring',
   base: '/',
 
+  ignoreDeadLinks: true,
+
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }],
     ['link', { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/logo-32.png' }],

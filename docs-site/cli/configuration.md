@@ -371,6 +371,6 @@ torale task list | awk '{print $1}'
 
 ## Next Steps
 
-- Learn [Task Commands](/cli/tasks)
+- Learn [Task Commands](/cli/commands)
 - Set up [Authentication](/cli/authentication)
 - Read [API Reference](/api/tasks)

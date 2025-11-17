@@ -171,6 +171,6 @@ Visit torale.ai → Settings → API Keys → Revoke
 
 ## Next Steps
 
-- Learn [Task Commands](/cli/tasks)
+- Learn [Task Commands](/cli/commands)
 - Configure [Settings](/cli/configuration)
 - Read [API Reference](/api/authentication)

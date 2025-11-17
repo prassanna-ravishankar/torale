@@ -300,6 +300,6 @@ monitor_execution_health()
 
 ## Next Steps
 
-- Handle [Errors](/sdk/error-handling)
-- Learn about [Async Client](/sdk/async-client)
+- Handle [Errors](/sdk/errors)
+- Learn about [Async Client](/sdk/async)
 - Read [API Reference](/api/tasks)

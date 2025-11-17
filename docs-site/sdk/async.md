@@ -251,5 +251,5 @@ async def create_task_with_retry(client, max_retries=3, **kwargs):
 ## Next Steps
 
 - View [Examples](/sdk/examples)
-- Handle [Errors](/sdk/error-handling)
+- Handle [Errors](/sdk/errors)
 - Read [API Reference](/api/tasks)

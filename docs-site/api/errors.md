@@ -647,5 +647,4 @@ except ToraleAPIError as e:
 
 - Review [Authentication](/api/authentication) for auth errors
 - Check [Tasks API](/api/tasks) for endpoint details
-- See [SDK Documentation](/sdk/installation) for SDK usage
-- Read [Best Practices](/guide/troubleshooting)
+- See [SDK Documentation](/sdk/quickstart) for SDK usage

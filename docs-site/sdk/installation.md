@@ -51,6 +51,6 @@ print(f"Authenticated as: {user.email}")
 ## Next Steps
 
 - Get started with [Quickstart Guide](/sdk/quickstart)
-- Learn about [Async Client](/sdk/async-client)
+- Learn about [Async Client](/sdk/async)
 - View [Examples](/sdk/examples)
-- Handle [Errors](/sdk/error-handling)
+- Handle [Errors](/sdk/errors)

@@ -101,5 +101,5 @@ _TORALE_COMPLETE=fish_source torale | source
 ## Next Steps
 
 - Set up [Authentication](/cli/authentication)
-- Learn [Task Commands](/cli/tasks)
+- Learn [Task Commands](/cli/commands)
 - Configure [Settings](/cli/configuration)

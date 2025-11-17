@@ -307,7 +307,7 @@ async def list_tasks(
 
 ## Next Steps
 
-- Learn about [Async Client](/sdk/async-client)
+- Learn about [Async Client](/sdk/async)
 - View more [Examples](/sdk/examples)
-- Handle [Errors](/sdk/error-handling)
+- Handle [Errors](/sdk/errors)
 - Read [API Reference](/api/tasks)

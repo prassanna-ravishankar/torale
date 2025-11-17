@@ -415,4 +415,4 @@ print(f"Error: {e}")
 
 - View [Examples](/sdk/examples)
 - Read [API Reference](/api/errors)
-- Learn about [Async Client](/sdk/async-client)
+- Learn about [Async Client](/sdk/async)

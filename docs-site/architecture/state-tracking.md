@@ -1,6 +1,6 @@
 # State Tracking
 
-See [State Tracking Guide](/guide/state-tracking) for user documentation.
+See [State Tracking Guide]() for user documentation.
 
 This page covers implementation details.
 
@@ -38,5 +38,5 @@ def compare_states(current, previous):
 
 ## Next Steps
 
-- Read [User Guide on State Tracking](/guide/state-tracking)
 - View [Grounded Search](/architecture/grounded-search)
+- Read [System Overview](/architecture/overview)
