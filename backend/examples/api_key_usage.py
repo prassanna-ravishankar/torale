@@ -209,8 +209,8 @@ def example_6_task_webhooks():
 
     print("✓ Task created with webhook!")
     print(f"\n  📝 Name: {task.name}")
-    print(f"  🔔 Webhook: https://myapp.com/webhooks/ps5-alert")
-    print(f"  ⏰ Schedule: Every 2 hours")
+    print("  🔔 Webhook: https://myapp.com/webhooks/ps5-alert")
+    print("  ⏰ Schedule: Every 2 hours")
 
     # Method 2: Fluent API with webhook
     print("\n\nCreating task with webhook (Fluent API)...")
@@ -224,8 +224,8 @@ def example_6_task_webhooks():
 
     print("✓ Task created with fluent API!")
     print(f"\n  📝 Name: {task2.name}")
-    print(f"  🔔 Webhook: https://myapp.com/webhooks/iphone")
-    print(f"  ⏰ Schedule: Daily at 9am")
+    print("  🔔 Webhook: https://myapp.com/webhooks/iphone")
+    print("  ⏰ Schedule: Daily at 9am")
 
 
 def example_7_task_operations():
