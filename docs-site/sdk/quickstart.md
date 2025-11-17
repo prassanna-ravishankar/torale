@@ -27,19 +27,45 @@ client = ToraleClient(api_key="sk_...")
 
 ### Create a Task
 
-```python
+::: code-group
+
+```python [Sync]
+from torale import ToraleClient
+
+client = ToraleClient(api_key="sk_...")
+
 task = client.tasks.create(
-    name="iPhone Release Monitor",
-    search_query="When is the next iPhone being released?",
-    condition_description="Apple has officially announced a specific release date",
-    schedule="0 9 * * *",  # Daily at 9 AM
-    notify_behavior="once"
+    search_query="When is the iPhone 17 being released?",  # [!code highlight]
+    condition_description="Apple has announced a specific release date",  # [!code highlight]
+    schedule="0 9 * * *"  # Daily at 9 AM
 )
 
-print(f"Created task: {task.id}")
-print(f"Task name: {task.name}")
-print(f"Is active: {task.is_active}")
+print(f"Created: {task.id}")
 ```
+
+```python [Async]
+from torale import AsyncToraleClient
+import asyncio
+
+async def create_task():
+    client = AsyncToraleClient(api_key="sk_...")
+
+    task = await client.tasks.create(
+        search_query="When is the iPhone 17 being released?",  # [!code highlight]
+        condition_description="Apple has announced a specific release date",  # [!code highlight]
+        schedule="0 9 * * *"  # Daily at 9 AM
+    )
+
+    print(f"Created: {task.id}")
+
+asyncio.run(create_task())
+```
+
+:::
+
+::: tip Preview First
+Use `client.tasks.preview()` to test your query before creating a task.
+:::
 
 ### Preview Before Creating
 

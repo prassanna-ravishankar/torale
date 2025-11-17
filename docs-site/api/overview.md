@@ -8,6 +8,17 @@ Torale provides a REST API for programmatic access to all platform functionality
 https://api.torale.ai
 ```
 
+## Interactive API Documentation
+
+For interactive API exploration with detailed request/response schemas:
+
+- [OpenAPI Documentation (ReDoc)](https://api.torale.ai/redoc) - Full API reference with schemas
+- [OpenAPI Specification (JSON)](https://api.torale.ai/openapi.json) - Machine-readable API spec
+
+::: tip Try It Out
+The ReDoc interface provides detailed examples and schema information for every endpoint.
+:::
+
 ## Authentication
 
 All requests require authentication via API key in the Authorization header:

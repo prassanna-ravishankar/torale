@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
-export default defineConfig({
+export default withMermaid(
+  defineConfig({
   title: 'Torale Docs',
   description: 'Grounded search monitoring platform for automated web monitoring',
   base: '/',
@@ -157,5 +159,10 @@ export default defineConfig({
       dark: 'github-dark'
     },
     lineNumbers: true
+  },
+
+  mermaid: {
+    theme: 'default'
   }
 })
+)

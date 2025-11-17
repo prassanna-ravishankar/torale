@@ -51,3 +51,7 @@ After choosing your method, explore:
 - [API Reference](/api/overview) - Understand the REST API
 - [SDK Documentation](/sdk/quickstart) - Integrate with Python
 - [CLI Commands](/cli/quickstart) - Master the terminal interface
+
+## Learn More
+
+- [Building Torale: Ambient AI for Web Monitoring](https://prassanna.io/blog/ambient-ai-torale/) - Deep dive into the architecture and design decisions

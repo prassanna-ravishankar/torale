@@ -66,6 +66,22 @@ if executions[0].condition_met:
 
 ## How It Works
 
+```mermaid
+flowchart LR
+    A[Create Task] --> B[Schedule Execution]
+    B --> C[Search Web]
+    C --> D[Evaluate Condition]
+    D --> E{Condition Met?}
+    E -->|Yes| F[Check State Change]
+    E -->|No| G[Continue Monitoring]
+    F -->|Changed| H[Send Notification]
+    F -->|Same| G
+    G --> B
+
+    style A fill:#e9ebef
+    style H fill:#203345,color:#fff
+```
+
 Torale combines four core capabilities to automate web monitoring:
 
 **Grounded Search** uses Google Search to find current information on the web, with LLM-powered answer extraction that provides concise, source-backed responses.
