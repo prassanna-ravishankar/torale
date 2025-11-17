@@ -27,6 +27,16 @@ parser.add_argument(
     action="store_true",
     help="Use local dev server (http://localhost:8000) instead of production API",
 )
+parser.add_argument(
+    "--webhook-url",
+    type=str,
+    help="Webhook URL to configure and test (e.g., https://webhook.site/unique-id)",
+)
+parser.add_argument(
+    "--webhook-secret",
+    type=str,
+    help="Webhook secret for testing (optional, will use saved config if not provided)",
+)
 args = parser.parse_args()
 
 # Set dev mode BEFORE importing SDK
@@ -179,7 +189,46 @@ def example_5_fluent_api():
     return task
 
 
-def example_6_task_operations():
+def example_6_task_webhooks():
+    """
+    Example: Create tasks with webhook notifications
+    """
+    print("\n=== Example: Task with Webhook Notifications ===\n")
+
+    client = Torale()
+
+    # Method 1: Direct API with webhook notification
+    print("Creating task with webhook notification (Direct API)...")
+    task = client.tasks.create(
+        name="PS5 Stock Monitor",
+        search_query="Is PS5 back in stock at Best Buy?",
+        condition_description="PS5 is available for purchase",
+        schedule="0 */2 * * *",  # Every 2 hours
+        notifications=[{"type": "webhook", "url": "https://myapp.com/webhooks/ps5-alert"}],
+    )
+
+    print("✓ Task created with webhook!")
+    print(f"\n  📝 Name: {task.name}")
+    print(f"  🔔 Webhook: https://myapp.com/webhooks/ps5-alert")
+    print(f"  ⏰ Schedule: Every 2 hours")
+
+    # Method 2: Fluent API with webhook
+    print("\n\nCreating task with webhook (Fluent API)...")
+    task2 = (
+        client.monitor("iPhone 16 Pro release date")
+        .when("A specific release date is announced")
+        .check_every("0 9 * * *")  # Daily at 9am
+        .notify(webhook="https://myapp.com/webhooks/iphone")
+        .create()
+    )
+
+    print("✓ Task created with fluent API!")
+    print(f"\n  📝 Name: {task2.name}")
+    print(f"  🔔 Webhook: https://myapp.com/webhooks/iphone")
+    print(f"  ⏰ Schedule: Daily at 9am")
+
+
+def example_7_task_operations():
     """
     Example: Common task operations (get, update, delete, execute)
     """
@@ -216,7 +265,58 @@ def example_6_task_operations():
         print("  ⏳ Condition not met yet")
 
 
-async def example_7_async_usage():
+def example_8_webhook_management():
+    """
+    Example: Manage user-level webhook configuration
+
+    Demonstrates setting up a default webhook URL for all task notifications,
+    testing webhook delivery, and viewing delivery history.
+    """
+    print("\n=== Example: Webhook Configuration & Testing ===\n")
+
+    client = Torale()
+
+    # Get current webhook config
+    print("Fetching current webhook configuration...")
+    config = client.webhooks.get_config()
+    print(f"  Current URL: {config['url'] or 'Not configured'}")
+    print(f"  Enabled: {config['enabled']}")
+    if config["secret"]:
+        print(f"  Secret: {config['secret'][:16]}...")
+
+    # If webhook URL provided via CLI, configure and test it
+    if args.webhook_url:
+        print(f"\n\nConfiguring webhook URL: {args.webhook_url}")
+        updated_config = client.webhooks.update_config(url=args.webhook_url, enabled=True)
+        print("✓ Webhook configured!")
+        print(f"  URL: {updated_config['url']}")
+        print(f"  Secret: {updated_config['secret']}")
+        print(f"  Enabled: {updated_config['enabled']}")
+
+        # Test webhook delivery
+        print("\n\n🧪 Testing webhook delivery...")
+        secret = args.webhook_secret or updated_config["secret"]
+
+        try:
+            result = client.webhooks.test(url=args.webhook_url, secret=secret)
+            print(f"✅ {result['message']}")
+            print("\n💡 Check your webhook endpoint to see the test payload!")
+            print("   It includes sample task and execution data.")
+        except Exception as e:
+            print(f"❌ Test failed: {e}")
+            print("\n💡 Make sure your webhook endpoint:")
+            print("   - Is publicly accessible (or use ngrok for local testing)")
+            print("   - Returns HTTP 2xx status code")
+            print("   - Can handle POST requests")
+
+    else:
+        print("\n\n💡 TIP: Pass --webhook-url to configure and test webhooks")
+        print(
+            "   Example: python examples/api_key_usage.py --webhook-url https://webhook.site/unique-id"
+        )
+
+
+async def example_9_async_usage():
     """
     Example: Async SDK usage for concurrent operations
     """
@@ -287,13 +387,20 @@ def main():
         print("=" * 60)
         example_4_create_task()
         example_5_fluent_api()
-        example_6_task_operations()
+        example_6_task_webhooks()
+        example_7_task_operations()
+
+        # Webhook management
+        print("\n" + "=" * 60)
+        print("WEBHOOK CONFIGURATION")
+        print("=" * 60)
+        example_8_webhook_management()
 
         # Async example
         print("\n" + "=" * 60)
         print("ASYNC SDK USAGE")
         print("=" * 60)
-        asyncio.run(example_7_async_usage())
+        asyncio.run(example_9_async_usage())
 
         print("\n" + "=" * 60)
         print("✅ All examples completed successfully!")

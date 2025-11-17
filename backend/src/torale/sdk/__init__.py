@@ -17,8 +17,9 @@ from torale.sdk.exceptions import (
     ToraleError,
     ValidationError,
 )
-from torale.sdk.resources import TasksResource
+from torale.sdk.resources import TasksResource, WebhooksResource
 from torale.sdk.resources.async_tasks import AsyncTasksResource
+from torale.sdk.resources.async_webhooks import AsyncWebhooksResource
 
 
 class Torale(ToraleClient):
@@ -73,6 +74,7 @@ class Torale(ToraleClient):
 
         # Initialize resources
         self.tasks = TasksResource(self)
+        self.webhooks = WebhooksResource(self)
 
     def monitor(self, search_query: str) -> MonitorBuilder:
         """
@@ -140,6 +142,7 @@ class ToraleAsync(ToraleAsyncClient):
 
         # Initialize async resources
         self.tasks = AsyncTasksResource(self)
+        self.webhooks = AsyncWebhooksResource(self)
 
 
 __all__ = [
@@ -149,6 +152,8 @@ __all__ = [
     "MonitorBuilder",
     "TasksResource",
     "AsyncTasksResource",
+    "WebhooksResource",
+    "AsyncWebhooksResource",
     "ToraleError",
     "AuthenticationError",
     "NotFoundError",

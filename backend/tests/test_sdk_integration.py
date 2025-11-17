@@ -732,6 +732,93 @@ class TestSDKPreview:
         assert "model" in params
 
 
+class TestSDKWebhooks:
+    """Test SDK webhook resource functionality."""
+
+    def test_webhooks_resource_exists(self, sdk_client):
+        """Verify webhooks resource is initialized."""
+        assert hasattr(sdk_client, "webhooks")
+        assert sdk_client.webhooks is not None
+
+    def test_get_webhook_config(self, sdk_client):
+        """Test getting webhook configuration."""
+        config = sdk_client.webhooks.get_config()
+
+        # Verify response structure
+        assert isinstance(config, dict)
+        assert "url" in config
+        assert "secret" in config
+        assert "enabled" in config
+
+    def test_update_webhook_config(self, sdk_client):
+        """Test updating webhook configuration."""
+        test_url = "https://webhook.example.com/test"
+
+        # Update config
+        updated = sdk_client.webhooks.update_config(url=test_url, enabled=True)
+
+        # Verify response
+        assert updated["url"] == test_url
+        assert updated["enabled"] is True
+        assert "secret" in updated
+        assert updated["secret"] is not None
+
+        # Verify persistence by fetching again
+        config = sdk_client.webhooks.get_config()
+        assert config["url"] == test_url
+        assert config["enabled"] is True
+
+    def test_disable_webhook_config(self, sdk_client):
+        """Test disabling webhooks."""
+        # First enable with a URL
+        sdk_client.webhooks.update_config(url="https://webhook.example.com/test", enabled=True)
+
+        # Then disable
+        updated = sdk_client.webhooks.update_config(
+            url="https://webhook.example.com/test", enabled=False
+        )
+
+        assert updated["enabled"] is False
+
+    def test_webhook_test_method_exists(self, sdk_client):
+        """Verify webhook test method exists."""
+        assert hasattr(sdk_client.webhooks, "test")
+        assert callable(sdk_client.webhooks.test)
+
+    def test_webhook_list_deliveries_method_exists(self, sdk_client):
+        """Verify list_deliveries method exists."""
+        assert hasattr(sdk_client.webhooks, "list_deliveries")
+        assert callable(sdk_client.webhooks.list_deliveries)
+
+    def test_task_creation_with_webhook_notification(self, sdk_client):
+        """Test creating task with webhook notification."""
+        task = sdk_client.tasks.create(
+            name=f"Test Webhook Task {uuid.uuid4().hex[:8]}",
+            search_query="Test query with webhook",
+            condition_description="Test condition",
+            notifications=[{"type": "webhook", "url": "https://webhook.example.com/alert"}],
+        )
+
+        try:
+            # Verify task was created with notification
+            assert task.id is not None
+            assert task.name.startswith("Test Webhook Task")
+
+            # Fetch task to verify notifications persisted
+            fetched = sdk_client.tasks.get(task.id)
+            assert fetched.notifications is not None
+            assert len(fetched.notifications) > 0
+            assert fetched.notifications[0]["type"] == "webhook"
+            assert fetched.notifications[0]["url"] == "https://webhook.example.com/alert"
+
+        finally:
+            # Cleanup
+            try:
+                sdk_client.tasks.delete(task.id)
+            except NotFoundError:
+                pass
+
+
 if __name__ == "__main__":
     # Run tests with pytest
     pytest.main([__file__, "-v", "--tb=short"])
