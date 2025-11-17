@@ -9,6 +9,9 @@
     "docs:preview": "vitepress preview"
   },
   "devDependencies": {
+    "@iconify-json/carbon": "^1.2.14",
+    "@iconify-json/logos": "^1.2.10",
+    "@iconify-json/mdi": "^1.2.3",
     "mermaid": "^11.12.1",
     "vitepress": "^1.5.0",
     "vitepress-plugin-mermaid": "^2.0.17",

@@ -5,15 +5,20 @@ System architecture for self-hosted Torale deployments.
 ## Component Overview
 
 ```mermaid
+---
+config:
+  look: neo
+  theme: base
+---
 flowchart TB
-    User[User]
-    Frontend[Frontend<br/>React + TypeScript]
-    API[API Service<br/>FastAPI]
-    DB[(PostgreSQL<br/>Cloud SQL)]
-    Temporal[Temporal Cloud<br/>Workflow Engine]
-    Workers[Workers<br/>Task Execution]
-    LLM[LLM APIs<br/>Gemini/OpenAI/Anthropic]
-    Notif[Notifications<br/>In-app]
+    User@{ icon: "mdi:account", label: "User" }
+    Frontend@{ icon: "mdi:react", label: "Frontend" }
+    API@{ icon: "mdi:api", label: "API Service" }
+    DB@{ icon: "mdi:database", label: "PostgreSQL" }
+    Temporal@{ icon: "carbon:workflow-automation", label: "Temporal Cloud" }
+    Workers@{ icon: "mdi:cog", label: "Workers" }
+    LLM@{ icon: "mdi:brain", label: "LLM APIs" }
+    Notif@{ icon: "mdi:bell", label: "Notifications" }
 
     User --> Frontend
     Frontend --> API
@@ -23,13 +28,6 @@ flowchart TB
     Workers --> LLM
     Workers --> Notif
     Workers --> DB
-
-    style Frontend fill:#4f9eff,color:#000
-    style API fill:#ff9e64,color:#000
-    style Workers fill:#9ece6a,color:#000
-    style DB fill:#bb9af7,color:#000
-    style Temporal fill:#7aa2f7,color:#000
-    style LLM fill:#e0af68,color:#000
 ```
 
 ## API Service

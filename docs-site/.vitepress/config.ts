@@ -164,7 +164,35 @@ export default withMermaid(
   },
 
   mermaid: {
-    theme: 'default'
+    theme: 'base',
+    themeVariables: {
+      // Torale brand colors
+      primaryColor: '#203345',
+      primaryTextColor: '#fff',
+      primaryBorderColor: '#1a2836',
+
+      secondaryColor: '#4f9eff',
+      secondaryTextColor: '#000',
+      secondaryBorderColor: '#3d7ec7',
+
+      tertiaryColor: '#e9ebef',
+      tertiaryTextColor: '#000',
+      tertiaryBorderColor: '#d0d3d9',
+
+      // General styling
+      background: '#ffffff',
+      mainBkg: '#e9ebef',
+      lineColor: '#333333',
+      textColor: '#333333',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      fontSize: '16px',
+
+      // Flowchart
+      nodeBorder: '#203345',
+      clusterBkg: '#f5f6f8',
+      clusterBorder: '#203345',
+      defaultLinkColor: '#333333'
+    }
   }
 })
 )

@@ -67,19 +67,19 @@ if executions[0].condition_met:
 ## How It Works
 
 ```mermaid
+---
+config:
+  look: neo
+  theme: base
+---
 flowchart LR
-    A[Create Task] --> B[Schedule Execution]
-    B --> C[Search Web]
-    C --> D[Evaluate Condition]
-    D --> E{Condition Met?}
-    E -->|Yes| F[Check State Change]
-    E -->|No| G[Continue Monitoring]
-    F -->|Changed| H[Send Notification]
-    F -->|Same| G
-    G --> B
+    A@{ icon: "mdi:file-document-plus", label: "Create Task" }
+    B@{ icon: "mdi:calendar-clock", label: "Schedule" }
+    C@{ icon: "mdi:magnify", label: "Search Web" }
+    D@{ icon: "mdi:brain", label: "Evaluate" }
+    E@{ icon: "mdi:bell-ring", label: "Notify" }
 
-    style A fill:#e9ebef
-    style H fill:#203345,color:#fff
+    A --> B --> C --> D --> E
 ```
 
 Torale combines four core capabilities to automate web monitoring:
