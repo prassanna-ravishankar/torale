@@ -87,15 +87,17 @@ The SDK requires developer access. To get an API key:
 ```python
 from torale import Torale
 
-# Option 1: Explicit API key
+# Option 1: Environment variable (recommended for development)
+# export TORALE_API_KEY=sk_...
+client = Torale()  # Auto-discovers from environment
+
+# Option 2: Explicit API key (useful for testing, not recommended for production)
 client = Torale(api_key="sk_your_api_key_here")
 
-# Option 2: Environment variable
-# export TORALE_API_KEY=sk_...
-client = Torale()
-
-# Option 3: CLI config (torale auth set-api-key)
-client = Torale()
+# Option 3: CLI config file (recommended for local CLI usage)
+# Run: torale auth set-api-key
+# Stores in: ~/.torale/config.json
+client = Torale()  # Auto-discovers from config file
 
 # Create a monitoring task
 task = client.tasks.create(

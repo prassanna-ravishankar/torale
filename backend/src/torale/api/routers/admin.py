@@ -753,21 +753,22 @@ async def bulk_update_user_roles(
     failed_count = 0
     errors = []
 
+    # Batch fetch all clerk_user_ids in single query to avoid N+1 problem
+    result = await session.execute(
+        text("SELECT id, clerk_user_id FROM users WHERE id = ANY(:user_ids)"),
+        {"user_ids": user_ids},
+    )
+    user_map = {str(row[0]): row[1] for row in result}  # db_id -> clerk_id
+
     for user_id in user_ids:
         try:
-            # Get user's clerk_user_id from database
-            result = await session.execute(
-                text("SELECT clerk_user_id FROM users WHERE id = :user_id"),
-                {"user_id": user_id},
-            )
-            user_row = result.first()
-
-            if not user_row:
+            # Look up clerk_user_id from pre-fetched map
+            if user_id not in user_map:
                 failed_count += 1
                 errors.append({"user_id": user_id, "error": "User not found"})
                 continue
 
-            target_clerk_user_id = user_row[0]
+            target_clerk_user_id = user_map[user_id]
 
             # Prevent admins from changing their own role
             if admin.clerk_user_id == target_clerk_user_id:

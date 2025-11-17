@@ -81,7 +81,7 @@ export const ApiKeyManagementSection: React.FC = () => {
     try {
       const response = await api.createApiKey(newKeyName.trim());
       setCreatedKey(response.key);
-      setApiKeys((prev) => [...prev, response.key_info]);
+      await loadApiKeys();
       setShowCreateDialog(false);
       setShowCreatedKeyDialog(true);
       toast.success('API key created successfully');
@@ -113,7 +113,7 @@ export const ApiKeyManagementSection: React.FC = () => {
     setIsRevoking(keyToRevoke.id);
     try {
       await api.revokeApiKey(keyToRevoke.id);
-      setApiKeys((prev) => prev.map((k) => (k.id === keyToRevoke.id ? { ...k, is_active: false } : k)));
+      await loadApiKeys();
       toast.success('API key revoked successfully');
     } catch (err: any) {
       toast.error(err.message || 'Failed to revoke API key');

@@ -118,10 +118,6 @@ export function UsersTable() {
 
     const roleValue = selectedRole === 'none' ? null : selectedRole
 
-    if (!confirm(`Update role for ${editingUser.email} to ${roleValue || 'No Role'}?`)) {
-      return
-    }
-
     setIsUpdating(true)
     try {
       await api.updateUserRole(editingUser.id, roleValue)
@@ -169,14 +165,6 @@ export function UsersTable() {
     }
 
     const roleValue = bulkRole === 'none' ? null : bulkRole
-    const selectedUsers = data?.users.filter(u => selectedUserIds.has(u.id)) || []
-
-    if (!confirm(
-      `Update role to ${roleValue || 'No Role'} for ${selectedUserIds.size} user(s)?\n\n` +
-      selectedUsers.map(u => `• ${u.email}`).join('\n')
-    )) {
-      return
-    }
 
     setIsBulkUpdating(true)
 

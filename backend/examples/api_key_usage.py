@@ -39,6 +39,7 @@ load_dotenv()
 # ruff: noqa: E402
 # SDK must be imported AFTER setting TORALE_DEV environment variable
 from torale.sdk import Torale, ToraleAsync
+from torale.sdk.exceptions import AuthenticationError
 
 
 def example_1_env_variable():
@@ -111,8 +112,8 @@ def example_3_cli_config():
         tasks = client.tasks.list()
         print("✓ Authenticated via ~/.torale/config.json")
         print(f"✓ Found {len(tasks)} task(s)")
-    except Exception:
-        print("⚠️  CLI config not found or invalid")
+    except AuthenticationError:
+        print("⚠️  CLI config not found or invalid. The SDK could not find an API key.")
         print("\nTo set up CLI config, run:")
         print("  torale auth set-api-key")
     finally:
