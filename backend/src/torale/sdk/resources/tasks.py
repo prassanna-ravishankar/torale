@@ -76,7 +76,7 @@ class TasksResource:
             "executor_type": "llm_grounded_search",
         }
 
-        response = self.client.post("/api/v1/tasks", json=data)
+        response = self.client.post("/api/v1/tasks/", json=data)
         return Task(**response)
 
     def list(self, active: bool | None = None) -> list[Task]:
@@ -98,7 +98,7 @@ class TasksResource:
         if active is not None:
             params["is_active"] = active
 
-        response = self.client.get("/api/v1/tasks", params=params)
+        response = self.client.get("/api/v1/tasks/", params=params)
         return [Task(**task_data) for task_data in response]
 
     def get(self, task_id: str | UUID) -> Task:
@@ -248,3 +248,49 @@ class TasksResource:
             f"/api/v1/tasks/{task_id}/notifications", params={"limit": limit}
         )
         return [TaskExecution(**exec_data) for exec_data in response]
+
+    def preview(
+        self,
+        search_query: str,
+        condition_description: str | None = None,
+        model: str = "gemini-2.0-flash-exp",
+    ) -> dict:
+        """
+        Preview a search query without creating a task.
+
+        Test your search query and see results before committing to creating
+        a monitoring task. This executes the grounded search but doesn't save
+        anything to the database.
+
+        Args:
+            search_query: The search query to test
+            condition_description: Condition to evaluate (optional, LLM will infer if not provided)
+            model: Model to use for search (default: gemini-2.0-flash-exp)
+
+        Returns:
+            dict with keys:
+                - answer: The search result answer
+                - condition_met: Whether the condition was met
+                - inferred_condition: LLM-inferred condition (if condition_description not provided)
+                - grounding_sources: List of source URLs with titles
+                - current_state: Current state dict
+
+        Example:
+            >>> result = client.tasks.preview(
+            ...     search_query="When is iPhone 16 being released?",
+            ...     condition_description="A specific release date is announced"
+            ... )
+            >>> print(result["answer"])
+            >>> print(f"Condition met: {result['condition_met']}")
+            >>> for source in result["grounding_sources"]:
+            ...     print(f"- {source['title']}: {source['url']}")
+        """
+        data = {
+            "search_query": search_query,
+            "model": model,
+        }
+
+        if condition_description:
+            data["condition_description"] = condition_description
+
+        return self.client.post("/api/v1/tasks/preview", json=data)

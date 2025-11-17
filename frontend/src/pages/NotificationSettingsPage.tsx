@@ -5,6 +5,7 @@ import { ArrowLeft, Bell } from 'lucide-react';
 import { EmailManagementSection } from '@/components/settings/EmailManagementSection';
 import { WebhookConfigSection } from '@/components/settings/WebhookConfigSection';
 import { NotificationHistorySection } from '@/components/settings/NotificationHistorySection';
+import { ApiKeyManagementSection } from '@/components/settings/ApiKeyManagementSection';
 
 export const NotificationSettingsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -40,6 +41,9 @@ export const NotificationSettingsPage: React.FC = () => {
 
       {/* Webhook Configuration */}
       <WebhookConfigSection />
+
+      {/* API Key Management */}
+      <ApiKeyManagementSection />
 
       {/* Notification History */}
       <NotificationHistorySection />

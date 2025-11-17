@@ -8,6 +8,8 @@ import type {
   WebhookConfig,
   WebhookDelivery,
   NotificationSend,
+  ApiKey,
+  CreateApiKeyResponse,
 } from '@/types'
 
 interface ApiError {
@@ -246,6 +248,24 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
+  async updateUserRole(userId: string, role: string | null): Promise<{ status: string; user_id: string; role: string | null }> {
+    const response = await fetch(`${this.baseUrl}/admin/users/${userId}/role`, {
+      method: 'PATCH',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ role }),
+    })
+    return this.handleResponse(response)
+  }
+
+  async bulkUpdateUserRoles(userIds: string[], role: string | null): Promise<{ updated: number; failed: number; errors: any[] }> {
+    const response = await fetch(`${this.baseUrl}/admin/users/roles`, {
+      method: 'PATCH',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ user_ids: userIds, role }),
+    })
+    return this.handleResponse(response)
+  }
+
   // Waitlist endpoints
   async getWaitlist(statusFilter?: string): Promise<any> {
     const url = statusFilter
@@ -384,6 +404,31 @@ class ApiClient {
   // Get user with notification settings
   async getUserWithNotifications(): Promise<UserWithNotifications> {
     const response = await fetch(`${this.baseUrl}/auth/me`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  // API Key Management endpoints
+  async createApiKey(name: string): Promise<CreateApiKeyResponse> {
+    const response = await fetch(`${this.baseUrl}/auth/api-keys`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ name }),
+    })
+    return this.handleResponse(response)
+  }
+
+  async getApiKeys(): Promise<ApiKey[]> {
+    const response = await fetch(`${this.baseUrl}/auth/api-keys`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async revokeApiKey(keyId: string): Promise<{ status: string }> {
+    const response = await fetch(`${this.baseUrl}/auth/api-keys/${keyId}`, {
+      method: 'DELETE',
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)

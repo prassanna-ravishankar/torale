@@ -360,3 +360,56 @@ async def require_admin(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to verify admin role",
         ) from e
+
+
+async def require_developer(
+    credentials: HTTPAuthorizationCredentials = Security(security),
+) -> ClerkUser:
+    """
+    Require developer or admin role for accessing developer endpoints.
+
+    This dependency:
+    1. Authenticates the user (via Clerk JWT or API key)
+    2. Fetches the user's public metadata from Clerk
+    3. Verifies that publicMetadata.role === "developer" or "admin"
+
+    Raises:
+        HTTPException: 403 if user is not a developer or admin
+
+    Example:
+        @router.post("/auth/api-keys")
+        async def create_api_key(developer: ClerkUser = Depends(require_developer)):
+            return {"message": "Developer access granted"}
+    """
+    # First authenticate the user
+    user = await get_current_user(credentials)
+
+    # Fetch user's public metadata from Clerk to check role
+    if not clerk_client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Clerk client not initialized",
+        )
+
+    try:
+        clerk_user = clerk_client.users.get(user_id=user.clerk_user_id)
+
+        # Check if user has developer or admin role in publicMetadata
+        public_metadata = clerk_user.public_metadata or {}
+        role = public_metadata.get("role")
+        if role not in ["developer", "admin"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Developer access required. Please contact support to enable API access.",
+            )
+
+        return user
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Failed to verify developer role: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to verify developer role",
+        ) from e

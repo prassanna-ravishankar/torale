@@ -264,11 +264,32 @@ Torale uses **Clerk** for authentication, providing OAuth (Google, GitHub) and e
 - **API Key Auth**: Separate authentication system for CLI access via hashed API keys
 
 #### Frontend Authentication
-- **ClerkProvider**: Wraps entire app in `main.tsx` with publishable key
+- **Dual-Mode Authentication**: Supports both Clerk (production) and NoAuth (local dev with `VITE_TORALE_NOAUTH=1`)
+- **ClerkProvider**: Wraps entire app in `main.tsx` with publishable key (production only)
 - **Sign In/Up**: Clerk's pre-built `<SignIn />` and `<SignUp />` components at `/sign-in` and `/sign-up`
-- **Protected Routes**: Use Clerk's `useAuth()` hook to check authentication status
-- **User Info**: Access via Clerk's `useUser()` hook and `<UserButton />` component
+- **Protected Routes**: Use abstracted `useAuth()` hook from `@/contexts/AuthContext` (NOT Clerk's hook directly)
+- **User Info**: Access via `useAuth()` hook (provides unified interface for both modes)
 - **API Calls**: Clerk tokens automatically injected via `api.setTokenGetter(getToken)`
+
+**IMPORTANT - Component Development Pattern:**
+```typescript
+// ❌ WRONG - Breaks in NoAuth mode (VITE_TORALE_NOAUTH=1)
+import { useUser } from '@clerk/clerk-react'
+const { user } = useUser()
+const email = user?.primaryEmailAddress?.emailAddress
+
+// ✅ CORRECT - Works in both Clerk and NoAuth modes
+import { useAuth } from '@/contexts/AuthContext'
+const { user } = useAuth()
+const email = user?.email
+const role = user?.publicMetadata?.role
+```
+
+**Why this matters:**
+- `useUser()` from `@clerk/clerk-react` only works when `<ClerkProvider>` is present
+- Local dev uses `NoAuthProvider` when `VITE_TORALE_NOAUTH=1`, which doesn't include ClerkProvider
+- `useAuth()` from `@/contexts/AuthContext` provides a unified interface that works in both modes
+- The abstraction layer ensures components work seamlessly in both production and local development
 
 #### CLI Authentication
 - **API Keys**: Users generate API keys in web dashboard (`/auth/api-keys`)

@@ -65,40 +65,250 @@ torale notifications TASK_ID
 
 ### Option 3: Use the Python SDK
 
-Integrate Torale into your Python applications:
+Integrate Torale into your Python applications for programmatic task management.
+
+#### Installation
 
 ```bash
 pip install torale
 ```
 
-```python
-from torale.sdk import ToraleClient
+#### Authentication
 
-# Initialize client with your API key
-client = ToraleClient(
-    api_key="sk_your_api_key_here",
-    base_url="https://api.torale.ai"  # or http://localhost:8000 for self-hosted
-)
+The SDK requires developer access. To get an API key:
+
+1. Sign up at https://torale.ai
+2. Contact support to request developer access (adds `role: "developer"` to your account)
+3. Go to Settings → API Access and generate an API key
+4. Configure the SDK with your API key
+
+#### Quick Start - Synchronous Client
+
+```python
+from torale import Torale
+
+# Option 1: Environment variable (recommended for development)
+# export TORALE_API_KEY=sk_...
+client = Torale()  # Auto-discovers from environment
+
+# Option 2: Explicit API key (useful for testing, not recommended for production)
+client = Torale(api_key="sk_your_api_key_here")
+
+# Option 3: CLI config file (recommended for local CLI usage)
+# Run: torale auth set-api-key
+# Stores in: ~/.torale/config.json
+client = Torale()  # Auto-discovers from config file
 
 # Create a monitoring task
 task = client.tasks.create(
     name="iPhone Release Monitor",
-    schedule="0 9 * * *",
-    executor_type="llm_grounded_search",
     search_query="When is the next iPhone being released?",
     condition_description="A specific release date has been announced",
-    notify_behavior="once",
-    config={"model": "gemini-2.0-flash-exp"}
+    schedule="0 9 * * *",  # Daily at 9am
+    notify_behavior="once",  # Options: "once", "always", "track_state"
+    notifications=[
+        {"type": "webhook", "url": "https://myapp.com/alert"}
+    ]
 )
 
-# Get task status
-task = client.tasks.get(task.id)
-print(f"Task status: {task.is_active}")
+print(f"Created task: {task.id}")
+```
 
-# List all notifications
-notifications = client.tasks.get_notifications(task.id)
-for notification in notifications:
-    print(f"[{notification.created_at}] {notification.message}")
+#### Async Client
+
+For better performance with concurrent operations:
+
+```python
+import asyncio
+from torale import ToraleAsync
+
+async def main():
+    async with ToraleAsync(api_key="sk_...") as client:
+        # Create multiple tasks concurrently
+        task1 = client.tasks.create(
+            name="iPhone Monitor",
+            search_query="When is iPhone 16 being released?",
+            condition_description="A specific date is announced"
+        )
+        task2 = client.tasks.create(
+            name="PS5 Stock Monitor",
+            search_query="Is PS5 in stock at Best Buy?",
+            condition_description="PS5 is available for purchase"
+        )
+
+        # Wait for both to complete
+        tasks = await asyncio.gather(task1, task2)
+        print(f"Created {len(tasks)} tasks")
+
+asyncio.run(main())
+```
+
+#### API Reference
+
+**Task Management**
+
+```python
+# List all tasks
+tasks = client.tasks.list(active=True)
+
+# Get specific task
+task = client.tasks.get(task_id="550e8400-...")
+
+# Update task
+task = client.tasks.update(
+    task_id="550e8400-...",
+    name="New Name",
+    is_active=False
+)
+
+# Delete task
+client.tasks.delete(task_id="550e8400-...")
+
+# Manual execution (test run)
+execution = client.tasks.execute(task_id="550e8400-...")
+print(execution.status)  # "pending", "running", "success", "failed"
+```
+
+**Preview Queries**
+
+Test search queries before creating tasks:
+
+```python
+# Preview with explicit condition
+result = client.tasks.preview(
+    search_query="When is iPhone 16 being released?",
+    condition_description="A specific release date is announced"
+)
+
+# Preview without condition (LLM will infer)
+result = client.tasks.preview(
+    search_query="What's the latest news on GPT-5?"
+)
+
+print(result["answer"])
+print(f"Condition met: {result['condition_met']}")
+if "inferred_condition" in result:
+    print(f"Inferred: {result['inferred_condition']}")
+
+for source in result["grounding_sources"]:
+    print(f"- {source['title']}: {source['url']}")
+```
+
+**Execution History & Notifications**
+
+```python
+# Get all executions
+executions = client.tasks.executions(task_id="550e8400-...", limit=100)
+for exec in executions:
+    print(f"{exec.started_at}: {exec.status}")
+
+# Get only notifications (condition met)
+notifications = client.tasks.notifications(task_id="550e8400-...", limit=10)
+for notif in notifications:
+    print(f"{notif.started_at}: {notif.change_summary}")
+```
+
+**Fluent Builder API**
+
+For a more expressive syntax:
+
+```python
+from torale import monitor
+
+task = (monitor("When is iPhone 16 being released?")
+    .when("A specific release date is announced")
+    .check_every("6 hours")  # Human-readable schedules
+    .notify(webhook="https://myapp.com/alert")
+    .named("iPhone Release Monitor")
+    .create())
+```
+
+**Notification Configuration**
+
+```python
+# Webhook notifications
+task = client.tasks.create(
+    name="Bitcoin Alert",
+    search_query="Bitcoin price USD",
+    condition_description="Price exceeds $50,000",
+    notifications=[
+        {"type": "webhook", "url": "https://myapp.com/webhook"}
+    ]
+)
+
+# Email notifications (requires verified email)
+task = client.tasks.create(
+    name="Job Alert",
+    search_query="Software Engineer jobs in NYC",
+    condition_description="New positions posted",
+    notifications=[
+        {"type": "email", "address": "you@example.com"}
+    ]
+)
+
+# Multiple notification channels
+task = client.tasks.create(
+    name="Multi-channel Alert",
+    search_query="Product launch announcement",
+    condition_description="Official announcement is made",
+    notifications=[
+        {"type": "email", "address": "you@example.com"},
+        {"type": "webhook", "url": "https://myapp.com/webhook"}
+    ]
+)
+```
+
+**Environment Configuration**
+
+```bash
+# Production (default)
+export TORALE_API_KEY=sk_your_api_key_here
+
+# Local development with authentication
+export TORALE_API_KEY=sk_local_key
+export TORALE_DEV=1  # Uses http://localhost:8000
+
+# Local development without authentication
+export TORALE_NOAUTH=1  # Skips auth, uses localhost
+
+# Custom API URL
+export TORALE_API_URL=https://custom.domain.com
+```
+
+**Context Managers**
+
+Both sync and async clients support context managers for automatic cleanup:
+
+```python
+# Synchronous
+with Torale() as client:
+    tasks = client.tasks.list()
+
+# Asynchronous
+async with ToraleAsync() as client:
+    tasks = await client.tasks.list()
+```
+
+**Error Handling**
+
+```python
+from torale.sdk.exceptions import (
+    AuthenticationError,
+    NotFoundError,
+    ValidationError,
+    APIError
+)
+
+try:
+    task = client.tasks.create(...)
+except AuthenticationError:
+    print("Invalid API key or not authenticated")
+except ValidationError as e:
+    print(f"Invalid input: {e}")
+except NotFoundError:
+    print("Resource not found")
+except APIError as e:
+    print(f"API error: {e.status_code} - {e.message}")
 ```
 
 ### Option 4: Self-Hosted Setup
