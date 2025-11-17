@@ -2,10 +2,11 @@
 
 import json
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from temporalio.client import Client
@@ -15,6 +16,31 @@ from torale.api.users import get_async_session
 from torale.core.config import settings
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+# Request models for role management
+class UpdateUserRoleRequest(BaseModel):
+    """Request model for updating a single user's role."""
+
+    role: Literal["admin", "developer"] | None = Field(
+        ...,
+        description="User role: 'admin', 'developer', or null to remove role",
+    )
+
+
+class BulkUpdateUserRolesRequest(BaseModel):
+    """Request model for bulk updating user roles."""
+
+    user_ids: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="Array of user IDs to update (max 100)",
+    )
+    role: Literal["admin", "developer"] | None = Field(
+        ...,
+        description="User role: 'admin', 'developer', or null to remove role",
+    )
 
 
 async def get_temporal_client() -> Client:
@@ -595,7 +621,7 @@ async def deactivate_user(
 @router.patch("/users/{user_id}/role")
 async def update_user_role(
     user_id: UUID,
-    data: dict,
+    request: UpdateUserRoleRequest,
     admin: ClerkUser = Depends(require_admin),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -606,7 +632,7 @@ async def update_user_role(
 
     Safeguards:
     - Admins cannot change their own role (prevents self-demotion)
-    - Role must be one of: "admin", "developer", or null
+    - Role must be one of: "admin", "developer", or null (validated by Pydantic)
 
     Path Parameters:
     - user_id: UUID of the user to update
@@ -617,15 +643,8 @@ async def update_user_role(
     Returns:
     - Updated user information
     """
-    # Get role from request
-    role = data.get("role")
-
-    # Validate role
-    if role not in ["admin", "developer", None]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Role must be "admin", "developer", or null',
-        )
+    # Get role from request (Pydantic validates automatically)
+    role = request.role
 
     # Check if user exists and get their clerk_user_id
     check_result = await session.execute(
@@ -707,7 +726,7 @@ async def update_user_role(
 
 @router.patch("/users/roles")
 async def bulk_update_user_roles(
-    data: dict,
+    request: BulkUpdateUserRolesRequest,
     admin: ClerkUser = Depends(require_admin),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -716,7 +735,7 @@ async def bulk_update_user_roles(
 
     Request body:
     {
-        "user_ids": ["uuid1", "uuid2", ...],
+        "user_ids": ["uuid1", "uuid2", ...],  # 1-100 UUIDs
         "role": "admin" | "developer" | null
     }
 
@@ -727,21 +746,9 @@ async def bulk_update_user_roles(
         "errors": []
     }
     """
-    user_ids = data.get("user_ids", [])
-    role = data.get("role")
-
-    # Validate role
-    if role not in ["admin", "developer", None]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Role must be "admin", "developer", or null',
-        )
-
-    if not user_ids:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="user_ids array is required",
-        )
+    # Get validated data from Pydantic model
+    user_ids = request.user_ids
+    role = request.role
 
     if not clerk_client:
         raise HTTPException(
@@ -759,6 +766,24 @@ async def bulk_update_user_roles(
         {"user_ids": user_ids},
     )
     user_map = {str(row[0]): row[1] for row in result}  # db_id -> clerk_id
+
+    # Batch-fetch all target users from Clerk to avoid N+1 API calls
+    clerk_users_map = {}
+    if user_map:
+        clerk_ids = list(user_map.values())
+        # Filter out test users before Clerk call
+        clerk_ids_to_fetch = [cid for cid in clerk_ids if cid != "test_user_noauth"]
+
+        if clerk_ids_to_fetch and not settings.torale_noauth:
+            try:
+                # Single batch API call for all users (max 100)
+                clerk_users_response = clerk_client.users.list(
+                    user_id=clerk_ids_to_fetch, limit=100
+                )
+                clerk_users_map = {user.id: user for user in clerk_users_response.data}
+            except Exception as e:
+                # Log warning but continue - will handle missing users individually
+                print(f"Warning: Clerk batch fetch failed: {e}")
 
     for user_id in user_ids:
         try:
@@ -781,8 +806,13 @@ async def bulk_update_user_roles(
                 updated_count += 1  # Count as success but skip Clerk update
                 continue
 
-            # Update role in Clerk
-            clerk_user = clerk_client.users.get(user_id=target_clerk_user_id)
+            # Get user from pre-fetched map instead of individual API call
+            clerk_user = clerk_users_map.get(target_clerk_user_id)
+            if not clerk_user:
+                failed_count += 1
+                errors.append({"user_id": user_id, "error": "User not found in Clerk"})
+                continue
+
             current_metadata = clerk_user.public_metadata or {}
 
             if role is None:
