@@ -1,5 +1,14 @@
 [
   {
+    "id": "2025-11-18-documentation-site",
+    "date": "2025-11-18",
+    "title": "Comprehensive Documentation Site",
+    "description": "Launched docs.torale.ai with complete platform documentation. Includes user guides, API reference, SDK documentation, CLI commands, architecture diagrams, deployment guides, and self-hosting instructions. Built with VitePress featuring Mermaid diagrams, code examples, and interactive navigation.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": 78
+  },
+  {
     "id": "2025-11-17-api-portal-sdk",
     "date": "2025-11-17",
     "title": "Developer API Portal & SDK Examples",
