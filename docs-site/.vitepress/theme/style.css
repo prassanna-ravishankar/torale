@@ -1,0 +1,34 @@
+/**
+ * Torale Brand Colors for VitePress
+ * Based on frontend brand colors from frontend/src/styles/globals.css
+ */
+
+:root {
+  /* Brand color - Torale dark slate blue */
+  --vp-c-brand-1: #203345;
+  --vp-c-brand-2: #3b5468;
+  --vp-c-brand-3: #506b7f;
+  --vp-c-brand-soft: #e9ebef;
+
+  /* Hero customization */
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(135deg, #203345 0%, #506b7f 100%);
+
+  /* Button styling */
+  --vp-button-brand-bg: #203345;
+  --vp-button-brand-hover-bg: #3b5468;
+  --vp-button-brand-active-bg: #1a2833;
+}
+
+.dark {
+  --vp-c-brand-1: #506b7f;
+  --vp-c-brand-2: #3b5468;
+  --vp-c-brand-3: #203345;
+}
+
+/* Remove default VitePress emoji styling if present */
+.vp-doc h1 .emoji,
+.vp-doc h2 .emoji,
+.vp-doc h3 .emoji {
+  display: none;
+}

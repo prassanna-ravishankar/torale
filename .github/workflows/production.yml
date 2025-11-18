@@ -28,6 +28,7 @@ jobs:
           echo "🔍 Validating project structure..."
           test -f backend/Dockerfile || (echo "❌ backend/Dockerfile missing" && exit 1)
           test -f frontend/Dockerfile || (echo "❌ frontend/Dockerfile missing" && exit 1)
+          test -f docs-site/Dockerfile || (echo "❌ docs-site/Dockerfile missing" && exit 1)
           test -f helmfile.yaml || (echo "❌ helmfile.yaml missing" && exit 1)
           test -d helm/torale || (echo "❌ helm/torale missing" && exit 1)
           echo "✅ All files present"
@@ -51,6 +52,9 @@ jobs:
           - component: frontend
             context: frontend
             dockerfile: frontend/Dockerfile
+          - component: docs
+            context: docs-site
+            dockerfile: docs-site/Dockerfile
 
     steps:
       - uses: actions/checkout@v4
@@ -138,6 +142,7 @@ jobs:
           kubectl rollout status deployment/torale-api -n torale --timeout=5m
           kubectl rollout status deployment/torale-worker -n torale --timeout=5m
           kubectl rollout status deployment/torale-frontend -n torale --timeout=5m
+          kubectl rollout status deployment/torale-docs -n torale --timeout=5m
 
       - name: Deployment summary
         run: |

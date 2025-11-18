@@ -10,6 +10,7 @@ global:
 domains:
   frontend: torale.ai
   api: api.torale.ai
+  docs: docs.torale.ai
 
 # Clerk authentication
 clerk:
@@ -148,6 +149,45 @@ frontend:
     enabled: true
     minReplicas: 2
     maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+# Docs deployment
+docs:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    name: torale-docs
+
+  # Cost optimization: Use Spot pods
+  nodeSelector:
+    cloud.google.com/gke-spot: "true"
+
+  tolerations:
+    - key: cloud.google.com/gke-spot
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+
+  # Lightweight resources for nginx
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+
+  # Horizontal Pod Autoscaler
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
     targetCPUUtilizationPercentage: 70
 
 # Database configuration (Cloud SQL)

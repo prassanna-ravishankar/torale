@@ -1,6 +1,6 @@
 import React from "react";
 import { UserButton } from "@clerk/clerk-react";
-import { Shield, Bell } from "lucide-react";
+import { Shield, Bell, BookOpen } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,16 +34,29 @@ export const Header: React.FC = () => {
           )}
 
           {user && (
-            <Link to="/settings/notifications">
-              <Button
-                variant={location.pathname === "/settings/notifications" ? "default" : "ghost"}
-                size="sm"
-                className="gap-2"
+            <>
+              <Link to="/settings/notifications">
+                <Button
+                  variant={location.pathname === "/settings/notifications" ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Bell className="h-4 w-4" />
+                  Settings
+                </Button>
+              </Link>
+
+              <a
+                href="https://docs.torale.ai"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <Bell className="h-4 w-4" />
-                Settings
-              </Button>
-            </Link>
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  Docs
+                </Button>
+              </a>
+            </>
           )}
         </div>
 

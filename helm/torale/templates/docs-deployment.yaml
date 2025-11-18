@@ -1,0 +1,53 @@
+{{- if .Values.docs.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "torale.fullname" . }}-docs
+  labels:
+    {{- include "torale.labels" . | nindent 4 }}
+    app.kubernetes.io/component: docs
+spec:
+  replicas: {{ .Values.docs.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "torale.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: docs
+  template:
+    metadata:
+      labels:
+        {{- include "torale.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: docs
+    spec:
+      {{- with .Values.docs.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.docs.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: docs
+        image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}/{{ .Values.docs.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        resources:
+          {{- toYaml .Values.docs.resources | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+{{- end }}

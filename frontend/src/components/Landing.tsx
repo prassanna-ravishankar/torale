@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { Search, Sparkles, ArrowRight, Code, Terminal, Newspaper } from "lucide-react";
+import { Search, Sparkles, ArrowRight, Code, Terminal, Newspaper, BookOpen } from "lucide-react";
 import { AnimatedBackground } from "./AnimatedBackground";
 import { ChangelogEntry } from "@/types/changelog";
 import { getCategoryIcon, formatChangelogDate } from "@/utils/changelog";
@@ -181,13 +181,25 @@ export default function Landing() {
               Set it and forget it. Torale watches the web for you and notifies you
               when your conditions are met.
             </p>
-            <button
-              onClick={handleGetStarted}
-              className="group inline-flex items-center gap-2 px-8 py-4 bg-primary text-primary-foreground rounded-lg text-lg font-medium hover:bg-primary/90 transition-all hover:gap-3"
-            >
-              {isFull ? "Join waitlist" : "Start monitoring"}
-              <ArrowRight className="h-5 w-5 transition-all" />
-            </button>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={handleGetStarted}
+                className="group inline-flex items-center gap-2 px-8 py-4 bg-primary text-primary-foreground rounded-lg text-lg font-medium hover:bg-primary/90 transition-all hover:gap-3"
+              >
+                {isFull ? "Join waitlist" : "Start monitoring"}
+                <ArrowRight className="h-5 w-5 transition-all" />
+              </button>
+
+              <a
+                href="https://docs.torale.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center gap-2 px-8 py-4 border border-primary text-primary rounded-lg text-lg font-medium hover:bg-primary/10 transition-all hover:gap-3"
+              >
+                <BookOpen className="h-5 w-5 transition-all" />
+                Documentation
+              </a>
+            </div>
           </motion.div>
         </div>
       </motion.section>

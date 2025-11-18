@@ -1,0 +1,27 @@
+{
+  "name": "torale-docs",
+  "version": "1.0.0",
+  "description": "Documentation for Torale - Grounded search monitoring platform",
+  "type": "module",
+  "scripts": {
+    "docs:dev": "vitepress dev",
+    "docs:build": "vitepress build",
+    "docs:preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "@iconify-json/carbon": "^1.2.14",
+    "@iconify-json/logos": "^1.2.10",
+    "@iconify-json/mdi": "^1.2.3",
+    "mermaid": "^11.12.1",
+    "vitepress": "^1.5.0",
+    "vitepress-plugin-mermaid": "^2.0.17",
+    "vue": "^3.5.13"
+  },
+  "keywords": [
+    "documentation",
+    "torale",
+    "monitoring",
+    "grounded-search"
+  ],
+  "license": "MIT"
+}
