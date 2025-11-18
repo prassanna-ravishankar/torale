@@ -239,6 +239,7 @@ ingress:
     kubernetes.io/ingress.global-static-ip-name: "clusterkit-ingress-ip"
     networking.gke.io/managed-certificates: "torale-cert"
     networking.gke.io/v1beta1.FrontendConfig: "ssl-redirect"
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
 
   # SSL/TLS configuration
   tls:
