@@ -1,6 +1,16 @@
-# Torale
+<div align="center">
+  <img src="frontend/public/brand/svg/logo.svg" alt="τorale" width="120" height="120">
+  <h1>τorale</h1>
+  <p><strong>Grounded search monitoring platform for AI-powered conditional automation</strong></p>
 
-**Grounded search monitoring platform** for AI-powered conditional automation.
+  [![PyPI version](https://badge.fury.io/py/torale.svg)](https://badge.fury.io/py/torale)
+  [![Deploy](https://github.com/prassanna-ravishankar/torale/actions/workflows/production.yml/badge.svg)](https://github.com/prassanna-ravishankar/torale/actions/workflows/production.yml)
+  [![App](https://img.shields.io/badge/app-torale.ai-green)](https://torale.ai)
+  [![Documentation](https://img.shields.io/badge/docs-torale.ai-blue)](https://docs.torale.ai)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+</div>
+
+---
 
 Monitor the web for specific conditions using Google Search + LLM analysis, then get notified when they're met.
 
