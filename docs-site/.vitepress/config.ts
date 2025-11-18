@@ -7,7 +7,10 @@ export default withMermaid(
   description: 'Grounded search monitoring platform for automated web monitoring',
   base: '/',
 
-  ignoreDeadLinks: true,
+  ignoreDeadLinks: [
+    // Ignore localhost URLs in self-hosted documentation
+    /^http:\/\/localhost/
+  ],
 
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }],
@@ -121,13 +124,27 @@ export default withMermaid(
         }
       ],
 
+      '/architecture/': [
+        {
+          text: 'Architecture',
+          items: [
+            { text: 'Overview', link: '/architecture/overview' },
+            { text: 'Grounded Search', link: '/architecture/grounded-search' },
+            { text: 'State Tracking', link: '/architecture/state-tracking' },
+            { text: 'Database Schema', link: '/architecture/database-schema' },
+            { text: 'Executors', link: '/architecture/executors' },
+            { text: 'Temporal Workflows', link: '/architecture/temporal-workflows' }
+          ]
+        }
+      ],
+
       '/contributing/': [
         {
           text: 'Contributing',
           items: [
             { text: 'Development Setup', link: '/contributing/setup' },
             { text: 'Testing', link: '/contributing/testing' },
-            { text: 'Code Style', link: '/contributing/code-style' }
+            { text: 'Code Style', link: '/contributing/conventions' }
           ]
         }
       ]

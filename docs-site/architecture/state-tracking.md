@@ -1,8 +1,6 @@
 # State Tracking
 
-See [State Tracking Guide]() for user documentation.
-
-This page covers implementation details.
+This page covers state tracking implementation details.
 
 ## Storage
 
