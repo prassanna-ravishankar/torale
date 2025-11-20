@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import type { Task } from '@/types';
 import { TaskCard } from '@/components/TaskCard';
-import { TaskCreationWizard } from '@/components/TaskCreationWizard';
+import { TaskCreationDialog } from '@/components/TaskCreationDialog';
 import { TaskPreviewModal } from '@/components/TaskPreviewModal';
 import { TaskEditDialog } from '@/components/TaskEditDialog';
 import { Button } from '@/components/ui/button';
@@ -197,11 +197,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
         </TabsContent>
       </Tabs>
 
-      {/* Task Creation Wizard */}
-      <TaskCreationWizard
+      {/* Task Creation Dialog */}
+      <TaskCreationDialog
         open={isCreating}
         onOpenChange={setIsCreating}
-        onSuccess={handleTaskCreated}
+        onTaskCreated={handleTaskCreated}
       />
 
       {/* Task Preview Modal (Run Now) */}

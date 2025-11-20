@@ -123,6 +123,30 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
+  // Task execution endpoints
+  async getTaskExecutions(taskId: string): Promise<TaskExecution[]> {
+    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/executions`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async getTaskNotifications(taskId: string): Promise<TaskExecution[]> {
+    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/notifications`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async suggestTask(prompt: string): Promise<TaskTemplate> {
+    const response = await fetch(`${this.baseUrl}/api/v1/tasks/suggest`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ prompt }),
+    })
+    return this.handleResponse(response)
+  }
+
   async previewSearch(
     searchQuery: string,
     conditionDescription?: string,
@@ -142,21 +166,6 @@ class ApiClient {
         condition_description: conditionDescription,
         model,
       }),
-    })
-    return this.handleResponse(response)
-  }
-
-  // Task execution endpoints
-  async getTaskExecutions(taskId: string): Promise<TaskExecution[]> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/executions`, {
-      headers: await this.getAuthHeaders(),
-    })
-    return this.handleResponse(response)
-  }
-
-  async getTaskNotifications(taskId: string): Promise<TaskExecution[]> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/notifications`, {
-      headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }

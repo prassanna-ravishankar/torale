@@ -271,6 +271,64 @@ class PreviewSearchRequest(BaseModel):
     model: str = Field("gemini-2.0-flash-exp", description="Model to use for search")
 
 
+class SuggestTaskRequest(BaseModel):
+    prompt: str = Field(..., description="Natural language description of the task")
+    model: str = Field("gemini-2.0-flash-exp", description="Model to use for suggestion")
+
+
+class SuggestedTask(BaseModel):
+    name: str
+    search_query: str
+    condition_description: str
+    schedule: str
+    notify_behavior: str
+
+
+@router.post("/suggest", response_model=SuggestedTask)
+async def suggest_task(
+    request: SuggestTaskRequest,
+    user: CurrentUser,
+    genai_client=Depends(get_genai_client),
+):
+    """
+    Suggest task configuration from natural language description.
+    """
+    from google.genai import types
+
+    prompt = f"""You are an expert at configuring web monitoring tasks.
+User Description: "{request.prompt}"
+
+Based on this description, generate the optimal configuration for a monitoring task.
+
+Return a JSON object with these fields:
+- name: A short, memorable name for the task (e.g. "PS5 Stock Monitor")
+- search_query: The exact Google search query to find the information (e.g. "PlayStation 5 Pro stock status")
+- condition_description: A specific condition to check for (e.g. "The console is available for purchase")
+- schedule: A cron expression for the frequency (default to "0 9 * * *" if not specified, or "*/30 * * * *" for urgent things like stock)
+- notify_behavior: One of "once", "always", "track_state" (default to "track_state" usually, or "once" for one-off events)
+
+JSON Response:"""
+
+    try:
+        response = await genai_client.aio.models.generate_content(
+            model=request.model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=SuggestedTask,
+            ),
+        )
+        
+        return json.loads(response.text)
+
+    except Exception as e:
+        logger.error(f"Failed to suggest task: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate task suggestion. Please try again.",
+        ) from e
+
+
 @router.post("/preview")
 async def preview_search(
     request: PreviewSearchRequest,
