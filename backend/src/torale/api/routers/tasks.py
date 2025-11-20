@@ -273,6 +273,7 @@ class PreviewSearchRequest(BaseModel):
 
 class SuggestTaskRequest(BaseModel):
     prompt: str = Field(..., description="Natural language description of the task")
+    current_task: dict | None = Field(None, description="Current task configuration for context")
     model: str = Field("gemini-2.0-flash-exp", description="Model to use for suggestion")
 
 
@@ -295,18 +296,37 @@ async def suggest_task(
     """
     from google.genai import types
 
-    prompt = f"""You are an expert at configuring web monitoring tasks.
+    if request.current_task:
+        prompt = f"""You are an expert at configuring web monitoring tasks.
+Current Task Configuration:
+{json.dumps(request.current_task, indent=2)}
+
+User Request: "{request.prompt}"
+
+Based on the user's request, UPDATE the current task configuration.
+- If the user says "add river facing", append it to the search query (e.g. "apartments in NY" -> "apartments in NY river facing").
+- Keep existing context unless explicitly asked to change it.
+- Return the FULL updated configuration.
+
+Return a JSON object with these fields:
+- name: A short, memorable name for the task
+- search_query: The Google search query to use
+- condition_description: A clear, 1-sentence description of what triggers a notification
+- schedule: A cron expression (e.g. "0 9 * * *" for daily at 9am)
+- notify_behavior: One of "once", "always", "track_state"
+JSON Response:"""
+    else:
+        prompt = f"""You are an expert at configuring web monitoring tasks.
 User Description: "{request.prompt}"
 
 Based on this description, generate the optimal configuration for a monitoring task.
 
 Return a JSON object with these fields:
 - name: A short, memorable name for the task (e.g. "PS5 Stock Monitor")
-- search_query: The exact Google search query to find the information (e.g. "PlayStation 5 Pro stock status")
-- condition_description: A specific condition to check for (e.g. "The console is available for purchase")
-- schedule: A cron expression for the frequency (default to "0 9 * * *" if not specified, or "*/30 * * * *" for urgent things like stock)
-- notify_behavior: One of "once", "always", "track_state" (default to "track_state" usually, or "once" for one-off events)
-
+- search_query: The Google search query to use
+- condition_description: A clear, 1-sentence description of what triggers a notification
+- schedule: A cron expression (e.g. "0 9 * * *" for daily at 9am)
+- notify_behavior: One of "once", "always", "track_state"
 JSON Response:"""
 
     try:

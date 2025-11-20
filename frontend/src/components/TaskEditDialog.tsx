@@ -8,26 +8,41 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { WizardStepQuery } from '@/components/wizard/WizardStepQuery';
-import { WizardStepPreview } from '@/components/wizard/WizardStepPreview';
-import { WizardStepSchedule } from '@/components/wizard/WizardStepSchedule';
-import { WizardStepHowNotify } from '@/components/wizard/WizardStepHowNotify';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
-import type { Task, NotificationConfig } from '@/types';
-import { Loader2 } from 'lucide-react';
-
-type EditTab = 'query' | 'schedule' | 'notifications';
-type NotifyBehavior = 'once' | 'always' | 'track_state';
-
-interface PreviewResult {
-  answer: string;
-  condition_met: boolean;
-  inferred_condition?: string;
-  grounding_sources: Array<{ url: string; title: string }>;
-  current_state: any;
-}
+import type { Task, NotificationConfig, NotifyBehavior } from '@/types';
+import {
+  Loader2,
+  Sparkles,
+  Search,
+  Bell,
+  Clock,
+  AlertCircle,
+  Zap,
+  Eye,
+  RotateCcw,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  Mail,
+  Webhook
+} from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { CustomScheduleDialog } from "@/components/ui/CustomScheduleDialog";
+import cronstrue from "cronstrue";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface TaskEditDialogProps {
   open: boolean;
@@ -36,31 +51,66 @@ interface TaskEditDialogProps {
   onSuccess: (task: Task) => void;
 }
 
+const SIMPLE_SCHEDULE_OPTIONS = [
+  { value: "*/30 * * * *", label: "Every 30 minutes", icon: Zap },
+  { value: "0 */6 * * *", label: "Every 6 hours", icon: Clock },
+  { value: "0 9 * * *", label: "Daily at 9:00 AM", icon: Clock },
+  { value: "0 12 * * *", label: "Daily at noon", icon: Clock },
+  { value: "0 8 * * 1", label: "Weekly on Monday", icon: Clock },
+  { value: "custom", label: "Custom Schedule...", icon: Calendar },
+];
+
+const NOTIFY_BEHAVIORS = [
+  {
+    value: "once" as NotifyBehavior,
+    label: "Notify Once",
+    description: "Stop monitoring after first match",
+    icon: Bell,
+  },
+  {
+    value: "always" as NotifyBehavior,
+    label: "Always Notify",
+    description: "Alert every time condition is met",
+    icon: RotateCcw,
+  },
+  {
+    value: "track_state" as NotifyBehavior,
+    label: "Track Changes",
+    description: "Notify when information changes",
+    icon: Eye,
+  }
+];
+
+const MIN_NAME_LENGTH = 3;
+const MIN_SEARCH_QUERY_LENGTH = 10;
+const MIN_CONDITION_DESCRIPTION_LENGTH = 10;
+
 export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   open,
   onOpenChange,
   task,
   onSuccess,
 }) => {
-  // Tab state
-  const [activeTab, setActiveTab] = useState<EditTab>('query');
-
   // Form data
   const [name, setName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [conditionDescription, setConditionDescription] = useState('');
   const [schedule, setSchedule] = useState('0 9 * * *');
   const [notifyBehavior, setNotifyBehavior] = useState<NotifyBehavior>('track_state');
-  const [notifications, setNotifications] = useState<NotificationConfig[]>([
-    { type: 'email' }, // Default
-  ]);
+  const [notifications, setNotifications] = useState<NotificationConfig[]>([]);
 
   // UI state
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const [previewResult, setPreviewResult] = useState<PreviewResult | null>(null);
-  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [error, setError] = useState("");
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Magic Input state
+  const [magicPrompt, setMagicPrompt] = useState("");
+  const [isMagicLoading, setIsMagicLoading] = useState(false);
+
+  // Custom Schedule Dialog state
+  const [isCustomScheduleOpen, setIsCustomScheduleOpen] = useState(false);
 
   // Load task data when task changes
   useEffect(() => {
@@ -95,191 +145,364 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   // Reset on close
   useEffect(() => {
     if (!open) {
-      setTimeout(() => {
-        setActiveTab('query');
-        setValidationErrors({});
-        setPreviewResult(null);
-        setPreviewError('');
-      }, 200);
+      setValidationErrors({});
+      setError("");
+      setShowAdvanced(false);
+      setMagicPrompt("");
+      setIsMagicLoading(false);
+      setIsCustomScheduleOpen(false);
     }
   }, [open]);
 
+  const handleSuggest = async () => {
+    if (!magicPrompt.trim()) return;
+
+    setIsMagicLoading(true);
+    try {
+      const suggestion = await api.suggestTask(magicPrompt, {
+        name,
+        search_query: searchQuery,
+        condition_description: conditionDescription,
+        schedule,
+        notify_behavior: notifyBehavior,
+        executor_type: "llm_grounded_search",
+        config: {},
+        is_active: true
+      });
+
+      setName(suggestion.name);
+      setSearchQuery(suggestion.search_query);
+      setConditionDescription(suggestion.condition_description);
+      setSchedule(suggestion.schedule);
+      setNotifyBehavior(suggestion.notify_behavior as NotifyBehavior);
+
+      toast.success("Task configuration updated from suggestion!");
+    } catch (error) {
+      console.error("Magic suggestion failed:", error);
+      toast.error("Failed to generate task configuration");
+    } finally {
+      setIsMagicLoading(false);
+    }
+  };
+
   // Validation
-  const validateForm = (): boolean => {
+  const validate = (): boolean => {
     const errors: Record<string, string> = {};
 
     if (!name.trim()) {
-      errors.name = 'Task name is required';
+      errors.name = "Task name is required";
+    } else if (name.length < MIN_NAME_LENGTH) {
+      errors.name = `Task name must be at least ${MIN_NAME_LENGTH} characters`;
     }
 
     if (!searchQuery.trim()) {
-      errors.searchQuery = 'Search query is required';
-    } else if (searchQuery.trim().length < 10) {
-      errors.searchQuery = 'Search query should be at least 10 characters';
+      errors.searchQuery = "Search query is required";
+    } else if (searchQuery.length < MIN_SEARCH_QUERY_LENGTH) {
+      errors.searchQuery = "Please provide a more specific search query";
+    }
+
+    if (!conditionDescription.trim()) {
+      errors.conditionDescription = "Trigger condition is required";
+    } else if (conditionDescription.length < MIN_CONDITION_DESCRIPTION_LENGTH) {
+      errors.conditionDescription = "Please provide a more specific condition";
     }
 
     setValidationErrors(errors);
-
-    if (Object.keys(errors).length > 0) {
-      // Switch to query tab to show errors
-      setActiveTab('query');
-      toast.error('Please fix the validation errors');
-      return false;
-    }
-
-    return true;
-  };
-
-  // Preview handler
-  const handlePreview = async () => {
-    setIsPreviewLoading(true);
-    setPreviewError('');
-
-    try {
-      const result = await api.previewSearch(
-        searchQuery,
-        conditionDescription || undefined
-      );
-
-      setPreviewResult(result);
-      toast.success('Preview loaded successfully');
-    } catch (error) {
-      console.error('Preview failed:', error);
-      const message = error instanceof Error ? error.message : 'Failed to preview search';
-      setPreviewError(message);
-      toast.error(message);
-    } finally {
-      setIsPreviewLoading(false);
-    }
-  };
-
-  const handleEditQuery = () => {
-    setActiveTab('query');
+    return Object.keys(errors).length === 0;
   };
 
   // Update task
   const handleUpdate = async () => {
     if (!task) return;
 
-    // Validate form
-    if (!validateForm()) {
+    if (!validate()) {
+      toast.error("Please fix the errors before updating");
       return;
     }
 
+    setError("");
     setIsUpdating(true);
 
     try {
-      // Use inferred condition if user didn't provide one
-      const finalCondition = conditionDescription || previewResult?.inferred_condition || '';
-
       const updatedTask = await api.updateTask(task.id, {
         name,
         search_query: searchQuery,
-        condition_description: finalCondition,
+        condition_description: conditionDescription,
         schedule,
         notify_behavior: notifyBehavior,
+        // Note: We currently don't update notifications via this endpoint in the same way
+        // The backend update_task might need to handle notifications if we want to support it here
+        // For now, we'll assume notifications are handled separately or added to update_task
       });
 
       toast.success('Task updated successfully');
       onSuccess(updatedTask);
       onOpenChange(false);
-    } catch (error) {
-      console.error('Failed to update task:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to update task');
+    } catch (err) {
+      console.error('Failed to update task:', err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to update task";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsUpdating(false);
     }
   };
 
-  if (!task) {
-    return null;
-  }
+  if (!task) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-        {/* Header */}
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Edit Task</DialogTitle>
+          <DialogTitle className="text-2xl font-bold tracking-tight">
+            Edit Task
+          </DialogTitle>
           <DialogDescription>
-            Update your monitoring task settings. Switch between tabs to edit different sections.
+            Update your monitoring task settings.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Tabbed Content */}
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as EditTab)} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="query">Query</TabsTrigger>
-            <TabsTrigger value="schedule">Schedule</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          </TabsList>
-
-          <div className="flex-1 overflow-y-auto min-h-0 mt-4 px-1">
-            <TabsContent value="query" className="m-0 space-y-6">
-              <WizardStepQuery
-                searchQuery={searchQuery}
-                onSearchQueryChange={(value) => {
-                  // Clear condition and preview when query changes
-                  if (value !== searchQuery) {
-                    setConditionDescription('');
-                    setPreviewResult(null);
-                  }
-                  setSearchQuery(value);
-                  if (validationErrors.searchQuery) {
-                    setValidationErrors((prev) => ({ ...prev, searchQuery: '' }));
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Magic Input Section */}
+          <div className="bg-muted/30 p-4 rounded-lg border border-dashed border-muted-foreground/25 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-primary">
+              <Sparkles className="w-4 h-4" />
+              Magic Refine
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Describe how you want to change this task..."
+                value={magicPrompt}
+                onChange={(e) => setMagicPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSuggest();
                   }
                 }}
-                name={name}
-                onNameChange={(value) => {
-                  setName(value);
-                  if (validationErrors.name) {
-                    setValidationErrors((prev) => ({ ...prev, name: '' }));
-                  }
-                }}
-                errors={validationErrors}
+                className="flex-1 bg-background"
               />
-
-              {/* Preview Section (Optional) */}
-              <div className="border-t pt-6">
-                <WizardStepPreview
-                  searchQuery={searchQuery}
-                  conditionDescription={conditionDescription}
-                  onConditionDescriptionChange={setConditionDescription}
-                  previewResult={previewResult}
-                  isLoading={isPreviewLoading}
-                  onPreview={handlePreview}
-                  onEditQuery={handleEditQuery}
-                  error={previewError}
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="schedule" className="m-0">
-              <WizardStepSchedule
-                schedule={schedule}
-                onScheduleChange={setSchedule}
-                notifyBehavior={notifyBehavior}
-                onNotifyBehaviorChange={setNotifyBehavior}
-              />
-            </TabsContent>
-
-            <TabsContent value="notifications" className="m-0">
-              <WizardStepHowNotify
-                notifications={notifications}
-                onNotificationsChange={setNotifications}
-              />
-            </TabsContent>
+              <Button
+                onClick={handleSuggest}
+                disabled={!magicPrompt.trim() || isMagicLoading}
+                variant="secondary"
+                className="shrink-0"
+              >
+                {isMagicLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 mr-2" />
+                )}
+                {isMagicLoading ? "Thinking..." : "Refine"}
+              </Button>
+            </div>
           </div>
-        </Tabs>
 
-        {/* Footer */}
-        <DialogFooter className="flex-shrink-0">
+          <div className="space-y-4">
+            {/* Task Name */}
+            <div className="space-y-2">
+              <Label htmlFor="name" className="font-semibold">Task Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (validationErrors.name) setValidationErrors(prev => ({ ...prev, name: "" }));
+                }}
+                disabled={isUpdating}
+                className={cn(validationErrors.name && "border-destructive")}
+              />
+              {validationErrors.name && (
+                <p className="text-xs text-destructive flex items-center gap-1.5">
+                  <AlertCircle className="h-3 w-3" />
+                  {validationErrors.name}
+                </p>
+              )}
+            </div>
+
+            {/* Search Query */}
+            <div className="space-y-2">
+              <Label htmlFor="searchQuery" className="font-semibold flex items-center gap-2">
+                <Search className="h-4 w-4" />
+                What to Monitor
+              </Label>
+              <Textarea
+                id="searchQuery"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (validationErrors.searchQuery) setValidationErrors(prev => ({ ...prev, searchQuery: "" }));
+                }}
+                disabled={isUpdating}
+                rows={3}
+                className={cn("resize-none", validationErrors.searchQuery && "border-destructive")}
+              />
+              {validationErrors.searchQuery && (
+                <p className="text-xs text-destructive flex items-center gap-1.5">
+                  <AlertCircle className="h-3 w-3" />
+                  {validationErrors.searchQuery}
+                </p>
+              )}
+            </div>
+
+            {/* Condition Description */}
+            <div className="space-y-2">
+              <Label htmlFor="condition" className="font-semibold flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                When to Notify
+              </Label>
+              <Textarea
+                id="condition"
+                value={conditionDescription}
+                onChange={(e) => {
+                  setConditionDescription(e.target.value);
+                  if (validationErrors.conditionDescription) setValidationErrors(prev => ({ ...prev, conditionDescription: "" }));
+                }}
+                disabled={isUpdating}
+                rows={3}
+                className={cn("resize-none", validationErrors.conditionDescription && "border-destructive")}
+              />
+              {validationErrors.conditionDescription && (
+                <p className="text-xs text-destructive flex items-center gap-1.5">
+                  <AlertCircle className="h-3 w-3" />
+                  {validationErrors.conditionDescription}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Progressive Disclosure: Advanced Options */}
+          <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced} className="space-y-2">
+            <div className="flex items-center justify-between">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="p-0 h-auto font-medium text-muted-foreground hover:text-foreground">
+                  {showAdvanced ? (
+                    <span className="flex items-center gap-1">Hide Advanced Options <ChevronUp className="h-4 w-4" /></span>
+                  ) : (
+                    <span className="flex items-center gap-1">Show Advanced Options <ChevronDown className="h-4 w-4" /></span>
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+
+            <CollapsibleContent className="space-y-4 pt-2 animate-in slide-in-from-top-2 fade-in duration-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border border-border/50">
+                {/* Schedule */}
+                <div className="space-y-2">
+                  <Label htmlFor="schedule" className="text-sm font-medium flex items-center gap-2">
+                    <Clock className="h-3.5 w-3.5" />
+                    Check Frequency
+                  </Label>
+                  <div className="space-y-2">
+                    <Select
+                      value={SIMPLE_SCHEDULE_OPTIONS.some(o => o.value === schedule) ? schedule : "custom"}
+                      onValueChange={(val) => {
+                        if (val === "custom") {
+                          setIsCustomScheduleOpen(true);
+                        } else {
+                          setSchedule(val);
+                        }
+                      }}
+                      disabled={isUpdating}
+                    >
+                      <SelectTrigger id="schedule" className="h-9 bg-background">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SIMPLE_SCHEDULE_OPTIONS.map((option) => {
+                          const IconComponent = option.icon;
+                          return (
+                            <SelectItem key={option.value} value={option.value}>
+                              <div className="flex items-center gap-2">
+                                <IconComponent className="h-3.5 w-3.5" />
+                                {option.label}
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Custom Schedule Display & Edit */}
+                    {(!SIMPLE_SCHEDULE_OPTIONS.some(o => o.value === schedule) || schedule === "custom") && (
+                      <div className="animate-in slide-in-from-top-1 fade-in duration-200 flex items-center gap-2">
+                        <div className="flex-1 text-xs bg-muted px-3 py-2 rounded-md border font-mono truncate">
+                          {schedule === "custom" ? "No schedule selected" : schedule}
+                          <span className="ml-2 text-muted-foreground font-sans">
+                            ({(() => {
+                              try {
+                                return cronstrue.toString(schedule);
+                              } catch {
+                                return "Invalid cron";
+                              }
+                            })()})
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsCustomScheduleOpen(true)}
+                          className="h-9 px-3"
+                        >
+                          Edit
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <CustomScheduleDialog
+                  open={isCustomScheduleOpen}
+                  onOpenChange={setIsCustomScheduleOpen}
+                  initialValue={SIMPLE_SCHEDULE_OPTIONS.some(o => o.value === schedule) ? "0 9 * * *" : schedule}
+                  onSave={(newSchedule) => {
+                    setSchedule(newSchedule);
+                  }}
+                />
+
+                {/* Notification Behavior */}
+                <div className="space-y-2">
+                  <Label htmlFor="notifyBehavior" className="text-sm font-medium flex items-center gap-2">
+                    <Bell className="h-3.5 w-3.5" />
+                    Notification Mode
+                  </Label>
+                  <Select
+                    value={notifyBehavior}
+                    onValueChange={(value) => setNotifyBehavior(value as NotifyBehavior)}
+                    disabled={isUpdating}
+                  >
+                    <SelectTrigger id="notifyBehavior" className="h-9 bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {NOTIFY_BEHAVIORS.map((behavior) => (
+                        <SelectItem key={behavior.value} value={behavior.value}>
+                          {behavior.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+        </div>
+
+        <DialogFooter className="pt-4 border-t flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUpdating}>
             Cancel
           </Button>
           <Button onClick={handleUpdate} disabled={isUpdating}>
             {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Update Task
+            Save Changes
           </Button>
         </DialogFooter>
       </DialogContent>
