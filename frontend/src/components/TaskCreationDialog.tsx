@@ -254,9 +254,10 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
           search_provider: "google"
         },
         is_active: true,
+        run_immediately: true,
       });
 
-      toast.success('Task created successfully');
+      toast.success('Task created and started! 🚀');
       onTaskCreated(newTask);
       onOpenChange(false);
     } catch (err) {

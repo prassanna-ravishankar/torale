@@ -318,7 +318,7 @@ JSON Response:"""
                 response_schema=SuggestedTask,
             ),
         )
-        
+
         return json.loads(response.text)
 
     except Exception as e:
