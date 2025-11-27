@@ -1,0 +1,96 @@
+# Staging values for Torale on GKE ClusterKit
+# Deployed to staging.torale.ai for pre-production testing
+
+global:
+  projectId: baldmaninc
+  region: us-central1
+
+domains:
+  frontend: staging.torale.ai
+  api: api.staging.torale.ai
+  docs: docs.staging.torale.ai
+
+# Clerk authentication (test key)
+clerk:
+  publishableKey: pk_test_cGxlYXNhbnQtcHJpbWF0ZS04OC5jbGVyay5hY2NvdW50cy5kZXYk
+
+image:
+  tag: staging
+
+# Cloud SQL connection (same database as production)
+database:
+  connectionName: "baldmaninc:us-central1:clusterkit-db"
+  host: "127.0.0.1"
+  port: 5432
+  name: torale
+  user: torale
+
+# Temporal Cloud configuration (same namespace, different task queue)
+temporal:
+  host: us-central1.gcp.api.temporal.io:7233
+  namespace: quickstart-baldmaninc.g5zzo
+  taskQueue: torale-staging
+
+# Staging resource sizing (minimal, no autoscaling)
+api:
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+worker:
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+frontend:
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Disable docs for staging
+docs:
+  enabled: false
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: gce
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "torale-staging-ip"
+    networking.gke.io/managed-certificates: "torale-staging-cert"
+    networking.gke.io/v1beta1.FrontendConfig: "ssl-redirect"
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+  tls:
+    enabled: true
+
+# GKE Managed Certificate
+certificate:
+  enabled: true
+  name: torale-staging-cert
+
+# Secrets (reuse production secrets in staging namespace)
+secrets:
+  external: true
+  name: torale-secrets

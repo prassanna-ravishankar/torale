@@ -1,5 +1,32 @@
 # Helmfile for deploying Torale and its dependencies
 # Install helmfile: https://github.com/helmfile/helmfile
+#
+# Usage:
+#   helmfile sync                         # Deploy to production (default)
+#   helmfile -e staging sync              # Deploy to staging
+#   helmfile -e production sync           # Deploy to production (explicit)
+
+environments:
+  default:
+    values:
+      - namespace: torale
+        domain: torale.ai
+        valuesFile: values-production.yaml
+        taskQueue: torale-tasks
+  production:
+    values:
+      - namespace: torale
+        domain: torale.ai
+        valuesFile: values-production.yaml
+        taskQueue: torale-tasks
+  staging:
+    values:
+      - namespace: torale-staging
+        domain: staging.torale.ai
+        valuesFile: values-staging.yaml
+        taskQueue: torale-staging
+
+---
 
 repositories:
   # Temporal official Helm charts
@@ -115,15 +142,13 @@ releases:
   # ============================================
 
   - name: torale
-    namespace: torale
+    namespace: {{ .Values.namespace }}
     chart: ./helm/torale
     labels:
       tier: app
       component: torale
     values:
-      # Load production overrides
-      - helm/torale/values-production.yaml
-    # Override image tag from environment (set by CI)
+      - helm/torale/{{ .Values.valuesFile }}
     set:
       - name: image.tag
         value: {{ env "IMAGE_TAG" | default "latest" }}
@@ -131,6 +156,8 @@ releases:
         value: {{ env "GCP_PROJECT_ID" | default "baldmaninc" }}
       - name: global.projectId
         value: {{ env "GCP_PROJECT_ID" | default "baldmaninc" }}
+      - name: temporal.taskQueue
+        value: {{ env "TEMPORAL_TASK_QUEUE" | default .Values.taskQueue }}
     missingFileHandler: Warn
 
 # Helmfile settings

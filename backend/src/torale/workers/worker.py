@@ -35,7 +35,7 @@ async def main():
 
     worker = Worker(
         client,
-        task_queue="torale-tasks",
+        task_queue=settings.temporal_task_queue,
         workflows=[TaskExecutionWorkflow],
         activities=[execute_task, send_notification],
     )

@@ -217,6 +217,7 @@ temporal:
   # Can be overridden to point to Temporal Cloud
   host: temporal.temporal.svc.cluster.local:7233
   namespace: default
+  taskQueue: torale-tasks
   uiUrl: https://cloud.temporal.io
 
 # Platform capacity limit for beta
