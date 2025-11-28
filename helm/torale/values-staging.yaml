@@ -10,9 +10,9 @@ domains:
   api: api.staging.torale.ai
   docs: docs.staging.torale.ai
 
-# Clerk authentication (test key)
+# Clerk authentication (uses production Clerk app - same as production)
 clerk:
-  publishableKey: pk_test_cGxlYXNhbnQtcHJpbWF0ZS04OC5jbGVyay5hY2NvdW50cy5kZXYk
+  publishableKey: pk_live_Y2xlcmsudG9yYWxlLmFpJA
 
 image:
   tag: staging
