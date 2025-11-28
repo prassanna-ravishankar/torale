@@ -62,13 +62,27 @@ The frontend uses `window.CONFIG` for environment-agnostic Docker images:
 
 ### Production (GKE)
 - **Cluster**: GKE Autopilot (clusterkit) in us-central1
+- **Namespace**: torale
 - **Cost Optimization**: Spot pods (60-91% savings), zonal Cloud SQL
 - **Database**: Cloud SQL PostgreSQL 16 (managed, private IP)
-- **Orchestration**: Helm + Helmfile
+- **Orchestration**: Helm + Helmfile (default environment)
 - **Temporal**: Temporal Cloud (us-central1.gcp.api.temporal.io:7233)
+  - Namespace: quickstart-baldmaninc.g5zzo
+  - Task Queue: torale-tasks
 - **CI/CD**: GitHub Actions with Workload Identity Federation (keyless auth)
 - **Ingress**: GCE Load Balancer + GKE Managed Certificates (auto SSL)
 - **Domains**: api.torale.ai (API), torale.ai (Frontend)
+
+### Staging (GKE)
+- **Cluster**: Same GKE cluster (clusterkit)
+- **Namespace**: torale-staging
+- **Database**: Shares Cloud SQL with production (same torale database)
+- **Orchestration**: Helm + Helmfile (`-e staging`)
+- **Temporal**: Same Temporal Cloud namespace
+  - Task Queue: torale-staging (isolated from production)
+- **CI/CD**: GitHub Actions (triggered by 'deploy' label or manual)
+- **Ingress**: Separate GCE Load Balancer + GKE Managed Certificate
+- **Domains**: api.staging.torale.ai (API), staging.torale.ai (Frontend)
 
 ### Components
 1. **API Deployment**: FastAPI with Cloud SQL Proxy sidecar + init container for migrations
@@ -113,7 +127,7 @@ torale/
 ├── docs/                 # Documentation
 │   ├── TEST_TEMPORAL.md
 │   └── k8s-deployment.md # K8s deployment guide
-├── helmfile.yaml         # Multi-chart orchestration
+├── helmfile.yaml.gotmpl  # Multi-chart orchestration with environments
 ├── justfile              # Task runner (just dev, just test, etc.)
 ├── docker-compose.yml    # Local development
 ├── .github/workflows/    # GitHub Actions CI/CD
@@ -409,7 +423,8 @@ torale task list
 - **Implementation**: Handle errors as and when required, not preemptively
 
 ### Deployment
-- **Environments**: Local → Production (no staging for MVP)
+- **Environments**: Local → Staging → Production
+- **Staging**: staging.torale.ai (same database, isolated Temporal task queue)
 - **Principle**: Keep deployment simple, add complexity only when needed
 
 ## Design Principles
@@ -496,6 +511,7 @@ GCP_REGION=us-central1
 
 ### ✅ Completed
 - **Infrastructure**: GKE + Cloud SQL + Temporal Cloud with GitHub Actions CI/CD
+- **Environments**: Production + Staging with isolated Temporal task queues
 - **Authentication**: Clerk (OAuth + email/password) with API key support for CLI
 - **Core API**: Task CRUD with Temporal schedule management
 - **Temporal Integration**: Temporal Cloud with automatic cron-based execution
