@@ -24,7 +24,7 @@ spec:
     spec:
       # Don't restart on failure
       restartPolicy: Never
-      serviceAccountName: {{ include "torale.serviceAccountName" . }}
+      serviceAccountName: {{ include "torale.serviceAccountName" . }}-migrations
       {{- with .Values.api.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
