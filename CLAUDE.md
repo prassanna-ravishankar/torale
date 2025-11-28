@@ -77,6 +77,7 @@ The frontend uses `window.CONFIG` for environment-agnostic Docker images:
 - **Cluster**: Same GKE cluster (clusterkit)
 - **Namespace**: torale-staging
 - **Database**: Shares Cloud SQL with production (same torale database)
+- **Authentication**: Shares production Clerk app (subdomain auto-allowed, no Clerk config needed)
 - **Orchestration**: Helm + Helmfile (`-e staging`)
 - **Temporal**: Same Temporal Cloud namespace
   - Task Queue: torale-staging (isolated from production)
