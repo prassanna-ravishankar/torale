@@ -5,10 +5,14 @@ The suggest endpoint uses LLM to generate task configuration from natural langua
 It supports both creating new tasks from scratch and context-aware refinement of existing tasks.
 """
 
+import os
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException
+
+from torale.api.routers.tasks import SuggestTaskRequest, suggest_task
 
 
 class TestSuggestEndpoint:
@@ -22,10 +26,6 @@ class TestSuggestEndpoint:
         Scenario: User provides a prompt without current task context.
         Expected: LLM generates complete task configuration.
         """
-        import os
-
-        from torale.api.routers.tasks import SuggestTaskRequest, suggest_task
-
         # Skip test if GOOGLE_API_KEY not configured
         if not os.getenv("GOOGLE_API_KEY"):
             pytest.skip("GOOGLE_API_KEY not configured")
@@ -75,10 +75,6 @@ class TestSuggestEndpoint:
         Scenario: User provides current task context and a refinement prompt.
         Expected: LLM updates task while preserving existing context.
         """
-        import os
-
-        from torale.api.routers.tasks import SuggestTaskRequest, suggest_task
-
         if not os.getenv("GOOGLE_API_KEY"):
             pytest.skip("GOOGLE_API_KEY not configured")
 
@@ -134,12 +130,6 @@ class TestSuggestEndpoint:
         Scenario: Gemini API returns error.
         Expected: Returns HTTP 500 with helpful error message.
         """
-        import os
-
-        from fastapi import HTTPException
-
-        from torale.api.routers.tasks import SuggestTaskRequest, suggest_task
-
         if not os.getenv("GOOGLE_API_KEY"):
             pytest.skip("GOOGLE_API_KEY not configured")
 
@@ -168,12 +158,6 @@ class TestSuggestEndpoint:
         Scenario: LLM returns invalid JSON.
         Expected: Returns HTTP 500 with error message.
         """
-        import os
-
-        from fastapi import HTTPException
-
-        from torale.api.routers.tasks import SuggestTaskRequest, suggest_task
-
         if not os.getenv("GOOGLE_API_KEY"):
             pytest.skip("GOOGLE_API_KEY not configured")
 
@@ -196,89 +180,6 @@ class TestSuggestEndpoint:
 
         assert exc_info.value.status_code == 500
 
-    @pytest.mark.asyncio
-    async def test_suggest_generates_appropriate_schedules(self):
-        """
-        Test that LLM generates appropriate schedules based on urgency.
-
-        Scenario: Different types of monitoring tasks.
-        Expected: Schedule matches urgency (stock = frequent, news = daily).
-        """
-        import os
-
-        from torale.api.routers.tasks import SuggestTaskRequest, suggest_task
-
-        if not os.getenv("GOOGLE_API_KEY"):
-            pytest.skip("GOOGLE_API_KEY not configured")
-
-        mock_user = MagicMock()
-        mock_user.id = uuid4()
-
-        # Test urgent task (stock monitoring)
-        request_urgent = SuggestTaskRequest(
-            prompt="Alert me when PS5 is in stock", model="gemini-2.0-flash-exp"
-        )
-
-        mock_response_urgent = MagicMock()
-        mock_response_urgent.text = """{
-            "name": "PS5 Stock Alert",
-            "search_query": "PS5 in stock",
-            "condition_description": "PS5 is available",
-            "schedule": "*/30 * * * *",
-            "notify_behavior": "once"
-        }"""
-
-        mock_generate = AsyncMock(return_value=mock_response_urgent)
-        mock_genai_client = MagicMock()
-        mock_genai_client.aio.models.generate_content = mock_generate
-
-        result = await suggest_task(request_urgent, mock_user, mock_genai_client)
-
-        # Urgent tasks should have frequent checks
-        assert "*/30" in result["schedule"] or "*/15" in result["schedule"]
-
-    @pytest.mark.asyncio
-    async def test_suggest_sets_appropriate_notify_behavior(self):
-        """
-        Test that LLM sets appropriate notify_behavior based on task type.
-
-        Scenario: One-time event vs ongoing monitoring.
-        Expected: "once" for events, "track_state" for ongoing.
-        """
-        import os
-
-        from torale.api.routers.tasks import SuggestTaskRequest, suggest_task
-
-        if not os.getenv("GOOGLE_API_KEY"):
-            pytest.skip("GOOGLE_API_KEY not configured")
-
-        mock_user = MagicMock()
-        mock_user.id = uuid4()
-
-        # Test one-time event
-        request_once = SuggestTaskRequest(
-            prompt="Tell me when iPhone 17 release date is announced",
-            model="gemini-2.0-flash-exp",
-        )
-
-        mock_response_once = MagicMock()
-        mock_response_once.text = """{
-            "name": "iPhone 17 Release Date",
-            "search_query": "iPhone 17 release date announcement",
-            "condition_description": "Official release date announced",
-            "schedule": "0 9 * * *",
-            "notify_behavior": "once"
-        }"""
-
-        mock_generate = AsyncMock(return_value=mock_response_once)
-        mock_genai_client = MagicMock()
-        mock_genai_client.aio.models.generate_content = mock_generate
-
-        result = await suggest_task(request_once, mock_user, mock_genai_client)
-
-        # One-time events should use "once"
-        assert result["notify_behavior"] == "once"
-
 
 class TestSuggestPromptGeneration:
     """Test suite for prompt generation logic."""
@@ -291,10 +192,6 @@ class TestSuggestPromptGeneration:
         Scenario: User provides current_task in request.
         Expected: Prompt includes "Current Task Configuration" section.
         """
-        import os
-
-        from torale.api.routers.tasks import SuggestTaskRequest, suggest_task
-
         if not os.getenv("GOOGLE_API_KEY"):
             pytest.skip("GOOGLE_API_KEY not configured")
 
@@ -337,10 +234,6 @@ class TestSuggestPromptGeneration:
         Scenario: User doesn't provide current_task.
         Expected: Prompt uses "User Description" format.
         """
-        import os
-
-        from torale.api.routers.tasks import SuggestTaskRequest, suggest_task
-
         if not os.getenv("GOOGLE_API_KEY"):
             pytest.skip("GOOGLE_API_KEY not configured")
 

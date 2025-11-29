@@ -3,6 +3,7 @@ import type {
   TaskCreatePayload,
   TaskExecution,
   TaskTemplate,
+  SuggestedTask,
   User,
   UserWithNotifications,
   WebhookConfig,
@@ -138,7 +139,7 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
-  async suggestTask(prompt: string, currentTask?: Partial<TaskCreatePayload>): Promise<TaskTemplate> {
+  async suggestTask(prompt: string, currentTask?: Partial<TaskCreatePayload>): Promise<SuggestedTask> {
     const response = await fetch(`${this.baseUrl}/api/v1/tasks/suggest`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),

@@ -13,7 +13,7 @@ from torale.api.auth import CurrentUserOrTestUser
 from torale.api.dependencies import get_genai_client
 from torale.core.config import settings
 from torale.core.database import Database, get_db
-from torale.core.models import Task, TaskCreate, TaskExecution, TaskUpdate
+from torale.core.models import NotifyBehavior, Task, TaskCreate, TaskExecution, TaskUpdate
 from torale.notifications import NotificationValidationError, validate_notification
 from torale.workers.workflows import TaskExecutionRequest, TaskExecutionWorkflow
 
@@ -282,7 +282,7 @@ class SuggestedTask(BaseModel):
     search_query: str
     condition_description: str
     schedule: str
-    notify_behavior: str
+    notify_behavior: NotifyBehavior
 
 
 @router.post("/suggest", response_model=SuggestedTask)
@@ -341,8 +341,16 @@ JSON Response:"""
 
         return json.loads(response.text)
 
+    except json.JSONDecodeError as e:
+        logger.error(
+            f"Failed to parse LLM JSON response for task suggestion: {response.text}", exc_info=e
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process AI suggestion. The format was invalid.",
+        ) from e
     except Exception as e:
-        logger.error(f"Failed to suggest task: {str(e)}")
+        logger.error(f"Failed to suggest task: {str(e)}", exc_info=e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate task suggestion. Please try again.",

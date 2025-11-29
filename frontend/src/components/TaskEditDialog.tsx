@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
-import type { Task, NotificationConfig, NotifyBehavior } from '@/types';
+import type { Task, NotifyBehavior } from '@/types';
 import {
   Loader2,
   Sparkles,
@@ -33,16 +33,13 @@ import {
   RotateCcw,
   Calendar,
   ChevronDown,
-  ChevronUp,
-  Mail,
-  Webhook
+  ChevronUp
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CustomScheduleDialog } from "@/components/ui/CustomScheduleDialog";
 import cronstrue from "cronstrue";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface TaskEditDialogProps {
   open: boolean;
@@ -97,7 +94,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   const [conditionDescription, setConditionDescription] = useState('');
   const [schedule, setSchedule] = useState('0 9 * * *');
   const [notifyBehavior, setNotifyBehavior] = useState<NotifyBehavior>('track_state');
-  const [notifications, setNotifications] = useState<NotificationConfig[]>([]);
 
   // UI state
   const [isUpdating, setIsUpdating] = useState(false);
@@ -120,25 +116,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       setConditionDescription(task.condition_description || '');
       setSchedule(task.schedule);
       setNotifyBehavior(task.notify_behavior as NotifyBehavior);
-
-      // Convert task notification fields to NotificationConfig format
-      const taskNotifications: NotificationConfig[] = [];
-      if (task.notification_channels) {
-        if (task.notification_channels.includes('email')) {
-          taskNotifications.push({
-            type: 'email',
-            address: task.notification_email || undefined,
-          });
-        }
-        if (task.notification_channels.includes('webhook')) {
-          taskNotifications.push({
-            type: 'webhook',
-            url: task.webhook_url || undefined,
-          });
-        }
-      }
-      // Default to email if no channels configured
-      setNotifications(taskNotifications.length > 0 ? taskNotifications : [{ type: 'email' }]);
     }
   }, [task, open]);
 

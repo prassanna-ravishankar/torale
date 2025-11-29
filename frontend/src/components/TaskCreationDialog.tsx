@@ -54,7 +54,7 @@ import cronstrue from "cronstrue";
 interface TaskCreationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onTaskCreated: (task?: Task) => void;
+  onTaskCreated: (task: Task) => void;
 }
 
 // Icon mapping for templates
