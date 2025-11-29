@@ -296,12 +296,10 @@ async def suggest_task(
     """
     from google.genai import types
 
+    # Use structured format with distinct roles to prevent prompt injection
+    # System instructions are in the first user message, user input is separate
     if request.current_task:
-        prompt = f"""You are an expert at configuring web monitoring tasks.
-Current Task Configuration:
-{json.dumps(request.current_task, indent=2)}
-
-User Request: "{request.prompt}"
+        system_instruction = """You are an expert at configuring web monitoring tasks.
 
 Based on the user's request, UPDATE the current task configuration.
 - If the user says "add river facing", append it to the search query (e.g. "apartments in NY" -> "apartments in NY river facing").
@@ -315,11 +313,30 @@ Return a JSON object with these fields:
 - schedule: A cron expression (e.g. "0 9 * * *" for daily at 9am)
 - notify_behavior: One of "once", "always", "track_state"
 JSON Response:"""
-    else:
-        prompt = f"""You are an expert at configuring web monitoring tasks.
-User Description: "{request.prompt}"
 
-Based on this description, generate the optimal configuration for a monitoring task.
+        contents = [
+            {"role": "user", "parts": [{"text": system_instruction}]},
+            {
+                "role": "model",
+                "parts": [
+                    {
+                        "text": "Understood. I will return a JSON object with the required fields based on your update request."
+                    }
+                ],
+            },
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "text": f'Current Task Configuration:\n{json.dumps(request.current_task, indent=2)}\n\nUser Request: "{request.prompt}"'
+                    }
+                ],
+            },
+        ]
+    else:
+        system_instruction = """You are an expert at configuring web monitoring tasks.
+
+Based on the user's description, generate the optimal configuration for a monitoring task.
 
 Return a JSON object with these fields:
 - name: A short, memorable name for the task (e.g. "PS5 Stock Monitor")
@@ -329,10 +346,21 @@ Return a JSON object with these fields:
 - notify_behavior: One of "once", "always", "track_state"
 JSON Response:"""
 
+        contents = [
+            {"role": "user", "parts": [{"text": system_instruction}]},
+            {
+                "role": "model",
+                "parts": [
+                    {"text": "Understood. I will return a JSON object with the required fields."}
+                ],
+            },
+            {"role": "user", "parts": [{"text": f'User Description: "{request.prompt}"'}]},
+        ]
+
     try:
         response = await genai_client.aio.models.generate_content(
             model=request.model,
-            contents=prompt,
+            contents=contents,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=SuggestedTask,
