@@ -17,11 +17,17 @@ hero:
       link: https://torale.ai
 
 features:
+  - title: AI-Powered Task Creation
+    details: Describe what you want to monitor in plain English. Our AI generates the perfect search query, condition, and schedule automatically.
+
   - title: Grounded Search
     details: Search the web with real-time results from Google Search, evaluated by LLMs for accurate, source-backed answers.
 
   - title: Intelligent Conditions
     details: Define specific trigger conditions in natural language. The system evaluates search results and determines when your criteria are met.
+
+  - title: Visual Schedule Builder
+    details: Choose from preset schedules (hourly, daily, weekly) or build custom schedules with an intuitive visual interface. No cron knowledge required.
 
   - title: Automated Scheduling
     details: Configure when checks run using cron expressions. Temporal workflows handle execution, retries, and error recovery automatically.

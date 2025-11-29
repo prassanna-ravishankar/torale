@@ -10,6 +10,81 @@ All endpoints require authentication via API key or Clerk JWT token.
 
 ## Endpoints
 
+### Suggest Task (AI-Powered)
+
+Generate task configuration from natural language description.
+
+**Endpoint:** `POST /api/v1/tasks/suggest`
+
+**Headers:**
+```
+Authorization: Bearer {api_key}
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{
+  "prompt": "Notify me when the PS5 Pro is in stock at Best Buy",
+  "current_task": {
+    "name": "PS5 Monitor",
+    "search_query": "PS5 availability Best Buy",
+    "condition_description": "PS5 is in stock",
+    "schedule": "0 * * * *",
+    "notify_behavior": "once"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `prompt` | string | Yes | Natural language description of what to monitor |
+| `current_task` | object | No | Current task configuration for context-aware updates |
+
+**Response:** `200 OK`
+
+```json
+{
+  "name": "PS5 Pro Stock Monitor",
+  "search_query": "PS5 Pro in stock Best Buy",
+  "condition_description": "PS5 Pro is available for purchase at Best Buy",
+  "schedule": "*/30 * * * *",
+  "notify_behavior": "once"
+}
+```
+
+**Example:**
+```bash
+# Generate new task from scratch
+curl -X POST https://api.torale.ai/api/v1/tasks/suggest \
+  -H "Authorization: Bearer sk_..." \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Tell me when iPhone 17 release date is announced"}'
+
+# Update existing task (context-aware)
+curl -X POST https://api.torale.ai/api/v1/tasks/suggest \
+  -H "Authorization: Bearer sk_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "add river facing",
+    "current_task": {
+      "name": "London Apartment Monitor",
+      "search_query": "apartments for sale london e2 0fq",
+      "condition_description": "Price below 450000 GBP",
+      "schedule": "0 9 * * *",
+      "notify_behavior": "track_state"
+    }
+  }'
+```
+
+**Use Cases:**
+- **Quick Task Creation**: Describe what you want in plain English
+- **Context-Aware Refinement**: Update existing tasks while preserving details
+- **Schedule Suggestions**: AI determines optimal check frequency
+- **Smart Defaults**: Automatically sets appropriate notify behavior
+
 ### Create Task
 
 Create a new monitoring task.

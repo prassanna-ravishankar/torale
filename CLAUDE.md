@@ -349,6 +349,7 @@ DELETE /auth/api-keys/{id}              # Revoke API key
 
 ### REST Endpoints
 ```
+POST   /api/v1/tasks/suggest            # AI-powered task suggestion from natural language (context-aware)
 POST   /api/v1/tasks/preview            # Preview search query without creating task (new)
 POST   /api/v1/tasks                    # Create monitoring task
 GET    /api/v1/tasks                    # List tasks
@@ -531,14 +532,15 @@ GCP_REGION=us-central1
 - **Live Search Preview** (#37): `/api/v1/tasks/preview` endpoint allows testing queries before creating tasks
 - **Immediate Task Execution** (#36): `run_immediately` flag executes tasks instantly after creation
 - **Fixed Grounding Source Display** (#38): Clean domain names instead of Vertex AI redirect URLs, filtering of internal infrastructure URLs
-- **Multi-step Task Creation Wizard**: Improved UX with template selection, query configuration, scheduling, and preview steps
-- **Smart Schedule UI**: Human-readable cron display with `cronstrue`, visual schedule builder, quick presets, real-time validation
-- **Task Editing**: Full editing capabilities without recreating tasks (query, condition, schedule, notifications)
+- **AI-Powered Task Creation**: `/api/v1/tasks/suggest` endpoint uses LLM to generate task configuration from natural language prompts
+- **Context-Aware Task Refinement**: "Magic Refine" feature accepts current task context to preserve details when updating (e.g., "add river facing" appends to existing query)
+- **Visual Schedule Builder**: Custom schedule dialog with hourly/daily/weekly/monthly presets, human-readable cron display, and advanced cron input
+- **Simplified Task Creation UX**: Single-page form with progressive disclosure for advanced options, replacing multi-step wizard
+- **Modernized Task Editing**: Consistent UX with creation dialog, includes Magic Refine for AI-assisted updates
 - **Temporal Context**: LLM now has awareness of last execution time for better change detection and noise reduction
 
 ### 🚧 In Progress
 - **Historical state comparison UI**: Visual representation of state changes over time
-- **Testing**: Additional E2E tests for new UX features
 
 ### 📋 Future Work
 - **External Notifications**: NotificationAPI integration for email/SMS
