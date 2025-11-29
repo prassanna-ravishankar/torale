@@ -81,7 +81,9 @@ The frontend uses `window.CONFIG` for environment-agnostic Docker images:
 - **Orchestration**: Helm + Helmfile (`-e staging`)
 - **Temporal**: Same Temporal Cloud namespace
   - Task Queue: torale-staging (isolated from production)
-- **CI/CD**: GitHub Actions (triggered by 'deploy' label or manual)
+- **CI/CD**: GitHub Actions (`staging.yml`) - triggered by `deploy` label on PR or manual dispatch
+  - Does NOT auto-trigger on push; re-add label or use workflow_dispatch to redeploy
+- **Lifecycle**: Staging persists indefinitely; redeploys update it, no auto-teardown
 - **Ingress**: Separate GCE Load Balancer + GKE Managed Certificate
 - **Domains**: api.staging.torale.ai (API), staging.torale.ai (Frontend)
 
