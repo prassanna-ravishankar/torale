@@ -69,11 +69,6 @@ spec:
             secretKeyRef:
               name: {{ .Values.secrets.name }}
               key: DB_PASSWORD
-        envFrom:
-        - configMapRef:
-            name: {{ include "torale.fullname" . }}-config
-        - secretRef:
-            name: {{ .Values.secrets.name }}
         resources:
           requests:
             memory: "256Mi"
