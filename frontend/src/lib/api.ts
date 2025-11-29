@@ -3,6 +3,7 @@ import type {
   TaskCreatePayload,
   TaskExecution,
   TaskTemplate,
+  SuggestedTask,
   User,
   UserWithNotifications,
   WebhookConfig,
@@ -123,6 +124,33 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
+  // Task execution endpoints
+  async getTaskExecutions(taskId: string): Promise<TaskExecution[]> {
+    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/executions`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async getTaskNotifications(taskId: string): Promise<TaskExecution[]> {
+    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/notifications`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async suggestTask(prompt: string, currentTask?: Partial<TaskCreatePayload>): Promise<SuggestedTask> {
+    const response = await fetch(`${this.baseUrl}/api/v1/tasks/suggest`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({
+        prompt,
+        current_task: currentTask
+      }),
+    })
+    return this.handleResponse(response)
+  }
+
   async previewSearch(
     searchQuery: string,
     conditionDescription?: string,
@@ -142,21 +170,6 @@ class ApiClient {
         condition_description: conditionDescription,
         model,
       }),
-    })
-    return this.handleResponse(response)
-  }
-
-  // Task execution endpoints
-  async getTaskExecutions(taskId: string): Promise<TaskExecution[]> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/executions`, {
-      headers: await this.getAuthHeaders(),
-    })
-    return this.handleResponse(response)
-  }
-
-  async getTaskNotifications(taskId: string): Promise<TaskExecution[]> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/notifications`, {
-      headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }

@@ -457,9 +457,11 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 - **Live Search Preview** - Test queries before creating tasks (#37)
 - **Immediate Task Execution** - Run monitoring tasks instantly after creation (#36)
 - **Fixed Grounding Source Display** - Clean domain names instead of Vertex AI redirect URLs (#38)
-- **Multi-step Task Creation Wizard** - Improved UX with template selection, query configuration, scheduling, and preview
-- **Smart Schedule UI** - Human-readable cron display, visual schedule builder, quick presets
-- **Task Editing** - Edit monitoring tasks without recreating them
+- **AI-Powered Task Creation** - "Magic Input" uses LLM to generate task configuration from natural language
+- **Context-Aware Task Refinement** - "Magic Refine" updates existing tasks while preserving context
+- **Visual Schedule Builder** - Custom schedule dialog with hourly/daily/weekly presets and cron support
+- **Simplified Task Creation UX** - Single-page form with progressive disclosure for advanced options
+- **Modernized Task Editing** - Consistent UX with creation dialog, includes Magic Refine
 - **Temporal Context for Change Detection** - Better change detection with LLM awareness of execution history
 
 ### 🚧 In Progress
@@ -658,6 +660,7 @@ DELETE /auth/api-keys/{id}                 # Revoke API key
 
 ### Tasks
 ```
+POST   /api/v1/tasks/suggest               # AI-powered task suggestion from natural language (context-aware)
 POST   /api/v1/tasks/preview               # Preview search query (test without creating task)
 POST   /api/v1/tasks                       # Create monitoring task
 GET    /api/v1/tasks                       # List tasks

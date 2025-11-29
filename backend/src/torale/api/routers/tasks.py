@@ -13,7 +13,7 @@ from torale.api.auth import CurrentUserOrTestUser
 from torale.api.dependencies import get_genai_client
 from torale.core.config import settings
 from torale.core.database import Database, get_db
-from torale.core.models import Task, TaskCreate, TaskExecution, TaskUpdate
+from torale.core.models import NotifyBehavior, Task, TaskCreate, TaskExecution, TaskUpdate
 from torale.notifications import NotificationValidationError, validate_notification
 from torale.workers.workflows import TaskExecutionRequest, TaskExecutionWorkflow
 
@@ -269,6 +269,120 @@ class PreviewSearchRequest(BaseModel):
     search_query: str = Field(..., description="The search query to test")
     condition_description: str | None = Field(None, description="Optional condition to evaluate")
     model: str = Field("gemini-2.0-flash-exp", description="Model to use for search")
+
+
+class SuggestTaskRequest(BaseModel):
+    prompt: str = Field(..., description="Natural language description of the task")
+    current_task: dict | None = Field(None, description="Current task configuration for context")
+    model: str = Field("gemini-2.0-flash-exp", description="Model to use for suggestion")
+
+
+class SuggestedTask(BaseModel):
+    name: str
+    search_query: str
+    condition_description: str
+    schedule: str
+    notify_behavior: NotifyBehavior
+
+
+@router.post("/suggest", response_model=SuggestedTask)
+async def suggest_task(
+    request: SuggestTaskRequest,
+    user: CurrentUser,
+    genai_client=Depends(get_genai_client),
+):
+    """
+    Suggest task configuration from natural language description.
+    """
+    from google.genai import types
+
+    # Use structured format with distinct roles to prevent prompt injection
+    # System instructions are in the first user message, user input is separate
+    if request.current_task:
+        system_instruction = """You are an expert at configuring web monitoring tasks.
+
+Based on the user's request, UPDATE the current task configuration.
+- If the user says "add river facing", append it to the search query (e.g. "apartments in NY" -> "apartments in NY river facing").
+- Keep existing context unless explicitly asked to change it.
+- Return the FULL updated configuration.
+
+Return a JSON object with these fields:
+- name: A short, memorable name for the task
+- search_query: The Google search query to use
+- condition_description: A clear, 1-sentence description of what triggers a notification
+- schedule: A cron expression (e.g. "0 9 * * *" for daily at 9am)
+- notify_behavior: One of "once", "always", "track_state"
+JSON Response:"""
+
+        contents = [
+            {"role": "user", "parts": [{"text": system_instruction}]},
+            {
+                "role": "model",
+                "parts": [
+                    {
+                        "text": "Understood. I will return a JSON object with the required fields based on your update request."
+                    }
+                ],
+            },
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "text": f'Current Task Configuration:\n{json.dumps(request.current_task, indent=2)}\n\nUser Request: "{request.prompt}"'
+                    }
+                ],
+            },
+        ]
+    else:
+        system_instruction = """You are an expert at configuring web monitoring tasks.
+
+Based on the user's description, generate the optimal configuration for a monitoring task.
+
+Return a JSON object with these fields:
+- name: A short, memorable name for the task (e.g. "PS5 Stock Monitor")
+- search_query: The Google search query to use
+- condition_description: A clear, 1-sentence description of what triggers a notification
+- schedule: A cron expression (e.g. "0 9 * * *" for daily at 9am)
+- notify_behavior: One of "once", "always", "track_state"
+JSON Response:"""
+
+        contents = [
+            {"role": "user", "parts": [{"text": system_instruction}]},
+            {
+                "role": "model",
+                "parts": [
+                    {"text": "Understood. I will return a JSON object with the required fields."}
+                ],
+            },
+            {"role": "user", "parts": [{"text": f'User Description: "{request.prompt}"'}]},
+        ]
+
+    try:
+        response = await genai_client.aio.models.generate_content(
+            model=request.model,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=SuggestedTask,
+            ),
+        )
+
+        return json.loads(response.text)
+
+    except json.JSONDecodeError as e:
+        logger.error(
+            f"Failed to parse LLM JSON response for task suggestion: {response.text}", exc_info=e
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process AI suggestion. The format was invalid.",
+        ) from e
+    except Exception as e:
+        logger.error(f"Failed to suggest task: {str(e)}", exc_info=e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate task suggestion. Please try again.",
+        ) from e
 
 
 @router.post("/preview")
