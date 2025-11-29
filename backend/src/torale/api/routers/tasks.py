@@ -271,6 +271,84 @@ class PreviewSearchRequest(BaseModel):
     model: str = Field("gemini-2.0-flash-exp", description="Model to use for search")
 
 
+class SuggestTaskRequest(BaseModel):
+    prompt: str = Field(..., description="Natural language description of the task")
+    current_task: dict | None = Field(None, description="Current task configuration for context")
+    model: str = Field("gemini-2.0-flash-exp", description="Model to use for suggestion")
+
+
+class SuggestedTask(BaseModel):
+    name: str
+    search_query: str
+    condition_description: str
+    schedule: str
+    notify_behavior: str
+
+
+@router.post("/suggest", response_model=SuggestedTask)
+async def suggest_task(
+    request: SuggestTaskRequest,
+    user: CurrentUser,
+    genai_client=Depends(get_genai_client),
+):
+    """
+    Suggest task configuration from natural language description.
+    """
+    from google.genai import types
+
+    if request.current_task:
+        prompt = f"""You are an expert at configuring web monitoring tasks.
+Current Task Configuration:
+{json.dumps(request.current_task, indent=2)}
+
+User Request: "{request.prompt}"
+
+Based on the user's request, UPDATE the current task configuration.
+- If the user says "add river facing", append it to the search query (e.g. "apartments in NY" -> "apartments in NY river facing").
+- Keep existing context unless explicitly asked to change it.
+- Return the FULL updated configuration.
+
+Return a JSON object with these fields:
+- name: A short, memorable name for the task
+- search_query: The Google search query to use
+- condition_description: A clear, 1-sentence description of what triggers a notification
+- schedule: A cron expression (e.g. "0 9 * * *" for daily at 9am)
+- notify_behavior: One of "once", "always", "track_state"
+JSON Response:"""
+    else:
+        prompt = f"""You are an expert at configuring web monitoring tasks.
+User Description: "{request.prompt}"
+
+Based on this description, generate the optimal configuration for a monitoring task.
+
+Return a JSON object with these fields:
+- name: A short, memorable name for the task (e.g. "PS5 Stock Monitor")
+- search_query: The Google search query to use
+- condition_description: A clear, 1-sentence description of what triggers a notification
+- schedule: A cron expression (e.g. "0 9 * * *" for daily at 9am)
+- notify_behavior: One of "once", "always", "track_state"
+JSON Response:"""
+
+    try:
+        response = await genai_client.aio.models.generate_content(
+            model=request.model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=SuggestedTask,
+            ),
+        )
+
+        return json.loads(response.text)
+
+    except Exception as e:
+        logger.error(f"Failed to suggest task: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate task suggestion. Please try again.",
+        ) from e
+
+
 @router.post("/preview")
 async def preview_search(
     request: PreviewSearchRequest,
