@@ -62,13 +62,13 @@ spec:
           echo "Migration complete"
           exit 0
         env:
-        - name: DATABASE_URL
-          value: {{ include "torale.databaseUrl" . | quote }}
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
               name: {{ .Values.secrets.name }}
               key: DB_PASSWORD
+        - name: DATABASE_URL
+          value: {{ include "torale.databaseUrl" . | quote }}
         resources:
           requests:
             memory: "256Mi"
