@@ -209,7 +209,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
                             task_name=task.name,
                         ),
                         id=f"scheduled-task-{task_id}",
-                        task_queue="torale-tasks",
+                        task_queue=settings.temporal_task_queue,
                     ),
                     spec=ScheduleSpec(cron_expressions=[task.schedule]),
                 ),
@@ -419,7 +419,7 @@ async def _start_task_execution(
                 suppress_notifications=suppress_notifications,
             ),
             id=f"task-{task_id}-{execution_row['id']}",
-            task_queue="torale-tasks",
+            task_queue=settings.temporal_task_queue,
         )
         logger.info(f"Started execution {execution_row['id']} for task {task_id}")
     except Exception as e:
@@ -621,7 +621,7 @@ async def update_task(
                                         task_name=row["name"],
                                     ),
                                     id=f"scheduled-task-{task_id}",
-                                    task_queue="torale-tasks",
+                                    task_queue=settings.temporal_task_queue,
                                 ),
                                 spec=ScheduleSpec(cron_expressions=[row["schedule"]]),
                             ),

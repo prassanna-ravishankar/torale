@@ -29,7 +29,7 @@ jobs:
           test -f backend/Dockerfile || (echo "❌ backend/Dockerfile missing" && exit 1)
           test -f frontend/Dockerfile || (echo "❌ frontend/Dockerfile missing" && exit 1)
           test -f docs-site/Dockerfile || (echo "❌ docs-site/Dockerfile missing" && exit 1)
-          test -f helmfile.yaml || (echo "❌ helmfile.yaml missing" && exit 1)
+          test -f helmfile.yaml.gotmpl || (echo "❌ helmfile.yaml.gotmpl missing" && exit 1)
           test -d helm/torale || (echo "❌ helm/torale missing" && exit 1)
           echo "✅ All files present"
 

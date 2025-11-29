@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     temporal_namespace: str = "default"
     temporal_api_key: str | None = None
     temporal_ui_url: str = "http://localhost:8080"  # Temporal UI base URL
+    temporal_task_queue: str = "torale-tasks"
 
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None

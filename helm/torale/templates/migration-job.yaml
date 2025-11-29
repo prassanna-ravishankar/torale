@@ -24,7 +24,7 @@ spec:
     spec:
       # Don't restart on failure
       restartPolicy: Never
-      serviceAccountName: {{ include "torale.serviceAccountName" . }}
+      serviceAccountName: {{ include "torale.serviceAccountName" . }}-migrations
       {{- with .Values.api.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -62,18 +62,13 @@ spec:
           echo "Migration complete"
           exit 0
         env:
-        - name: DATABASE_URL
-          value: {{ include "torale.databaseUrl" . | quote }}
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
               name: {{ .Values.secrets.name }}
               key: DB_PASSWORD
-        envFrom:
-        - configMapRef:
-            name: {{ include "torale.fullname" . }}-config
-        - secretRef:
-            name: {{ .Values.secrets.name }}
+        - name: DATABASE_URL
+          value: {{ include "torale.databaseUrl" . | quote }}
         resources:
           requests:
             memory: "256Mi"

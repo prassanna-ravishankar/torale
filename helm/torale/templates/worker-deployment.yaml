@@ -41,6 +41,8 @@ spec:
             secretKeyRef:
               name: {{ .Values.secrets.name }}
               key: DB_PASSWORD
+        - name: TEMPORAL_TASK_QUEUE
+          value: {{ .Values.temporal.taskQueue | quote }}
         envFrom:
         - configMapRef:
             name: {{ include "torale.fullname" . }}-config

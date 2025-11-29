@@ -46,6 +46,8 @@ spec:
               key: DB_PASSWORD
         - name: PORT
           value: "8000"
+        - name: TEMPORAL_TASK_QUEUE
+          value: {{ .Values.temporal.taskQueue | quote }}
         envFrom:
         - configMapRef:
             name: {{ include "torale.fullname" . }}-config
