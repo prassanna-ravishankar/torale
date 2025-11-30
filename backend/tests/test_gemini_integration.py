@@ -95,6 +95,17 @@ async def test_gemini_executor():
     assert result.get("condition_met") is not None, "Should have condition_met field"
     assert isinstance(result.get("grounding_sources"), list), "Should have grounding sources list"
 
+    # Verify grounding sources are actually populated (not empty)
+    grounding_sources = result.get("grounding_sources", [])
+    assert len(grounding_sources) > 0, "Should have at least one grounding source"
+
+    # Verify each source has required fields
+    for source in grounding_sources:
+        assert "url" in source, "Source should have url field"
+        assert "title" in source, "Source should have title field"
+        assert source["url"], "Source url should not be empty"
+        assert source["title"], "Source title should not be empty"
+
 
 if __name__ == "__main__":
     success = asyncio.run(test_gemini_integration())
