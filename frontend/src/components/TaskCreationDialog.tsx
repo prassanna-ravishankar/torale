@@ -460,7 +460,24 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                 </CollapsibleTrigger>
                 {!showAdvanced && (
                   <span className="text-xs text-muted-foreground">
-                    Daily checks, Track changes
+                    {(() => {
+                      // Show current schedule frequency
+                      const scheduleOption = SIMPLE_SCHEDULE_OPTIONS.find(o => o.value === schedule);
+                      const scheduleLabel = scheduleOption?.label || (() => {
+                        try {
+                          const localCron = cronUTCToLocal(schedule);
+                          return cronstrue.toString(localCron);
+                        } catch {
+                          return "Custom";
+                        }
+                      })();
+
+                      // Show current notify behavior
+                      const behaviorOption = NOTIFY_BEHAVIORS.find(b => b.value === notifyBehavior);
+                      const behaviorLabel = behaviorOption?.label || notifyBehavior;
+
+                      return `${scheduleLabel}, ${behaviorLabel}`;
+                    })()}
                   </span>
                 )}
               </div>

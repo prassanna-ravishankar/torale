@@ -414,10 +414,61 @@ Update the system instruction in `backend/src/torale/api/routers/tasks.py` (line
 **Files Involved:**
 - `backend/src/torale/api/routers/tasks.py` (suggest_task endpoint, lines ~368-378)
 
-**Investigation Status:**
-- ✅ Root cause identified
-- ⏳ User decision: Fix now or document for later?
-- ⏳ Priority: Medium (UX polish, not critical)
+**FIX IMPLEMENTED:**
+
+**Approach: Formalize All LLM Prompts with Pydantic Schemas**
+- Enhanced all 4 LLM calls to use Pydantic models with Field descriptions
+- AI now receives structured guidance on when to use each `notify_behavior` value
+- Consistent structured outputs across all Gemini API calls
+
+**Implementation:**
+
+1. **Created 3 New Pydantic Models** (`backend/src/torale/core/models.py`)
+   - `InferredCondition`: For condition inference from search queries
+   - `ConditionEvaluation`: For evaluating if monitoring conditions are met (with `current_state: Any` to avoid Gemini `additionalProperties` issue)
+   - `StateComparison`: For comparing previous and current states
+
+2. **Enhanced SuggestedTask Model** (`backend/src/torale/api/routers/tasks.py`)
+   - Simplified Field description to minimal explanation
+   - Added explicit system instruction with digest guidance
+
+3. **Updated All 4 LLM Calls** to use `response_schema` parameter:
+   - `/api/v1/tasks/suggest` endpoint (task suggestion) → `SuggestedTask`
+   - `/api/v1/tasks/preview` endpoint (condition inference) → `InferredCondition`
+   - Grounded search executor `_evaluate_condition` → `ConditionEvaluation`
+   - Grounded search executor `_compare_states` → `StateComparison`
+
+**Files Changed:**
+- `backend/src/torale/core/models.py` (added 3 new LLM response models)
+- `backend/src/torale/api/routers/tasks.py` (simplified Field description, enhanced system instruction with DAILY/WEEKLY/MONTHLY rules)
+- `backend/src/torale/executors/grounded_search.py` (updated _evaluate_condition, _compare_states)
+- `backend/tests/test_preview_endpoint.py` (updated mocks to return JSON)
+- `backend/tests/test_suggest_endpoint.py` (added regression test for digest behavior)
+- `frontend/src/components/TaskCreationDialog.tsx` (fixed hardcoded preview text to show actual values)
+
+**What Changed:**
+- **Before**: Plain text prompts with loose guidance, LLM could return inconsistent formats
+- **After**: Structured schemas with response_schema, guaranteed JSON output format
+- **notify_behavior Selection**: AI now correctly chooses behavior for different task types
+  - **Key Fix**: System instruction with explicit DAILY/WEEKLY/MONTHLY → "always" rules
+  - **Field Description**: Minimal one-liner (LLM reads system instruction, not Field description)
+  - **Result**: "weekly digest of ai news" now correctly suggests `notify_behavior="always"` ✅
+- **Advanced Options Preview**: Fixed hardcoded "Daily checks, Track changes" to dynamically show actual schedule and behavior
+- **Consistency**: All LLM calls follow same pattern (response_schema + Pydantic validation)
+- **Testing**: Added regression test verifying system instruction includes digest guidance
+
+**Testing Status:**
+- ✅ **All tests pass**: 140 passed, 90 skipped
+- ✅ **Gemini compatibility verified**: Fixed `additionalProperties` issue (used `Any` instead of `dict`)
+- ✅ **Mock updates**: Test mocks updated to return proper JSON format
+- ⏳ **User verification**: Ready for testing - See Manual Testing Checklist section
+
+**Rollback Plan:**
+If issues arise:
+1. Revert Pydantic models from `models.py` (remove InferredCondition, ConditionEvaluation, StateComparison)
+2. Revert Field descriptions from SuggestedTask
+3. Revert response_schema usage in all 4 LLM calls (return to plain text prompts)
+4. Revert test mocks back to plain text responses
 
 ---
 
@@ -501,6 +552,45 @@ Update the system instruction in `backend/src/torale/api/routers/tasks.py` (line
 - ⏳ DST: Schedules may shift by 1 hour during daylight saving transitions (expected)
 - ⏳ Hourly patterns: "Every hour" or "Every 6 hours" should NOT show timezone (correct - no conversion)
 
+### Issue #5: AI Task Suggestion - notify_behavior Intelligence
+
+**Test 1: One-Time Event Detection**
+1. ⏳ Use "Magic Input" with query: "When is the next iPhone release date?"
+2. ⏳ Verify suggested `notify_behavior` = "once"
+3. ⏳ Try similar: "When is GPT-5 coming out?", "PS5 launch date"
+4. ⏳ All should suggest "once" (one-time announcements)
+
+**Test 2: Recurring Opportunity Detection**
+1. ⏳ Use "Magic Input" with query: "PS5 in stock at Best Buy"
+2. ⏳ Verify suggested `notify_behavior` = "always"
+3. ⏳ Try similar: "Nintendo Switch under $250", "OpenAI job openings"
+4. ⏳ All should suggest "always" (recurring alerts)
+
+**Test 2b: Periodic Digest Detection**
+1. ⏳ Use "Magic Input" with query: "weekly digest of latest AI news"
+2. ⏳ Verify suggested `notify_behavior` = "always" (NOT "once")
+3. ⏳ Verify schedule is weekly (e.g., Monday at 9:00 AM)
+4. ⏳ Try similar: "daily tech news summary", "monthly crypto updates"
+5. ⏳ All should suggest "always" for periodic digests
+
+**Test 3: State Change Monitoring Detection**
+1. ⏳ Use "Magic Input" with query: "What is the capital of France?"
+2. ⏳ Verify suggested `notify_behavior` = "track_state"
+3. ⏳ Try similar: "Latest OpenAI model name", "Current Bitcoin price"
+4. ⏳ All should suggest "track_state" (monitoring changes)
+
+**Test 4: Structured Outputs Consistency**
+1. ⏳ Create task via "Magic Input" - verify all fields populated correctly
+2. ⏳ Check preview endpoint response - verify JSON structure matches schema
+3. ⏳ Run task execution - verify condition evaluation returns proper JSON
+4. ⏳ No LLM errors or malformed responses in logs
+
+**Quick Checks:**
+- ⏳ All 4 LLM endpoints return valid JSON (no parsing errors)
+- ⏳ notify_behavior selection feels "smart" for different query types
+- ⏳ Advanced Options preview shows actual values (not "Daily checks, Track changes")
+- ⏳ No regression in existing task creation flow
+
 ### Automated Test Verification
 
 ```bash
@@ -515,6 +605,12 @@ cd backend && uv run pytest tests/test_grounding_sources.py -v
 
 # Timezone utility tests (Issue #4 - 9 assertions)
 cd frontend && npx tsx src/lib/timezoneUtils.test.ts
+
+# LLM schema tests (Issue #5 - includes preview endpoint tests)
+cd backend && uv run pytest tests/test_preview_endpoint.py -v
+
+# Full backend test suite (all issues)
+cd backend && uv run pytest tests/ -v
 ```
 
 ---

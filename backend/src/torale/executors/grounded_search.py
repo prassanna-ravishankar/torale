@@ -3,6 +3,7 @@ import logging
 from datetime import UTC, datetime
 
 from torale.core.config import settings
+from torale.core.models import ConditionEvaluation, StateComparison
 from torale.executors import TaskExecutor
 
 logger = logging.getLogger(__name__)
@@ -259,27 +260,17 @@ Search Results:
 
 Condition to Check: {condition_description}
 
-Please respond in JSON format:
-{{
-    "condition_met": true/false,
-    "explanation": "Brief explanation of why condition is/isn't met",
-    "current_state": {{
-        // Extract key facts as structured data
-        // For example: {{"release_date": "September 12", "confirmed": true}}
-        "_metadata": {{
-            "captured_at": "{current_date}",
-            "state_hash": "hash_of_key_fields"  // Simple hash/concat of main state fields for change detection
-        }}
-    }}
-}}
-
-Be precise - only set condition_met to true if the condition is definitively met based on the search results."""
+Be precise - only set condition_met to true if the condition is definitively met based on the search results.
+Extract key facts as structured data in current_state. Include _metadata with:
+- captured_at: "{current_date}"
+- state_hash: Simple hash/concat of main state fields for change detection"""
 
         response = await self.client.aio.models.generate_content(
             model=model,
             contents=evaluation_prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
+                response_schema=ConditionEvaluation,
             ),
         )
 
@@ -291,7 +282,9 @@ Be precise - only set condition_met to true if the condition is definitively met
             "current_state": result.get("current_state", {}),
         }
 
-    async def _compare_states(self, previous_state: dict, current_state: dict, model: str) -> str:
+    async def _compare_states(
+        self, previous_state: dict, current_state: dict, model: str
+    ) -> str | None:
         """
         Compare previous and current states to generate change summary.
 
@@ -318,27 +311,26 @@ Previous State (from {prev_date}):
 Current State:
 {json.dumps(current_state, indent=2)}
 
-Has any factual information actually changed? Focus on:
+Focus on:
 - New announcements or confirmations that didn't exist before
 - Changed dates, prices, specifications, or status
 - Information that represents a REAL UPDATE, not just rephrasing
 
-If NOTHING has meaningfully changed (just rephrased or still same info), respond with exactly: "No new changes detected."
-
-Otherwise, provide a concise 1-2 sentence summary of what changed."""
+If nothing has meaningfully changed (just rephrased or still same info), set changed=false and summary=null.
+Otherwise set changed=true and provide a concise 1-2 sentence summary."""
 
         response = await self.client.aio.models.generate_content(
             model=model,
             contents=comparison_prompt,
             config=types.GenerateContentConfig(
-                max_output_tokens=200,
+                response_mime_type="application/json",
+                response_schema=StateComparison,
             ),
         )
 
-        change_text = response.text.strip()
+        result = json.loads(response.text)
 
-        # If LLM says no changes, return None
-        if "no new changes" in change_text.lower() or "nothing has changed" in change_text.lower():
-            return None
-
-        return change_text
+        # Return summary if changed, None otherwise
+        if result.get("changed", False):
+            return result.get("summary")
+        return None

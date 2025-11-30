@@ -256,3 +256,54 @@ class TestSuggestPromptGeneration:
         prompt_text = str(call_args)
         assert "User Description" in prompt_text
         assert "Current Task Configuration" not in prompt_text
+
+    @pytest.mark.asyncio
+    async def test_suggest_digest_tasks_get_always_behavior(self):
+        """
+        Test that periodic digest tasks correctly suggest 'always' notify behavior.
+
+        Scenario: User wants daily/weekly/monthly digests or summaries.
+        Expected: System instruction guides LLM to use 'always' (not 'once').
+
+        This is a regression test for Issue #5 where digests were incorrectly
+        getting 'once' behavior. The system instruction now explicitly guides
+        the LLM to use 'always' for DAILY/WEEKLY/MONTHLY patterns.
+        """
+        mock_user = MagicMock()
+        mock_user.id = uuid4()
+
+        # Test that system instruction includes digest guidance
+        request = SuggestTaskRequest(
+            prompt="weekly digest of ai news", model="gemini-2.0-flash-exp"
+        )
+
+        # Mock response with 'always' behavior
+        mock_response = MagicMock()
+        mock_response.text = """{
+            "name": "AI News Weekly",
+            "search_query": "weekly digest of ai news",
+            "condition_description": "New weekly AI news digest available",
+            "schedule": "0 9 * * 1",
+            "notify_behavior": "always"
+        }"""
+
+        mock_generate = AsyncMock(return_value=mock_response)
+        mock_genai_client = MagicMock()
+        mock_genai_client.aio.models.generate_content = mock_generate
+
+        result = await suggest_task(request, mock_user, mock_genai_client)
+
+        # Verify notify_behavior is 'always' for digests
+        assert result["notify_behavior"] == "always", (
+            f"Expected 'always' for digest, got '{result['notify_behavior']}'"
+        )
+
+        # Verify system instruction includes explicit digest guidance
+        call_args = mock_generate.call_args
+        prompt_text = str(call_args)
+        assert "DAILY/WEEKLY/MONTHLY" in prompt_text, (
+            "System instruction should include 'DAILY/WEEKLY/MONTHLY' guidance for digests"
+        )
+        assert "use 'always'" in prompt_text.lower(), (
+            "System instruction should explicitly say to use 'always' for digests"
+        )

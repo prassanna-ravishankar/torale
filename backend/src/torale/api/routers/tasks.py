@@ -13,7 +13,14 @@ from torale.api.auth import CurrentUserOrTestUser
 from torale.api.dependencies import get_genai_client
 from torale.core.config import settings
 from torale.core.database import Database, get_db
-from torale.core.models import NotifyBehavior, Task, TaskCreate, TaskExecution, TaskUpdate
+from torale.core.models import (
+    InferredCondition,
+    NotifyBehavior,
+    Task,
+    TaskCreate,
+    TaskExecution,
+    TaskUpdate,
+)
 from torale.notifications import NotificationValidationError, validate_notification
 from torale.workers.workflows import TaskExecutionRequest, TaskExecutionWorkflow
 
@@ -309,11 +316,15 @@ class SuggestTaskRequest(BaseModel):
 
 
 class SuggestedTask(BaseModel):
-    name: str
-    search_query: str
-    condition_description: str
-    schedule: str
-    notify_behavior: NotifyBehavior
+    name: str = Field(description="Short, memorable name for the task (e.g., 'PS5 Stock Monitor')")
+    search_query: str = Field(description="Google search query to monitor")
+    condition_description: str = Field(
+        description="Clear, 1-sentence description of what triggers a notification"
+    )
+    schedule: str = Field(description="Cron expression (e.g., '0 9 * * *' for daily at 9am)")
+    notify_behavior: NotifyBehavior = Field(
+        description="When to notify: 'always' (every run), 'once' (first time only), 'track_state' (on change)"
+    )
 
 
 @router.post("/suggest", response_model=SuggestedTask)
@@ -337,12 +348,6 @@ Based on the user's request, UPDATE the current task configuration.
 - Keep existing context unless explicitly asked to change it.
 - Return the FULL updated configuration.
 
-Return a JSON object with these fields:
-- name: A short, memorable name for the task
-- search_query: The Google search query to use
-- condition_description: A clear, 1-sentence description of what triggers a notification
-- schedule: A cron expression (e.g. "0 9 * * *" for daily at 9am)
-- notify_behavior: One of "once", "always", "track_state"
 JSON Response:"""
 
         contents = [
@@ -369,12 +374,11 @@ JSON Response:"""
 
 Based on the user's description, generate the optimal configuration for a monitoring task.
 
-Return a JSON object with these fields:
-- name: A short, memorable name for the task (e.g. "PS5 Stock Monitor")
-- search_query: The Google search query to use
-- condition_description: A clear, 1-sentence description of what triggers a notification
-- schedule: A cron expression (e.g. "0 9 * * *" for daily at 9am)
-- notify_behavior: One of "once", "always", "track_state"
+IMPORTANT for notify_behavior:
+- If the user wants DAILY/WEEKLY/MONTHLY digests or summaries → use 'always' (notify every time)
+- If the user wants recurring alerts (stock, price, availability) → use 'always'
+- If the user wants ONE-TIME announcements (launch dates, event dates) → use 'once'
+
 JSON Response:"""
 
         contents = [
@@ -398,7 +402,11 @@ JSON Response:"""
             ),
         )
 
-        return json.loads(response.text)
+        # Log the AI response for debugging
+        suggestion = json.loads(response.text)
+        logger.info(f"Task suggestion for '{request.prompt}': {json.dumps(suggestion, indent=2)}")
+
+        return suggestion
 
     except json.JSONDecodeError as e:
         logger.error(
@@ -608,24 +616,23 @@ Search Query: {search_query}
 
 What condition or change would indicate this information is available or has been announced?
 
-Respond with just a clear, concise condition description (1 sentence).
-
 Examples:
 - Query: "When is the next iPhone release?" → "A specific release date or month has been officially announced"
 - Query: "Is GPT-5 available?" → "GPT-5 is officially released and available"
 - Query: "What's the price of PS5?" → "A clear price is listed"
-
-Condition:"""
+"""
 
     response = await genai_client.aio.models.generate_content(
         model=model,
         contents=inference_prompt,
         config=types.GenerateContentConfig(
-            max_output_tokens=100,
+            response_mime_type="application/json",
+            response_schema=InferredCondition,
         ),
     )
 
-    return response.text.strip()
+    result = json.loads(response.text)
+    return result["condition"]
 
 
 @router.get("/{task_id}", response_model=Task)
