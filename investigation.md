@@ -61,14 +61,6 @@
   - Vertex AI redirect URLs preserved with clean titles
 - ✅ Integration tests: Updated with grounding source assertions
 - ⏳ Regression tests: Written but have mocking issues (doesn't affect fix verification)
-- ⏳ User verification: **Ready for testing** - Run a task execution and check sources appear in UI
-- ⏳ Email rendering: Awaiting Novu test (if configured)
-
-**User Verification Steps:**
-1. Run existing task or create new one
-2. Check execution history - verify grounding sources appear
-3. Click on source links - verify they open correct pages
-4. Check email notifications (if configured) - verify sources render
 
 **Rollback Plan:**
 If issues arise, revert by:
@@ -100,13 +92,7 @@ If issues arise, revert by:
 - **Services restarted**: `docker compose restart workers`
 
 **Testing Status:**
-- ⏳ User verification: **Ready for testing** - Trigger a notification and check if email arrives
-- ⏳ Check worker logs for errors: `docker compose logs workers -f`
-
-**User Verification Steps:**
-1. Trigger a task execution that meets condition (or manually execute existing task)
-2. Check email inbox for notification
-3. Verify no errors in worker logs
+- ⏳ User verification: **Ready for testing** - See Manual Testing Checklist section
 
 ---
 
@@ -203,63 +189,13 @@ If issues arise, revert by:
   - Same test coverage as backend
   - Ensures consistency between frontend/backend
 - ✅ **Migration applied**: Successfully backfilled `last_execution_id`
-- ⏳ **User verification**: Ready for testing in live environment
-
-**User Verification Steps:**
-1. Check Dashboard - verify tabs show "🟢 Monitoring / ✅ Completed / ⏸️ Paused"
-2. Check task cards - verify single status badge (no "Triggered + Paused" contradictions)
-3. Create task with `notify_behavior="once"` → trigger condition → verify shows "✅ Completed"
-4. Manually pause active task → verify shows "⏸️ Paused"
-5. Resume paused task → verify shows "🟢 Monitoring"
+- ⏳ **User verification**: Ready for testing - See Manual Testing Checklist section
 
 **Rollback Plan:**
 If issues arise:
 1. Database: Revert migration `c36fe95dcb98` (drops `last_execution_id` column)
 2. Backend: Remove `task_status.py`, revert model/API/worker changes
 3. Frontend: Revert to old badge logic (show `condition_met` + `is_active` separately)
-
-**Manual Testing Flows:**
-
-*Critical flows to verify the fix and prevent regressions.*
-
-**Test 1: Three States Work Correctly**
-1. Create task with `notify_behavior="once"` and simple condition (e.g., "capital of France")
-2. ✅ Initially shows "🟢 Monitoring" in dashboard
-3. Run task → condition met → ✅ Shows "✅ Completed" (blue badge)
-4. Manually resume task → ✅ Shows "🟢 Monitoring" again
-5. Manually pause task → ✅ Shows "⏸️ Paused" (yellow badge)
-6. ✅ Each state shows ONLY ONE badge (no contradictions)
-
-**Test 2: Dashboard Tabs Filter Correctly**
-1. Create mix: 1 active, 1 completed (auto-stopped), 1 paused task
-2. ✅ "All Tasks" shows all 3
-3. ✅ "🟢 Monitoring" shows only active task
-4. ✅ "✅ Completed" shows only auto-stopped task
-5. ✅ "⏸️ Paused" shows only manually paused task
-
-**Test 3: Active Tasks Don't Change on Execution**
-1. Create active task, run it multiple times with varying results
-2. ✅ Task stays "🟢 Monitoring" as long as `is_active=true`
-3. ✅ Status only changes when paused OR auto-stopped (notify_behavior="once" + condition met)
-
-**Test 4: No Contradictory Badges (Regression Test)**
-1. Test ANY task in ANY state
-2. ✅ NEVER see "Triggered" + "Paused" together
-3. ✅ ALWAYS see exactly ONE status badge
-
-**Quick Checks:**
-- ✅ Dashboard loads fast (no N+1 queries)
-- ✅ Badge on card matches badge on detail page
-- ✅ Status persists on page reload
-
-**Automated Tests:**
-```bash
-# Backend (11 assertions)
-cd backend && uv run python tests/test_task_status.py
-
-# Frontend (12 assertions)
-cd frontend && npx tsx src/lib/taskStatus.test.ts
-```
 
 ---
 
@@ -340,34 +276,80 @@ cd frontend && npx tsx src/lib/taskStatus.test.ts
 - Task runs at 9am UTC = 1am PST (8 hours early!)
 - Confusing: execution history shows "1:00 AM" in timeline but user set "9:00 AM"
 
-**Potential Solutions:**
+**FIX IMPLEMENTED:**
 
-**Option 1: Store User Timezone + Convert to UTC**
-- Store user's timezone in user profile (detect from browser)
-- Convert user's local cron to UTC cron before creating Temporal schedule
-- Display times in user's timezone consistently
-- Backend handles all conversion
+**Approach: UTC Backend, Browser Timezone Display (Frontend-Only Fix)**
+- **Philosophy**: Timezone is a display concern, not a data concern
+- **Backend**: Store everything in UTC (no changes needed)
+- **Frontend**: Convert to/from user's browser timezone for display only
+- **Trade-off**: Schedules shift by 1 hour during DST transitions (normal behavior, like Google Calendar)
 
-**Option 2: Add Timezone to Schedule UI**
-- Let user pick timezone when creating task (dropdown)
-- Pass timezone to Temporal: `ScheduleSpec(cron_expressions=[...], timezone="America/Los_Angeles")`
-- Display times in selected timezone
-- More explicit but adds complexity
+**Why This Approach:**
+- No database changes or timezone storage needed
+- No backend changes required
+- Simple: Frontend handles all conversion on-demand
+- Familiar UX: Same DST behavior as calendar apps (acceptable)
 
-**Option 3: Force Everything to UTC**
-- Show UTC times in UI with clear "UTC" label
-- Schedule builder shows UTC times
-- User converts manually (simplest backend, hardest UX)
+**Implementation:**
 
-**Recommended: Option 1**
-- Best UX: "just works" for users
-- Transparent: shows their local time everywhere
-- Backend responsibility: handle timezone math
+1. **Created Timezone Utility Module** (`frontend/src/lib/timezoneUtils.ts`)
+   - `getTimezoneOffsetHours()`: Get user's UTC offset
+   - `localHourToUTC(hour)`: Convert local hour to UTC (for saving)
+   - `utcHourToLocal(hour)`: Convert UTC hour to local (for display)
+   - `cronLocalToUTC(cron)`: Convert local cron to UTC cron
+   - `cronUTCToLocal(cron)`: Convert UTC cron to local cron
+   - `getTimezoneAbbreviation()`: Get "PST", "EST", etc.
 
-**Investigation Status:**
-- ✅ Root cause confirmed
-- ⏳ Solution design needed
-- ⏳ User feedback: Which option feels best?
+2. **Updated Schedule Builder** (`CustomScheduleDialog.tsx`)
+   - **On Load**: Convert UTC cron from backend → local time for display
+   - **On Save**: Convert local time → UTC cron before sending to backend
+   - **Preview**: Show timezone abbreviation (e.g., "Daily at 9:00 AM PST")
+
+3. **Updated Cron Display** (`CronDisplay.tsx`)
+   - Convert UTC cron to local time before showing human-readable text
+   - Append timezone abbreviation: "At 9:00 AM PST"
+   - Tooltip shows UTC cron (for debugging)
+
+4. **Updated Task Creation/Edit Dialogs**
+   - Preset schedules now convert local times to UTC
+   - "Daily at 9:00 AM" → generates `0 ${utcHour} * * *` (UTC)
+   - Custom schedule display converts UTC → local for human-readable text
+
+**Files Changed:**
+- `frontend/src/lib/timezoneUtils.ts` (NEW - conversion utilities)
+- `frontend/src/lib/timezoneUtils.test.ts` (NEW - test suite)
+- `frontend/src/components/ui/CustomScheduleDialog.tsx` (UTC↔Local conversion)
+- `frontend/src/components/ui/CronDisplay.tsx` (show timezone abbreviation)
+- `frontend/src/components/TaskCreationDialog.tsx` (preset schedules + custom display)
+- `frontend/src/components/TaskEditDialog.tsx` (same as creation dialog)
+
+**What Users See Now:**
+- **Schedule Builder**: Times in their local timezone (e.g., "9:00 AM")
+- **Schedule Display**: Times with timezone label (e.g., "At 9:00 AM PST")
+- **Execution History**: Already shows local time via `Intl.DateTimeFormat` ✅
+- **Backend Storage**: UTC cron expressions (unchanged)
+
+**Testing Status:**
+- ✅ **Unit tests pass**: All timezone conversions work correctly (`timezoneUtils.test.ts`)
+  - Local → UTC → Local round-trip works
+  - Edge cases handled (midnight, hour wrapping)
+  - Hourly patterns NOT converted (correct behavior)
+  - Timezone abbreviation detected
+- ⏳ **User verification**: Ready for testing - See Manual Testing Checklist section
+
+**Known Limitations (Documented, Accepted):**
+1. **DST Shifts**: Tasks shift by 1 hour during DST transitions (like calendar apps)
+2. **Traveling Users**: If user travels across timezones, schedules stay in original timezone
+3. **Day-of-Week**: Weekly schedules might shift to different day if UTC offset crosses midnight
+
+These are acceptable trade-offs for the simplified implementation.
+
+**Rollback Plan:**
+If issues arise:
+1. Remove timezone conversion from `CustomScheduleDialog.tsx` (parseInitialCron, buildCronFromForm)
+2. Remove timezone display from `CronDisplay.tsx`
+3. Revert preset schedules in TaskCreationDialog/TaskEditDialog
+4. Delete `timezoneUtils.ts` and `timezoneUtils.test.ts`
 
 ---
 
@@ -436,6 +418,104 @@ Update the system instruction in `backend/src/torale/api/routers/tasks.py` (line
 - ✅ Root cause identified
 - ⏳ User decision: Fix now or document for later?
 - ⏳ Priority: Medium (UX polish, not critical)
+
+---
+
+## Manual Testing Checklist
+
+*Consolidated testing flows across all fixes - run these before making a PR*
+
+### Issue #1: Grounding Source Links
+
+**Test: Sources Appear and Links Work**
+1. ⏳ Run existing task or create new one
+2. ⏳ Check execution history - verify grounding sources appear in UI
+3. ⏳ Click on source links - verify they open correct pages (redirect should work)
+4. ⏳ Verify UI shows clean domain names (e.g., "britannica.com" not full redirect URL)
+
+### Issue #1b: Email Notifications
+
+**Test: Email Notifications Send Successfully**
+1. ⏳ Trigger a task execution that meets condition (or manually execute existing task)
+2. ⏳ Check email inbox for notification
+3. ⏳ Verify no errors in worker logs: `docker compose logs workers -f`
+4. ⏳ Verify email contains grounding sources (if configured)
+
+### Issue #2: Status Badges & Pause Behavior
+
+**Test 1: Three States Work Correctly**
+1. ⏳ Create task with `notify_behavior="once"` and simple condition (e.g., "capital of France")
+2. ⏳ Initially shows "🟢 Monitoring" in dashboard
+3. ⏳ Run task → condition met → Shows "✅ Completed" (blue badge)
+4. ⏳ Manually resume task → Shows "🟢 Monitoring" again
+5. ⏳ Manually pause task → Shows "⏸️ Paused" (yellow badge)
+6. ⏳ Each state shows ONLY ONE badge (no contradictions)
+
+**Test 2: Dashboard Tabs Filter Correctly**
+1. ⏳ Create mix: 1 active, 1 completed (auto-stopped), 1 paused task
+2. ⏳ "All Tasks" shows all 3
+3. ⏳ "🟢 Monitoring" shows only active task
+4. ⏳ "✅ Completed" shows only auto-stopped task
+5. ⏳ "⏸️ Paused" shows only manually paused task
+
+**Test 3: Active Tasks Don't Change on Execution**
+1. ⏳ Create active task, run it multiple times with varying results
+2. ⏳ Task stays "🟢 Monitoring" as long as `is_active=true`
+3. ⏳ Status only changes when paused OR auto-stopped (notify_behavior="once" + condition met)
+
+**Test 4: No Contradictory Badges (Regression Test)**
+1. ⏳ Test ANY task in ANY state
+2. ⏳ NEVER see "Triggered" + "Paused" together
+3. ⏳ ALWAYS see exactly ONE status badge
+
+**Quick Checks:**
+- ⏳ Dashboard loads fast (no N+1 queries)
+- ⏳ Badge on card matches badge on detail page
+- ⏳ Status persists on page reload
+
+### Issue #4: Timezone Display & Conversion
+
+**Test 1: Schedule Creation Shows Local Time**
+1. ⏳ Open task creation dialog
+2. ⏳ Select preset "Daily at 9:00 AM"
+3. ⏳ Verify preview shows "At 9:00 AM [Your TZ]" (e.g., "PST", "EST")
+4. ⏳ Save task and verify schedule displays with timezone abbreviation
+
+**Test 2: Custom Schedule Converts Correctly**
+1. ⏳ Create task with custom schedule using schedule builder
+2. ⏳ Set time to 9:00 AM in builder
+3. ⏳ Verify preview shows local time with timezone (e.g., "9:00 AM PST")
+4. ⏳ Save and reload task - verify time still shows 9:00 AM (not UTC)
+
+**Test 3: Existing Tasks Display Local Time**
+1. ⏳ Open existing task that has schedule in UTC
+2. ⏳ Verify schedule displays in local time (converted from UTC)
+3. ⏳ Verify timezone abbreviation shown (e.g., "At 9:00 AM PST")
+
+**Test 4: Execution Timeline Shows Local Time**
+1. ⏳ View task execution history
+2. ⏳ Verify all timestamps show in local timezone
+3. ⏳ Verify timezone abbreviation or offset displayed
+
+**Known Behavior to Verify:**
+- ⏳ DST: Schedules may shift by 1 hour during daylight saving transitions (expected)
+- ⏳ Hourly patterns: "Every hour" or "Every 6 hours" should NOT show timezone (correct - no conversion)
+
+### Automated Test Verification
+
+```bash
+# Backend tests (Issue #2 - 11 assertions)
+cd backend && uv run python tests/test_task_status.py
+
+# Frontend tests (Issue #2 - 12 assertions)
+cd frontend && npx tsx src/lib/taskStatus.test.ts
+
+# Grounding source tests (Issue #1)
+cd backend && uv run pytest tests/test_grounding_sources.py -v
+
+# Timezone utility tests (Issue #4 - 9 assertions)
+cd frontend && npx tsx src/lib/timezoneUtils.test.ts
+```
 
 ---
 

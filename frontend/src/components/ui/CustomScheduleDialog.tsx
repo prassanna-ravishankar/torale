@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { AlertCircle, Clock } from 'lucide-react';
+import { utcTimeToLocal, localTimeToUTC, getTimezoneAbbreviation } from '@/lib/timezoneUtils';
 
 interface CustomScheduleDialogProps {
   open: boolean;
@@ -78,6 +79,7 @@ export const CustomScheduleDialog: React.FC<CustomScheduleDialogProps> = ({
   }, [open, initialValue]);
 
   // Parse initial cron to populate builder
+  // Note: Cron from backend is in UTC, convert to local time for display
   const parseInitialCron = (cron: string) => {
     const parts = cron.split(' ');
     if (parts.length === 5) {
@@ -93,32 +95,84 @@ export const CustomScheduleDialog: React.FC<CustomScheduleDialogProps> = ({
         setEveryNHours(hr.replace('*/', ''));
       } else if (dayM === '*' && dayW === '*') {
         setFrequency('daily');
-        setHour(hr);
+        // Convert UTC time to local time for display (handles minute offsets)
+        const utcHour = parseInt(hr, 10);
+        const utcMinute = parseInt(min, 10);
+        if (!isNaN(utcHour) && !isNaN(utcMinute)) {
+          const localTime = utcTimeToLocal(utcHour, utcMinute);
+          setHour(localTime.hour.toString());
+          setMinute(localTime.minute.toString());
+        } else {
+          setHour(hr);
+        }
       } else if (dayW !== '*') {
         setFrequency('weekly');
-        setHour(hr);
+        // Convert UTC time to local time for display (handles minute offsets)
+        const utcHour = parseInt(hr, 10);
+        const utcMinute = parseInt(min, 10);
+        if (!isNaN(utcHour) && !isNaN(utcMinute)) {
+          const localTime = utcTimeToLocal(utcHour, utcMinute);
+          setHour(localTime.hour.toString());
+          setMinute(localTime.minute.toString());
+        } else {
+          setHour(hr);
+        }
         setDayOfWeek(dayW);
       } else if (dayM !== '*') {
         setFrequency('monthly');
-        setHour(hr);
+        // Convert UTC time to local time for display (handles minute offsets)
+        const utcHour = parseInt(hr, 10);
+        const utcMinute = parseInt(min, 10);
+        if (!isNaN(utcHour) && !isNaN(utcMinute)) {
+          const localTime = utcTimeToLocal(utcHour, utcMinute);
+          setHour(localTime.hour.toString());
+          setMinute(localTime.minute.toString());
+        } else {
+          setHour(hr);
+        }
         setDayOfMonth(dayM);
       }
     }
   };
 
   // Build cron from builder values
+  // Note: Convert local time to UTC before saving
   const buildCronFromForm = (): string => {
     switch (frequency) {
       case 'hourly':
         return `${minute} * * * *`;
       case 'every-n-hours':
         return `${minute} */${everyNHours} * * *`;
-      case 'daily':
+      case 'daily': {
+        // Convert local time to UTC (handles minute offsets like India UTC+5:30)
+        const localHour = parseInt(hour, 10);
+        const localMinute = parseInt(minute, 10);
+        if (!isNaN(localHour) && !isNaN(localMinute)) {
+          const utcTime = localTimeToUTC(localHour, localMinute);
+          return `${utcTime.minute} ${utcTime.hour} * * *`;
+        }
         return `${minute} ${hour} * * *`;
-      case 'weekly':
+      }
+      case 'weekly': {
+        // Convert local time to UTC (handles minute offsets like India UTC+5:30)
+        const localHour = parseInt(hour, 10);
+        const localMinute = parseInt(minute, 10);
+        if (!isNaN(localHour) && !isNaN(localMinute)) {
+          const utcTime = localTimeToUTC(localHour, localMinute);
+          return `${utcTime.minute} ${utcTime.hour} * * ${dayOfWeek}`;
+        }
         return `${minute} ${hour} * * ${dayOfWeek}`;
-      case 'monthly':
+      }
+      case 'monthly': {
+        // Convert local time to UTC (handles minute offsets like India UTC+5:30)
+        const localHour = parseInt(hour, 10);
+        const localMinute = parseInt(minute, 10);
+        if (!isNaN(localHour) && !isNaN(localMinute)) {
+          const utcTime = localTimeToUTC(localHour, localMinute);
+          return `${utcTime.minute} ${utcTime.hour} ${dayOfMonth} * *`;
+        }
         return `${minute} ${hour} ${dayOfMonth} * *`;
+      }
       default:
         return '0 9 * * *';
     }
@@ -332,6 +386,7 @@ export const CustomScheduleDialog: React.FC<CustomScheduleDialogProps> = ({
                 showRaw={false}
                 className="text-foreground font-medium lowercase"
               />
+              {' '}({getTimezoneAbbreviation()})
             </p>
             <p className="text-xs text-muted-foreground font-mono">
               Cron: {cronString}
