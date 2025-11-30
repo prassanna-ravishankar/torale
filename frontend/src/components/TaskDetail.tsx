@@ -11,6 +11,7 @@ import { ExecutionTimeline } from "@/components/ExecutionTimeline";
 import { StateComparison } from "@/components/StateComparison";
 import { CronDisplay } from "@/components/ui/CronDisplay";
 import { NotificationChannelBadges } from "@/components/notifications/NotificationChannelBadges";
+import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
 import {
   ArrowLeft,
   Clock,
@@ -21,6 +22,9 @@ import {
   Trash2,
   Mail,
   Webhook,
+  Activity,
+  CheckCircle,
+  Pause,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -132,6 +136,16 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
     );
   }
 
+  // Get task status from centralized logic
+  const status = getTaskStatus(task.is_active, task.last_execution?.condition_met);
+
+  // Map icon name to Lucide icon component
+  const StatusIcon = {
+    Activity,
+    CheckCircle,
+    Pause,
+  }[status.iconName];
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -142,8 +156,19 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <h1>{task.name}</h1>
-              {task.condition_met && <Badge variant="default">Triggered</Badge>}
-              {!task.is_active && <Badge variant="secondary">Paused</Badge>}
+              <Badge
+                variant={
+                  status.activityState === TaskActivityState.ACTIVE
+                    ? 'default'
+                    : status.activityState === TaskActivityState.COMPLETED
+                    ? 'default'
+                    : 'secondary'
+                }
+                className="flex items-center gap-1"
+              >
+                <StatusIcon className="h-3 w-3" />
+                {status.label}
+              </Badge>
             </div>
             <p className="text-muted-foreground">{task.search_query}</p>
           </div>
@@ -225,9 +250,13 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               {task.notify_behavior === 'track_state' && 'On changes'}
             </p>
             <div className="flex items-center gap-2 mt-3">
-              <Switch checked={task.is_active} onCheckedChange={handleToggle} />
-              <span className="text-sm text-muted-foreground">
-                {task.is_active ? "Active" : "Paused"}
+              <Switch
+                checked={task.is_active}
+                onCheckedChange={handleToggle}
+                className="data-[state=unchecked]:bg-muted data-[state=unchecked]:border-border"
+              />
+              <span className={`text-sm ${task.is_active ? 'text-muted-foreground' : 'font-medium'}`}>
+                {task.is_active ? "Active" : "Paused - Click to resume"}
               </span>
             </div>
           </CardContent>

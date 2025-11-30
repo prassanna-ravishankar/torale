@@ -11,6 +11,7 @@ import { Alert } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
 
 interface DashboardProps {
   onTaskClick: (taskId: string) => void;
@@ -22,7 +23,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [previewTask, setPreviewTask] = useState<Task | null>(null);
   const [editTask, setEditTask] = useState<Task | null>(null);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'triggered'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'completed' | 'paused'>('all');
   const { syncUser } = useAuth();
 
   const loadTasks = async () => {
@@ -97,12 +98,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   };
 
   const filteredTasks = tasks.filter((task) => {
-    if (activeFilter === 'active') return task.is_active;
-    if (activeFilter === 'triggered') return task.condition_met;
+    if (activeFilter === 'all') return true;
+    const status = getTaskStatus(task.is_active, task.last_execution?.condition_met);
+    if (activeFilter === 'active') return status.activityState === TaskActivityState.ACTIVE;
+    if (activeFilter === 'completed') return status.activityState === TaskActivityState.COMPLETED;
+    if (activeFilter === 'paused') return status.activityState === TaskActivityState.PAUSED;
     return true;
   });
 
-  const triggeredCount = tasks.filter((t) => t.condition_met).length;
+  const completedCount = tasks.filter((t) => {
+    const status = getTaskStatus(t.is_active, t.last_execution?.condition_met);
+    return status.activityState === TaskActivityState.COMPLETED;
+  }).length;
+
+  const pausedCount = tasks.filter((t) => {
+    const status = getTaskStatus(t.is_active, t.last_execution?.condition_met);
+    return status.activityState === TaskActivityState.PAUSED;
+  }).length;
 
   if (isLoading) {
     return (
@@ -132,13 +144,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
         </div>
       </div>
 
-      {triggeredCount > 0 && (
+      {completedCount > 0 && (
         <Alert>
           <Bell className="h-4 w-4" />
           <div className="ml-2">
             <p>
-              You have {triggeredCount} task{triggeredCount > 1 ? 's' : ''} with triggered
-              conditions.
+              You have {completedCount} completed task{completedCount > 1 ? 's' : ''} (notified once and auto-stopped).
             </p>
           </div>
         </Alert>
@@ -146,14 +157,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
 
       <Tabs
         value={activeFilter}
-        onValueChange={(v) => setActiveFilter(v as 'all' | 'active' | 'triggered')}
+        onValueChange={(v) => setActiveFilter(v as 'all' | 'active' | 'completed' | 'paused')}
       >
         <TabsList>
           <TabsTrigger value="all">All Tasks ({tasks.length})</TabsTrigger>
           <TabsTrigger value="active">
-            Active ({tasks.filter((t) => t.is_active).length})
+            Monitoring ({tasks.filter((t) => t.is_active).length})
           </TabsTrigger>
-          <TabsTrigger value="triggered">Triggered ({triggeredCount})</TabsTrigger>
+          <TabsTrigger value="completed">Completed ({completedCount})</TabsTrigger>
+          <TabsTrigger value="paused">Paused ({pausedCount})</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeFilter} className="mt-6">
@@ -165,12 +177,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
               <h3 className="mb-2">
                 {activeFilter === 'all' && 'No monitoring tasks yet'}
                 {activeFilter === 'active' && 'No active tasks'}
-                {activeFilter === 'triggered' && 'No triggered conditions'}
+                {activeFilter === 'completed' && 'No completed tasks'}
+                {activeFilter === 'paused' && 'No paused tasks'}
               </h3>
               <p className="text-muted-foreground mb-6">
                 {activeFilter === 'all' && 'Create your first task to start monitoring the web'}
                 {activeFilter === 'active' && 'Activate a task to start monitoring'}
-                {activeFilter === 'triggered' && 'No tasks have met their trigger conditions yet'}
+                {activeFilter === 'completed' && 'Tasks with notify_behavior="once" will appear here after their condition is met'}
+                {activeFilter === 'paused' && 'Manually paused tasks will appear here'}
               </p>
               {activeFilter === 'all' && (
                 <Button onClick={() => setIsCreating(true)}>

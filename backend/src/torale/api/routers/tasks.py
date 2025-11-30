@@ -245,24 +245,55 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
 async def list_tasks(
     user: CurrentUser, is_active: bool | None = None, db: Database = Depends(get_db)
 ):
+    # Embed latest execution via LEFT JOIN for efficient status calculation
+    base_query = """
+        SELECT t.*,
+               e.id as exec_id,
+               e.condition_met as exec_condition_met,
+               e.started_at as exec_started_at,
+               e.completed_at as exec_completed_at,
+               e.status as exec_status,
+               e.result as exec_result,
+               e.change_summary as exec_change_summary,
+               e.grounding_sources as exec_grounding_sources
+        FROM tasks t
+        LEFT JOIN task_executions e ON t.last_execution_id = e.id
+        WHERE t.user_id = $1
+    """
+
     if is_active is not None:
-        query = """
-            SELECT *
-            FROM tasks
-            WHERE user_id = $1 AND is_active = $2
-            ORDER BY created_at DESC
-        """
+        query = base_query + " AND t.is_active = $2 ORDER BY t.created_at DESC"
         rows = await db.fetch_all(query, user.id, is_active)
     else:
-        query = """
-            SELECT *
-            FROM tasks
-            WHERE user_id = $1
-            ORDER BY created_at DESC
-        """
+        query = base_query + " ORDER BY t.created_at DESC"
         rows = await db.fetch_all(query, user.id)
 
-    return [Task(**parse_task_row(row)) for row in rows]
+    # Parse and embed execution for each task
+    tasks = []
+    for row in rows:
+        task_dict = parse_task_row(row)
+
+        # Embed execution if exists
+        if row["exec_id"]:
+            task_dict["last_execution"] = {
+                "id": row["exec_id"],
+                "task_id": task_dict["id"],  # Required by TaskExecution model
+                "condition_met": row["exec_condition_met"],
+                "started_at": row["exec_started_at"],
+                "completed_at": row["exec_completed_at"],
+                "status": row["exec_status"],
+                "result": json.loads(row["exec_result"]) if row["exec_result"] else None,
+                "change_summary": row["exec_change_summary"],
+                "grounding_sources": (
+                    json.loads(row["exec_grounding_sources"])
+                    if row["exec_grounding_sources"]
+                    else None
+                ),
+            }
+
+        tasks.append(Task(**task_dict))
+
+    return tasks
 
 
 class PreviewSearchRequest(BaseModel):
@@ -599,10 +630,20 @@ Condition:"""
 
 @router.get("/{task_id}", response_model=Task)
 async def get_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
+    # Embed latest execution via LEFT JOIN
     query = """
-        SELECT *
-        FROM tasks
-        WHERE id = $1 AND user_id = $2
+        SELECT t.*,
+               e.id as exec_id,
+               e.condition_met as exec_condition_met,
+               e.started_at as exec_started_at,
+               e.completed_at as exec_completed_at,
+               e.status as exec_status,
+               e.result as exec_result,
+               e.change_summary as exec_change_summary,
+               e.grounding_sources as exec_grounding_sources
+        FROM tasks t
+        LEFT JOIN task_executions e ON t.last_execution_id = e.id
+        WHERE t.id = $1 AND t.user_id = $2
     """
 
     row = await db.fetch_one(query, task_id, user.id)
@@ -613,7 +654,25 @@ async def get_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_
             detail="Task not found",
         )
 
-    return Task(**parse_task_row(row))
+    task_dict = parse_task_row(row)
+
+    # Embed execution if exists
+    if row["exec_id"]:
+        task_dict["last_execution"] = {
+            "id": row["exec_id"],
+            "task_id": task_dict["id"],  # Required by TaskExecution model
+            "condition_met": row["exec_condition_met"],
+            "started_at": row["exec_started_at"],
+            "completed_at": row["exec_completed_at"],
+            "status": row["exec_status"],
+            "result": json.loads(row["exec_result"]) if row["exec_result"] else None,
+            "change_summary": row["exec_change_summary"],
+            "grounding_sources": (
+                json.loads(row["exec_grounding_sources"]) if row["exec_grounding_sources"] else None
+            ),
+        }
+
+    return Task(**task_dict)
 
 
 @router.put("/{task_id}", response_model=Task)

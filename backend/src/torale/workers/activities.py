@@ -139,12 +139,13 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
                 await conn.execute(
                     """
                     UPDATE tasks
-                    SET last_known_state = $1, condition_met = $2, updated_at = $3
-                    WHERE id = $4
+                    SET last_known_state = $1, condition_met = $2, updated_at = $3, last_execution_id = $4
+                    WHERE id = $5
                     """,
                     json.dumps(current_state),
                     condition_met,
                     datetime.utcnow(),
+                    UUID(execution_id),  # Track latest execution
                     UUID(task_id),
                 )
 

@@ -83,9 +83,13 @@ class Task(TaskBase):
     updated_at: datetime | None = None
 
     # Grounded search state tracking
-    condition_met: bool = False
+    condition_met: bool = False  # DEPRECATED: Will be removed, use last_execution.condition_met
     last_known_state: dict | None = None
-    last_notified_at: datetime | None = None
+    last_notified_at: datetime | None = None  # DEPRECATED: Will be removed
+
+    # Latest execution reference (replaces sticky condition_met)
+    last_execution_id: UUID | None = None
+    last_execution: "TaskExecution | None" = None  # Embedded from API query
 
 
 class TaskExecutionBase(BaseModel):
