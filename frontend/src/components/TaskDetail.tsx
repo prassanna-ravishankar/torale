@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import type { Task, TaskExecution } from '@/types'
 import api from '@/lib/api'
 import { toast } from 'sonner'
@@ -285,9 +285,11 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       {/* Header Section */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+          <Link to="/dashboard">
+            <Button variant="ghost" size="icon" className="shrink-0">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <h1 className="font-grotesk text-2xl md:text-4xl font-bold truncate">{task.name}</h1>
