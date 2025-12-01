@@ -113,7 +113,7 @@ export default function Landing() {
 
             <div className="hidden md:flex gap-8 text-sm font-medium text-zinc-500">
               <a href="#use-cases" className="hover:text-black transition-colors">Use Cases</a>
-              <a href="https://docs.torale.ai" target="_blank" rel="noopener noreferrer" className="hover:text-black transition-colors">Developers</a>
+              <a href="https://docs.torale.ai" target="_blank" rel="noopener noreferrer" className="hover:text-black transition-colors">Docs</a>
               <button onClick={() => navigate('/changelog')} className="hover:text-black transition-colors">Changelog</button>
             </div>
           </div>
@@ -354,7 +354,6 @@ export default function Landing() {
                 <h4 className="font-bold mb-6 text-white uppercase tracking-widest text-xs">Product</h4>
                 <ul className="space-y-3 text-sm text-zinc-500 font-medium">
                   <li><a href="#use-cases" className="hover:text-white transition-colors">Use Cases</a></li>
-                  <li><a href="https://docs.torale.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">SDK</a></li>
                   <li><button onClick={() => navigate('/changelog')} className="hover:text-white transition-colors">Changelog</button></li>
                 </ul>
               </div>
@@ -364,15 +363,14 @@ export default function Landing() {
                 <ul className="space-y-3 text-sm text-zinc-500 font-medium">
                   <li><a href="https://docs.torale.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Documentation</a></li>
                   <li><a href="https://docs.torale.ai/api" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">API Reference</a></li>
-                  <li><a href="https://status.torale.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Status</a></li>
+                  <li><a href="https://torale.openstatus.dev" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Status</a></li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="font-bold mb-6 text-white uppercase tracking-widest text-xs">Legal</h4>
+                <h4 className="font-bold mb-6 text-white uppercase tracking-widest text-xs">Community</h4>
                 <ul className="space-y-3 text-sm text-zinc-500 font-medium">
-                  <li><a href="https://torale.ai/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Privacy</a></li>
-                  <li><a href="https://torale.ai/terms" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Terms</a></li>
+                  <li><a href="https://github.com/torale" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a></li>
                 </ul>
               </div>
             </div>
@@ -382,10 +380,10 @@ export default function Landing() {
                 [ © 2025 TORALE LABS INC. ]
               </div>
               <div className="flex gap-6">
-                <a href="https://github.com/torale" target="_blank" rel="noopener noreferrer">
+                <a href="https://github.com/torale" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
                   <GitBranch className="w-5 h-5 text-zinc-500 hover:text-white cursor-pointer transition-colors" />
                 </a>
-                <a href="https://torale.ai" target="_blank" rel="noopener noreferrer">
+                <a href="https://torale.openstatus.dev" target="_blank" rel="noopener noreferrer" aria-label="Status">
                   <Globe className="w-5 h-5 text-zinc-500 hover:text-white cursor-pointer transition-colors" />
                 </a>
               </div>
