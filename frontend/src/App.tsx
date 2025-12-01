@@ -76,8 +76,8 @@ export default function App() {
   // Initialize API client with Clerk authentication
   useApiSetup()
 
-  const handleTaskClick = (taskId: string) => {
-    navigate(`/tasks/${taskId}`)
+  const handleTaskClick = (taskId: string, justCreated?: boolean) => {
+    navigate(`/tasks/${taskId}${justCreated ? '?justCreated=true' : ''}`)
   }
 
   const handleBackToDashboard = () => {

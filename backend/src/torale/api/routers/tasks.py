@@ -13,7 +13,14 @@ from torale.api.auth import CurrentUserOrTestUser
 from torale.api.dependencies import get_genai_client
 from torale.core.config import settings
 from torale.core.database import Database, get_db
-from torale.core.models import NotifyBehavior, Task, TaskCreate, TaskExecution, TaskUpdate
+from torale.core.models import (
+    InferredCondition,
+    NotifyBehavior,
+    Task,
+    TaskCreate,
+    TaskExecution,
+    TaskUpdate,
+)
 from torale.notifications import NotificationValidationError, validate_notification
 from torale.workers.workflows import TaskExecutionRequest, TaskExecutionWorkflow
 
@@ -147,6 +154,48 @@ def parse_execution_row(row) -> dict:
     return exec_dict
 
 
+def _parse_task_with_execution(row) -> Task:
+    """
+    Parse a task row with embedded execution data from LEFT JOIN query.
+
+    This helper extracts duplicate logic from list_tasks and get_task endpoints.
+    Expects row from query that joins tasks with task_executions, using aliases:
+    - exec_id, exec_condition_met, exec_started_at, etc.
+
+    Args:
+        row: Database row with task fields and optional execution fields (prefixed with exec_)
+
+    Returns:
+        Task object with embedded last_execution if execution data exists
+    """
+    task_dict = parse_task_row(row)
+
+    # Embed execution if exists
+    if row["exec_id"]:
+        # Parse JSONB fields - asyncpg may return them as dicts or strings depending on context
+        exec_result = row["exec_result"]
+        if isinstance(exec_result, str):
+            exec_result = json.loads(exec_result) if exec_result else None
+
+        exec_sources = row["exec_grounding_sources"]
+        if isinstance(exec_sources, str):
+            exec_sources = json.loads(exec_sources) if exec_sources else None
+
+        task_dict["last_execution"] = {
+            "id": row["exec_id"],
+            "task_id": task_dict["id"],
+            "condition_met": row["exec_condition_met"],
+            "started_at": row["exec_started_at"],
+            "completed_at": row["exec_completed_at"],
+            "status": row["exec_status"],
+            "result": exec_result,
+            "change_summary": row["exec_change_summary"],
+            "grounding_sources": exec_sources,
+        }
+
+    return Task(**task_dict)
+
+
 @router.post("/", response_model=Task)
 async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depends(get_db)):
     # Validate notifications and extract fields for database
@@ -245,24 +294,30 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
 async def list_tasks(
     user: CurrentUser, is_active: bool | None = None, db: Database = Depends(get_db)
 ):
+    # Embed latest execution via LEFT JOIN for efficient status calculation
+    base_query = """
+        SELECT t.*,
+               e.id as exec_id,
+               e.condition_met as exec_condition_met,
+               e.started_at as exec_started_at,
+               e.completed_at as exec_completed_at,
+               e.status as exec_status,
+               e.result as exec_result,
+               e.change_summary as exec_change_summary,
+               e.grounding_sources as exec_grounding_sources
+        FROM tasks t
+        LEFT JOIN task_executions e ON t.last_execution_id = e.id
+        WHERE t.user_id = $1
+    """
+
     if is_active is not None:
-        query = """
-            SELECT *
-            FROM tasks
-            WHERE user_id = $1 AND is_active = $2
-            ORDER BY created_at DESC
-        """
+        query = base_query + " AND t.is_active = $2 ORDER BY t.created_at DESC"
         rows = await db.fetch_all(query, user.id, is_active)
     else:
-        query = """
-            SELECT *
-            FROM tasks
-            WHERE user_id = $1
-            ORDER BY created_at DESC
-        """
+        query = base_query + " ORDER BY t.created_at DESC"
         rows = await db.fetch_all(query, user.id)
 
-    return [Task(**parse_task_row(row)) for row in rows]
+    return [_parse_task_with_execution(row) for row in rows]
 
 
 class PreviewSearchRequest(BaseModel):
@@ -278,11 +333,15 @@ class SuggestTaskRequest(BaseModel):
 
 
 class SuggestedTask(BaseModel):
-    name: str
-    search_query: str
-    condition_description: str
-    schedule: str
-    notify_behavior: NotifyBehavior
+    name: str = Field(description="Short, memorable name for the task (e.g., 'PS5 Stock Monitor')")
+    search_query: str = Field(description="Google search query to monitor")
+    condition_description: str = Field(
+        description="Clear, 1-sentence description of what triggers a notification"
+    )
+    schedule: str = Field(description="Cron expression (e.g., '0 9 * * *' for daily at 9am)")
+    notify_behavior: NotifyBehavior = Field(
+        description="When to notify: 'always' (every run), 'once' (first time only), 'track_state' (on change)"
+    )
 
 
 @router.post("/suggest", response_model=SuggestedTask)
@@ -306,12 +365,6 @@ Based on the user's request, UPDATE the current task configuration.
 - Keep existing context unless explicitly asked to change it.
 - Return the FULL updated configuration.
 
-Return a JSON object with these fields:
-- name: A short, memorable name for the task
-- search_query: The Google search query to use
-- condition_description: A clear, 1-sentence description of what triggers a notification
-- schedule: A cron expression (e.g. "0 9 * * *" for daily at 9am)
-- notify_behavior: One of "once", "always", "track_state"
 JSON Response:"""
 
         contents = [
@@ -338,12 +391,11 @@ JSON Response:"""
 
 Based on the user's description, generate the optimal configuration for a monitoring task.
 
-Return a JSON object with these fields:
-- name: A short, memorable name for the task (e.g. "PS5 Stock Monitor")
-- search_query: The Google search query to use
-- condition_description: A clear, 1-sentence description of what triggers a notification
-- schedule: A cron expression (e.g. "0 9 * * *" for daily at 9am)
-- notify_behavior: One of "once", "always", "track_state"
+IMPORTANT for notify_behavior:
+- If the user wants DAILY/WEEKLY/MONTHLY digests or summaries → use 'always' (notify every time)
+- If the user wants recurring alerts (stock, price, availability) → use 'always'
+- If the user wants ONE-TIME announcements (launch dates, event dates) → use 'once'
+
 JSON Response:"""
 
         contents = [
@@ -367,7 +419,11 @@ JSON Response:"""
             ),
         )
 
-        return json.loads(response.text)
+        # Log the AI response for debugging
+        suggestion = json.loads(response.text)
+        logger.info(f"Task suggestion for '{request.prompt}': {json.dumps(suggestion, indent=2)}")
+
+        return suggestion
 
     except json.JSONDecodeError as e:
         logger.error(
@@ -577,32 +633,41 @@ Search Query: {search_query}
 
 What condition or change would indicate this information is available or has been announced?
 
-Respond with just a clear, concise condition description (1 sentence).
-
 Examples:
 - Query: "When is the next iPhone release?" → "A specific release date or month has been officially announced"
 - Query: "Is GPT-5 available?" → "GPT-5 is officially released and available"
 - Query: "What's the price of PS5?" → "A clear price is listed"
-
-Condition:"""
+"""
 
     response = await genai_client.aio.models.generate_content(
         model=model,
         contents=inference_prompt,
         config=types.GenerateContentConfig(
-            max_output_tokens=100,
+            response_mime_type="application/json",
+            response_schema=InferredCondition,
         ),
     )
 
-    return response.text.strip()
+    result = json.loads(response.text)
+    return result["condition"]
 
 
 @router.get("/{task_id}", response_model=Task)
 async def get_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
+    # Embed latest execution via LEFT JOIN
     query = """
-        SELECT *
-        FROM tasks
-        WHERE id = $1 AND user_id = $2
+        SELECT t.*,
+               e.id as exec_id,
+               e.condition_met as exec_condition_met,
+               e.started_at as exec_started_at,
+               e.completed_at as exec_completed_at,
+               e.status as exec_status,
+               e.result as exec_result,
+               e.change_summary as exec_change_summary,
+               e.grounding_sources as exec_grounding_sources
+        FROM tasks t
+        LEFT JOIN task_executions e ON t.last_execution_id = e.id
+        WHERE t.id = $1 AND t.user_id = $2
     """
 
     row = await db.fetch_one(query, task_id, user.id)
@@ -613,7 +678,7 @@ async def get_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_
             detail="Task not found",
         )
 
-    return Task(**parse_task_row(row))
+    return _parse_task_with_execution(row)
 
 
 @router.put("/{task_id}", response_model=Task)

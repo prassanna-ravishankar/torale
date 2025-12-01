@@ -4,6 +4,21 @@ export type ExecutorType = "llm_grounded_search";
 export type NotificationChannelType = "email" | "webhook";
 export type NotificationDeliveryStatus = "success" | "failed" | "retrying";
 
+/**
+ * Embedded execution summary returned with tasks.
+ * Subset of TaskExecution with only fields needed for status calculation.
+ */
+export interface TaskExecutionSummary {
+  id: string;
+  condition_met: boolean;
+  started_at: string;
+  completed_at: string | null;
+  status: TaskStatus;
+  result: Record<string, any> | null;
+  change_summary: string | null;
+  grounding_sources: GroundingSource[] | null;
+}
+
 export interface Task {
   id: string;
   name: string;
@@ -14,9 +29,17 @@ export interface Task {
   notify_behavior: NotifyBehavior;
   config: Record<string, any>;
   is_active: boolean;
+
+  // DEPRECATED: Use last_execution.condition_met instead (will be removed)
   condition_met: boolean;
   last_known_state: Record<string, any> | null;
+  // DEPRECATED: Will be removed
   last_notified_at: string | null;
+
+  // Latest execution reference (replaces sticky condition_met)
+  last_execution_id: string | null;
+  last_execution: TaskExecutionSummary | null;
+
   created_at: string;
   updated_at: string | null;
   // Notification channels

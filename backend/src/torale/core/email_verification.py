@@ -203,7 +203,7 @@ class EmailVerificationService:
         daily_count = await conn.fetchval(
             """
             SELECT COUNT(*) FROM notification_sends
-            WHERE user_id = $1 AND sent_at > $2
+            WHERE user_id = $1 AND created_at > $2
             """,
             UUID(user_id),
             day_ago,
@@ -217,7 +217,7 @@ class EmailVerificationService:
         hourly_count = await conn.fetchval(
             """
             SELECT COUNT(*) FROM notification_sends
-            WHERE recipient_email = $1 AND sent_at > $2
+            WHERE recipient_email = $1 AND created_at > $2
             """,
             email,
             hour_ago,

@@ -12,6 +12,8 @@ import {
   Edit,
   ExternalLink,
   Pause,
+  Activity,
+  CheckCircle,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -23,6 +25,7 @@ import {
 import { CronDisplay } from '@/components/ui/CronDisplay';
 import { NotificationChannelBadges } from '@/components/notifications/NotificationChannelBadges';
 import { cn } from '@/lib/utils';
+import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
 
 interface TaskCardProps {
   task: Task;
@@ -41,6 +44,16 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onEdit,
   onClick,
 }) => {
+  // Get task status from centralized logic
+  const status = getTaskStatus(task.is_active, task.last_execution?.condition_met);
+
+  // Map icon name to Lucide icon component
+  const StatusIcon = {
+    Activity,
+    CheckCircle,
+    Pause,
+  }[status.iconName];
+
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     onToggle(task.id, !task.is_active);
@@ -76,16 +89,19 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <h3 className="font-semibold truncate">{task.name}</h3>
-              {task.condition_met && (
-                <Badge variant="default" className="shrink-0">
-                  Triggered
-                </Badge>
-              )}
-              {!task.is_active && (
-                <Badge variant="secondary" className="shrink-0">
-                  Paused
-                </Badge>
-              )}
+              <Badge
+                variant={
+                  status.activityState === TaskActivityState.ACTIVE
+                    ? 'default'
+                    : status.activityState === TaskActivityState.COMPLETED
+                    ? 'default'
+                    : 'secondary'
+                }
+                className="shrink-0 flex items-center gap-1"
+              >
+                <StatusIcon className="h-3 w-3" />
+                {status.label}
+              </Badge>
             </div>
             <p className="text-sm text-muted-foreground line-clamp-2">
               &ldquo;{task.search_query}&rdquo;
@@ -108,10 +124,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           />
         )}
 
-        {task.condition_met && task.last_known_state && (
-          <div className="p-2.5 bg-primary/5 rounded-md border border-primary/20">
-            <p className="text-xs text-primary">
-              ✓ Condition met - click to view details
+        {status.activityState === TaskActivityState.COMPLETED && (
+          <div className="p-2.5 bg-blue-500/5 rounded-md border border-blue-500/20">
+            <p className="text-xs text-blue-600 dark:text-blue-400">
+              ✓ {status.description} - click to view details
             </p>
           </div>
         )}

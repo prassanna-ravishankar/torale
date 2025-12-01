@@ -139,12 +139,13 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
                 await conn.execute(
                     """
                     UPDATE tasks
-                    SET last_known_state = $1, condition_met = $2, updated_at = $3
-                    WHERE id = $4
+                    SET last_known_state = $1, condition_met = $2, updated_at = $3, last_execution_id = $4
+                    WHERE id = $5
                     """,
                     json.dumps(current_state),
                     condition_met,
                     datetime.utcnow(),
+                    UUID(execution_id),  # Track latest execution
                     UUID(task_id),
                 )
 
@@ -182,6 +183,15 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
             executor_result["execution_id"] = str(execution_id)
             executor_result["search_query"] = task["search_query"]
 
+            # Check if this is the first execution - flag for send_notification
+            if executor_result.get("success"):
+                execution_count = await conn.fetchval(
+                    "SELECT COUNT(*) FROM task_executions WHERE task_id = $1 AND status = $2",
+                    UUID(task_id),
+                    TaskStatus.SUCCESS.value,
+                )
+                executor_result["is_first_execution"] = execution_count == 1
+
             return executor_result
 
         except Exception as e:
@@ -208,6 +218,10 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
 async def send_notification(user_id: str, task_name: str, result: dict) -> None:
     """
     Send notifications based on task configuration.
+
+    Entry point for all notification logic:
+    - First execution: sends welcome email with execution results
+    - Subsequent executions: sends condition met email (if condition met)
 
     Supports multiple channels: email (via Novu), webhook, or both.
     Never fails the workflow - all errors are caught and logged.
@@ -253,6 +267,27 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
         clerk_email = task["clerk_email"]
         verified_emails = task["verified_notification_emails"] or []
         notification_channels = task.get("notification_channels") or ["email"]
+
+        # FIRST EXECUTION: Send welcome email
+        if result.get("is_first_execution"):
+            activity.logger.info(f"First execution - sending welcome email to {clerk_email}")
+
+            if "email" in notification_channels:
+                await novu_service.send_welcome_email(
+                    subscriber_id=clerk_email,
+                    task_name=task["name"],
+                    search_query=task["search_query"],
+                    condition_description=task["condition_description"],
+                    notify_behavior=task["notify_behavior"],
+                    schedule=task["schedule"],
+                    first_execution_result={
+                        "answer": result.get("answer"),
+                        "condition_met": result.get("condition_met"),
+                        "grounding_sources": result.get("grounding_sources", []),
+                    },
+                    task_id=task_id,
+                )
+            return  # Welcome email sent, done
 
         # EMAIL NOTIFICATION
         if "email" in notification_channels:

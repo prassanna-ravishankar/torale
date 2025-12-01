@@ -87,8 +87,10 @@ class TestPreviewEndpoint:
         )
 
         # Mock condition inference
+        import json
+
         mock_response = MagicMock()
-        mock_response.text = "A specific release date is announced"
+        mock_response.text = json.dumps({"condition": "A specific release date is announced"})
 
         mock_generate = AsyncMock(return_value=mock_response)
 
@@ -165,10 +167,12 @@ class TestConditionInference:
         Scenario: Query without explicit condition.
         Expected: LLM generates appropriate condition description.
         """
+        import json
+
         from torale.api.routers.tasks import _infer_condition_from_query
 
         mock_response = MagicMock()
-        mock_response.text = "A release date is officially announced"
+        mock_response.text = json.dumps({"condition": "A release date is officially announced"})
 
         mock_generate = AsyncMock(return_value=mock_response)
 

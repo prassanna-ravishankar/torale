@@ -34,9 +34,6 @@ export const GroundingSourceList: React.FC<GroundingSourceListProps> = ({
               <p className="text-sm group-hover:text-primary">
                 {source.title}
               </p>
-              <p className="text-xs text-muted-foreground truncate mt-0.5">
-                {source.url}
-              </p>
             </div>
           </a>
         ))}

@@ -40,6 +40,7 @@ import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CustomScheduleDialog } from "@/components/ui/CustomScheduleDialog";
 import cronstrue from "cronstrue";
+import { localTimeToUTC, cronUTCToLocal } from "@/lib/timezoneUtils";
 
 interface TaskEditDialogProps {
   open: boolean;
@@ -48,12 +49,14 @@ interface TaskEditDialogProps {
   onSuccess: (task: Task) => void;
 }
 
+// Generate schedule options with UTC conversion for local times
+// Note: User sees "9:00 AM" but we store UTC equivalent
 const SIMPLE_SCHEDULE_OPTIONS = [
   { value: "*/30 * * * *", label: "Every 30 minutes", icon: Zap },
   { value: "0 */6 * * *", label: "Every 6 hours", icon: Clock },
-  { value: "0 9 * * *", label: "Daily at 9:00 AM", icon: Clock },
-  { value: "0 12 * * *", label: "Daily at noon", icon: Clock },
-  { value: "0 8 * * 1", label: "Weekly on Monday", icon: Clock },
+  { value: `${localTimeToUTC(9, 0).minute} ${localTimeToUTC(9, 0).hour} * * *`, label: "Daily at 9:00 AM", icon: Clock },
+  { value: `${localTimeToUTC(12, 0).minute} ${localTimeToUTC(12, 0).hour} * * *`, label: "Daily at noon", icon: Clock },
+  { value: `${localTimeToUTC(8, 0).minute} ${localTimeToUTC(8, 0).hour} * * 1`, label: "Weekly on Monday at 8:00 AM", icon: Clock },
   { value: "custom", label: "Custom Schedule...", icon: Calendar },
 ];
 
@@ -408,7 +411,9 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
                           <span className="ml-2 text-muted-foreground font-sans">
                             ({(() => {
                               try {
-                                return cronstrue.toString(schedule);
+                                // Convert UTC cron to local for display
+                                const localCron = cronUTCToLocal(schedule);
+                                return cronstrue.toString(localCron);
                               } catch {
                                 return "Invalid cron";
                               }

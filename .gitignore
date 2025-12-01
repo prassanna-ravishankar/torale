@@ -70,3 +70,4 @@ backend/README.md
 # Kubernetes / Helm
 helm/torale/secrets/*.yaml
 .cloud-sql-info
+investigation.md

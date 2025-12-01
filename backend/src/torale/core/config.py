@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     novu_secret_key: str | None = None
     novu_workflow_id: str = "torale-condition-met"
     novu_verification_workflow_id: str = "torale-email-verification"
+    novu_welcome_workflow_id: str = "torale-task-welcome"
     novu_api_url: str = "https://eu.api.novu.co"
 
     gcp_project_id: str | None = None

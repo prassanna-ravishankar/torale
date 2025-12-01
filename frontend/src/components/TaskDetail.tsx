@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { Task, TaskExecution } from '@/types'
 import api from '@/lib/api'
 import { toast } from 'sonner'
@@ -11,6 +12,7 @@ import { ExecutionTimeline } from "@/components/ExecutionTimeline";
 import { StateComparison } from "@/components/StateComparison";
 import { CronDisplay } from "@/components/ui/CronDisplay";
 import { NotificationChannelBadges } from "@/components/notifications/NotificationChannelBadges";
+import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
 import {
   ArrowLeft,
   Clock,
@@ -21,6 +23,11 @@ import {
   Trash2,
   Mail,
   Webhook,
+  Activity,
+  CheckCircle,
+  Pause,
+  Check,
+  X,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -45,6 +52,9 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   onBack,
   onDeleted,
 }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isJustCreated = searchParams.get('justCreated') === 'true';
+
   const [task, setTask] = useState<Task | null>(null);
   const [executions, setExecutions] = useState<TaskExecution[]>([]);
   const [notifications, setNotifications] = useState<TaskExecution[]>([]);
@@ -52,8 +62,10 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   const [isExecuting, setIsExecuting] = useState(false);
   const [activeTab, setActiveTab] = useState("executions");
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  const loadData = useCallback(async (skipLoadingState = false) => {
+    if (!skipLoadingState) {
+      setIsLoading(true);
+    }
     try {
       const [taskData, executionsData, notificationsData] = await Promise.all([
         api.getTask(taskId),
@@ -67,13 +79,33 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       console.error("Failed to load task details:", error);
       toast.error('Failed to load task details');
     } finally {
-      setIsLoading(false);
+      if (!skipLoadingState) {
+        setIsLoading(false);
+      }
     }
   }, [taskId]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Auto-refresh executions while first execution is pending/running (for just-created tasks)
+  useEffect(() => {
+    if (!isJustCreated || !task) return;
+
+    const firstExecution = executions[0];
+    const isFirstExecutionRunning =
+      executions.length === 0 ||
+      (firstExecution && ['pending', 'running'].includes(firstExecution.status));
+
+    if (isFirstExecutionRunning) {
+      const interval = setInterval(() => {
+        loadData(true); // Skip loading state to prevent page flashing
+      }, 3000); // Refresh every 3 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [isJustCreated, task, executions, loadData]);
 
   const handleToggle = async () => {
     if (!task) return;
@@ -132,8 +164,117 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
     );
   }
 
+  // Get task status from centralized logic
+  const status = getTaskStatus(task.is_active, task.last_execution?.condition_met);
+
+  // Map icon name to Lucide icon component
+  const StatusIcon = {
+    Activity,
+    CheckCircle,
+    Pause,
+  }[status.iconName];
+
+  const firstExecution = executions[0];
+  const isFirstExecutionComplete = firstExecution?.status === 'success';
+
+  const handleDismissBanner = () => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.delete('justCreated');
+      return newParams;
+    });
+  };
+
   return (
     <div className="space-y-6">
+      {/* Just Created Banner */}
+      {isJustCreated && (
+        <div className="bg-muted/30 p-6 rounded-lg border border-border/50 animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-start gap-3 flex-1">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Check className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold tracking-tight">
+                  Task successfully created
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Monitoring: <span className="text-foreground font-medium">{task.search_query}</span>
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleDismissBanner}
+              className="shrink-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Progress indicators */}
+          <div className="space-y-3 mb-6">
+            <div className="flex items-center gap-3">
+              <Check className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-sm text-muted-foreground">Task initialized</span>
+            </div>
+            <div className="flex items-center gap-3">
+              {isFirstExecutionComplete ? (
+                <Check className="h-4 w-4 text-primary shrink-0" />
+              ) : (
+                <Loader2 className="h-4 w-4 text-muted-foreground animate-spin shrink-0" />
+              )}
+              <span className="text-sm text-muted-foreground">
+                First check {isFirstExecutionComplete ? 'complete' : 'running...'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm text-muted-foreground">
+                Welcome email arriving shortly
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm text-muted-foreground">
+                Next check: <CronDisplay cron={task.schedule} className="inline" />
+              </span>
+            </div>
+          </div>
+
+          {/* What to expect */}
+          <div className="pt-6 border-t border-border/50">
+            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
+              What to Expect
+            </h4>
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  Welcome email with first check results and task details
+                </p>
+              </div>
+              <div className="flex items-start gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  Automated checks <CronDisplay cron={task.schedule} className="inline lowercase" />
+                </p>
+              </div>
+              <div className="flex items-start gap-2">
+                <Bell className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  {task.notify_behavior === 'once' && 'Email when condition is met, then monitoring stops'}
+                  {task.notify_behavior === 'always' && 'Email every time condition is met'}
+                  {task.notify_behavior === 'track_state' && 'Email only when information changes'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4 flex-1">
           <Button variant="ghost" size="icon" onClick={onBack}>
@@ -142,8 +283,19 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <h1>{task.name}</h1>
-              {task.condition_met && <Badge variant="default">Triggered</Badge>}
-              {!task.is_active && <Badge variant="secondary">Paused</Badge>}
+              <Badge
+                variant={
+                  status.activityState === TaskActivityState.ACTIVE
+                    ? 'default'
+                    : status.activityState === TaskActivityState.COMPLETED
+                    ? 'default'
+                    : 'secondary'
+                }
+                className="flex items-center gap-1"
+              >
+                <StatusIcon className="h-3 w-3" />
+                {status.label}
+              </Badge>
             </div>
             <p className="text-muted-foreground">{task.search_query}</p>
           </div>
@@ -225,9 +377,13 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               {task.notify_behavior === 'track_state' && 'On changes'}
             </p>
             <div className="flex items-center gap-2 mt-3">
-              <Switch checked={task.is_active} onCheckedChange={handleToggle} />
-              <span className="text-sm text-muted-foreground">
-                {task.is_active ? "Active" : "Paused"}
+              <Switch
+                checked={task.is_active}
+                onCheckedChange={handleToggle}
+                className="data-[state=unchecked]:bg-muted data-[state=unchecked]:border-border"
+              />
+              <span className={`text-sm ${task.is_active ? 'text-muted-foreground' : 'font-medium'}`}>
+                {task.is_active ? "Active" : "Paused - Click to resume"}
               </span>
             </div>
           </CardContent>
@@ -272,6 +428,34 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Notification Behavior Explanation - Miller's Law: Keep info concise (3-5 bullets) */}
+      <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
+        <div className="flex items-start gap-3">
+          <Bell className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <h3 className="text-sm font-medium mb-1">How You'll Be Notified</h3>
+            {task.notify_behavior === 'once' && (
+              <p className="text-sm text-muted-foreground">
+                <strong>Notify Once:</strong> You'll receive an email the first time we detect your condition is met,
+                then monitoring will automatically stop. Perfect for one-time announcements like release dates.
+              </p>
+            )}
+            {task.notify_behavior === 'always' && (
+              <p className="text-sm text-muted-foreground">
+                <strong>Always Notify:</strong> You'll receive an email every time your condition is met.
+                Great for recurring opportunities like stock availability or price changes.
+              </p>
+            )}
+            {task.notify_behavior === 'track_state' && (
+              <p className="text-sm text-muted-foreground">
+                <strong>Track Changes:</strong> You'll receive an email only when the information changes from our last check.
+                Ideal for monitoring updates and changes over time.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       {task.last_known_state && (

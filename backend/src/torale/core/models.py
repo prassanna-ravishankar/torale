@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -83,9 +83,13 @@ class Task(TaskBase):
     updated_at: datetime | None = None
 
     # Grounded search state tracking
-    condition_met: bool = False
+    condition_met: bool = False  # DEPRECATED: Will be removed, use last_execution.condition_met
     last_known_state: dict | None = None
-    last_notified_at: datetime | None = None
+    last_notified_at: datetime | None = None  # DEPRECATED: Will be removed
+
+    # Latest execution reference (replaces sticky condition_met)
+    last_execution_id: UUID | None = None
+    last_execution: "TaskExecution | None" = None  # Embedded from API query
 
 
 class TaskExecutionBase(BaseModel):
@@ -137,3 +141,40 @@ class TaskTemplate(TaskTemplateBase):
     is_active: bool = True
     created_at: datetime
     updated_at: datetime | None = None
+
+
+# LLM Response Models (for structured outputs)
+
+
+class InferredCondition(BaseModel):
+    """LLM response for inferring monitoring condition from search query."""
+
+    condition: str = Field(
+        description="Clear, 1-sentence description of what triggers a notification"
+    )
+
+
+class ConditionEvaluation(BaseModel):
+    """LLM response for evaluating if a monitoring condition is met."""
+
+    condition_met: bool = Field(
+        description="Whether the condition is definitively met based on search results"
+    )
+    explanation: str = Field(description="Brief explanation of why the condition is/isn't met")
+    current_state: Any = Field(
+        description=(
+            "Extracted facts as structured data. Should include _metadata with "
+            "captured_at (date) and state_hash (for change detection)"
+        )
+    )
+
+
+class StateComparison(BaseModel):
+    """LLM response for comparing previous and current states."""
+
+    changed: bool = Field(
+        description="Whether factual information has meaningfully changed between states"
+    )
+    summary: str | None = Field(
+        description="1-2 sentence summary of what changed, or null if nothing changed"
+    )

@@ -46,6 +46,12 @@ async def test_grounded_search():
             print(f"  Answer: {answer[:100]}...")
             print(f"  Condition met: {condition_met}")
             print(f"  Sources found: {len(sources)}")
+
+            # Verify grounding sources are populated (Vertex AI redirect URLs are kept)
+            if len(sources) == 0:
+                print(f"{RED}  Warning: No grounding sources found (expected at least 1){RESET}")
+                return False
+
             return True
         else:
             error = result.get("error", "Unknown error")

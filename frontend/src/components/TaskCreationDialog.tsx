@@ -50,6 +50,7 @@ import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CustomScheduleDialog } from "@/components/ui/CustomScheduleDialog";
 import cronstrue from "cronstrue";
+import { localTimeToUTC, cronUTCToLocal } from "@/lib/timezoneUtils";
 
 interface TaskCreationDialogProps {
   open: boolean;
@@ -73,12 +74,14 @@ const getTemplateIcon = (templateName: string) => {
   return mapping ? mapping.icon : Sparkles;
 };
 
+// Generate schedule options with UTC conversion for local times
+// Note: User sees "9:00 AM" but we store UTC equivalent (handles minute offsets like India UTC+5:30)
 const SIMPLE_SCHEDULE_OPTIONS = [
   { value: "*/30 * * * *", label: "Every 30 minutes", icon: Zap },
   { value: "0 */6 * * *", label: "Every 6 hours", icon: Clock },
-  { value: "0 9 * * *", label: "Daily at 9:00 AM", icon: Clock },
-  { value: "0 12 * * *", label: "Daily at noon", icon: Clock },
-  { value: "0 8 * * 1", label: "Weekly on Monday", icon: Clock },
+  { value: `${localTimeToUTC(9, 0).minute} ${localTimeToUTC(9, 0).hour} * * *`, label: "Daily at 9:00 AM", icon: Clock },
+  { value: `${localTimeToUTC(12, 0).minute} ${localTimeToUTC(12, 0).hour} * * *`, label: "Daily at noon", icon: Clock },
+  { value: `${localTimeToUTC(8, 0).minute} ${localTimeToUTC(8, 0).hour} * * 1`, label: "Weekly on Monday at 8:00 AM", icon: Clock },
   { value: "custom", label: "Custom Schedule...", icon: Calendar },
 ];
 
@@ -257,7 +260,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
         run_immediately: true,
       });
 
-      toast.success('Task created and started! 🚀');
+      // Close dialog and navigate to task detail page
       onTaskCreated(newTask);
       onOpenChange(false);
     } catch (err) {
@@ -457,7 +460,24 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                 </CollapsibleTrigger>
                 {!showAdvanced && (
                   <span className="text-xs text-muted-foreground">
-                    Daily checks, Track changes
+                    {(() => {
+                      // Show current schedule frequency
+                      const scheduleOption = SIMPLE_SCHEDULE_OPTIONS.find(o => o.value === schedule);
+                      const scheduleLabel = scheduleOption?.label || (() => {
+                        try {
+                          const localCron = cronUTCToLocal(schedule);
+                          return cronstrue.toString(localCron);
+                        } catch {
+                          return "Custom";
+                        }
+                      })();
+
+                      // Show current notify behavior
+                      const behaviorOption = NOTIFY_BEHAVIORS.find(b => b.value === notifyBehavior);
+                      const behaviorLabel = behaviorOption?.label || notifyBehavior;
+
+                      return `${scheduleLabel}, ${behaviorLabel}`;
+                    })()}
                   </span>
                 )}
               </div>
@@ -508,7 +528,9 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                             <span className="ml-2 text-muted-foreground font-sans">
                               ({(() => {
                                 try {
-                                  return cronstrue.toString(schedule);
+                                  // Convert UTC cron to local for display
+                                  const localCron = cronUTCToLocal(schedule);
+                                  return cronstrue.toString(localCron);
                                 } catch {
                                   return "Invalid cron";
                                 }
