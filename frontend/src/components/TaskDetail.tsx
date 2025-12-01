@@ -357,7 +357,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       </div>
 
       {/* Task Configuration - Collapsible on Mobile */}
-      <Collapsible defaultOpen={true} className="lg:contents">
+      <Collapsible defaultOpen={false} className="lg:contents">
         <div className="lg:hidden mb-4">
           <CollapsibleTrigger className="flex items-center gap-2 text-sm font-mono text-zinc-500 hover:text-zinc-900 transition-colors w-full justify-between p-3 bg-white border-2 border-zinc-200">
             <div className="flex items-center gap-2">
@@ -420,11 +420,11 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2">
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-zinc-400">
               <Mail className="h-4 w-4" />
-              <p>Notification Channels</p>
+              <p className="text-[10px] font-mono uppercase tracking-wider">Notification Channels</p>
             </div>
           </CardHeader>
           <CardContent>
@@ -492,29 +492,36 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       </div>
 
       {task.last_known_state && (
-        <div className="bg-zinc-900 border border-zinc-800 p-4">
-          <p className="text-[10px] font-mono uppercase text-zinc-500 tracking-wider mb-3">Last Known State (Dev)</p>
-          <div className="text-xs font-mono space-y-2 overflow-x-auto">
-            {Object.entries(task.last_known_state).map(([key, value]) => (
-              <div key={key} className="flex flex-col gap-1">
-                <span className="text-zinc-400">{key.replace(/_/g, ' ')}</span>
-                {Array.isArray(value) ? (
-                  value.length > 3 ? (
-                    <span className="text-zinc-300 break-words">{value.slice(0, 3).join(", ")} +{value.length - 3} more</span>
-                  ) : (
-                    <span className="text-zinc-300 break-words">{value.join(", ")}</span>
-                  )
-                ) : typeof value === "object" && value !== null ? (
-                  <pre className="text-xs p-2 bg-zinc-950 text-zinc-400 border border-zinc-800 overflow-x-auto">
-                    {JSON.stringify(value, null, 2)}
-                  </pre>
-                ) : (
-                  <span className="text-zinc-300 break-words">{String(value)}</span>
-                )}
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-mono text-zinc-500 hover:text-zinc-900 transition-colors w-full justify-between p-3 bg-zinc-900 border border-zinc-800">
+            <span className="text-[10px] uppercase text-zinc-500 tracking-wider">Last Known State (Dev)</span>
+            <ChevronDown className="w-4 h-4 text-zinc-500" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="bg-zinc-900 border-t-0 border border-zinc-800 p-4">
+              <div className="text-xs font-mono space-y-2 overflow-x-auto">
+                {Object.entries(task.last_known_state).map(([key, value]) => (
+                  <div key={key} className="flex flex-col gap-1">
+                    <span className="text-zinc-400">{key.replace(/_/g, ' ')}</span>
+                    {Array.isArray(value) ? (
+                      value.length > 3 ? (
+                        <span className="text-zinc-300 break-words">{value.slice(0, 3).join(", ")} +{value.length - 3} more</span>
+                      ) : (
+                        <span className="text-zinc-300 break-words">{value.join(", ")}</span>
+                      )
+                    ) : typeof value === "object" && value !== null ? (
+                      <pre className="text-xs p-2 bg-zinc-950 text-zinc-400 border border-zinc-800 overflow-x-auto">
+                        {JSON.stringify(value, null, 2)}
+                      </pre>
+                    ) : (
+                      <span className="text-zinc-300 break-words">{String(value)}</span>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

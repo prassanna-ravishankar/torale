@@ -27,17 +27,17 @@ export const Header: React.FC = () => {
           <span className="font-grotesk font-bold text-xl tracking-tight hidden sm:inline">torale</span>
         </Link>
 
-        {/* Navigation Links - Hidden on mobile */}
-        <div className="hidden md:flex items-center gap-2">
+        {/* Navigation Links */}
+        <div className="flex items-center gap-1 md:gap-2">
           {isAdmin && (
             <Link to="/admin">
               <Button
                 variant={location.pathname === "/admin" ? "default" : "ghost"}
                 size="sm"
-                className="gap-2 font-mono text-xs"
+                className="gap-1 md:gap-2 font-mono text-xs h-8 px-2 md:px-3"
               >
                 <Shield className="h-4 w-4" />
-                Admin
+                <span className="hidden sm:inline">Admin</span>
               </Button>
             </Link>
           )}
@@ -48,10 +48,10 @@ export const Header: React.FC = () => {
                 <Button
                   variant={location.pathname === "/settings/notifications" ? "default" : "ghost"}
                   size="sm"
-                  className="gap-2 font-mono text-xs"
+                  className="gap-1 md:gap-2 font-mono text-xs h-8 px-2 md:px-3"
                 >
                   <Bell className="h-4 w-4" />
-                  Settings
+                  <span className="hidden sm:inline">Settings</span>
                 </Button>
               </Link>
 
@@ -60,9 +60,9 @@ export const Header: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Button variant="ghost" size="sm" className="gap-2 font-mono text-xs">
+                <Button variant="ghost" size="sm" className="gap-1 md:gap-2 font-mono text-xs h-8 px-2 md:px-3">
                   <BookOpen className="h-4 w-4" />
-                  Docs
+                  <span className="hidden sm:inline">Docs</span>
                 </Button>
               </a>
             </>
