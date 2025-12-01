@@ -7,8 +7,9 @@ import { TaskCreationDialog } from '@/components/TaskCreationDialog';
 import { TaskPreviewModal } from '@/components/TaskPreviewModal';
 import { TaskEditDialog } from '@/components/TaskEditDialog';
 import { StatCard } from '@/components/ui/StatCard';
+import { CronDisplay } from '@/components/ui/CronDisplay';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Loader2, Filter, LayoutGrid, List as ListIcon } from 'lucide-react';
+import { Plus, Search, Loader2, Filter, LayoutGrid, List as ListIcon, Play, Settings, Activity, CheckCircle, Pause } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
@@ -244,7 +245,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
           </div>
         </div>
 
-        {/* Monitors Grid */}
+        {/* Monitors Grid/Table */}
         {filteredTasks.length === 0 ? (
           <motion.button
             onClick={() => setIsCreating(true)}
@@ -259,8 +260,95 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
               {searchQuery ? 'No monitors match your search' : 'Deploy New Monitor'}
             </span>
           </motion.button>
+        ) : viewMode === 'list' ? (
+          <div className="bg-white border-2 border-zinc-200 overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b-2 border-zinc-200 bg-zinc-50">
+                  <th className="text-left p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Monitor</th>
+                  <th className="text-left p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Status</th>
+                  <th className="text-left p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider hidden md:table-cell">Schedule</th>
+                  <th className="text-left p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider hidden lg:table-cell">Last Run</th>
+                  <th className="text-right p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <AnimatePresence>
+                  {filteredTasks.map((task) => {
+                    const status = getTaskStatus(task.is_active, task.last_execution?.condition_met);
+                    const StatusIcon = {
+                      Activity,
+                      CheckCircle,
+                      Pause,
+                    }[status.iconName];
+
+                    return (
+                      <motion.tr
+                        key={task.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="border-b border-zinc-200 hover:bg-zinc-50 transition-colors cursor-pointer"
+                        onClick={() => onTaskClick(task.id)}
+                      >
+                        <td className="p-4">
+                          <div className="flex flex-col gap-1">
+                            <span className="font-grotesk font-bold text-sm">{task.name}</span>
+                            <span className="text-xs text-zinc-500 truncate max-w-xs">{task.search_query}</span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <StatusIcon className="h-4 w-4" style={{ color: status.color }} />
+                            <span className="text-sm whitespace-nowrap">{status.label}</span>
+                          </div>
+                        </td>
+                        <td className="p-4 hidden md:table-cell">
+                          <CronDisplay cron={task.schedule} className="text-sm font-mono text-zinc-600" showRaw={false} />
+                        </td>
+                        <td className="p-4 hidden lg:table-cell">
+                          {task.last_execution ? (
+                            <span className="text-sm text-zinc-600">
+                              {new Date(task.last_execution.started_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-zinc-400">Never</span>
+                          )}
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleExecuteTask(task.id)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Play className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditTask(task.id)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </AnimatePresence>
+              </tbody>
+            </table>
+          </div>
         ) : (
-          <div className={viewMode === 'grid' ? 'grid md:grid-cols-2 xl:grid-cols-3 gap-6' : 'flex flex-col gap-4'}>
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
             <AnimatePresence>
               {filteredTasks.map((task) => (
                 <TaskCard
