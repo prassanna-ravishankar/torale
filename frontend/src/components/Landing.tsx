@@ -89,9 +89,30 @@ const FeatureCard = ({ icon: Icon, title, desc, delay }: { icon: any; title: str
 export default function Landing() {
   const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
+
+    // Fetch available user slots
+    const fetchCapacity = async () => {
+      try {
+        const apiUrl = window.CONFIG?.apiUrl || import.meta.env.VITE_API_BASE_URL;
+        if (!apiUrl) return;
+
+        const response = await fetch(`${apiUrl}/public/stats`);
+        if (response.ok) {
+          const data = await response.json();
+          if (typeof data?.capacity?.available_slots === "number") {
+            setAvailableSlots(data.capacity.available_slots);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch capacity:", error);
+      }
+    };
+
+    fetchCapacity();
   }, []);
 
   return (
@@ -367,7 +388,9 @@ export default function Landing() {
                     $0
                   </div>
                   <p className="text-zinc-500 font-mono text-sm">
-                    Free for first 100 users
+                    {availableSlots !== null
+                      ? `Free for ${availableSlots} remaining user${availableSlots === 1 ? '' : 's'}`
+                      : 'Free while in beta'}
                   </p>
                 </div>
 
