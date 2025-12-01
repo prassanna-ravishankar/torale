@@ -380,7 +380,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             </div>
           </CardHeader>
           <CardContent>
-            <CronDisplay cron={task.schedule} className="text-sm font-mono" />
+            <CronDisplay cron={task.schedule} className="text-sm font-mono text-zinc-700" />
           </CardContent>
         </Card>
 
@@ -392,7 +392,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-zinc-700">{task.condition_description}</p>
+            <p className="text-sm text-zinc-700 leading-relaxed">{task.condition_description}</p>
           </CardContent>
         </Card>
 
@@ -437,7 +437,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                   notificationEmail={task.notification_email}
                   webhookUrl={task.webhook_url}
                 />
-                <div className="space-y-1 text-xs text-muted-foreground">
+                <div className="space-y-1 text-xs font-mono text-zinc-600">
                   {task.notification_channels.includes('email') && (
                     <div className="flex items-start gap-1.5">
                       <Mail className="h-3 w-3 mt-0.5 shrink-0" />
@@ -457,7 +457,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No channels configured</p>
+              <p className="text-sm font-mono text-zinc-600">No channels configured</p>
             )}
           </CardContent>
         </Card>
