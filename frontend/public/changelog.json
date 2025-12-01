@@ -1,5 +1,32 @@
 [
   {
+    "id": "2025-12-01-critical-ux-fixes",
+    "date": "2025-12-01",
+    "title": "Critical UX Improvements & Bug Fixes",
+    "description": "Major quality-of-life update fixing several critical issues: email notifications now send reliably with proper Novu integration, task status badges show accurate states with last execution tracking, timezone displays work correctly across the app, grounding sources show clean domain names with working links, post-task creation feedback is clearer, AI-powered notify behavior selection works smoothly, and welcome emails deliver with improved UX. Comprehensive testing added for task status logic and timezone handling.",
+    "category": "improvement",
+    "requestedBy": ["Kat"],
+    "pr": 91
+  },
+  {
+    "id": "2025-11-29-simplified-task-creation",
+    "date": "2025-11-29",
+    "title": "Simplified Task Creation Experience",
+    "description": "Completely redesigned task creation with a streamlined single-page dialog. Removed the multi-step wizard in favor of progressive disclosure for advanced options. Added instant task execution after creation, improved Magic Input AI suggestions with prompt injection protection, modernized task editing dialog to match creation UX, and added comprehensive testing for the suggest endpoint. Over 900 lines of wizard code removed for a cleaner, faster experience.",
+    "category": "improvement",
+    "requestedBy": ["Tushar"],
+    "pr": 81
+  },
+  {
+    "id": "2025-11-29-staging-environment",
+    "date": "2025-11-29",
+    "title": "Staging Environment with Isolated Task Queues",
+    "description": "Added full staging environment at staging.torale.ai for safer testing before production. Configurable Temporal task queues provide complete isolation between environments while sharing the same database and authentication. GitHub Actions workflow supports deployment via 'deploy' label on PRs or manual dispatch. Helmfile environments enable easy multi-environment management with environment-specific configuration.",
+    "category": "infrastructure",
+    "requestedBy": [],
+    "pr": 80
+  },
+  {
     "id": "2025-11-18-documentation-site",
     "date": "2025-11-18",
     "title": "Comprehensive Documentation Site",
