@@ -97,10 +97,8 @@ export default function Landing() {
     // Fetch available user slots
     const fetchCapacity = async () => {
       try {
-        const apiUrl = window.CONFIG?.apiUrl || import.meta.env.VITE_API_BASE_URL;
-        if (!apiUrl) return;
-
-        const response = await fetch(`${apiUrl}/public/stats`);
+        // Use relative URL - Vite proxy will handle it in dev, production uses full URL
+        const response = await fetch('/public/stats');
         if (response.ok) {
           const data = await response.json();
           if (typeof data?.capacity?.available_slots === "number") {
