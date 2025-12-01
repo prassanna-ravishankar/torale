@@ -104,18 +104,19 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
                 )}
 
                 {execution.result?.answer && (
-                  <div className="mb-3">
-                    <div className="text-sm">
+                  <div className="mb-3 p-4 bg-zinc-50 border-2 border-zinc-100">
+                    <p className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider mb-3">Answer</p>
+                    <div className="text-sm prose prose-sm max-w-none">
                       <ReactMarkdown
                         components={{
-                          p: ({ children }) => <p className="mb-3 leading-relaxed">{children}</p>,
+                          p: ({ children }) => <p className="mb-3 leading-relaxed text-zinc-900">{children}</p>,
                           ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1.5">{children}</ul>,
                           ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 space-y-1.5">{children}</ol>,
-                          li: ({ children }) => <li className="text-sm leading-relaxed">{children}</li>,
-                          strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
-                          h1: ({ children }) => <h1 className="text-xl font-bold mb-3 mt-4">{children}</h1>,
-                          h2: ({ children }) => <h2 className="text-lg font-semibold mb-2 mt-3">{children}</h2>,
-                          h3: ({ children }) => <h3 className="text-base font-semibold mb-2 mt-2">{children}</h3>,
+                          li: ({ children }) => <li className="text-sm leading-relaxed text-zinc-700">{children}</li>,
+                          strong: ({ children }) => <strong className="font-bold text-zinc-900">{children}</strong>,
+                          h1: ({ children }) => <h1 className="text-xl font-grotesk font-bold mb-3 mt-4 text-zinc-900">{children}</h1>,
+                          h2: ({ children }) => <h2 className="text-lg font-grotesk font-bold mb-2 mt-3 text-zinc-900">{children}</h2>,
+                          h3: ({ children }) => <h3 className="text-base font-grotesk font-bold mb-2 mt-2 text-zinc-900">{children}</h3>,
                         }}
                       >
                         {execution.result.answer}
@@ -125,27 +126,27 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
                 )}
 
                 {execution.result?.current_state && (
-                  <div className="mb-3 p-3 bg-muted rounded-md">
-                    <p className="text-sm font-medium mb-3">Current State:</p>
-                    <div className="text-sm text-muted-foreground space-y-2">
+                  <div className="mb-3 p-4 bg-zinc-50 border-2 border-zinc-100">
+                    <p className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider mb-3">Current State</p>
+                    <div className="text-sm space-y-3">
                       {Object.entries(execution.result.current_state).map(
                         ([key, value]) => (
-                          <div key={key}>
-                            <span className="font-medium text-foreground">
-                              {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}:
-                            </span>{" "}
+                          <div key={key} className="flex flex-col gap-1">
+                            <span className="font-mono text-xs text-zinc-900 font-bold">
+                              {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                            </span>
                             {Array.isArray(value) ? (
                               value.length > 3 ? (
-                                <span className="text-xs">{value.slice(0, 3).join(", ")} and {value.length - 3} more</span>
+                                <span className="text-sm text-zinc-600">{value.slice(0, 3).join(", ")} and {value.length - 3} more</span>
                               ) : (
-                                <span className="text-xs">{value.join(", ")}</span>
+                                <span className="text-sm text-zinc-600">{value.join(", ")}</span>
                               )
                             ) : typeof value === "object" && value !== null ? (
-                              <pre className="text-xs mt-1 p-2 bg-background rounded overflow-x-auto">
+                              <pre className="text-xs mt-1 p-3 bg-zinc-900 text-zinc-300 border border-zinc-800 overflow-x-auto font-mono">
                                 {JSON.stringify(value, null, 2)}
                               </pre>
                             ) : (
-                              <span className="text-xs">{String(value)}</span>
+                              <span className="text-sm text-zinc-600">{String(value)}</span>
                             )}
                           </div>
                         )
@@ -160,9 +161,9 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
                 />
 
                 {execution.error_message && (
-                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-                    <p className="text-sm text-destructive">
-                      <span className="font-medium">Error: </span>
+                  <div className="p-4 bg-red-50 border-2 border-red-200">
+                    <p className="text-[10px] font-mono uppercase text-red-400 tracking-wider mb-2">Error</p>
+                    <p className="text-sm text-red-600 font-mono">
                       {execution.error_message}
                     </p>
                   </div>
