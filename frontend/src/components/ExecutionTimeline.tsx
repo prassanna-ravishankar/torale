@@ -60,8 +60,8 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
           key={execution.id}
           className={
             highlightNotifications && execution.condition_met
-              ? "border-primary bg-primary/5"
-              : ""
+              ? "border-2 border-emerald-500 bg-emerald-50/30"
+              : "border-2"
           }
         >
           <div className="p-4">
@@ -95,9 +95,9 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
                 </div>
 
                 {execution.change_summary && (
-                  <div className="p-3 bg-muted rounded-md mb-3">
+                  <div className="p-3 bg-zinc-50 border-2 border-zinc-100 mb-3">
                     <p className="text-sm">
-                      <span className="font-medium">What Changed: </span>
+                      <span className="font-mono text-[10px] uppercase text-zinc-400 tracking-wider block mb-1">What Changed</span>
                       {execution.change_summary}
                     </p>
                   </div>
