@@ -65,6 +65,8 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isExecuting, setIsExecuting] = useState(false);
   const [activeTab, setActiveTab] = useState("executions");
+  const [configExpanded, setConfigExpanded] = useState(false);
+  const [lastKnownStateExpanded, setLastKnownStateExpanded] = useState(false);
 
   const loadData = useCallback(async (skipLoadingState = false) => {
     if (!skipLoadingState) {
@@ -356,19 +358,19 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         </div>
       </div>
 
-      {/* Task Configuration - Collapsible on Mobile */}
-      <Collapsible defaultOpen={false} className="lg:contents">
+      {/* Task Configuration - Collapsible on Mobile, Always Visible on Desktop */}
+      <Collapsible open={configExpanded} onOpenChange={setConfigExpanded} className="lg:contents">
         <div className="lg:hidden mb-4">
           <CollapsibleTrigger className="flex items-center gap-2 text-sm font-mono text-zinc-500 hover:text-zinc-900 transition-colors w-full justify-between p-3 bg-white border-2 border-zinc-200">
             <div className="flex items-center gap-2">
               <Settings className="w-4 h-4" />
               <span>Task Configuration</span>
             </div>
-            <ChevronDown className="w-4 h-4" />
+            {configExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </CollapsibleTrigger>
         </div>
 
-        <CollapsibleContent className="lg:contents">
+        <CollapsibleContent className="lg:contents" forceMount>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card className="border-2">
           <CardHeader className="pb-3">
@@ -492,10 +494,10 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       </div>
 
       {task.last_known_state && (
-        <Collapsible defaultOpen={false}>
+        <Collapsible open={lastKnownStateExpanded} onOpenChange={setLastKnownStateExpanded}>
           <CollapsibleTrigger className="flex items-center gap-2 text-sm font-mono text-zinc-500 hover:text-zinc-900 transition-colors w-full justify-between p-3 bg-zinc-900 border border-zinc-800">
             <span className="text-[10px] uppercase text-zinc-500 tracking-wider">Last Known State (Dev)</span>
-            <ChevronDown className="w-4 h-4 text-zinc-500" />
+            {lastKnownStateExpanded ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="bg-zinc-900 border-t-0 border border-zinc-800 p-4">
