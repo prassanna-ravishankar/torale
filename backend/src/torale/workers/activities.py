@@ -192,6 +192,7 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
                 )
 
                 is_first_execution = execution_count == 1
+                executor_result["is_first_execution"] = is_first_execution  # Pass flag to send_notification
 
                 if is_first_execution:
                     # Get user email for welcome notification
@@ -251,6 +252,13 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
     conn = await get_db_connection()
 
     try:
+        # Skip condition met email on first execution (welcome email already sent)
+        if result.get("is_first_execution"):
+            activity.logger.info(
+                f"Skipping condition met notification for first execution (welcome email already sent)"
+            )
+            return
+
         # Extract task and execution IDs from result
         task_id = result.get("task_id")
         execution_id = result.get("execution_id")
