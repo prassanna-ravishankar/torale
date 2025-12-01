@@ -120,7 +120,7 @@ export default function Landing() {
 
           <div className="flex items-center gap-4">
             <button onClick={() => navigate('/sign-in')} className="text-sm font-bold text-zinc-900 hover:underline px-3 py-2">Sign In</button>
-            <button onClick={() => navigate('/sign-up')} className="bg-zinc-900 text-white px-5 py-2 text-sm font-bold hover:bg-[hsl(10,90%,55%)] transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] active:translate-y-[2px] active:shadow-none">
+            <button onClick={() => navigate('/dashboard')} className="bg-zinc-900 text-white px-5 py-2 text-sm font-bold hover:bg-[hsl(10,90%,55%)] transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] active:translate-y-[2px] active:shadow-none">
               Start Monitoring
             </button>
           </div>
@@ -157,7 +157,7 @@ export default function Landing() {
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
-                  onClick={() => navigate('/sign-up')}
+                  onClick={() => navigate('/dashboard')}
                   className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-[hsl(10,90%,55%)] text-white text-lg font-bold hover:bg-[hsl(10,90%,50%)] transition-all shadow-[6px_6px_0px_0px_rgba(24,24,27,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(24,24,27,1)] border-2 border-zinc-900"
                 >
                   Create Monitor

@@ -128,6 +128,16 @@ export default function App() {
           element={<HomeRoute onTaskClick={handleTaskClick} />}
         />
         <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Dashboard onTaskClick={handleTaskClick} />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/tasks/:taskId"
           element={
             <ProtectedRoute>
@@ -172,23 +182,6 @@ function TaskDetailRoute({ onBack, onDeleted }: { onBack: () => void; onDeleted:
 }
 
 function HomeRoute({ onTaskClick }: { onTaskClick: (taskId: string) => void }) {
-  const { isLoaded, isAuthenticated } = useAuth()
-
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
-
-  if (isAuthenticated) {
-    return (
-      <AppLayout>
-        <Dashboard onTaskClick={onTaskClick} />
-      </AppLayout>
-    )
-  }
-
+  // Always show Landing page at / (even if authenticated)
   return <Landing />
 }
