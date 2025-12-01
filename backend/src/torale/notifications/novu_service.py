@@ -169,19 +169,22 @@ class NovuService:
         condition_description: str,
         notify_behavior: str,
         schedule: str,
-        first_check_completed: bool,
         first_execution_result: dict | None,
         task_id: str,
     ) -> dict:
         """
         Send welcome email after task creation with first execution results.
 
+        This email is ONLY sent after the first execution completes, so it always
+        includes execution results.
+
         Email explains:
         - What's being monitored
         - When next check runs
         - How user will be notified
-        - First execution results (if completed)
+        - First execution results with sources
         - notify_behavior explanation
+        - Next steps (conditional based on condition_met and notify_behavior)
 
         Returns: {"success": bool, "transaction_id": str, "error": str}
         """
@@ -234,7 +237,6 @@ class NovuService:
                         "condition_description": condition_description,
                         "notify_behavior": notify_behavior,
                         "schedule_description": schedule_description,
-                        "first_check_completed": first_check_completed,
                         "answer": answer_html,
                         "condition_met": (
                             first_execution_result.get("condition_met")

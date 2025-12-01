@@ -210,7 +210,6 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
                             condition_description=task["condition_description"],
                             notify_behavior=task["notify_behavior"],
                             schedule=task["schedule"],
-                            first_check_completed=True,
                             first_execution_result={
                                 "answer": executor_result.get("answer"),
                                 "condition_met": executor_result.get("condition_met"),

@@ -217,13 +217,14 @@ If issues arise:
 
 **Implementation:**
 
-1. **Welcome Email Service** (`backend/src/torale/notifications/novu_service.py:164-260`)
+1. **Welcome Email Service** (`backend/src/torale/notifications/novu_service.py:164-259`)
    - New `send_welcome_email()` method
-   - Sends after first execution completes
-   - Includes: task details, schedule, first execution results, notify_behavior explanation
+   - Sends ONLY after first execution completes (no conditional needed in template)
+   - Includes: task details, schedule, first execution results, notify_behavior explanation, conditional next steps
    - Uses cronstrue for human-readable schedules
+   - Removed `first_check_completed` parameter (always true by design)
 
-2. **First Execution Trigger** (`backend/src/torale/workers/activities.py:186-221`)
+2. **First Execution Trigger** (`backend/src/torale/workers/activities.py:186-220`)
    - Detects first execution completion
    - Sends welcome email with execution results
    - Provides immediate user feedback
@@ -235,6 +236,15 @@ If issues arise:
 4. **Educational Context** (`frontend/src/components/TaskDetail.tsx:306-332`)
    - Added notify_behavior explanation section
    - Shows context-specific guidance for each mode
+
+5. **Email Template Enhancements** (`docs/NOTIFICATIONS.md:503-703`)
+   - Removed unnecessary `first_check_completed` conditional (always true)
+   - Added "What Happens Next?" section with conditional logic:
+     - If `condition_met=true` + `notify_behavior="once"`: Explains task auto-paused, can resume
+     - If `condition_met=true` + `notify_behavior="always"`: Explains task still running
+     - If `condition_met=true` + `notify_behavior="track_state"`: Explains task monitoring changes
+     - If `condition_met=false`: Explains task actively monitoring
+   - Added task dashboard link explanation: "See full execution history, pause/resume, edit settings"
 
 **Files Changed:**
 - `backend/src/torale/notifications/novu_service.py` (welcome email method)

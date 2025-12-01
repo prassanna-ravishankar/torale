@@ -513,7 +513,6 @@ Verify your email for Torale notifications
      "condition_description": "string",
      "notify_behavior": "string",
      "schedule_description": "string",
-     "first_check_completed": "boolean",
      "answer": "string",
      "condition_met": "boolean",
      "grounding_sources": "array",
@@ -590,8 +589,7 @@ Verify your email for Torale notifications
                 </p>
               </div>
 
-              <!-- First Check Results (if available) -->
-              {% if payload.first_check_completed %}
+              <!-- First Check Results -->
               <div style="margin: 0 0 24px 0; padding: 20px; background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
                 <h2 style="margin: 0 0 16px 0; color: #09090b; font-size: 16px; font-weight: 600;">
                   First Check Results
@@ -630,7 +628,6 @@ Verify your email for Torale notifications
                 </div>
                 {% endif %}
               </div>
-              {% endif %}
 
               <!-- How Notifications Work -->
               <div style="margin: 0 0 24px 0; padding: 20px; background-color: #fef3c7; border-radius: 8px; border: 1px solid #fbbf24;">
@@ -653,11 +650,41 @@ Verify your email for Torale notifications
                 {% endif %}
               </div>
 
-              <!-- CTA -->
+              <!-- Next Steps (conditional based on condition_met and notify_behavior) -->
+              <div style="margin: 0 0 24px 0; padding: 20px; background-color: #eff6ff; border-radius: 8px; border: 1px solid #93c5fd;">
+                <h3 style="margin: 0 0 12px 0; color: #1e40af; font-size: 14px; font-weight: 600;">
+                  📋 What Happens Next?
+                </h3>
+
+                {% if payload.condition_met %}
+                  {% if payload.notify_behavior == 'once' %}
+                  <p style="margin: 0; color: #1e3a8a; font-size: 13px; line-height: 1.6;">
+                    <strong>Your task has been automatically paused</strong> since the condition was already met and you chose "Notify Once" mode. You can resume monitoring anytime from your task dashboard if you want to continue watching for changes.
+                  </p>
+                  {% elsif payload.notify_behavior == 'always' %}
+                  <p style="margin: 0; color: #1e3a8a; font-size: 13px; line-height: 1.6;">
+                    <strong>Your task is still running!</strong> We'll continue checking {{payload.schedule_description|lower}} and send you an email every time we find your condition is met.
+                  </p>
+                  {% else %}
+                  <p style="margin: 0; color: #1e3a8a; font-size: 13px; line-height: 1.6;">
+                    <strong>Your task is still running!</strong> We'll continue checking {{payload.schedule_description|lower}} and notify you whenever the information changes from what we found.
+                  </p>
+                  {% endif %}
+                {% else %}
+                  <p style="margin: 0; color: #1e3a8a; font-size: 13px; line-height: 1.6;">
+                    <strong>Your task is actively monitoring.</strong> We'll keep checking {{payload.schedule_description|lower}} and email you as soon as we detect your condition is met.
+                  </p>
+                {% endif %}
+              </div>
+
+              <!-- CTA with explanation -->
               <div style="margin: 24px 0 0 0; text-align: center;">
                 <a href="https://torale.ai/tasks/{{payload.task_id}}" style="display: inline-block; padding: 12px 32px; background-color: #a855f7; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px;">
                   View Task Dashboard
                 </a>
+                <p style="margin: 12px 0 0 0; color: #71717a; font-size: 12px; line-height: 1.5;">
+                  See full execution history, pause/resume monitoring, or edit your task settings
+                </p>
               </div>
             </td>
           </tr>
