@@ -318,7 +318,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         </div>
 
         {/* Action Buttons - Stack on mobile */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap mb-6 lg:mb-8">
           <Button
             variant="outline"
             onClick={handleExecute}
