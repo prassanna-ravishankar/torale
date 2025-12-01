@@ -30,10 +30,10 @@ export const NotificationChannelBadges: React.FC<NotificationChannelBadgesProps>
         {hasEmail && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant="secondary" className="gap-1">
+              <div className="flex items-center gap-1 px-2 py-1 border border-zinc-200 bg-white text-xs font-mono uppercase tracking-wider text-zinc-700">
                 <Mail className="h-3 w-3" />
                 Email
-              </Badge>
+              </div>
             </TooltipTrigger>
             <TooltipContent>
               <p className="text-xs">
@@ -46,10 +46,10 @@ export const NotificationChannelBadges: React.FC<NotificationChannelBadgesProps>
         {hasWebhook && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant="secondary" className="gap-1">
+              <div className="flex items-center gap-1 px-2 py-1 border border-zinc-200 bg-white text-xs font-mono uppercase tracking-wider text-zinc-700">
                 <Webhook className="h-3 w-3" />
                 Webhook
-              </Badge>
+              </div>
             </TooltipTrigger>
             <TooltipContent>
               <p className="text-xs max-w-xs truncate">

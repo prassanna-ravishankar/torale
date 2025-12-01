@@ -492,23 +492,29 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       </div>
 
       {task.last_known_state && (
-        <Card>
-          <CardHeader>
-            <h3>Last Known State</h3>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm space-y-2">
-              {Object.entries(task.last_known_state).map(([key, value]) => (
-                <div key={key} className="flex items-start gap-2">
-                  <span className="font-medium min-w-[150px]">{key}:</span>
-                  <span className="text-muted-foreground">
-                    {typeof value === "object" ? JSON.stringify(value, null, 2) : String(value)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-zinc-900 border border-zinc-800 p-4">
+          <p className="text-[10px] font-mono uppercase text-zinc-500 tracking-wider mb-3">Last Known State (Dev)</p>
+          <div className="text-xs font-mono space-y-2 overflow-x-auto">
+            {Object.entries(task.last_known_state).map(([key, value]) => (
+              <div key={key} className="flex flex-col gap-1">
+                <span className="text-zinc-400">{key.replace(/_/g, ' ')}</span>
+                {Array.isArray(value) ? (
+                  value.length > 3 ? (
+                    <span className="text-zinc-300 break-words">{value.slice(0, 3).join(", ")} +{value.length - 3} more</span>
+                  ) : (
+                    <span className="text-zinc-300 break-words">{value.join(", ")}</span>
+                  )
+                ) : typeof value === "object" && value !== null ? (
+                  <pre className="text-xs p-2 bg-zinc-950 text-zinc-400 border border-zinc-800 overflow-x-auto">
+                    {JSON.stringify(value, null, 2)}
+                  </pre>
+                ) : (
+                  <span className="text-zinc-300 break-words">{String(value)}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
