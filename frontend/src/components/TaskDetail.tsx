@@ -392,7 +392,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-sm">{task.condition_description}</p>
+            <p className="text-sm text-zinc-700">{task.condition_description}</p>
           </CardContent>
         </Card>
 
@@ -404,7 +404,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             </div>
           </CardHeader>
           <CardContent>
-            <p className="capitalize text-sm">
+            <p className="text-sm font-mono uppercase tracking-wider text-zinc-700">
               {task.notify_behavior === 'once' && 'Once only'}
               {task.notify_behavior === 'always' && 'Every time'}
               {task.notify_behavior === 'track_state' && 'On changes'}
@@ -413,10 +413,10 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               <Switch
                 checked={task.is_active}
                 onCheckedChange={handleToggle}
-                className="data-[state=unchecked]:bg-muted data-[state=unchecked]:border-border"
+                className="data-[state=checked]:bg-zinc-900 data-[state=unchecked]:bg-zinc-200 border-2 border-zinc-900"
               />
-              <span className={`text-sm ${task.is_active ? 'text-muted-foreground' : 'font-medium'}`}>
-                {task.is_active ? "Active" : "Paused - Click to resume"}
+              <span className={`text-xs font-mono uppercase tracking-wider ${task.is_active ? 'text-zinc-700' : 'text-zinc-900 font-bold'}`}>
+                {task.is_active ? "Active" : "Paused"}
               </span>
             </div>
           </CardContent>
