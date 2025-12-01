@@ -260,7 +260,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
             </span>
           </motion.button>
         ) : (
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className={viewMode === 'grid' ? 'grid md:grid-cols-2 xl:grid-cols-3 gap-6' : 'flex flex-col gap-4'}>
             <AnimatePresence>
               {filteredTasks.map((task) => (
                 <TaskCard

@@ -189,7 +189,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
     <div className="space-y-6 max-w-6xl mx-auto p-8">
       {/* Breadcrumb */}
       <div className="font-mono text-xs text-zinc-400 mb-4">
-        <button onClick={onBack} className="hover:text-zinc-900 transition-colors">Monitors</button>
+        <a href="/dashboard" className="hover:text-zinc-900 transition-colors">Monitors</a>
         {' / '}
         <span className="text-zinc-900">{task.name}</span>
       </div>
@@ -282,14 +282,15 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         </div>
       )}
 
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-4 flex-1">
-          <Button variant="ghost" size="icon" onClick={onBack}>
+      {/* Header Section */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <h1 className="font-grotesk text-4xl font-bold">{task.name}</h1>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <h1 className="font-grotesk text-2xl md:text-4xl font-bold truncate">{task.name}</h1>
               <Badge
                 variant={
                   status.activityState === TaskActivityState.ACTIVE
@@ -298,47 +299,51 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                     ? 'default'
                     : 'secondary'
                 }
-                className="flex items-center gap-1"
+                className="flex items-center gap-1 shrink-0"
               >
                 <StatusIcon className="h-3 w-3" />
                 {status.label}
               </Badge>
             </div>
-            <p className="text-muted-foreground">{task.search_query}</p>
+            <p className="text-zinc-500 text-sm truncate">{task.search_query}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Action Buttons - Stack on mobile */}
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             onClick={handleExecute}
             disabled={isExecuting}
+            size="sm"
           >
             {isExecuting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Play className="mr-2 h-4 w-4" />
             )}
-            Run Now
+            <span className="hidden sm:inline">Run Now</span>
+            <span className="sm:hidden">Run</span>
           </Button>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Trash2 className="h-4 w-4" />
+              <Button variant="outline" size="sm">
+                <Trash2 className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Delete</span>
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Task</AlertDialogTitle>
-                <AlertDialogDescription>
+            <AlertDialogContent className="border-2 border-zinc-900 shadow-brutalist-lg">
+              <AlertDialogHeader className="border-b-2 border-zinc-100 pb-4">
+                <AlertDialogTitle className="font-grotesk">Delete Monitor</AlertDialogTitle>
+                <AlertDialogDescription className="text-zinc-500">
                   Are you sure you want to delete "{task.name}"? This action cannot be
                   undone. All execution history will be permanently deleted.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
+              <AlertDialogFooter className="gap-3">
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                <AlertDialogAction onClick={handleDelete} className="shadow-brutalist">Delete</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
