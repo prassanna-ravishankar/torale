@@ -172,6 +172,15 @@ def _parse_task_with_execution(row) -> Task:
 
     # Embed execution if exists
     if row["exec_id"]:
+        # Parse JSONB fields - asyncpg may return them as dicts or strings depending on context
+        exec_result = row["exec_result"]
+        if isinstance(exec_result, str):
+            exec_result = json.loads(exec_result) if exec_result else None
+
+        exec_sources = row["exec_grounding_sources"]
+        if isinstance(exec_sources, str):
+            exec_sources = json.loads(exec_sources) if exec_sources else None
+
         task_dict["last_execution"] = {
             "id": row["exec_id"],
             "task_id": task_dict["id"],
@@ -179,11 +188,9 @@ def _parse_task_with_execution(row) -> Task:
             "started_at": row["exec_started_at"],
             "completed_at": row["exec_completed_at"],
             "status": row["exec_status"],
-            "result": json.loads(row["exec_result"]) if row["exec_result"] else None,
+            "result": exec_result,
             "change_summary": row["exec_change_summary"],
-            "grounding_sources": (
-                json.loads(row["exec_grounding_sources"]) if row["exec_grounding_sources"] else None
-            ),
+            "grounding_sources": exec_sources,
         }
 
     return Task(**task_dict)
