@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ExecutionTimeline } from "@/components/ExecutionTimeline";
 import { StateComparison } from "@/components/StateComparison";
 import { CronDisplay } from "@/components/ui/CronDisplay";
@@ -28,6 +29,9 @@ import {
   Pause,
   Check,
   X,
+  ChevronDown,
+  ChevronUp,
+  Settings,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -352,7 +356,20 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Task Configuration - Collapsible on Mobile */}
+      <Collapsible defaultOpen={true} className="lg:contents">
+        <div className="lg:hidden mb-4">
+          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-mono text-zinc-500 hover:text-zinc-900 transition-colors w-full justify-between p-3 bg-white border-2 border-zinc-200">
+            <div className="flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              <span>Task Configuration</span>
+            </div>
+            <ChevronDown className="w-4 h-4" />
+          </CollapsibleTrigger>
+        </div>
+
+        <CollapsibleContent className="lg:contents">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card className="border-2">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2 text-zinc-400">
@@ -442,7 +459,9 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             )}
           </CardContent>
         </Card>
-      </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Notification Behavior Explanation - Miller's Law: Keep info concise (3-5 bullets) */}
       <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
