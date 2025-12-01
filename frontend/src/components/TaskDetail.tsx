@@ -186,10 +186,17 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-6xl mx-auto p-8">
+      {/* Breadcrumb */}
+      <div className="font-mono text-xs text-zinc-400 mb-4">
+        <button onClick={onBack} className="hover:text-zinc-900 transition-colors">Monitors</button>
+        {' / '}
+        <span className="text-zinc-900">{task.name}</span>
+      </div>
+
       {/* Just Created Banner */}
       {isJustCreated && (
-        <div className="bg-muted/30 p-6 rounded-lg border border-border/50 animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="bg-emerald-50 p-6 border-2 border-emerald-200 animate-in fade-in slide-in-from-top-4 duration-500">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-start gap-3 flex-1">
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -282,7 +289,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
           </Button>
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <h1>{task.name}</h1>
+              <h1 className="font-grotesk text-4xl font-bold">{task.name}</h1>
               <Badge
                 variant={
                   status.activityState === TaskActivityState.ACTIVE
@@ -339,23 +346,23 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        <Card className="border-2">
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-zinc-400">
               <Clock className="h-4 w-4" />
-              <p>Schedule</p>
+              <p className="text-[10px] font-mono uppercase tracking-wider">Schedule</p>
             </div>
           </CardHeader>
           <CardContent>
-            <CronDisplay cron={task.schedule} className="text-sm" />
+            <CronDisplay cron={task.schedule} className="text-sm font-mono" />
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2">
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-zinc-400">
               <Search className="h-4 w-4" />
-              <p>Trigger Condition</p>
+              <p className="text-[10px] font-mono uppercase tracking-wider">Trigger Condition</p>
             </div>
           </CardHeader>
           <CardContent>
@@ -363,11 +370,11 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2">
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-zinc-400">
               <Bell className="h-4 w-4" />
-              <p>When to Notify</p>
+              <p className="text-[10px] font-mono uppercase tracking-wider">When to Notify</p>
             </div>
           </CardHeader>
           <CardContent>
