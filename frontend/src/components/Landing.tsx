@@ -457,7 +457,7 @@ export default function Landing() {
               <div>
                 <h4 className="font-bold mb-6 text-white uppercase tracking-widest text-xs">Community</h4>
                 <ul className="space-y-3 text-sm text-zinc-500 font-medium">
-                  <li><a href="https://github.com/torale" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a></li>
+                  <li><a href="https://github.com/prassanna-ravishankar/torale" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a></li>
                 </ul>
               </div>
             </div>
@@ -467,7 +467,7 @@ export default function Landing() {
                 [ © 2025 TORALE LABS INC. ]
               </div>
               <div className="flex gap-6">
-                <a href="https://github.com/torale" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                <a href="https://github.com/prassanna-ravishankar/torale" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
                   <GitBranch className="w-5 h-5 text-zinc-500 hover:text-white cursor-pointer transition-colors" />
                 </a>
                 <a href="https://torale.openstatus.dev" target="_blank" rel="noopener noreferrer" aria-label="Status">
