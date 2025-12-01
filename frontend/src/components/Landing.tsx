@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "@/lib/motion-compat";
 import {
   ArrowRight,
@@ -86,6 +87,7 @@ const FeatureCard = ({ icon: Icon, title, desc, delay }: { icon: any; title: str
 );
 
 export default function Landing() {
+  const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -102,23 +104,23 @@ export default function Landing() {
       <nav className="sticky top-0 z-50 w-full bg-[#fafafa]/90 backdrop-blur-md border-b border-zinc-200">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <a href="#" className="flex items-center gap-2 group">
+            <button onClick={() => navigate('/')} className="flex items-center gap-2 group cursor-pointer">
               <div className="bg-zinc-900 text-white w-8 h-8 flex items-center justify-center rounded-sm font-grotesk font-bold text-lg group-hover:bg-[hsl(10,90%,55%)] transition-colors">
                 τ
               </div>
               <span className="font-grotesk font-bold text-xl tracking-tight">torale</span>
-            </a>
+            </button>
 
             <div className="hidden md:flex gap-8 text-sm font-medium text-zinc-500">
-              <a href="#" className="hover:text-black transition-colors">Use Cases</a>
-              <a href="#" className="hover:text-black transition-colors">Developers</a>
-              <a href="#" className="hover:text-black transition-colors">Pricing</a>
+              <a href="#use-cases" className="hover:text-black transition-colors">Use Cases</a>
+              <a href="https://docs.torale.ai" target="_blank" rel="noopener noreferrer" className="hover:text-black transition-colors">Developers</a>
+              <button onClick={() => navigate('/changelog')} className="hover:text-black transition-colors">Changelog</button>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-            <button className="text-sm font-bold text-zinc-900 hover:underline px-3 py-2">Sign In</button>
-            <button className="bg-zinc-900 text-white px-5 py-2 text-sm font-bold hover:bg-[hsl(10,90%,55%)] transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] active:translate-y-[2px] active:shadow-none">
+            <button onClick={() => navigate('/sign-in')} className="text-sm font-bold text-zinc-900 hover:underline px-3 py-2">Sign In</button>
+            <button onClick={() => navigate('/sign-up')} className="bg-zinc-900 text-white px-5 py-2 text-sm font-bold hover:bg-[hsl(10,90%,55%)] transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] active:translate-y-[2px] active:shadow-none">
               Start Monitoring
             </button>
           </div>
@@ -154,15 +156,23 @@ export default function Landing() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
-                <button className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-[hsl(10,90%,55%)] text-white text-lg font-bold hover:bg-[hsl(10,90%,50%)] transition-all shadow-[6px_6px_0px_0px_rgba(24,24,27,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(24,24,27,1)] border-2 border-zinc-900">
+                <button
+                  onClick={() => navigate('/sign-up')}
+                  className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-[hsl(10,90%,55%)] text-white text-lg font-bold hover:bg-[hsl(10,90%,50%)] transition-all shadow-[6px_6px_0px_0px_rgba(24,24,27,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(24,24,27,1)] border-2 border-zinc-900"
+                >
                   Create Monitor
                   <ArrowRight className="h-5 w-5" />
                 </button>
 
-                <button className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-white hover:bg-zinc-50 transition-all font-bold text-zinc-900 border-2 border-zinc-200">
+                <a
+                  href="https://docs.torale.ai"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-white hover:bg-zinc-50 transition-all font-bold text-zinc-900 border-2 border-zinc-200"
+                >
                   <Terminal className="h-4 w-4 text-zinc-400 group-hover:text-black" />
                   Documentation
-                </button>
+                </a>
               </div>
             </motion.div>
 
@@ -192,7 +202,7 @@ export default function Landing() {
         </section>
 
         {/* Use Cases Section */}
-        <section className="py-24 px-6 bg-white border-t border-zinc-200">
+        <section id="use-cases" className="py-24 px-6 bg-white border-t border-zinc-200">
           <div className="container mx-auto max-w-6xl">
             <SectionHeader
               title="Monitor Anything"
@@ -343,26 +353,26 @@ export default function Landing() {
               <div>
                 <h4 className="font-bold mb-6 text-white uppercase tracking-widest text-xs">Product</h4>
                 <ul className="space-y-3 text-sm text-zinc-500 font-medium">
-                  <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
-                  <li><a href="#" className="hover:text-white transition-colors">SDK</a></li>
-                  <li><a href="#" className="hover:text-white transition-colors">Changelog</a></li>
+                  <li><a href="#use-cases" className="hover:text-white transition-colors">Use Cases</a></li>
+                  <li><a href="https://docs.torale.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">SDK</a></li>
+                  <li><button onClick={() => navigate('/changelog')} className="hover:text-white transition-colors">Changelog</button></li>
                 </ul>
               </div>
 
               <div>
                 <h4 className="font-bold mb-6 text-white uppercase tracking-widest text-xs">Developers</h4>
                 <ul className="space-y-3 text-sm text-zinc-500 font-medium">
-                  <li><a href="#" className="hover:text-white transition-colors">Documentation</a></li>
-                  <li><a href="#" className="hover:text-white transition-colors">API Reference</a></li>
-                  <li><a href="#" className="hover:text-white transition-colors">Status</a></li>
+                  <li><a href="https://docs.torale.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Documentation</a></li>
+                  <li><a href="https://docs.torale.ai/api" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">API Reference</a></li>
+                  <li><a href="https://status.torale.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Status</a></li>
                 </ul>
               </div>
 
               <div>
                 <h4 className="font-bold mb-6 text-white uppercase tracking-widest text-xs">Legal</h4>
                 <ul className="space-y-3 text-sm text-zinc-500 font-medium">
-                  <li><a href="#" className="hover:text-white transition-colors">Privacy</a></li>
-                  <li><a href="#" className="hover:text-white transition-colors">Terms</a></li>
+                  <li><a href="https://torale.ai/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Privacy</a></li>
+                  <li><a href="https://torale.ai/terms" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Terms</a></li>
                 </ul>
               </div>
             </div>
@@ -372,8 +382,12 @@ export default function Landing() {
                 [ © 2025 TORALE LABS INC. ]
               </div>
               <div className="flex gap-6">
-                <GitBranch className="w-5 h-5 text-zinc-500 hover:text-white cursor-pointer transition-colors" />
-                <Globe className="w-5 h-5 text-zinc-500 hover:text-white cursor-pointer transition-colors" />
+                <a href="https://github.com/torale" target="_blank" rel="noopener noreferrer">
+                  <GitBranch className="w-5 h-5 text-zinc-500 hover:text-white cursor-pointer transition-colors" />
+                </a>
+                <a href="https://torale.ai" target="_blank" rel="noopener noreferrer">
+                  <Globe className="w-5 h-5 text-zinc-500 hover:text-white cursor-pointer transition-colors" />
+                </a>
               </div>
             </div>
           </div>
