@@ -62,8 +62,10 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   const [isExecuting, setIsExecuting] = useState(false);
   const [activeTab, setActiveTab] = useState("executions");
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  const loadData = useCallback(async (skipLoadingState = false) => {
+    if (!skipLoadingState) {
+      setIsLoading(true);
+    }
     try {
       const [taskData, executionsData, notificationsData] = await Promise.all([
         api.getTask(taskId),
@@ -77,7 +79,9 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       console.error("Failed to load task details:", error);
       toast.error('Failed to load task details');
     } finally {
-      setIsLoading(false);
+      if (!skipLoadingState) {
+        setIsLoading(false);
+      }
     }
   }, [taskId]);
 
@@ -96,7 +100,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
 
     if (isFirstExecutionRunning) {
       const interval = setInterval(() => {
-        loadData();
+        loadData(true); // Skip loading state to prevent page flashing
       }, 3000); // Refresh every 3 seconds
 
       return () => clearInterval(interval);

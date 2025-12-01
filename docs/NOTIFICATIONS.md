@@ -523,7 +523,7 @@ Verify your email for Torale notifications
 
 **Subject:**
 ```
-✓ {{payload.task_name}} is now monitoring
+Your Torale task "{{payload.task_name}}" is set up!
 ```
 
 **Body (HTML - recommended):**
@@ -604,7 +604,7 @@ Verify your email for Torale notifications
                 {% else %}
                 <div style="margin: 0 0 12px 0; padding: 12px; background-color: #fff7ed; border-radius: 6px;">
                   <p style="margin: 0; color: #ea580c; font-size: 13px; font-weight: 600;">
-                    Not yet - We'll keep watching
+                    Condition not met yet - We'll keep monitoring
                   </p>
                 </div>
                 {% endif %}
@@ -663,16 +663,16 @@ Verify your email for Torale notifications
                   </p>
                   {% elsif payload.notify_behavior == 'always' %}
                   <p style="margin: 0; color: #1e3a8a; font-size: 13px; line-height: 1.6;">
-                    <strong>Your task is still running!</strong> We'll continue checking {{payload.schedule_description|lower}} and send you an email every time we find your condition is met.
+                    <strong>Your task is still running!</strong> We'll continue checking {{payload.schedule_description}} and send you an email every time we find your condition is met.
                   </p>
                   {% else %}
                   <p style="margin: 0; color: #1e3a8a; font-size: 13px; line-height: 1.6;">
-                    <strong>Your task is still running!</strong> We'll continue checking {{payload.schedule_description|lower}} and notify you whenever the information changes from what we found.
+                    <strong>Your task is still running!</strong> We'll continue checking {{payload.schedule_description}} and notify you whenever the information changes from what we found.
                   </p>
                   {% endif %}
                 {% else %}
                   <p style="margin: 0; color: #1e3a8a; font-size: 13px; line-height: 1.6;">
-                    <strong>Your task is actively monitoring.</strong> We'll keep checking {{payload.schedule_description|lower}} and email you as soon as we detect your condition is met.
+                    <strong>Your task is actively monitoring.</strong> We'll keep checking {{payload.schedule_description}} and email you as soon as we detect your condition is met.
                   </p>
                 {% endif %}
               </div>
@@ -691,9 +691,12 @@ Verify your email for Torale notifications
 
           <!-- Footer -->
           <tr>
-            <td style="padding: 24px; background-color: #f9fafb; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0; color: #71717a; font-size: 12px; text-align: center;">
-                You can pause, edit, or delete this task anytime from your dashboard
+            <td style="padding: 24px 32px; background-color: #f9fafb; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 4px 0; color: #71717a; font-size: 12px; text-align: center; line-height: 1.5;">
+                Sent by <strong style="color: #52525b;">Torale</strong>
+              </p>
+              <p style="margin: 0; color: #a1a1aa; font-size: 11px; text-align: center; line-height: 1.5;">
+                Automated monitoring for the web
               </p>
             </td>
           </tr>
