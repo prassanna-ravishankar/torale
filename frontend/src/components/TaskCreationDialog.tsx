@@ -260,42 +260,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
         run_immediately: true,
       });
 
-      // Show immediate feedback with loading state
-      toast.success('Task created! Running first check...', { duration: 5000 });
-
-      // Poll for first execution completion (up to 30 seconds)
-      // Laws of UX: Provide immediate feedback (Jakob's Law) + show progress
-      let attempts = 0;
-      const maxAttempts = 30;
-      let firstExecution = null;
-
-      while (attempts < maxAttempts && !firstExecution) {
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-
-        try {
-          const executions = await api.getTaskExecutions(newTask.id);
-          if (executions.length > 0 && executions[0].status === 'success') {
-            firstExecution = executions[0];
-            break;
-          }
-        } catch (pollError) {
-          console.error('Error polling executions:', pollError);
-        }
-
-        attempts++;
-      }
-
-      // Show results toast (Progressive Disclosure - show outcome)
-      if (firstExecution) {
-        if (firstExecution.condition_met) {
-          toast.success('✓ Condition already met! Check your email for results.', { duration: 8000 });
-        } else {
-          toast.info('First check complete. We\'ll keep watching and email you when the condition is met.', { duration: 8000 });
-        }
-      } else {
-        toast.info('Task is running. We\'ll email you with the first check results shortly.', { duration: 5000 });
-      }
-
+      // Close dialog and navigate to task detail page
       onTaskCreated(newTask);
       onOpenChange(false);
     } catch (err) {

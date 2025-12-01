@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { Task, TaskExecution } from '@/types'
 import api from '@/lib/api'
 import { toast } from 'sonner'
@@ -25,6 +26,8 @@ import {
   Activity,
   CheckCircle,
   Pause,
+  Check,
+  X,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -49,6 +52,9 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   onBack,
   onDeleted,
 }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isJustCreated = searchParams.get('justCreated') === 'true';
+
   const [task, setTask] = useState<Task | null>(null);
   const [executions, setExecutions] = useState<TaskExecution[]>([]);
   const [notifications, setNotifications] = useState<TaskExecution[]>([]);
@@ -78,6 +84,24 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Auto-refresh executions while first execution is pending/running (for just-created tasks)
+  useEffect(() => {
+    if (!isJustCreated || !task) return;
+
+    const firstExecution = executions[0];
+    const isFirstExecutionRunning =
+      executions.length === 0 ||
+      (firstExecution && ['pending', 'running'].includes(firstExecution.status));
+
+    if (isFirstExecutionRunning) {
+      const interval = setInterval(() => {
+        loadData();
+      }, 3000); // Refresh every 3 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [isJustCreated, task, executions, loadData]);
 
   const handleToggle = async () => {
     if (!task) return;
@@ -146,8 +170,107 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
     Pause,
   }[status.iconName];
 
+  const firstExecution = executions[0];
+  const isFirstExecutionComplete = firstExecution?.status === 'success';
+
+  const handleDismissBanner = () => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.delete('justCreated');
+      return newParams;
+    });
+  };
+
   return (
     <div className="space-y-6">
+      {/* Just Created Banner */}
+      {isJustCreated && (
+        <div className="bg-muted/30 p-6 rounded-lg border border-border/50 animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-start gap-3 flex-1">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Check className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold tracking-tight">
+                  Task successfully created
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Monitoring: <span className="text-foreground font-medium">{task.search_query}</span>
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleDismissBanner}
+              className="shrink-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Progress indicators */}
+          <div className="space-y-3 mb-6">
+            <div className="flex items-center gap-3">
+              <Check className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-sm text-muted-foreground">Task initialized</span>
+            </div>
+            <div className="flex items-center gap-3">
+              {isFirstExecutionComplete ? (
+                <Check className="h-4 w-4 text-primary shrink-0" />
+              ) : (
+                <Loader2 className="h-4 w-4 text-muted-foreground animate-spin shrink-0" />
+              )}
+              <span className="text-sm text-muted-foreground">
+                First check {isFirstExecutionComplete ? 'complete' : 'running...'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm text-muted-foreground">
+                Welcome email arriving shortly
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm text-muted-foreground">
+                Next check: <CronDisplay cron={task.schedule} className="inline" />
+              </span>
+            </div>
+          </div>
+
+          {/* What to expect */}
+          <div className="pt-6 border-t border-border/50">
+            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
+              What to Expect
+            </h4>
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  Welcome email with first check results and task details
+                </p>
+              </div>
+              <div className="flex items-start gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  Automated checks <CronDisplay cron={task.schedule} className="inline lowercase" />
+                </p>
+              </div>
+              <div className="flex items-start gap-2">
+                <Bell className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  {task.notify_behavior === 'once' && 'Email when condition is met, then monitoring stops'}
+                  {task.notify_behavior === 'always' && 'Email every time condition is met'}
+                  {task.notify_behavior === 'track_state' && 'Email only when information changes'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4 flex-1">
           <Button variant="ghost" size="icon" onClick={onBack}>

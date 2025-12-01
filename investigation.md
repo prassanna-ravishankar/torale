@@ -224,20 +224,34 @@ If issues arise:
    - Uses cronstrue for human-readable schedules
    - Removed `first_check_completed` parameter (always true by design)
 
-2. **First Execution Trigger** (`backend/src/torale/workers/activities.py:186-220`)
-   - Detects first execution completion
-   - Sends welcome email with execution results
-   - Provides immediate user feedback
+2. **Notification Activity Routing** (`backend/src/torale/workers/activities.py`)
+   - `execute_task` (lines 186-193): Detects first execution, adds flag to result (no email sending)
+   - `send_notification` (lines 217-290): Single entry point for all notifications
+     - If `is_first_execution=true`: Sends welcome email, returns
+     - Otherwise: Sends condition met email (existing logic)
 
-3. **Frontend Execution Polling** (`frontend/src/components/TaskCreationDialog.tsx:263-297`)
-   - Polls for first execution (up to 30 seconds)
-   - Progressive toasts: "Running..." → "Condition met!" or "We'll keep watching"
+3. **Frontend Navigation Flow** (`frontend/src/components/TaskCreationDialog.tsx:263-265`)
+   - Removed polling logic (no longer needed)
+   - Closes dialog and navigates to task detail page via callback
+   - Task detail page handles all status updates
 
-4. **Educational Context** (`frontend/src/components/TaskDetail.tsx:306-332`)
+4. **Task Detail "Just Created" Banner** (`frontend/src/components/TaskDetail.tsx:186-272`)
+   - Detects `?justCreated=true` query parameter
+   - Shows elegant banner with existing design patterns (no confetti, professional)
+   - Live progress indicators using Lucide icons:
+     - ✓ Task initialized (always complete)
+     - ⏳/✓ First check (auto-refreshes every 3s until complete)
+     - ⏳ Welcome email arriving
+     - ⏳ Next scheduled check
+   - "What to Expect" section with icon+text pattern
+   - Dismissible (removes query parameter)
+   - Auto-refreshes executions while first execution pending/running
+
+5. **Educational Context** (`frontend/src/components/TaskDetail.tsx:306-332`)
    - Added notify_behavior explanation section
    - Shows context-specific guidance for each mode
 
-5. **Email Template Enhancements** (`docs/NOTIFICATIONS.md:503-703`)
+6. **Email Template Enhancements** (`docs/NOTIFICATIONS.md:503-703`)
    - Removed unnecessary `first_check_completed` conditional (always true)
    - Added "What Happens Next?" section with conditional logic:
      - If `condition_met=true` + `notify_behavior="once"`: Explains task auto-paused, can resume
@@ -258,15 +272,21 @@ If issues arise:
 - `helm/torale/templates/configmap.yaml` (env var injection)
 
 **What Users See Now:**
-1. Create task → "Task created! Running first check..." toast
-2. First execution completes → "Condition met!" or "We'll keep watching" toast
-3. Welcome email arrives (~30s) with:
+1. Create task → Dialog closes, navigates to task detail page
+2. Task detail page shows elegant "just created" banner with:
+   - Success header with checkmark icon
+   - Live status: Task initialized, First check (live updating), Welcome email, Next check
+   - "What to Expect" section explaining the flow
+   - Auto-refreshes every 3s while first execution runs
+   - Dismissible when user is ready
+3. Welcome email arrives (~30-60s) with:
    - What's being monitored
    - When notifications happen
-   - First check results
+   - First check results with sources
    - notify_behavior explanation
-   - Link to dashboard
-4. TaskDetail page shows clear notify_behavior explanation
+   - Conditional next steps based on task state
+   - Link to dashboard with explanation
+4. Existing notify_behavior explanation section provides ongoing context
 
 **Testing Status:**
 - ⏳ **Novu workflow creation**: Need to create `torale-task-welcome` workflow in Novu dashboard

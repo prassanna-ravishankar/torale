@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
 
 interface DashboardProps {
-  onTaskClick: (taskId: string) => void;
+  onTaskClick: (taskId: string, justCreated?: boolean) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
@@ -90,7 +90,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
 
   const handleTaskCreated = (task: Task) => {
     loadTasks();
-    toast.success('Task created! First execution started...');
+    // Navigate to task detail page with justCreated flag
+    onTaskClick(task.id, true);
   };
 
   const handleTaskUpdated = (task: Task) => {
