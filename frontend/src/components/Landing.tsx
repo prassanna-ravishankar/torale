@@ -113,7 +113,7 @@ export default function Landing() {
 
             <div className="hidden md:flex gap-8 text-sm font-medium text-zinc-500">
               <a href="#use-cases" className="hover:text-black transition-colors">Use Cases</a>
-              <a href="https://docs.torale.ai" target="_blank" rel="noopener noreferrer" className="hover:text-black transition-colors">Docs</a>
+              <a href="#pricing" className="hover:text-black transition-colors">Pricing</a>
               <button onClick={() => navigate('/changelog')} className="hover:text-black transition-colors">Changelog</button>
             </div>
           </div>
@@ -339,6 +339,72 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* Pricing Section */}
+        <section id="pricing" className="py-24 px-6 bg-white border-t border-zinc-200">
+          <div className="container mx-auto max-w-4xl text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="space-y-8"
+            >
+              <div>
+                <h2 className="text-4xl md:text-5xl font-bold font-grotesk tracking-tight mb-4 text-zinc-900">
+                  Simple Pricing
+                </h2>
+                <p className="text-xl text-zinc-500 max-w-2xl mx-auto">
+                  No credit card required. Start monitoring in seconds.
+                </p>
+              </div>
+
+              <div className="bg-white p-12 border-2 border-zinc-900 shadow-brutalist-lg max-w-lg mx-auto">
+                <div className="mb-6">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border-2 border-emerald-500 text-emerald-700 text-xs font-mono font-bold uppercase tracking-wider mb-4">
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                    Beta Access
+                  </div>
+                  <div className="text-6xl font-bold font-grotesk text-zinc-900 mb-2">
+                    $0
+                  </div>
+                  <p className="text-zinc-500 font-mono text-sm">
+                    Free for first 100 users
+                  </p>
+                </div>
+
+                <div className="space-y-3 text-left mb-8">
+                  <div className="flex items-center gap-2 text-zinc-600">
+                    <div className="w-5 h-5 bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 font-bold text-xs">✓</div>
+                    <span className="text-sm">Unlimited monitors</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-zinc-600">
+                    <div className="w-5 h-5 bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 font-bold text-xs">✓</div>
+                    <span className="text-sm">AI-powered search monitoring</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-zinc-600">
+                    <div className="w-5 h-5 bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 font-bold text-xs">✓</div>
+                    <span className="text-sm">In-app notifications</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-zinc-600">
+                    <div className="w-5 h-5 bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 font-bold text-xs">✓</div>
+                    <span className="text-sm">Full API access</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="w-full bg-zinc-900 text-white px-8 py-4 text-lg font-bold hover:bg-[hsl(10,90%,55%)] transition-colors shadow-brutalist active:translate-y-[2px] active:shadow-none"
+                >
+                  Start Monitoring
+                </button>
+
+                <p className="text-xs text-zinc-400 mt-4 font-mono">
+                  No credit card required • Free while in beta
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
         {/* Footer */}
         <footer className="bg-zinc-950 text-zinc-400 border-t border-zinc-900 pt-20 pb-10 px-6">
           <div className="container mx-auto max-w-6xl">
@@ -362,7 +428,7 @@ export default function Landing() {
                 <h4 className="font-bold mb-6 text-white uppercase tracking-widest text-xs">Developers</h4>
                 <ul className="space-y-3 text-sm text-zinc-500 font-medium">
                   <li><a href="https://docs.torale.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Documentation</a></li>
-                  <li><a href="https://docs.torale.ai/api" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">API Reference</a></li>
+                  <li><a href="https://api.torale.ai/redoc" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">API Reference</a></li>
                   <li><a href="https://torale.openstatus.dev" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Status</a></li>
                 </ul>
               </div>
