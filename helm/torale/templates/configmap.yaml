@@ -27,4 +27,5 @@ data:
   NOVU_API_URL: {{ .Values.novu.apiUrl | quote }}
   NOVU_WORKFLOW_ID: {{ .Values.novu.workflowId | quote }}
   NOVU_VERIFICATION_WORKFLOW_ID: {{ .Values.novu.verificationWorkflowId | quote }}
+  NOVU_WELCOME_WORKFLOW_ID: {{ .Values.novu.welcomeWorkflowId | quote }}
   NOVU_APPLICATION_ID: {{ .Values.novu.applicationId | quote }}

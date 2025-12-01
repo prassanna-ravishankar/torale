@@ -303,6 +303,34 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         </Card>
       </div>
 
+      {/* Notification Behavior Explanation - Miller's Law: Keep info concise (3-5 bullets) */}
+      <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
+        <div className="flex items-start gap-3">
+          <Bell className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <h3 className="text-sm font-medium mb-1">How You'll Be Notified</h3>
+            {task.notify_behavior === 'once' && (
+              <p className="text-sm text-muted-foreground">
+                <strong>Notify Once:</strong> You'll receive an email the first time we detect your condition is met,
+                then monitoring will automatically stop. Perfect for one-time announcements like release dates.
+              </p>
+            )}
+            {task.notify_behavior === 'always' && (
+              <p className="text-sm text-muted-foreground">
+                <strong>Always Notify:</strong> You'll receive an email every time your condition is met.
+                Great for recurring opportunities like stock availability or price changes.
+              </p>
+            )}
+            {task.notify_behavior === 'track_state' && (
+              <p className="text-sm text-muted-foreground">
+                <strong>Track Changes:</strong> You'll receive an email only when the information changes from our last check.
+                Ideal for monitoring updates and changes over time.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
       {task.last_known_state && (
         <Card>
           <CardHeader>

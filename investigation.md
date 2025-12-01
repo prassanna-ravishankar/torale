@@ -208,40 +208,66 @@ If issues arise:
 - Unclear when first check will run
 - Unclear how users will be notified
 
-**Current Gaps:**
-- ❌ No welcome/confirmation email after task creation
-- ❌ No clear indication of when first execution will run
-- ❌ "No channels configured" feels like an error state (but in-app notifications work)
-- ❌ No post-creation success message or guidance
+**FIX IMPLEMENTED:**
 
-**Proposed Solutions:**
-1. **Welcome Email** (send immediately after task creation):
-   - Confirmation of what's being monitored (query + condition)
-   - Next scheduled check time (e.g., "First check: Tomorrow at 12:00 AM")
-   - How to view results (link to task detail page)
-   - How you'll be notified (in-app for now, mention future email/SMS)
-   - How to pause/edit/delete task
-   - Should this be sent even if task is created in paused state?
+**Approach: Welcome Email + Progressive Feedback (Following Laws of UX)**
+- **Jakob's Law**: Users expect immediate confirmation emails (like GitHub, Stripe)
+- **Progressive Disclosure**: Show outcome incrementally (toast → email → dashboard)
+- **Miller's Law**: Keep email concise with 3-5 key pieces of info
 
-2. **Improved In-App UX**:
-   - Post-creation success message with next steps
-   - Replace "No channels configured" with "In-app notifications enabled"
-   - Show next execution time prominently on task detail page
-   - Consider onboarding flow for first-time users
+**Implementation:**
 
-**Questions to Answer:**
-- [ ] Should email be sent for paused tasks?
-- [ ] Should email be sent when editing a task?
-- [ ] What email service to use? (NotificationAPI? Direct SMTP? SendGrid?)
-- [ ] Should we batch emails or send individually?
-- [ ] What's the email template format?
+1. **Welcome Email Service** (`backend/src/torale/notifications/novu_service.py:164-260`)
+   - New `send_welcome_email()` method
+   - Sends after first execution completes
+   - Includes: task details, schedule, first execution results, notify_behavior explanation
+   - Uses cronstrue for human-readable schedules
 
-**Investigation Steps:**
-1. Decide on email service provider
-2. Design email template (HTML + plain text)
-3. Identify trigger points for sending email (post-creation only? edits too?)
-4. Update frontend to show better post-creation feedback
-5. Fix "No channels configured" messaging
+2. **First Execution Trigger** (`backend/src/torale/workers/activities.py:186-221`)
+   - Detects first execution completion
+   - Sends welcome email with execution results
+   - Provides immediate user feedback
+
+3. **Frontend Execution Polling** (`frontend/src/components/TaskCreationDialog.tsx:263-297`)
+   - Polls for first execution (up to 30 seconds)
+   - Progressive toasts: "Running..." → "Condition met!" or "We'll keep watching"
+
+4. **Educational Context** (`frontend/src/components/TaskDetail.tsx:306-332`)
+   - Added notify_behavior explanation section
+   - Shows context-specific guidance for each mode
+
+**Files Changed:**
+- `backend/src/torale/notifications/novu_service.py` (welcome email method)
+- `backend/src/torale/core/config.py` (NOVU_WELCOME_WORKFLOW_ID setting)
+- `backend/src/torale/workers/activities.py` (first execution trigger)
+- `docs/NOTIFICATIONS.md` (Novu workflow template + env vars)
+- `frontend/src/components/TaskCreationDialog.tsx` (execution polling + toasts)
+- `frontend/src/components/TaskDetail.tsx` (notify_behavior explanation)
+- `.env.example` (NOVU_WELCOME_WORKFLOW_ID)
+- `helm/torale/values.yaml` (welcomeWorkflowId config)
+- `helm/torale/templates/configmap.yaml` (env var injection)
+
+**What Users See Now:**
+1. Create task → "Task created! Running first check..." toast
+2. First execution completes → "Condition met!" or "We'll keep watching" toast
+3. Welcome email arrives (~30s) with:
+   - What's being monitored
+   - When notifications happen
+   - First check results
+   - notify_behavior explanation
+   - Link to dashboard
+4. TaskDetail page shows clear notify_behavior explanation
+
+**Testing Status:**
+- ⏳ **Novu workflow creation**: Need to create `torale-task-welcome` workflow in Novu dashboard
+- ⏳ **User verification**: Ready for testing - See Manual Testing Checklist section
+
+**Rollback Plan:**
+If issues arise:
+1. Remove welcome email call from `activities.py`
+2. Revert polling logic in `TaskCreationDialog.tsx`
+3. Remove notify_behavior explanation from `TaskDetail.tsx`
+4. Deactivate `torale-task-welcome` workflow in Novu
 
 ---
 

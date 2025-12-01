@@ -25,6 +25,7 @@ Torale supports multi-channel notifications with email validation to prevent spa
 **Workflows Required:**
 1. `torale-condition-met` - Main notification when task triggers
 2. `torale-email-verification` - Email verification codes
+3. `torale-task-welcome` - Welcome email after task creation
 
 ### Webhooks
 
@@ -224,6 +225,7 @@ git push origin main
 NOVU_SECRET_KEY=                        # Get from novu.co dashboard
 NOVU_WORKFLOW_ID=torale-condition-met   # Main notification workflow
 NOVU_VERIFICATION_WORKFLOW_ID=torale-email-verification  # Verification workflow
+NOVU_WELCOME_WORKFLOW_ID=torale-task-welcome  # Welcome email workflow
 ```
 
 ## Novu Workflow Templates
@@ -497,3 +499,186 @@ Verify your email for Torale notifications
 ```
 
 **Note:** Novu requires you to define payload variables before you can use them in templates. Always set up the payload schema first to avoid "Variable invalid or missing namespace" errors.
+
+### Task Welcome Workflow
+
+**Setup Steps:**
+1. Create workflow with identifier: `torale-task-welcome`
+2. Add Email channel
+3. **Define payload schema first**:
+   ```json
+   {
+     "task_name": "string",
+     "search_query": "string",
+     "condition_description": "string",
+     "notify_behavior": "string",
+     "schedule_description": "string",
+     "first_check_completed": "boolean",
+     "answer": "string",
+     "condition_met": "boolean",
+     "grounding_sources": "array",
+     "task_id": "string"
+   }
+   ```
+4. Configure Email step:
+
+**Subject:**
+```
+✓ {{payload.task_name}} is now monitoring
+```
+
+**Body (HTML - recommended):**
+```html
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f9fafb;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 48px 16px;">
+        <table role="presentation" style="width: 100%; max-width: 600px; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;">
+
+          <!-- Header -->
+          <tr>
+            <td style="padding: 32px; border-bottom: 1px solid #e5e7eb;">
+              <div style="display: inline-block; width: 32px; height: 32px; background-color: rgba(168, 85, 247, 0.1); border-radius: 6px; text-align: center; line-height: 32px; margin-right: 12px;">
+                <span style="color: #a855f7; font-size: 18px;">🚀</span>
+              </div>
+              <h1 style="display: inline; margin: 0; color: #09090b; font-size: 20px; font-weight: 600;">
+                Your Task is Live!
+              </h1>
+              <p style="margin: 8px 0 0 0; color: #71717a; font-size: 14px;">
+                {{payload.task_name}}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 32px;">
+              <p style="margin: 0 0 24px 0; color: #3f3f46; font-size: 14px; line-height: 1.6;">
+                Great news! We've just completed your first check and your monitoring task is now running.
+              </p>
+
+              <!-- What We're Watching -->
+              <div style="margin: 0 0 16px 0; padding: 16px; background-color: #f9fafb; border-left: 3px solid #a855f7; border-radius: 6px;">
+                <h2 style="margin: 0 0 8px 0; color: #a855f7; font-size: 11px; font-weight: 600; text-transform: uppercase;">
+                  What We're Watching
+                </h2>
+                <p style="margin: 0; color: #09090b; font-size: 14px;">
+                  {{payload.search_query}}
+                </p>
+              </div>
+
+              <!-- When You'll Be Notified -->
+              <div style="margin: 0 0 16px 0; padding: 16px; background-color: #f0fdf4; border-left: 3px solid #22c55e; border-radius: 6px;">
+                <h2 style="margin: 0 0 8px 0; color: #16a34a; font-size: 11px; font-weight: 600; text-transform: uppercase;">
+                  When You'll Be Notified
+                </h2>
+                <p style="margin: 0; color: #09090b; font-size: 14px;">
+                  {{payload.condition_description}}
+                </p>
+              </div>
+
+              <!-- How Often We Check -->
+              <div style="margin: 0 0 24px 0; padding: 16px; background-color: #fefce8; border-left: 3px solid #eab308; border-radius: 6px;">
+                <h2 style="margin: 0 0 8px 0; color: #ca8a04; font-size: 11px; font-weight: 600; text-transform: uppercase;">
+                  Check Schedule
+                </h2>
+                <p style="margin: 0; color: #09090b; font-size: 14px;">
+                  {{payload.schedule_description}}
+                </p>
+              </div>
+
+              <!-- First Check Results (if available) -->
+              {% if payload.first_check_completed %}
+              <div style="margin: 0 0 24px 0; padding: 20px; background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+                <h2 style="margin: 0 0 16px 0; color: #09090b; font-size: 16px; font-weight: 600;">
+                  First Check Results
+                </h2>
+
+                {% if payload.condition_met %}
+                <div style="margin: 0 0 12px 0; padding: 12px; background-color: #dcfce7; border-radius: 6px;">
+                  <p style="margin: 0; color: #16a34a; font-size: 13px; font-weight: 600;">
+                    ✓ Condition Already Met!
+                  </p>
+                </div>
+                {% else %}
+                <div style="margin: 0 0 12px 0; padding: 12px; background-color: #fff7ed; border-radius: 6px;">
+                  <p style="margin: 0; color: #ea580c; font-size: 13px; font-weight: 600;">
+                    Not yet - We'll keep watching
+                  </p>
+                </div>
+                {% endif %}
+
+                <p style="margin: 12px 0 0 0; color: #3f3f46; font-size: 13px; line-height: 1.6;">
+                  {{payload.answer}}
+                </p>
+
+                {% if payload.grounding_sources %}
+                <div style="margin: 16px 0 0 0;">
+                  <p style="margin: 0 0 8px 0; color: #71717a; font-size: 11px; font-weight: 600; text-transform: uppercase;">
+                    Sources
+                  </p>
+                  {% for source in payload.grounding_sources %}
+                  <div style="margin: 0 0 6px 0;">
+                    <a href="{{source.uri}}" style="color: #a855f7; text-decoration: underline; font-size: 12px;">
+                      {{source.title}}
+                    </a>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% endif %}
+              </div>
+              {% endif %}
+
+              <!-- How Notifications Work -->
+              <div style="margin: 0 0 24px 0; padding: 20px; background-color: #fef3c7; border-radius: 8px; border: 1px solid #fbbf24;">
+                <h3 style="margin: 0 0 12px 0; color: #92400e; font-size: 14px; font-weight: 600;">
+                  📬 About Your Notifications
+                </h3>
+
+                {% if payload.notify_behavior == 'once' %}
+                <p style="margin: 0; color: #78350f; font-size: 13px; line-height: 1.6;">
+                  <strong>Notify Once:</strong> We'll send you an email the first time we detect your condition is met, then automatically stop monitoring. Perfect for one-time announcements like release dates.
+                </p>
+                {% elsif payload.notify_behavior == 'always' %}
+                <p style="margin: 0; color: #78350f; font-size: 13px; line-height: 1.6;">
+                  <strong>Always Notify:</strong> We'll send you an email every time we check and find your condition is met. Great for recurring opportunities like stock availability or price drops.
+                </p>
+                {% else %}
+                <p style="margin: 0; color: #78350f; font-size: 13px; line-height: 1.6;">
+                  <strong>Track Changes:</strong> We'll notify you only when the information changes from our last check. Ideal for monitoring updates and changes over time.
+                </p>
+                {% endif %}
+              </div>
+
+              <!-- CTA -->
+              <div style="margin: 24px 0 0 0; text-align: center;">
+                <a href="https://torale.ai/tasks/{{payload.task_id}}" style="display: inline-block; padding: 12px 32px; background-color: #a855f7; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px;">
+                  View Task Dashboard
+                </a>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px; background-color: #f9fafb; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #71717a; font-size: 12px; text-align: center;">
+                You can pause, edit, or delete this task anytime from your dashboard
+              </p>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Unsubscribe -->
+        <p style="margin: 16px 0 0 0; color: #a1a1aa; font-size: 11px; text-align: center;">
+          <a href="https://torale.ai/settings/notifications" style="color: #a855f7; text-decoration: none;">Manage notification preferences</a>
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+```

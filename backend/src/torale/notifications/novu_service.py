@@ -161,6 +161,103 @@ class NovuService:
             logger.error(f"Novu verification email error: {str(e)}")
             return {"success": False, "error": str(e)}
 
+    async def send_welcome_email(
+        self,
+        subscriber_id: str,
+        task_name: str,
+        search_query: str,
+        condition_description: str,
+        notify_behavior: str,
+        schedule: str,
+        first_check_completed: bool,
+        first_execution_result: dict | None,
+        task_id: str,
+    ) -> dict:
+        """
+        Send welcome email after task creation with first execution results.
+
+        Email explains:
+        - What's being monitored
+        - When next check runs
+        - How user will be notified
+        - First execution results (if completed)
+        - notify_behavior explanation
+
+        Returns: {"success": bool, "transaction_id": str, "error": str}
+        """
+        if not self._enabled or not self._client:
+            logger.warning(f"Novu not configured - welcome email for {subscriber_id}")
+            return {"success": False, "error": "Novu not configured", "skipped": True}
+
+        try:
+            import novu_py
+
+            # Convert markdown to HTML if first execution completed
+            answer_html = None
+            if first_execution_result:
+                answer = first_execution_result.get("answer", "")
+                try:
+                    import markdown
+
+                    answer_html = markdown.markdown(answer, extensions=["nl2br"])
+                except ImportError:
+                    logger.warning("markdown library not installed - using plain text")
+                    answer_html = answer.replace("\n", "<br>")
+
+            # Format grounding sources
+            formatted_sources = []
+            if first_execution_result and first_execution_result.get("grounding_sources"):
+                formatted_sources = [
+                    {"uri": s.get("url", ""), "title": s.get("title", "Unknown")}
+                    for s in first_execution_result["grounding_sources"][:5]
+                ]
+
+            # Human-readable schedule using cronstrue
+            try:
+                from cronstrue import get_description
+
+                schedule_description = get_description(schedule)
+            except Exception:
+                schedule_description = schedule  # Fallback to raw cron
+
+            # Trigger welcome workflow
+            response = await self._client.trigger_async(
+                trigger_event_request_dto=novu_py.TriggerEventRequestDto(
+                    workflow_id=settings.novu_welcome_workflow_id,
+                    to={
+                        "subscriber_id": subscriber_id,
+                        "email": subscriber_id,
+                    },
+                    payload={
+                        "task_name": task_name,
+                        "search_query": search_query,
+                        "condition_description": condition_description,
+                        "notify_behavior": notify_behavior,
+                        "schedule_description": schedule_description,
+                        "first_check_completed": first_check_completed,
+                        "answer": answer_html,
+                        "condition_met": (
+                            first_execution_result.get("condition_met")
+                            if first_execution_result
+                            else False
+                        ),
+                        "grounding_sources": formatted_sources,
+                        "task_id": task_id,
+                    },
+                )
+            )
+
+            transaction_id = None
+            if hasattr(response, "result") and hasattr(response.result, "transaction_id"):
+                transaction_id = response.result.transaction_id
+
+            logger.info(f"Welcome email sent to {subscriber_id}: {transaction_id}")
+            return {"success": True, "transaction_id": transaction_id}
+
+        except Exception as e:
+            logger.error(f"Welcome email error: {str(e)}")
+            return {"success": False, "error": str(e)}
+
 
 # Singleton instance
 novu_service = NovuService()

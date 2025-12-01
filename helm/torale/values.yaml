@@ -229,6 +229,7 @@ novu:
   apiUrl: "https://eu.api.novu.co"
   workflowId: "torale-condition-met"
   verificationWorkflowId: "torale-email-verification"
+  welcomeWorkflowId: "torale-task-welcome"
   applicationId: "1mO9V2spkNCO"  # Production app ID
 
 # Ingress configuration

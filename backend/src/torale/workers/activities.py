@@ -183,6 +183,42 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
             executor_result["execution_id"] = str(execution_id)
             executor_result["search_query"] = task["search_query"]
 
+            # Check if this is the first execution - send welcome email
+            if executor_result.get("success"):
+                execution_count = await conn.fetchval(
+                    "SELECT COUNT(*) FROM task_executions WHERE task_id = $1 AND status = $2",
+                    UUID(task_id),
+                    TaskStatus.SUCCESS.value,
+                )
+
+                is_first_execution = execution_count == 1
+
+                if is_first_execution:
+                    # Get user email for welcome notification
+                    user = await conn.fetchrow(
+                        "SELECT email FROM users WHERE id = $1", UUID(task["user_id"])
+                    )
+
+                    if user:
+                        logger.info(
+                            f"First execution for task {task_id} - sending welcome email to {user['email']}"
+                        )
+                        await novu_service.send_welcome_email(
+                            subscriber_id=user["email"],
+                            task_name=task["name"],
+                            search_query=task["search_query"],
+                            condition_description=task["condition_description"],
+                            notify_behavior=task["notify_behavior"],
+                            schedule=task["schedule"],
+                            first_check_completed=True,
+                            first_execution_result={
+                                "answer": executor_result.get("answer"),
+                                "condition_met": executor_result.get("condition_met"),
+                                "grounding_sources": executor_result.get("grounding_sources"),
+                            },
+                            task_id=task_id,
+                        )
+
             return executor_result
 
         except Exception as e:
