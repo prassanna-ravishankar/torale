@@ -92,7 +92,13 @@ export default function App() {
           element={
             <AuthRedirect>
               <AuthLayout>
-                <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" />
+                <SignIn
+                  routing="path"
+                  path="/sign-in"
+                  signUpUrl="/sign-up"
+                  forceRedirectUrl="/dashboard"
+                  fallbackRedirectUrl="/dashboard"
+                />
               </AuthLayout>
             </AuthRedirect>
           }
@@ -103,7 +109,13 @@ export default function App() {
             <AuthRedirect>
               <AuthLayout>
                 <CapacityGate fallback={<Navigate to="/waitlist" replace />}>
-                  <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" />
+                  <SignUp
+                    routing="path"
+                    path="/sign-up"
+                    signInUrl="/sign-in"
+                    forceRedirectUrl="/dashboard"
+                    fallbackRedirectUrl="/dashboard"
+                  />
                 </CapacityGate>
               </AuthLayout>
             </AuthRedirect>

@@ -22,21 +22,21 @@
 
 ### Functional Testing
 - [ ] **Navigation links work**
-  - Logo ’ / (landing page)
-  - Use Cases ’ #use-cases anchor scroll
-  - Pricing ’ #pricing anchor scroll
-  - Changelog ’ /changelog route
-  - Sign In ’ /sign-in route
-  - Start Monitoring ’ /dashboard (redirects to /sign-in if not authed)
+  - Logo ï¿½ / (landing page)
+  - Use Cases ï¿½ #use-cases anchor scroll
+  - Pricing ï¿½ #pricing anchor scroll
+  - Changelog ï¿½ /changelog route
+  - Sign In ï¿½ /sign-in route
+  - Start Monitoring ï¿½ /dashboard (redirects to /sign-in if not authed)
 
 - [ ] **Footer links work**
-  - Product > Use Cases ’ #use-cases
-  - Product > Changelog ’ /changelog
-  - Developers > Documentation ’ https://docs.torale.ai (new tab)
-  - Developers > API Reference ’ https://api.torale.ai/redoc (new tab)
-  - Developers > Status ’ https://torale.openstatus.dev (new tab)
-  - Community > GitHub ’ https://github.com/torale (new tab)
-  - Footer icons ’ GitHub, OpenStatus (new tabs)
+  - Product > Use Cases ï¿½ #use-cases
+  - Product > Changelog ï¿½ /changelog
+  - Developers > Documentation ï¿½ https://docs.torale.ai (new tab)
+  - Developers > API Reference ï¿½ https://api.torale.ai/redoc (new tab)
+  - Developers > Status ï¿½ https://torale.openstatus.dev (new tab)
+  - Community > GitHub ï¿½ https://github.com/torale (new tab)
+  - Footer icons ï¿½ GitHub, OpenStatus (new tabs)
 
 - [ ] **Dynamic pricing displays**
   - Start backend: `just dev` or `docker-compose up`
@@ -47,7 +47,7 @@
 - [ ] **Routing behavior**
   - `/` shows Landing (even if authenticated)
   - `/dashboard` shows Dashboard (requires auth)
-  - Clicking "Create Monitor" ’ /dashboard ’ /sign-in redirect if not authed
+  - Clicking "Create Monitor" ï¿½ /dashboard ï¿½ /sign-in redirect if not authed
 
 ### Mobile Responsive Testing
 Test at breakpoints:
@@ -96,7 +96,7 @@ Test at breakpoints:
 - Mobile-first responsive design
 - Semantic HTML
 
-###   Potential Issues to Watch
+### ï¿½ Potential Issues to Watch
 - **Font loading via CDN inline style**: Could cause FOUT (Flash of Unstyled Text)
   - Mitigation: Fonts load fast from Google CDN, acceptable for now
   - Alternative: Could switch to @fontsource later if needed
@@ -130,7 +130,7 @@ Test at breakpoints:
 **Potential Issue**: Motion.dev might have slight API differences from Framer Motion
 **Mitigation**: Using compatibility layer in `lib/motion-compat.ts`
 **Watch for**:
-- `scrollYProgress.onChange()` ’ `scrollYProgress.on('change', ...)`
+- `scrollYProgress.onChange()` ï¿½ `scrollYProgress.on('change', ...)`
 - Layout animations might behave differently
 
 **Testing Required**:
@@ -150,11 +150,12 @@ When ready to continue:
 ## Commands to Remember
 
 ```bash
-# Start backend (for /public/stats API)
+# IMPORTANT: Start backend FIRST (required for dashboard to work)
 cd backend
 just dev
+# This starts: PostgreSQL, Temporal, API server, Workers
 
-# Start frontend (restart if proxy added)
+# Then start frontend (restart if proxy added)
 cd frontend
 npm run dev
 
@@ -163,4 +164,28 @@ npm run build
 
 # Run Lighthouse
 npx lighthouse http://localhost:3000 --view
+```
+
+## Critical: Backend Must Be Running
+
+**The dashboard will NOT work without the backend running!**
+
+Why:
+- Dashboard needs to fetch tasks from `/api/v1/tasks`
+- Task creation needs `/api/v1/templates` for templates
+- User sync needs `/api/v1/auth/sync-user`
+- All these are proxied by Vite in dev mode
+
+**Symptoms if backend is down:**
+- CORS errors in console
+- "Failed to sync user" error
+- "Failed to load tasks" error
+- "Failed to load templates" error
+- Empty dashboard
+
+**Fix:**
+```bash
+cd backend && just dev
+# Wait for "Application startup complete" message
+# Then refresh frontend
 ```
