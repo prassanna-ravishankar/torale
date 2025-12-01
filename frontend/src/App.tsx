@@ -6,6 +6,7 @@ import { TaskDetail } from '@/components/TaskDetail'
 import Landing from '@/components/Landing'
 import Changelog from '@/components/Changelog'
 import { Header } from '@/components/Header'
+import { MobileNav } from '@/components/MobileNav'
 import { Admin } from '@/pages/Admin'
 import { NotificationSettingsPage } from '@/pages/NotificationSettingsPage'
 import { CapacityGate } from '@/components/CapacityGate'
@@ -45,9 +46,10 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 pb-24 md:pb-8">
         {children}
       </main>
+      <MobileNav />
     </div>
   )
 }
