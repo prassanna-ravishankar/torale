@@ -25,4 +25,4 @@ backend/tests/
 ## Next Steps
 
 - Read [Development Setup](/contributing/setup)
-- View [Frontend Style Guide](/contributing/frontend-style)
+- View [Code Conventions](/contributing/conventions)
