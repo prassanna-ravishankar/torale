@@ -527,6 +527,7 @@ GCP_REGION=us-central1
 - **Task Templates**: Pre-built templates for common monitoring use cases
 - **CLI**: Full CLI with API key authentication and no-auth dev mode
 - **Frontend**: React dashboard with Clerk authentication
+- **Design System**: Neo-brutalist "The Machine" design system fully implemented (see `.claude/skills/torale-design-system.md`)
 - **Cost Optimization**: Spot pods (60-91% savings), zonal Cloud SQL
 - **Admin Console**: Full platform monitoring with 8 admin endpoints (stats, queries, executions, Temporal workflows/schedules, errors, users, user management)
 - **Live Search Preview** (#37): `/api/v1/tasks/preview` endpoint allows testing queries before creating tasks
