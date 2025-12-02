@@ -11,7 +11,6 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
-  AlertCircle,
 } from "lucide-react";
 
 interface ExecutionTimelineProps {
@@ -19,51 +18,37 @@ interface ExecutionTimelineProps {
   highlightNotifications?: boolean;
 }
 
-export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
-  executions,
-  highlightNotifications = false,
-}) => {
-  if (executions.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <h3 className="mb-2">No executions yet</h3>
-        <p className="text-muted-foreground">
-          This task hasn't been executed yet. It will run according to its schedule.
-        </p>
-      </div>
-    );
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case "success":
+      return <CheckCircle2 className="h-5 w-5 text-green-500" />;
+    case "failed":
+      return <XCircle className="h-5 w-5 text-red-500" />;
+    default:
+      return <Clock className="h-5 w-5 text-yellow-500" />;
   }
+};
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "success":
-        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-      case "failed":
-        return <XCircle className="h-5 w-5 text-red-500" />;
-      default:
-        return <Clock className="h-5 w-5 text-yellow-500" />;
-    }
-  };
+const formatDate = (dateStr: string) => {
+  const date = new Date(dateStr);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+};
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(date);
-  };
+interface ExecutionCardProps {
+  execution: TaskExecution;
+  highlightNotifications: boolean;
+}
+
+const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotifications }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className="space-y-4">
-      {executions.map((execution) => {
-        const [isExpanded, setIsExpanded] = useState(false);
-
-        return (
           <Card
-            key={execution.id}
             className={
               highlightNotifications && execution.condition_met
                 ? "border-2 border-emerald-500 bg-emerald-50/30"
@@ -203,8 +188,34 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
               )}
             </div>
           </Card>
-        );
-      })}
+  );
+};
+
+export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
+  executions,
+  highlightNotifications = false,
+}) => {
+  if (executions.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+        <h3 className="mb-2">No executions yet</h3>
+        <p className="text-muted-foreground">
+          This task hasn't been executed yet. It will run according to its schedule.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {executions.map((execution) => (
+        <ExecutionCard
+          key={execution.id}
+          execution={execution}
+          highlightNotifications={highlightNotifications}
+        />
+      ))}
     </div>
   );
 };
