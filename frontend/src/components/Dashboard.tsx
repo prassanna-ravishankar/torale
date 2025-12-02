@@ -144,34 +144,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
     <div className="min-h-screen bg-zinc-50">
       <main className="p-8">
         {/* Header Area */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div>
-            <div className="flex items-center gap-2 text-zinc-400 text-xs font-mono mb-2">
-              <span>Organization</span>
-              <span>/</span>
-              <span className="text-zinc-900">Monitors</span>
+        <header className="mb-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+            <div>
+              <div className="flex items-center gap-2 text-zinc-400 text-xs font-mono mb-2">
+                <span>Organization</span>
+                <span>/</span>
+                <span className="text-zinc-900">Monitors</span>
+              </div>
+              <h1 className="text-3xl font-bold font-grotesk tracking-tight">Mission Control</h1>
             </div>
-            <h1 className="text-3xl font-bold font-grotesk tracking-tight">Mission Control</h1>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <input
-                type="text"
-                placeholder="Search monitors..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-white border border-zinc-200 rounded-sm text-sm focus:outline-none focus:border-zinc-400 w-64 shadow-sm"
-              />
-            </div>
             <button
               onClick={() => setIsCreating(true)}
-              className="flex items-center gap-2 bg-zinc-900 text-white px-4 py-2 rounded-sm text-sm font-bold hover:bg-[hsl(10,90%,55%)] transition-colors shadow-md active:translate-y-[1px]"
+              className="flex items-center justify-center gap-2 bg-zinc-900 text-white px-4 py-2 rounded-sm text-sm font-bold hover:bg-[hsl(10,90%,55%)] transition-colors shadow-md active:translate-y-[1px] whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
               New Monitor
             </button>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+            <input
+              type="text"
+              placeholder="Search monitors..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-white border border-zinc-200 rounded-sm text-sm focus:outline-none focus:border-zinc-400 shadow-sm"
+            />
           </div>
         </header>
 

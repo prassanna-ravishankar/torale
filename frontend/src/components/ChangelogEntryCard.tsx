@@ -86,6 +86,12 @@ export function ChangelogEntryCard({ entry, index }: ChangelogEntryCardProps) {
               <div className="absolute top-0 right-0 w-[150%] h-[150%] bg-zinc-50 rotate-45 transform origin-bottom-left border-l border-zinc-100"></div>
             </div>
 
+            {/* ID at top like commit SHA */}
+            <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-400 mb-3">
+              <GitCommit className="w-3 h-3" />
+              <span>#{entry.id}</span>
+            </div>
+
             <div className="flex justify-between items-start mb-4">
               <TypeBadge category={entry.category} />
             </div>
@@ -100,11 +106,14 @@ export function ChangelogEntryCard({ entry, index }: ChangelogEntryCardProps) {
 
             {/* Footer Metadata in Card */}
             <div className="mt-6 pt-4 border-t border-zinc-100 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-mono text-zinc-400">
-                <GitCommit className="w-3 h-3" />
-                <span>#{entry.id}</span>
-              </div>
-              {prs.length > 0 ? (
+              {entry.requestedBy.length > 0 ? (
+                <div className="text-[10px] text-zinc-400 italic">
+                  Requested by {entry.requestedBy.join(", ")}
+                </div>
+              ) : (
+                <div></div>
+              )}
+              {prs.length > 0 && (
                 <div className="flex items-center gap-1 text-[10px] font-mono text-zinc-400">
                   {prs.map((pr, idx) => (
                     <a
@@ -119,11 +128,7 @@ export function ChangelogEntryCard({ entry, index }: ChangelogEntryCardProps) {
                     </a>
                   ))}
                 </div>
-              ) : entry.requestedBy.length > 0 ? (
-                <div className="text-[10px] text-zinc-400 italic">
-                  Requested by {entry.requestedBy.join(", ")}
-                </div>
-              ) : null}
+              )}
             </div>
           </motion.div>
         </div>
