@@ -1,34 +1,132 @@
 /**
- * Torale Brand Colors for VitePress
- * Based on frontend brand colors from frontend/src/styles/globals.css
+ * Torale Neo-Brutalist Theme for VitePress
+ * "The Machine" - Technical, precise, brutally honest
  */
 
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 :root {
-  /* Brand color - Torale dark slate blue */
-  --vp-c-brand-1: #203345;
-  --vp-c-brand-2: #3b5468;
-  --vp-c-brand-3: #506b7f;
-  --vp-c-brand-soft: #e9ebef;
+  /* Neo-Brutalist Brand Colors */
+  --vp-c-brand-1: hsl(10, 90%, 55%);        /* Brand red - primary actions */
+  --vp-c-brand-2: hsl(10, 80%, 45%);        /* Brand red - hover */
+  --vp-c-brand-3: hsl(10, 70%, 40%);        /* Brand red - active */
+  --vp-c-brand-soft: #fafafa;               /* Zinc-50 canvas */
 
-  /* Hero customization */
+  /* Text colors - zinc scale */
+  --vp-c-text-1: #18181b;                   /* zinc-900 - primary */
+  --vp-c-text-2: #71717a;                   /* zinc-500 - secondary */
+  --vp-c-text-3: #a1a1aa;                   /* zinc-400 - tertiary */
+
+  /* Background colors */
+  --vp-c-bg: #fafafa;                       /* zinc-50 canvas */
+  --vp-c-bg-soft: #ffffff;                  /* white cards */
+  --vp-c-bg-alt: #f4f4f5;                   /* zinc-100 */
+
+  /* Border colors */
+  --vp-c-divider: #e4e4e7;                  /* zinc-200 */
+  --vp-c-border: #e4e4e7;                   /* zinc-200 */
+
+  /* Hero customization - brutalist gradient */
   --vp-home-hero-name-color: transparent;
-  --vp-home-hero-name-background: linear-gradient(135deg, #203345 0%, #506b7f 100%);
+  --vp-home-hero-name-background: linear-gradient(135deg, #18181b 0%, hsl(10, 90%, 55%) 100%);
 
-  /* Button styling */
-  --vp-button-brand-bg: #203345;
-  --vp-button-brand-hover-bg: #3b5468;
-  --vp-button-brand-active-bg: #1a2833;
+  /* Button styling - neo-brutalist */
+  --vp-button-brand-bg: #18181b;            /* zinc-900 */
+  --vp-button-brand-text: #ffffff;
+  --vp-button-brand-hover-bg: hsl(10, 90%, 55%);
+  --vp-button-brand-hover-text: #ffffff;
+  --vp-button-brand-active-bg: hsl(10, 80%, 45%);
+
+  /* Code blocks - terminal aesthetic */
+  --vp-c-code-bg: #ffffff;
+  --vp-code-block-bg: #fafafa;
+  --vp-code-block-color: #18181b;
+
+  /* Typography */
+  --vp-font-family-base: 'Inter', system-ui, -apple-system, sans-serif;
+  --vp-font-family-mono: 'JetBrains Mono', monospace;
 }
 
 .dark {
-  --vp-c-brand-1: #506b7f;
-  --vp-c-brand-2: #3b5468;
-  --vp-c-brand-3: #203345;
+  --vp-c-brand-1: hsl(10, 90%, 55%);
+  --vp-c-brand-2: hsl(10, 80%, 45%);
+  --vp-c-brand-3: hsl(10, 70%, 40%);
+
+  --vp-c-bg: #09090b;                       /* zinc-950 */
+  --vp-c-bg-soft: #18181b;                  /* zinc-900 */
+  --vp-c-bg-alt: #27272a;                   /* zinc-800 */
+
+  --vp-c-text-1: #fafafa;                   /* zinc-50 */
+  --vp-c-text-2: #a1a1aa;                   /* zinc-400 */
+  --vp-c-text-3: #71717a;                   /* zinc-500 */
+
+  --vp-c-divider: #3f3f46;                  /* zinc-700 */
+  --vp-c-border: #3f3f46;
+
+  --vp-code-block-bg: #18181b;
 }
 
-/* Remove default VitePress emoji styling if present */
+/* Neo-brutalist headings - use Space Grotesk */
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.vp-doc h4 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Inline code - mono font */
+.vp-doc :not(pre) > code {
+  font-family: 'JetBrains Mono', monospace;
+  background-color: #fafafa;
+  border: 1px solid #e4e4e7;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.125rem;
+  font-size: 0.875em;
+}
+
+.dark .vp-doc :not(pre) > code {
+  background-color: #27272a;
+  border-color: #3f3f46;
+}
+
+/* Remove default VitePress emoji styling */
 .vp-doc h1 .emoji,
 .vp-doc h2 .emoji,
 .vp-doc h3 .emoji {
   display: none;
+}
+
+/* Brutalist borders for containers */
+.vp-doc .custom-block {
+  border-width: 2px;
+  border-radius: 0.25rem;
+}
+
+.vp-doc .tip {
+  border-color: #10b981;  /* emerald-500 */
+  background-color: #f0fdf4;  /* emerald-50 */
+}
+
+.vp-doc .warning {
+  border-color: #f59e0b;  /* amber-500 */
+  background-color: #fffbeb;  /* amber-50 */
+}
+
+.vp-doc .danger {
+  border-color: #ef4444;  /* red-500 */
+  background-color: #fef2f2;  /* red-50 */
+}
+
+.dark .vp-doc .tip {
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+.dark .vp-doc .warning {
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.dark .vp-doc .danger {
+  background-color: rgba(239, 68, 68, 0.1);
 }
