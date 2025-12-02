@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowUpRight, Github } from "lucide-react";
 import { ChangelogEntryCard } from "./ChangelogEntryCard";
 import { ChangelogEntry } from "@/types/changelog";
 import { GITHUB_REPO_URL } from "@/constants/links";
+import { Logo } from "./Logo";
 
 export default function Changelog() {
   const navigate = useNavigate();
@@ -50,10 +51,7 @@ export default function Changelog() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-zinc-900 text-white flex items-center justify-center font-grotesk font-bold rounded-sm text-xs">τ</div>
-            <span className="font-grotesk font-bold text-lg tracking-tight">torale</span>
-          </div>
+          <Logo className="cursor-default" />
 
           <div className="w-[120px]"></div>
         </div>

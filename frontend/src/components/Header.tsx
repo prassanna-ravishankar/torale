@@ -4,6 +4,7 @@ import { Shield, Bell, BookOpen } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { Logo } from "@/components/Logo";
 
 /**
  * Header - Brutalist navigation for authenticated app
@@ -20,11 +21,8 @@ export const Header: React.FC = () => {
     <header className="border-b-2 border-zinc-200 bg-white sticky top-0 z-40">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
         {/* Logo */}
-        <Link to="/dashboard" className="flex items-center gap-2 shrink-0">
-          <div className="bg-zinc-900 text-white w-8 h-8 flex items-center justify-center font-grotesk font-bold text-lg hover:bg-[hsl(10,90%,55%)] transition-colors">
-            τ
-          </div>
-          <span className="font-grotesk font-bold text-xl tracking-tight hidden sm:inline">torale</span>
+        <Link to="/dashboard" className="shrink-0">
+          <Logo />
         </Link>
 
         {/* Navigation Links */}

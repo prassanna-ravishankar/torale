@@ -17,6 +17,7 @@ import { ParticleNetwork } from "./ui/ParticleNetwork";
 import { UniversalEventStream } from "./ui/UniversalEventStream";
 import { SystemTrace } from "./ui/SystemTrace";
 import { TerminalSection } from "./ui/TerminalSection";
+import { Logo } from "@/components/Logo";
 
 /**
  * Landing Page - Based on MockLandingPage.tsx
@@ -25,7 +26,8 @@ import { TerminalSection } from "./ui/TerminalSection";
 
 // Font Loader (inline style injection matching mock)
 const FontLoader = () => (
-  <style dangerouslySetInnerHTML={{__html: `
+  <style dangerouslySetInnerHTML={{
+    __html: `
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
     .font-grotesk { font-family: 'Space Grotesk', sans-serif; }
@@ -123,11 +125,8 @@ export default function Landing() {
       <nav className="sticky top-0 z-50 w-full bg-[#fafafa]/90 backdrop-blur-md border-b border-zinc-200">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <button onClick={() => navigate('/')} className="flex items-center gap-2 group cursor-pointer">
-              <div className="bg-zinc-900 text-white w-8 h-8 flex items-center justify-center rounded-sm font-grotesk font-bold text-lg group-hover:bg-[hsl(10,90%,55%)] transition-colors">
-                τ
-              </div>
-              <span className="font-grotesk font-bold text-xl tracking-tight">torale</span>
+            <button onClick={() => navigate('/')} className="cursor-pointer">
+              <Logo />
             </button>
 
             <div className="hidden md:flex gap-8 text-sm font-medium text-zinc-500">
@@ -246,7 +245,7 @@ export default function Landing() {
                   "Watch our top 3 competitors. Alert me if they change the price of their Enterprise tier or remove 'SSO' from the features list."
                 </p>
                 <div className="bg-zinc-50 p-4 border border-zinc-200 font-mono text-xs text-zinc-500 rounded-sm group-hover:border-zinc-400 transition-colors">
-                  &gt; Detected change on /pricing<br/>
+                  &gt; Detected change on /pricing<br />
                   &gt; <span className="text-red-600 line-through">$49/mo</span> &rarr; <span className="text-green-600">$59/mo</span>
                 </div>
               </div>
@@ -266,7 +265,7 @@ export default function Landing() {
                   "Monitor the EU AI Act official journal. Notify legal if new amendments regarding 'General Purpose AI' are published."
                 </p>
                 <div className="bg-zinc-50 p-4 border border-zinc-200 font-mono text-xs text-zinc-500 rounded-sm group-hover:border-zinc-400 transition-colors">
-                  &gt; New document found: "Amendment 45b"<br/>
+                  &gt; New document found: "Amendment 45b"<br />
                   &gt; Context match: "High Risk AI Systems"
                 </div>
               </div>
@@ -286,7 +285,7 @@ export default function Landing() {
                   "Poll the NVD feed every minute. Page the on-call engineer if a critical CVE is found for 'Log4j' or 'OpenSSL'."
                 </p>
                 <div className="bg-zinc-50 p-4 border border-zinc-200 font-mono text-xs text-zinc-500 rounded-sm group-hover:border-zinc-400 transition-colors">
-                  &gt; CVE-2025-9921 Detected<br/>
+                  &gt; CVE-2025-9921 Detected<br />
                   &gt; Severity: <span className="text-red-600 font-bold">CRITICAL (9.8)</span>
                 </div>
               </div>
@@ -306,7 +305,7 @@ export default function Landing() {
                   "Check the AWS Health Dashboard. Trigger our internal incident response if 'us-east-1' reports degradation."
                 </p>
                 <div className="bg-zinc-50 p-4 border border-zinc-200 font-mono text-xs text-zinc-500 rounded-sm group-hover:border-zinc-400 transition-colors">
-                  &gt; Service: EC2 (us-east-1)<br/>
+                  &gt; Service: EC2 (us-east-1)<br />
                   &gt; Status: <span className="text-amber-600 font-bold">DEGRADED</span>
                 </div>
               </div>
