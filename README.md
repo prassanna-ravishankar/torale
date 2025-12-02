@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/prassanna-ravishankar/torale/main/frontend/public/logo.svg" alt="τorale" width="120" height="120">
+  <img src="./frontend/public/logo.svg" alt="τorale" width="120" height="120">
   <h1>τorale</h1>
   <p><strong>Grounded search monitoring platform for AI-powered conditional automation</strong></p>
 
