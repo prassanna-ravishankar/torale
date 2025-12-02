@@ -190,7 +190,7 @@ kubectl get deployment torale-api -n torale -o yaml | grep image:
 ### Health Check Timeout
 
 Increase timeout in workflow:
-```yaml
+```bash
 kubectl rollout status deployment/torale-api -n torale --timeout=10m
 ```
 
