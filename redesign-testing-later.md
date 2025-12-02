@@ -63,12 +63,19 @@ These still have OLD design and need to be redesigned:
 - TaskDetail page (task detail view)
 - ExecutionTimeline (execution history)
 
-## Phase 4: Settings & Admin (Not Yet Started)
+## Phase 4: Settings & Admin
 
-These also still have OLD design:
-- Admin.tsx (admin console)
-- NotificationSettingsPage.tsx
-- Changelog.tsx (needs timeline layout from MockChangelog)
+✅ **Completed:**
+- Changelog.tsx - Neo-brutalist timeline with animated cards, decorative corners, spring physics
+- ChangelogEntryCard.tsx - Brutalist card styling with type badges and GitHub PR links
+
+🔲 **Still Need to Test:**
+- Changelog.tsx route (/changelog)
+- Timeline animations (stagger, scroll-triggered)
+- Type badges (feature/improvement/fix/infra/research)
+- Mobile responsiveness (timeline shifts to left on mobile)
+- PR links to GitHub
+- "End of Line" marker at bottom
 
 ## Troubleshooting
 
