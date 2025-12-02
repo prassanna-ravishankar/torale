@@ -1,15 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -18,22 +7,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {  Checkbox } from '@/components/ui/checkbox'
 import { api } from '@/lib/api'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
 import { UserCard } from './cards/UserCard'
-import { Edit, UserCog, X } from 'lucide-react'
+import {
+  Loader2,
+  Users,
+  Edit,
+  UserCog,
+  X,
+  ChevronDown,
+  CheckCircle2,
+  Shield,
+  Code2,
+  User,
+  ListChecks,
+  Activity,
+  Zap,
+} from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
-interface User {
+interface UserData {
   id: string
   email: string
   clerk_user_id: string
@@ -45,8 +40,8 @@ interface User {
   role?: string | null
 }
 
-interface UsersData {
-  users: User[]
+interface UsersDataResponse {
+  users: UserData[]
   capacity: {
     used: number
     total: number
@@ -56,20 +51,22 @@ interface UsersData {
 
 export function UsersTable() {
   const { user: currentUser } = useAuth()
-  const [data, setData] = useState<UsersData | null>(null)
+  const [data, setData] = useState<UsersDataResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // Single user role edit state
-  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [editingUser, setEditingUser] = useState<UserData | null>(null)
   const [selectedRole, setSelectedRole] = useState<string>('')
   const [isUpdating, setIsUpdating] = useState(false)
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false)
 
   // Bulk edit state
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set())
   const [showBulkDialog, setShowBulkDialog] = useState(false)
   const [bulkRole, setBulkRole] = useState<string>('')
   const [isBulkUpdating, setIsBulkUpdating] = useState(false)
+  const [showBulkRoleDropdown, setShowBulkRoleDropdown] = useState(false)
 
   useEffect(() => {
     loadUsers()
@@ -96,14 +93,13 @@ export function UsersTable() {
     try {
       await api.deactivateUser(userId)
       toast.success(`User ${email} has been deactivated`)
-      loadUsers() // Reload the list
+      loadUsers()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to deactivate user')
     }
   }
 
-  const handleEditRole = (user: User) => {
-    // Prevent editing own role
+  const handleEditRole = (user: UserData) => {
     if (currentUser && user.clerk_user_id === currentUser.id) {
       toast.error('You cannot change your own role')
       return
@@ -123,7 +119,7 @@ export function UsersTable() {
       await api.updateUserRole(editingUser.id, roleValue)
       toast.success(`Role updated for ${editingUser.email}`)
       setEditingUser(null)
-      loadUsers() // Reload to show updated role
+      loadUsers()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update role')
     } finally {
@@ -144,16 +140,13 @@ export function UsersTable() {
   const toggleSelectAll = () => {
     if (!data) return
 
-    // Filter out current user from selection
     const selectableUsers = data.users.filter(
       u => !currentUser || u.clerk_user_id !== currentUser.id
     )
 
     if (selectedUserIds.size === selectableUsers.length) {
-      // Deselect all
       setSelectedUserIds(new Set())
     } else {
-      // Select all selectable users
       setSelectedUserIds(new Set(selectableUsers.map(u => u.id)))
     }
   }
@@ -169,7 +162,6 @@ export function UsersTable() {
     setIsBulkUpdating(true)
 
     try {
-      // Use bulk update endpoint for better performance
       const result = await api.bulkUpdateUserRoles(Array.from(selectedUserIds), roleValue)
 
       setIsBulkUpdating(false)
@@ -187,36 +179,64 @@ export function UsersTable() {
         }
       }
 
-      loadUsers() // Reload to show updated roles
+      loadUsers()
     } catch (err) {
       setIsBulkUpdating(false)
       toast.error(err instanceof Error ? err.message : 'Failed to update roles')
     }
   }
 
-  const getRoleBadgeVariant = (role?: string | null) => {
-    if (role === 'admin') return 'destructive'
-    if (role === 'developer') return 'default'
-    return 'outline'
-  }
+  const roleOptions = [
+    { value: 'none', label: 'No Role (Regular User)', icon: User },
+    { value: 'developer', label: 'Developer', icon: Code2 },
+    { value: 'admin', label: 'Admin', icon: Shield },
+  ]
 
-  const getRoleDisplay = (role?: string | null) => {
-    if (!role) return 'User'
-    return role.charAt(0).toUpperCase() + role.slice(1)
+  const getRoleBadge = (role?: string | null) => {
+    if (role === 'admin') {
+      return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-50 text-red-700 text-[10px] font-mono uppercase tracking-wider border border-red-200">
+          <Shield className="h-3 w-3" />
+          Admin
+        </span>
+      )
+    }
+    if (role === 'developer') {
+      return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-mono uppercase tracking-wider border border-blue-200">
+          <Code2 className="h-3 w-3" />
+          Developer
+        </span>
+      )
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-zinc-50 text-zinc-600 text-[10px] font-mono uppercase tracking-wider border border-zinc-200">
+        <User className="h-3 w-3" />
+        User
+      </span>
+    )
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading users...</div>
+      <div className="flex items-center justify-center h-64 bg-white border-2 border-zinc-200">
+        <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-destructive">Error: {error}</div>
+      <div className="flex items-center justify-center h-64 bg-white border-2 border-zinc-200">
+        <div className="text-center">
+          <p className="text-sm font-mono text-red-600">Error: {error}</p>
+          <button
+            onClick={loadUsers}
+            className="mt-2 px-3 py-1.5 text-xs font-mono border border-zinc-200 hover:border-zinc-900 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     )
   }
@@ -227,248 +247,368 @@ export function UsersTable() {
     u => !currentUser || u.clerk_user_id !== currentUser.id
   )
   const allSelected = selectedUserIds.size === selectableUsers.length && selectableUsers.length > 0
+  const capacityPercentage = Math.round((data.capacity.used / data.capacity.total) * 100)
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Platform Capacity</CardTitle>
-          <CardDescription className="text-sm">
-            {data.capacity.used} / {data.capacity.total} seats used • {data.capacity.available} available
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      {/* Capacity Card */}
+      <div className="bg-white border-2 border-zinc-200 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+            Platform Capacity
+          </span>
+          <div className="bg-zinc-100 w-8 h-8 flex items-center justify-center">
+            <Users className="h-4 w-4 text-zinc-600" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <p className="text-2xl font-grotesk font-bold tracking-tight">
+            {data.capacity.used}
+            <span className="text-zinc-400 text-lg">/{data.capacity.total}</span>
+          </p>
+          <div className="w-full h-2 bg-zinc-100">
+            <div
+              className={`h-full transition-all ${
+                capacityPercentage > 80 ? 'bg-red-500' : capacityPercentage > 60 ? 'bg-amber-500' : 'bg-emerald-500'
+              }`}
+              style={{ width: `${capacityPercentage}%` }}
+            />
+          </div>
+          <p className="text-xs font-mono text-zinc-500">
+            {data.capacity.available} seats available
+          </p>
+        </div>
+      </div>
 
       {/* Bulk Actions Toolbar */}
       {selectedUserIds.size > 0 && (
-        <Card className="bg-muted/50 border-primary">
-          <CardHeader className="py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <UserCog className="h-5 w-5 text-primary" />
-                <div>
-                  <CardTitle className="text-sm font-medium">
-                    {selectedUserIds.size} user(s) selected
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Bulk actions available
-                  </CardDescription>
-                </div>
+        <div className="bg-zinc-900 text-white border-2 border-zinc-900 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-white text-zinc-900 w-8 h-8 flex items-center justify-center">
+                <UserCog className="h-4 w-4" />
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => setShowBulkDialog(true)}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Change Roles
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedUserIds(new Set())}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+              <div>
+                <p className="text-sm font-mono">{selectedUserIds.size} user(s) selected</p>
+                <p className="text-[10px] font-mono text-zinc-400">Bulk actions available</p>
               </div>
             </div>
-          </CardHeader>
-        </Card>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowBulkDialog(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-white text-zinc-900 text-xs font-mono hover:bg-zinc-100 transition-colors"
+              >
+                <Edit className="h-3 w-3" />
+                Change Roles
+              </button>
+              <button
+                onClick={() => setSelectedUserIds(new Set())}
+                className="p-1.5 text-zinc-400 hover:text-white transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">All Users</CardTitle>
-          <CardDescription className="text-sm">Manage platform users and view their activity</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* Desktop Table View */}
-          <div className="hidden md:block">
-            <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">
-                  <Checkbox
+      {/* Users Table */}
+      <div className="bg-white border-2 border-zinc-200">
+        {/* Header */}
+        <div className="p-4 border-b border-zinc-200 flex items-center gap-3">
+          <div className="bg-zinc-900 text-white w-8 h-8 flex items-center justify-center shrink-0">
+            <Users className="h-4 w-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-grotesk font-bold">All Users</h3>
+            <p className="text-[10px] font-mono text-zinc-400">
+              Manage platform users and view their activity
+            </p>
+          </div>
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-zinc-200 bg-zinc-50">
+                <th className="p-3 w-12">
+                  <input
+                    type="checkbox"
                     checked={allSelected}
-                    onCheckedChange={toggleSelectAll}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 border-2 border-zinc-300 accent-zinc-900"
                     aria-label="Select all users"
                   />
-                </TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead>Tasks</TableHead>
-                <TableHead>Executions</TableHead>
-                <TableHead>Triggered</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+                </th>
+                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Email</th>
+                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Role</th>
+                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Status</th>
+                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Joined</th>
+                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                  <ListChecks className="h-3 w-3 inline mr-1" />
+                  Tasks
+                </th>
+                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                  <Activity className="h-3 w-3 inline mr-1" />
+                  Runs
+                </th>
+                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                  <Zap className="h-3 w-3 inline mr-1" />
+                  Triggered
+                </th>
+                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
               {data.users.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    No users found
-                  </TableCell>
-                </TableRow>
+                <tr>
+                  <td colSpan={9} className="p-8 text-center">
+                    <Users className="h-5 w-5 text-zinc-400 mx-auto mb-2" />
+                    <p className="text-xs text-zinc-500 font-mono">No users found</p>
+                  </td>
+                </tr>
               ) : (
                 data.users.map((user) => {
                   const isCurrentUser = currentUser && user.clerk_user_id === currentUser.id
                   return (
-                    <TableRow key={user.id}>
-                      <TableCell>
+                    <tr key={user.id} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
+                      <td className="p-3">
                         {!isCurrentUser && (
-                          <Checkbox
+                          <input
+                            type="checkbox"
                             checked={selectedUserIds.has(user.id)}
-                            onCheckedChange={() => toggleUserSelection(user.id)}
+                            onChange={() => toggleUserSelection(user.id)}
+                            className="w-4 h-4 border-2 border-zinc-300 accent-zinc-900"
                             aria-label={`Select ${user.email}`}
                           />
                         )}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {user.email}
-                        {isCurrentUser && (
-                          <Badge variant="outline" className="ml-2 text-xs">You</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getRoleBadgeVariant(user.role)}>
-                          {getRoleDisplay(user.role)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={user.is_active ? 'default' : 'secondary'}>
-                          {user.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs">
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-mono text-zinc-900">{user.email}</span>
+                          {isCurrentUser && (
+                            <span className="px-1.5 py-0.5 bg-zinc-900 text-white text-[9px] font-mono uppercase tracking-wider">
+                              You
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3">{getRoleBadge(user.role)}</td>
+                      <td className="p-3">
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider border ${
+                          user.is_active
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-zinc-50 text-zinc-500 border-zinc-200'
+                        }`}>
+                          {user.is_active ? (
+                            <>
+                              <CheckCircle2 className="h-3 w-3" />
+                              Active
+                            </>
+                          ) : (
+                            'Inactive'
+                          )}
+                        </span>
+                      </td>
+                      <td className="p-3 text-xs font-mono text-zinc-500">
                         {user.created_at
                           ? formatDistanceToNow(new Date(user.created_at), { addSuffix: true })
                           : '-'}
-                      </TableCell>
-                      <TableCell>{user.task_count}</TableCell>
-                      <TableCell>{user.total_executions}</TableCell>
-                      <TableCell>{user.conditions_met_count}</TableCell>
-                      <TableCell>
+                      </td>
+                      <td className="p-3 text-sm font-mono text-zinc-900">{user.task_count}</td>
+                      <td className="p-3 text-sm font-mono text-zinc-900">{user.total_executions}</td>
+                      <td className="p-3">
+                        <span className="inline-flex items-center gap-1 text-sm font-mono text-emerald-600">
+                          <Zap className="h-3 w-3" />
+                          {user.conditions_met_count}
+                        </span>
+                      </td>
+                      <td className="p-3">
                         <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
+                          <button
                             onClick={() => handleEditRole(user)}
                             disabled={isCurrentUser}
+                            className="flex items-center gap-1 px-2 py-1 border border-zinc-200 text-xs font-mono text-zinc-600 hover:border-zinc-900 hover:text-zinc-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <Edit className="h-4 w-4 mr-1" />
+                            <Edit className="h-3 w-3" />
                             Role
-                          </Button>
-                          {user.is_active && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
+                          </button>
+                          {user.is_active && !isCurrentUser && (
+                            <button
                               onClick={() => handleDeactivate(user.id, user.email)}
+                              className="px-2 py-1 border border-red-200 text-xs font-mono text-red-600 hover:border-red-500 hover:bg-red-50 transition-colors"
                             >
                               Deactivate
-                            </Button>
+                            </button>
                           )}
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   )
                 })
               )}
-            </TableBody>
-          </Table>
-          </div>
+            </tbody>
+          </table>
+        </div>
 
-          {/* Mobile Card View */}
-          <div className="block md:hidden space-y-4">
-            {data.users.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground py-8">No users found</p>
-            ) : (
-              data.users.map((user) => (
-                <UserCard
-                  key={user.id}
-                  user={user}
-                  currentUserClerkId={currentUser?.id}
-                  onDeactivate={handleDeactivate}
-                  onEditRole={handleEditRole}
-                />
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+        {/* Mobile Card View */}
+        <div className="block md:hidden p-4 space-y-3">
+          {data.users.length === 0 ? (
+            <div className="p-4 bg-zinc-50 border border-dashed border-zinc-300 text-center">
+              <Users className="h-5 w-5 text-zinc-400 mx-auto mb-2" />
+              <p className="text-xs text-zinc-500 font-mono">No users found</p>
+            </div>
+          ) : (
+            data.users.map((user) => (
+              <UserCard
+                key={user.id}
+                user={user}
+                currentUserClerkId={currentUser?.id}
+                onDeactivate={handleDeactivate}
+                onEditRole={handleEditRole}
+              />
+            ))
+          )}
+        </div>
+      </div>
 
       {/* Single User Role Edit Dialog */}
       <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit User Role</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="border-2 border-zinc-900 p-0">
+          <DialogHeader className="p-4 border-b border-zinc-200">
+            <DialogTitle className="font-grotesk">Edit User Role</DialogTitle>
+            <DialogDescription className="text-xs font-mono text-zinc-500">
               Change the role for {editingUser?.email}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Select value={selectedRole} onValueChange={setSelectedRole}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No Role (Regular User)</SelectItem>
-                <SelectItem value="developer">Developer</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="p-4">
+            <div className="relative">
+              <button
+                onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+                className="flex items-center justify-between w-full px-3 py-2 border-2 border-zinc-200 bg-white text-sm font-mono text-zinc-900 hover:border-zinc-400 transition-colors"
+              >
+                {roleOptions.find(o => o.value === selectedRole)?.label || 'Select a role'}
+                <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform ${showRoleDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              {showRoleDropdown && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowRoleDropdown(false)} />
+                  <div className="absolute left-0 right-0 mt-1 bg-white border-2 border-zinc-900 z-20 shadow-lg">
+                    {roleOptions.map((option) => {
+                      const Icon = option.icon
+                      return (
+                        <button
+                          key={option.value}
+                          onClick={() => {
+                            setSelectedRole(option.value)
+                            setShowRoleDropdown(false)
+                          }}
+                          className={`w-full flex items-center gap-2 text-left px-3 py-2 text-sm font-mono hover:bg-zinc-50 transition-colors ${
+                            selectedRole === option.value ? 'bg-zinc-900 text-white hover:bg-zinc-900' : ''
+                          }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {option.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingUser(null)} disabled={isUpdating}>
+          <DialogFooter className="p-4 border-t border-zinc-200 gap-2">
+            <button
+              onClick={() => setEditingUser(null)}
+              disabled={isUpdating}
+              className="px-4 py-2 border border-zinc-200 text-zinc-600 text-sm font-mono hover:border-zinc-400 transition-colors disabled:opacity-50"
+            >
               Cancel
-            </Button>
-            <Button onClick={handleUpdateRole} disabled={isUpdating}>
+            </button>
+            <button
+              onClick={handleUpdateRole}
+              disabled={isUpdating}
+              className="px-4 py-2 bg-zinc-900 text-white text-sm font-mono hover:bg-[hsl(10,90%,55%)] transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {isUpdating && <Loader2 className="h-4 w-4 animate-spin" />}
               {isUpdating ? 'Updating...' : 'Update Role'}
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Bulk Role Edit Dialog */}
       <Dialog open={showBulkDialog} onOpenChange={setShowBulkDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Bulk Update Roles</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="border-2 border-zinc-900 p-0">
+          <DialogHeader className="p-4 border-b border-zinc-200">
+            <DialogTitle className="font-grotesk">Bulk Update Roles</DialogTitle>
+            <DialogDescription className="text-xs font-mono text-zinc-500">
               Change the role for {selectedUserIds.size} selected user(s)
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-4">
-            <Select value={bulkRole} onValueChange={setBulkRole}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No Role (Regular User)</SelectItem>
-                <SelectItem value="developer">Developer</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="text-sm text-muted-foreground">
-              Selected users:
-              <ul className="mt-2 space-y-1">
+          <div className="p-4 space-y-4">
+            <div className="relative">
+              <button
+                onClick={() => setShowBulkRoleDropdown(!showBulkRoleDropdown)}
+                className="flex items-center justify-between w-full px-3 py-2 border-2 border-zinc-200 bg-white text-sm font-mono text-zinc-900 hover:border-zinc-400 transition-colors"
+              >
+                {roleOptions.find(o => o.value === bulkRole)?.label || 'Select a role'}
+                <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform ${showBulkRoleDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              {showBulkRoleDropdown && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowBulkRoleDropdown(false)} />
+                  <div className="absolute left-0 right-0 mt-1 bg-white border-2 border-zinc-900 z-20 shadow-lg">
+                    {roleOptions.map((option) => {
+                      const Icon = option.icon
+                      return (
+                        <button
+                          key={option.value}
+                          onClick={() => {
+                            setBulkRole(option.value)
+                            setShowBulkRoleDropdown(false)
+                          }}
+                          className={`w-full flex items-center gap-2 text-left px-3 py-2 text-sm font-mono hover:bg-zinc-50 transition-colors ${
+                            bulkRole === option.value ? 'bg-zinc-900 text-white hover:bg-zinc-900' : ''
+                          }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {option.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="p-3 bg-zinc-50 border border-zinc-200 max-h-40 overflow-y-auto">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-2">Selected users:</p>
+              <ul className="space-y-1">
                 {data?.users
                   .filter(u => selectedUserIds.has(u.id))
                   .map(u => (
-                    <li key={u.id} className="font-mono text-xs">• {u.email}</li>
+                    <li key={u.id} className="text-xs font-mono text-zinc-600">• {u.email}</li>
                   ))}
               </ul>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowBulkDialog(false)} disabled={isBulkUpdating}>
+          <DialogFooter className="p-4 border-t border-zinc-200 gap-2">
+            <button
+              onClick={() => setShowBulkDialog(false)}
+              disabled={isBulkUpdating}
+              className="px-4 py-2 border border-zinc-200 text-zinc-600 text-sm font-mono hover:border-zinc-400 transition-colors disabled:opacity-50"
+            >
               Cancel
-            </Button>
-            <Button onClick={handleBulkRoleUpdate} disabled={isBulkUpdating || !bulkRole}>
+            </button>
+            <button
+              onClick={handleBulkRoleUpdate}
+              disabled={isBulkUpdating || !bulkRole}
+              className="px-4 py-2 bg-zinc-900 text-white text-sm font-mono hover:bg-[hsl(10,90%,55%)] transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {isBulkUpdating && <Loader2 className="h-4 w-4 animate-spin" />}
               {isBulkUpdating ? 'Updating...' : 'Update Roles'}
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
