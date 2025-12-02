@@ -127,9 +127,11 @@ torale/
 │   ├── k8s-setup-cloudsql.sh
 │   ├── k8s-create-secrets.sh
 │   └── k8s-check-status.sh
-├── docs/                 # Documentation
-│   ├── TEST_TEMPORAL.md
-│   └── k8s-deployment.md # K8s deployment guide
+├── docs-site/            # Public-facing documentation (VitePress)
+│   ├── index.md          # Documentation home
+│   ├── deployment/       # Deployment guides (CI/CD, K8s, etc.)
+│   ├── contributing/     # Contributing guides (testing, etc.)
+│   └── .vitepress/       # VitePress configuration
 ├── helmfile.yaml.gotmpl  # Multi-chart orchestration with environments
 ├── justfile              # Task runner (just dev, just test, etc.)
 ├── docker-compose.yml    # Local development
