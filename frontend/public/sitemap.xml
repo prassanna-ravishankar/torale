@@ -26,13 +26,6 @@
     <changefreq>monthly</changefreq>
   </url>
 
-  <!-- Waitlist page -->
-  <url>
-    <loc>https://torale.ai/waitlist</loc>
-    <priority>0.5</priority>
-    <changefreq>monthly</changefreq>
-  </url>
-
   <!-- Legal pages -->
   <url>
     <loc>https://torale.ai/terms</loc>

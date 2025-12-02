@@ -11,3 +11,6 @@ Disallow: /dashboard
 Disallow: /tasks/
 Disallow: /admin
 Disallow: /settings/
+
+# Disallow waitlist (temporary page)
+Disallow: /waitlist
