@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Main application sitemap -->
+  <sitemap>
+    <loc>https://torale.ai/sitemap.xml</loc>
+  </sitemap>
+
+  <!-- Documentation sitemap -->
+  <sitemap>
+    <loc>https://docs.torale.ai/sitemap.xml</loc>
+  </sitemap>
+</sitemapindex>

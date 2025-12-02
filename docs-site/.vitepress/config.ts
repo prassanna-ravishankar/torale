@@ -7,6 +7,10 @@ export default withMermaid(
   description: 'Grounded search monitoring platform for automated web monitoring',
   base: '/',
 
+  sitemap: {
+    hostname: 'https://docs.torale.ai'
+  },
+
   ignoreDeadLinks: [
     // Ignore localhost URLs in self-hosted documentation
     /^http:\/\/localhost/
