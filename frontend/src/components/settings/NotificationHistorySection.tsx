@@ -1,14 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Mail, Webhook, CheckCircle2, XCircle, Clock, ExternalLink } from 'lucide-react';
+import { Loader2, Mail, Webhook, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { api } from '@/lib/api';
-import { toast } from 'sonner';
 import type { WebhookDelivery, NotificationSend } from '@/types';
 
 export const NotificationHistorySection: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'emails' | 'webhooks'>('emails');
   const [emailSends, setEmailSends] = useState<NotificationSend[]>([]);
   const [webhookDeliveries, setWebhookDeliveries] = useState<WebhookDelivery[]>([]);
   const [isLoadingEmails, setIsLoadingEmails] = useState(true);
@@ -57,157 +53,169 @@ export const NotificationHistorySection: React.FC = () => {
     return date.toLocaleDateString();
   };
 
-  const getStatusBadge = (status: string) => {
+  const StatusBadge = ({ status }: { status: string }) => {
     switch (status) {
       case 'success':
         return (
-          <Badge variant="secondary" className="gap-1">
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] font-mono uppercase tracking-wider border border-emerald-200">
             <CheckCircle2 className="h-3 w-3" />
             Success
-          </Badge>
+          </span>
         );
       case 'failed':
         return (
-          <Badge variant="destructive" className="gap-1">
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-50 text-red-700 text-[9px] font-mono uppercase tracking-wider border border-red-200">
             <XCircle className="h-3 w-3" />
             Failed
-          </Badge>
+          </span>
         );
       case 'retrying':
         return (
-          <Badge variant="outline" className="gap-1">
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 text-[9px] font-mono uppercase tracking-wider border border-amber-200">
             <Clock className="h-3 w-3" />
             Retrying
-          </Badge>
+          </span>
         );
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return (
+          <span className="inline-flex items-center px-1.5 py-0.5 bg-zinc-50 text-zinc-600 text-[9px] font-mono uppercase tracking-wider border border-zinc-200">
+            {status}
+          </span>
+        );
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Notification History</CardTitle>
-        <CardDescription>Recent email sends and webhook deliveries</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="emails" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="emails" className="gap-2">
-              <Mail className="h-4 w-4" />
-              Email Sends
-            </TabsTrigger>
-            <TabsTrigger value="webhooks" className="gap-2">
-              <Webhook className="h-4 w-4" />
-              Webhook Deliveries
-            </TabsTrigger>
-          </TabsList>
+    <div className="bg-white border-2 border-zinc-200">
+      {/* Header */}
+      <div className="p-4 border-b border-zinc-200">
+        <p className="text-xs text-zinc-500">
+          Recent email sends and webhook deliveries
+        </p>
+      </div>
 
-          {/* Email Sends Tab */}
-          <TabsContent value="emails" className="space-y-4">
-            {isLoadingEmails ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : emailSends.length === 0 ? (
-              <Alert>
-                <Mail className="h-4 w-4" />
-                <AlertDescription>
-                  No email notifications sent yet. Email notifications will appear here when task
-                  conditions are met.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <div className="space-y-2">
-                {emailSends.map((send) => (
-                  <div
-                    key={send.id}
-                    className="flex items-center justify-between rounded-lg border p-4 hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <div className="flex flex-col min-w-0 flex-1">
-                        <span className="font-medium truncate">{send.recipient}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {formatDate(send.created_at)}
-                        </span>
-                      </div>
+      {/* Tabs */}
+      <div className="flex border-b border-zinc-200">
+        <button
+          onClick={() => setActiveTab('emails')}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-xs font-mono transition-colors ${
+            activeTab === 'emails'
+              ? 'bg-zinc-900 text-white'
+              : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
+          }`}
+        >
+          <Mail className="h-4 w-4" />
+          Emails
+        </button>
+        <button
+          onClick={() => setActiveTab('webhooks')}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-xs font-mono transition-colors ${
+            activeTab === 'webhooks'
+              ? 'bg-zinc-900 text-white'
+              : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
+          }`}
+        >
+          <Webhook className="h-4 w-4" />
+          Webhooks
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
+        {activeTab === 'emails' ? (
+          // Email Sends
+          isLoadingEmails ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+            </div>
+          ) : emailSends.length === 0 ? (
+            <div className="p-4 bg-zinc-50 border border-dashed border-zinc-300 text-center">
+              <Mail className="h-5 w-5 text-zinc-400 mx-auto mb-2" />
+              <p className="text-xs text-zinc-500 font-mono">
+                No email notifications sent yet
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {emailSends.map((send) => (
+                <div
+                  key={send.id}
+                  className="p-3 border border-zinc-200 hover:border-zinc-300 transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="bg-zinc-100 w-8 h-8 flex items-center justify-center shrink-0">
+                      <Mail className="h-4 w-4 text-zinc-600" />
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {getStatusBadge(send.status)}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs sm:text-sm font-mono text-zinc-900 break-all">{send.recipient}</p>
+                      <p className="text-[10px] font-mono text-zinc-400 mt-0.5">{formatDate(send.created_at)}</p>
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <StatusBadge status={send.status} />
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Webhook Deliveries Tab */}
-          <TabsContent value="webhooks" className="space-y-4">
-            {isLoadingWebhooks ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : webhookDeliveries.length === 0 ? (
-              <Alert>
-                <Webhook className="h-4 w-4" />
-                <AlertDescription>
-                  No webhook deliveries yet. Webhook notifications will appear here when task
-                  conditions are met.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <div className="space-y-2">
-                {webhookDeliveries.map((delivery) => (
-                  <div
-                    key={delivery.id}
-                    className="rounded-lg border p-4 hover:bg-accent/50 transition-colors space-y-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <Webhook className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <div className="flex flex-col min-w-0 flex-1">
-                          <span className="font-medium truncate">{delivery.webhook_url}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {formatDate(delivery.created_at)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          // Webhook Deliveries
+          isLoadingWebhooks ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+            </div>
+          ) : webhookDeliveries.length === 0 ? (
+            <div className="p-4 bg-zinc-50 border border-dashed border-zinc-300 text-center">
+              <Webhook className="h-5 w-5 text-zinc-400 mx-auto mb-2" />
+              <p className="text-xs text-zinc-500 font-mono">
+                No webhook deliveries yet
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {webhookDeliveries.map((delivery) => (
+                <div
+                  key={delivery.id}
+                  className="p-3 border border-zinc-200 hover:border-zinc-300 transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="bg-zinc-100 w-8 h-8 flex items-center justify-center shrink-0">
+                      <Webhook className="h-4 w-4 text-zinc-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs sm:text-sm font-mono text-zinc-900 break-all">{delivery.webhook_url}</p>
+                      <p className="text-[10px] font-mono text-zinc-400 mt-0.5">{formatDate(delivery.created_at)}</p>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
                         {delivery.http_status_code && (
-                          <Badge variant="outline">{delivery.http_status_code}</Badge>
+                          <span className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 text-[9px] font-mono">
+                            {delivery.http_status_code}
+                          </span>
                         )}
-                        {getStatusBadge(delivery.status)}
+                        <StatusBadge status={delivery.status} />
                       </div>
-                    </div>
 
-                    {/* Retry Info */}
-                    {delivery.attempts > 1 && (
-                      <div className="text-sm text-muted-foreground pl-7">
-                        Attempt {delivery.attempts}
-                        {delivery.next_retry_at && (
-                          <span> • Next retry: {formatDate(delivery.next_retry_at)}</span>
-                        )}
-                      </div>
-                    )}
+                      {/* Retry Info */}
+                      {delivery.attempts > 1 && (
+                        <p className="text-[10px] font-mono text-zinc-500 mt-2">
+                          Attempt {delivery.attempts}
+                          {delivery.next_retry_at && ` • Next retry: ${formatDate(delivery.next_retry_at)}`}
+                        </p>
+                      )}
 
-                    {/* Error Message */}
-                    {delivery.error_message && (
-                      <Alert variant="destructive" className="mt-2">
-                        <XCircle className="h-4 w-4" />
-                        <AlertDescription className="text-xs">
+                      {/* Error Message */}
+                      {delivery.error_message && (
+                        <div className="mt-2 p-2 bg-red-50 border border-red-200 text-red-700 text-[10px] font-mono break-all">
                           {delivery.error_message}
-                        </AlertDescription>
-                      </Alert>
-                    )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+                </div>
+              ))}
+            </div>
+          )
+        )}
+      </div>
+    </div>
   );
 };
