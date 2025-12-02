@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion } from "@/lib/motion-compat";
 import {
   ArrowRight,
@@ -467,9 +467,9 @@ export default function Landing() {
                   [ © 2025 TORALE LABS INC. ]
                 </div>
                 <div className="flex gap-4 text-xs text-zinc-500">
-                  <button onClick={() => navigate('/terms')} className="hover:text-white transition-colors">Terms of Service</button>
+                  <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
                   <span className="text-zinc-700">•</span>
-                  <button onClick={() => navigate('/privacy')} className="hover:text-white transition-colors">Privacy Policy</button>
+                  <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
                 </div>
               </div>
               <div className="flex gap-6">

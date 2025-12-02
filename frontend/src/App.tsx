@@ -1,5 +1,5 @@
-import React from 'react'
-import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
+import React, { useEffect } from 'react'
+import { Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { SignIn, SignUp } from '@clerk/clerk-react'
 import { Dashboard } from '@/components/Dashboard'
 import { TaskDetail } from '@/components/TaskDetail'
@@ -74,6 +74,16 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function ScrollToTop() {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+
+  return null
+}
+
 export default function App() {
   const navigate = useNavigate()
 
@@ -90,6 +100,7 @@ export default function App() {
 
   return (
     <>
+      <ScrollToTop />
       <Routes>
         <Route
           path="/sign-in/*"
