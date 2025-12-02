@@ -9,6 +9,8 @@ import { Header } from '@/components/Header'
 import { MobileNav } from '@/components/MobileNav'
 import { Admin } from '@/pages/Admin'
 import { NotificationSettingsPage } from '@/pages/NotificationSettingsPage'
+import { TermsOfService } from '@/pages/TermsOfService'
+import { PrivacyPolicy } from '@/pages/PrivacyPolicy'
 import { CapacityGate } from '@/components/CapacityGate'
 import { WaitlistPage } from '@/components/WaitlistPage'
 import { Toaster } from '@/components/ui/sonner'
@@ -136,6 +138,14 @@ export default function App() {
         <Route
           path="/changelog"
           element={<Changelog />}
+        />
+        <Route
+          path="/terms"
+          element={<TermsOfService />}
+        />
+        <Route
+          path="/privacy"
+          element={<PrivacyPolicy />}
         />
         <Route
           path="/"

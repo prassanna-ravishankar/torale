@@ -462,8 +462,15 @@ export default function Landing() {
             </div>
 
             <div className="border-t border-zinc-900 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-              <div className="text-xs text-zinc-600 font-mono">
-                [ © 2025 TORALE LABS INC. ]
+              <div className="flex flex-col md:flex-row items-center gap-4">
+                <div className="text-xs text-zinc-600 font-mono">
+                  [ © 2025 TORALE LABS INC. ]
+                </div>
+                <div className="flex gap-4 text-xs text-zinc-500">
+                  <button onClick={() => navigate('/terms')} className="hover:text-white transition-colors">Terms of Service</button>
+                  <span className="text-zinc-700">•</span>
+                  <button onClick={() => navigate('/privacy')} className="hover:text-white transition-colors">Privacy Policy</button>
+                </div>
               </div>
               <div className="flex gap-6">
                 <a href="https://github.com/prassanna-ravishankar/torale" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
