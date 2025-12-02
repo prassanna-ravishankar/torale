@@ -15,6 +15,21 @@ export default {
       },
     },
     extend: {
+      // Tri-font stack (from mock designs)
+      fontFamily: {
+        grotesk: ['Space Grotesk', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
+
+      // Brutalist shadows (from mock designs)
+      boxShadow: {
+        'brutalist-sm': '2px 2px 0px 0px rgba(0,0,0,0.1)',
+        'brutalist': '4px 4px 0px 0px rgba(0,0,0,0.1)',
+        'brutalist-lg': '6px 6px 0px 0px rgba(24,24,27,1)',
+        'brutalist-xl': '8px 8px 0px 0px rgba(0,0,0,1)',
+      },
+
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

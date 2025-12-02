@@ -217,11 +217,11 @@ export const CustomScheduleDialog: React.FC<CustomScheduleDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Custom Schedule</DialogTitle>
-          <DialogDescription>
-            Build a schedule visually or enter a cron expression directly.
+      <DialogContent className="max-w-2xl border-2 border-zinc-900 shadow-brutalist-lg">
+        <DialogHeader className="border-b-2 border-zinc-100 pb-4">
+          <DialogTitle className="text-xl font-bold font-grotesk">Custom Schedule</DialogTitle>
+          <DialogDescription className="text-zinc-500">
+            Build a schedule visually or enter a cron expression directly
           </DialogDescription>
         </DialogHeader>
 
@@ -235,7 +235,7 @@ export const CustomScheduleDialog: React.FC<CustomScheduleDialogProps> = ({
           <TabsContent value="builder" className="space-y-4 py-4">
             {/* Frequency Selection */}
             <div className="space-y-2">
-              <Label htmlFor="frequency">Frequency</Label>
+              <Label htmlFor="frequency" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Frequency</Label>
               <Select value={frequency} onValueChange={setFrequency}>
                 <SelectTrigger id="frequency">
                   <SelectValue />
@@ -253,7 +253,7 @@ export const CustomScheduleDialog: React.FC<CustomScheduleDialogProps> = ({
             {/* Every N Hours Input */}
             {frequency === 'every-n-hours' && (
               <div className="space-y-2">
-                <Label htmlFor="every-n-hours">Every N hours</Label>
+                <Label htmlFor="every-n-hours" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Every N hours</Label>
                 <Input
                   id="every-n-hours"
                   type="number"
@@ -269,7 +269,7 @@ export const CustomScheduleDialog: React.FC<CustomScheduleDialogProps> = ({
             {['daily', 'weekly', 'monthly'].includes(frequency) && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="hour">Hour (0-23)</Label>
+                  <Label htmlFor="hour" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Hour (0-23)</Label>
                   <Input
                     id="hour"
                     type="number"
@@ -280,7 +280,7 @@ export const CustomScheduleDialog: React.FC<CustomScheduleDialogProps> = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="minute">Minute (0-59)</Label>
+                  <Label htmlFor="minute" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Minute (0-59)</Label>
                   <Input
                     id="minute"
                     type="number"

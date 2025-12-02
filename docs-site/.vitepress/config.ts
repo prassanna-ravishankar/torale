@@ -7,6 +7,10 @@ export default withMermaid(
   description: 'Grounded search monitoring platform for automated web monitoring',
   base: '/',
 
+  sitemap: {
+    hostname: 'https://docs.torale.ai'
+  },
+
   ignoreDeadLinks: [
     // Ignore localhost URLs in self-hosted documentation
     /^http:\/\/localhost/
@@ -16,7 +20,7 @@ export default withMermaid(
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }],
     ['link', { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/logo-32.png' }],
     ['link', { rel: 'icon', type: 'image/png', sizes: '64x64', href: '/logo-64.png' }],
-    ['meta', { name: 'theme-color', content: '#203345' }],
+    ['meta', { name: 'theme-color', content: '#18181b' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'Torale Documentation' }],
     ['meta', { property: 'og:description', content: 'Automated web monitoring with intelligent condition evaluation' }],
@@ -177,41 +181,45 @@ export default withMermaid(
       light: 'github-light',
       dark: 'github-dark'
     },
-    lineNumbers: true
+    lineNumbers: false
   },
 
   mermaid: {
     theme: 'base',
     themeVariables: {
-      // Torale brand colors - adjusted for neo look
-      primaryColor: '#d4e4ef',
-      primaryTextColor: '#203345',
-      primaryBorderColor: '#203345',
+      // Neo-brutalist theme - zinc grays + brand red accents
+      primaryColor: '#fafafa',           // zinc-50
+      primaryTextColor: '#18181b',       // zinc-900
+      primaryBorderColor: '#18181b',     // zinc-900
 
-      secondaryColor: '#cfe8ff',
-      secondaryTextColor: '#1a2836',
-      secondaryBorderColor: '#4f9eff',
+      secondaryColor: '#ffffff',         // white
+      secondaryTextColor: '#18181b',     // zinc-900
+      secondaryBorderColor: '#e4e4e7',   // zinc-200
 
-      tertiaryColor: '#fff',
-      tertiaryTextColor: '#333',
-      tertiaryBorderColor: '#ddd',
+      tertiaryColor: '#f4f4f5',          // zinc-100
+      tertiaryTextColor: '#71717a',      // zinc-500
+      tertiaryBorderColor: '#e4e4e7',    // zinc-200
 
-      // General styling
+      // General styling - technical aesthetic
       background: '#ffffff',
-      mainBkg: '#d4e4ef',
-      lineColor: '#203345',
-      textColor: '#203345',
+      mainBkg: '#fafafa',
+      lineColor: '#18181b',
+      textColor: '#18181b',
       fontFamily: 'Inter, system-ui, sans-serif',
       fontSize: '16px',
 
-      // Flowchart - use brand blue
-      nodeBorder: '#203345',
-      clusterBkg: '#f5f6f8',
-      clusterBorder: '#203345',
-      defaultLinkColor: '#203345',
+      // Flowchart - brutalist black lines
+      nodeBorder: '#18181b',
+      clusterBkg: '#f4f4f5',
+      clusterBorder: '#18181b',
+      defaultLinkColor: '#18181b',
 
       // Node colors
-      nodeTextColor: '#203345'
+      nodeTextColor: '#18181b',
+
+      // Accent color (brand red for emphasis)
+      accentColor: 'hsl(10, 90%, 55%)',
+      accentTextColor: '#ffffff'
     }
   }
 })

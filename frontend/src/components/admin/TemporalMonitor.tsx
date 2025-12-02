@@ -1,18 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api } from '@/lib/api'
 import { formatDistanceToNow } from 'date-fns'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Loader2, Clock, Play, Pause, CheckCircle2, XCircle, RefreshCw, Calendar } from 'lucide-react'
 import { formatDuration } from '@/lib/utils'
 import { WorkflowCard } from './cards/WorkflowCard'
 import { ScheduleCard } from './cards/ScheduleCard'
@@ -42,6 +31,7 @@ export function TemporalMonitor() {
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'workflows' | 'schedules'>('workflows')
 
   useEffect(() => {
     loadTemporalData()
@@ -64,172 +54,249 @@ export function TemporalMonitor() {
     }
   }
 
+  const getWorkflowStatusBadge = (status: string) => {
+    switch (status) {
+      case 'COMPLETED':
+        return (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-mono uppercase tracking-wider border border-emerald-200">
+            <CheckCircle2 className="h-3 w-3" />
+            Completed
+          </span>
+        )
+      case 'FAILED':
+        return (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-50 text-red-700 text-[10px] font-mono uppercase tracking-wider border border-red-200">
+            <XCircle className="h-3 w-3" />
+            Failed
+          </span>
+        )
+      case 'RUNNING':
+        return (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-mono uppercase tracking-wider border border-blue-200">
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            Running
+          </span>
+        )
+      default:
+        return (
+          <span className="inline-flex items-center px-1.5 py-0.5 bg-zinc-50 text-zinc-600 text-[10px] font-mono uppercase tracking-wider border border-zinc-200">
+            {status}
+          </span>
+        )
+    }
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading Temporal data...</div>
+      <div className="flex items-center justify-center h-64 bg-white border-2 border-zinc-200">
+        <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-destructive">Error: {error}</div>
+      <div className="flex items-center justify-center h-64 bg-white border-2 border-zinc-200">
+        <div className="text-center">
+          <p className="text-sm font-mono text-red-600">Error: {error}</p>
+          <button
+            onClick={loadTemporalData}
+            className="mt-2 px-3 py-1.5 text-xs font-mono border border-zinc-200 hover:border-zinc-900 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     )
   }
 
   return (
-    <Tabs defaultValue="workflows" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="workflows">Workflows</TabsTrigger>
-        <TabsTrigger value="schedules">Schedules</TabsTrigger>
-      </TabsList>
+    <div className="bg-white border-2 border-zinc-200">
+      {/* Header with Tabs */}
+      <div className="border-b border-zinc-200">
+        <div className="p-4 border-b border-zinc-200 flex items-center gap-3">
+          <div className="bg-zinc-900 text-white w-8 h-8 flex items-center justify-center shrink-0">
+            <Clock className="h-4 w-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-grotesk font-bold">Temporal Monitor</h3>
+            <p className="text-[10px] font-mono text-zinc-400">
+              Workflows and schedules management
+            </p>
+          </div>
+        </div>
 
-      <TabsContent value="workflows">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Recent Workflows</CardTitle>
-            <CardDescription className="text-sm">Last 24 hours of workflow executions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* Desktop Table View */}
-            <div className="hidden md:block">
-              <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Workflow ID</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Started</TableHead>
-                  <TableHead>Duration</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+        {/* Tab Navigation */}
+        <div className="flex">
+          <button
+            onClick={() => setActiveTab('workflows')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-xs font-mono transition-colors border-b-2 ${
+              activeTab === 'workflows'
+                ? 'bg-zinc-900 text-white border-zinc-900'
+                : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 border-transparent'
+            }`}
+          >
+            <Play className="h-4 w-4" />
+            Workflows ({workflows.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('schedules')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-xs font-mono transition-colors border-b-2 ${
+              activeTab === 'schedules'
+                ? 'bg-zinc-900 text-white border-zinc-900'
+                : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 border-transparent'
+            }`}
+          >
+            <Calendar className="h-4 w-4" />
+            Schedules ({schedules.length})
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'workflows' ? (
+        <>
+          {/* Workflows - Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-zinc-200 bg-zinc-50">
+                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Workflow ID</th>
+                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Type</th>
+                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Status</th>
+                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Started</th>
+                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Duration</th>
+                </tr>
+              </thead>
+              <tbody>
                 {workflows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      No recent workflows
-                    </TableCell>
-                  </TableRow>
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center">
+                      <Play className="h-5 w-5 text-zinc-400 mx-auto mb-2" />
+                      <p className="text-xs text-zinc-500 font-mono">No recent workflows</p>
+                    </td>
+                  </tr>
                 ) : (
                   workflows.map((workflow) => (
-                    <TableRow key={`${workflow.workflow_id}-${workflow.run_id}`}>
-                      <TableCell className="font-mono text-xs max-w-xs">
+                    <tr key={`${workflow.workflow_id}-${workflow.run_id}`} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
+                      <td className="p-3">
                         <a
                           href={workflow.ui_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 hover:text-primary hover:underline"
+                          className="inline-flex items-center gap-1 text-xs font-mono text-zinc-900 hover:text-[hsl(10,90%,55%)] transition-colors"
                         >
-                          <span className="truncate">{workflow.workflow_id}</span>
+                          <span className="truncate max-w-[200px]">{workflow.workflow_id}</span>
                           <ExternalLink className="h-3 w-3 flex-shrink-0" />
                         </a>
-                      </TableCell>
-                      <TableCell className="text-sm">{workflow.workflow_type}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            workflow.status === 'COMPLETED'
-                              ? 'default'
-                              : workflow.status === 'FAILED'
-                                ? 'destructive'
-                                : 'secondary'
-                          }
-                        >
-                          {workflow.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs">
+                      </td>
+                      <td className="p-3 text-xs font-mono text-zinc-600">{workflow.workflow_type}</td>
+                      <td className="p-3">{getWorkflowStatusBadge(workflow.status)}</td>
+                      <td className="p-3 text-xs font-mono text-zinc-500">
                         {workflow.start_time
                           ? formatDistanceToNow(new Date(workflow.start_time), { addSuffix: true })
                           : '-'}
-                      </TableCell>
-                      <TableCell className="text-xs">
+                      </td>
+                      <td className="p-3 text-xs font-mono text-zinc-900">
                         {formatDuration(
                           workflow.start_time,
                           workflow.close_time,
                           workflow.status === 'RUNNING' ? 'In progress' : '-'
                         )}
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   ))
                 )}
-              </TableBody>
-            </Table>
-            </div>
+              </tbody>
+            </table>
+          </div>
 
-            {/* Mobile Card View */}
-            <div className="block md:hidden space-y-4">
-              {workflows.length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground py-8">No recent workflows</p>
-              ) : (
-                workflows.map((workflow) => (
-                  <WorkflowCard key={`${workflow.workflow_id}-${workflow.run_id}`} workflow={workflow} />
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="schedules">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Active Schedules</CardTitle>
-            <CardDescription className="text-sm">Temporal schedules managing task executions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* Desktop Table View */}
-            <div className="hidden md:block">
-              <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Schedule ID</TableHead>
-                  <TableHead>Cron Spec</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Recent Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          {/* Workflows - Mobile Card View */}
+          <div className="block md:hidden p-4 space-y-3">
+            {workflows.length === 0 ? (
+              <div className="p-4 bg-zinc-50 border border-dashed border-zinc-300 text-center">
+                <Play className="h-5 w-5 text-zinc-400 mx-auto mb-2" />
+                <p className="text-xs text-zinc-500 font-mono">No recent workflows</p>
+              </div>
+            ) : (
+              workflows.map((workflow) => (
+                <WorkflowCard key={`${workflow.workflow_id}-${workflow.run_id}`} workflow={workflow} />
+              ))
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Schedules - Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-zinc-200 bg-zinc-50">
+                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Schedule ID</th>
+                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Cron Spec</th>
+                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Status</th>
+                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Recent Actions</th>
+                </tr>
+              </thead>
+              <tbody>
                 {schedules.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
-                      No active schedules
-                    </TableCell>
-                  </TableRow>
+                  <tr>
+                    <td colSpan={4} className="p-8 text-center">
+                      <Calendar className="h-5 w-5 text-zinc-400 mx-auto mb-2" />
+                      <p className="text-xs text-zinc-500 font-mono">No active schedules</p>
+                    </td>
+                  </tr>
                 ) : (
                   schedules.map((schedule) => (
-                    <TableRow key={schedule.schedule_id}>
-                      <TableCell className="font-mono text-xs max-w-xs truncate">
+                    <tr key={schedule.schedule_id} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
+                      <td className="p-3 text-xs font-mono text-zinc-900 truncate max-w-[200px]">
                         {schedule.schedule_id}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{schedule.spec || 'N/A'}</TableCell>
-                      <TableCell>
-                        <Badge variant={schedule.paused ? 'secondary' : 'default'}>
-                          {schedule.paused ? 'Paused' : 'Running'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{schedule.recent_actions}</TableCell>
-                    </TableRow>
+                      </td>
+                      <td className="p-3">
+                        <code className="px-1.5 py-0.5 bg-zinc-100 text-zinc-700 text-[10px] font-mono">
+                          {schedule.spec || 'N/A'}
+                        </code>
+                      </td>
+                      <td className="p-3">
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider border ${
+                          schedule.paused
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        }`}>
+                          {schedule.paused ? (
+                            <>
+                              <Pause className="h-3 w-3" />
+                              Paused
+                            </>
+                          ) : (
+                            <>
+                              <Play className="h-3 w-3" />
+                              Running
+                            </>
+                          )}
+                        </span>
+                      </td>
+                      <td className="p-3 text-sm font-mono text-zinc-900">{schedule.recent_actions}</td>
+                    </tr>
                   ))
                 )}
-              </TableBody>
-            </Table>
-            </div>
+              </tbody>
+            </table>
+          </div>
 
-            {/* Mobile Card View */}
-            <div className="block md:hidden space-y-4">
-              {schedules.length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground py-8">No active schedules</p>
-              ) : (
-                schedules.map((schedule) => <ScheduleCard key={schedule.schedule_id} schedule={schedule} />)
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-    </Tabs>
+          {/* Schedules - Mobile Card View */}
+          <div className="block md:hidden p-4 space-y-3">
+            {schedules.length === 0 ? (
+              <div className="p-4 bg-zinc-50 border border-dashed border-zinc-300 text-center">
+                <Calendar className="h-5 w-5 text-zinc-400 mx-auto mb-2" />
+                <p className="text-xs text-zinc-500 font-mono">No active schedules</p>
+              </div>
+            ) : (
+              schedules.map((schedule) => <ScheduleCard key={schedule.schedule_id} schedule={schedule} />)
+            )}
+          </div>
+        </>
+      )}
+    </div>
   )
 }

@@ -232,20 +232,20 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="text-2xl font-bold tracking-tight">
-            Edit Task
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border-2 border-zinc-900 shadow-brutalist-lg">
+        <DialogHeader className="flex-shrink-0 border-b-2 border-zinc-100 pb-4">
+          <DialogTitle className="text-2xl font-bold font-grotesk tracking-tight">
+            Edit Monitor
           </DialogTitle>
-          <DialogDescription>
-            Update your monitoring task settings.
+          <DialogDescription className="text-zinc-500">
+            Update your monitoring task settings
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Magic Input Section */}
-          <div className="bg-muted/30 p-4 rounded-lg border border-dashed border-muted-foreground/25 space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-primary">
+          <div className="bg-zinc-50 p-4 border-2 border-zinc-200 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-bold font-grotesk text-zinc-900">
               <Sparkles className="w-4 h-4" />
               Magic Refine
             </div>
@@ -281,7 +281,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
           <div className="space-y-4">
             {/* Task Name */}
             <div className="space-y-2">
-              <Label htmlFor="name" className="font-semibold">Task Name</Label>
+              <Label htmlFor="name" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Monitor Name</Label>
               <Input
                 id="name"
                 value={name}
@@ -302,8 +302,8 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
 
             {/* Search Query */}
             <div className="space-y-2">
-              <Label htmlFor="searchQuery" className="font-semibold flex items-center gap-2">
-                <Search className="h-4 w-4" />
+              <Label htmlFor="searchQuery" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
+                <Search className="h-3 w-3" />
                 What to Monitor
               </Label>
               <Textarea
@@ -327,8 +327,8 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
 
             {/* Condition Description */}
             <div className="space-y-2">
-              <Label htmlFor="condition" className="font-semibold flex items-center gap-2">
-                <Bell className="h-4 w-4" />
+              <Label htmlFor="condition" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
+                <Bell className="h-3 w-3" />
                 When to Notify
               </Label>
               <Textarea
@@ -366,11 +366,11 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
             </div>
 
             <CollapsibleContent className="space-y-4 pt-2 animate-in slide-in-from-top-2 fade-in duration-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border border-border/50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-zinc-50 border-2 border-zinc-100">
                 {/* Schedule */}
                 <div className="space-y-2">
-                  <Label htmlFor="schedule" className="text-sm font-medium flex items-center gap-2">
-                    <Clock className="h-3.5 w-3.5" />
+                  <Label htmlFor="schedule" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
+                    <Clock className="h-3 w-3" />
                     Check Frequency
                   </Label>
                   <div className="space-y-2">
@@ -445,8 +445,8 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
 
                 {/* Notification Behavior */}
                 <div className="space-y-2">
-                  <Label htmlFor="notifyBehavior" className="text-sm font-medium flex items-center gap-2">
-                    <Bell className="h-3.5 w-3.5" />
+                  <Label htmlFor="notifyBehavior" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
+                    <Bell className="h-3 w-3" />
                     Notification Mode
                   </Label>
                   <Select
@@ -478,11 +478,11 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
           )}
         </div>
 
-        <DialogFooter className="pt-4 border-t flex-shrink-0">
+        <DialogFooter className="pt-4 border-t-2 border-zinc-100 flex-shrink-0 gap-3">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUpdating}>
             Cancel
           </Button>
-          <Button onClick={handleUpdate} disabled={isUpdating}>
+          <Button onClick={handleUpdate} disabled={isUpdating} className="shadow-brutalist">
             {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Changes
           </Button>

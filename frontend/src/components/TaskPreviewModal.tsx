@@ -85,10 +85,10 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Preview: {task.name}</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden border-2 border-zinc-900 shadow-brutalist-lg">
+        <DialogHeader className="flex-shrink-0 border-b-2 border-zinc-100 pb-4">
+          <DialogTitle className="text-xl font-bold font-grotesk">Preview: {task.name}</DialogTitle>
+          <DialogDescription className="text-zinc-500">
             Testing your monitoring task (notifications suppressed)
           </DialogDescription>
         </DialogHeader>
@@ -117,9 +117,9 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
           {/* Results */}
           {execution && execution.status === 'success' && execution.result && (
             <div className="space-y-4">
-              <div className="p-3 bg-muted/50 rounded-lg">
-                <p className="text-sm font-medium mb-1">Search Query:</p>
-                <p className="text-sm text-muted-foreground">"{task.search_query}"</p>
+              <div className="p-3 bg-zinc-50 border-2 border-zinc-100">
+                <p className="text-[10px] font-mono uppercase text-zinc-400 mb-1 tracking-wider">Search Query</p>
+                <p className="text-sm text-zinc-600">"{task.search_query}"</p>
               </div>
 
               <SearchPreview
@@ -132,16 +132,16 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
               />
 
               {execution.change_summary && (
-                <div className="p-3 bg-muted rounded-md">
-                  <p className="text-sm font-medium mb-1">What Changed:</p>
-                  <p className="text-sm text-muted-foreground">{execution.change_summary}</p>
+                <div className="p-3 bg-zinc-50 border-2 border-zinc-100">
+                  <p className="text-[10px] font-mono uppercase text-zinc-400 mb-1 tracking-wider">What Changed</p>
+                  <p className="text-sm text-zinc-600">{execution.change_summary}</p>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        <DialogFooter className="flex-shrink-0">
+        <DialogFooter className="flex-shrink-0 border-t-2 border-zinc-100 pt-4 gap-3">
           <Button
             variant="outline"
             onClick={() => {
@@ -150,7 +150,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
             }}
           >
             <Edit className="h-4 w-4 mr-2" />
-            Edit Task
+            Edit
           </Button>
           <Button
             variant="outline"
@@ -162,7 +162,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
             <ExternalLink className="h-4 w-4 mr-2" />
             View History
           </Button>
-          <Button onClick={() => onOpenChange(false)}>
+          <Button onClick={() => onOpenChange(false)} className="shadow-brutalist">
             Close
           </Button>
         </DialogFooter>

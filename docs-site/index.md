@@ -2,43 +2,24 @@
 layout: home
 
 hero:
-  name: Torale
-  text: Automated Web Monitoring
-  tagline: Monitor the web. Get notified when it matters.
+  name: Torale Docs
+  text: Technical Documentation
+  tagline: Grounded search monitoring platform
   image:
     src: /logo.svg
     alt: Torale
   actions:
     - theme: brand
-      text: Get Started
+      text: Quickstart
       link: /getting-started/
     - theme: alt
-      text: Try Torale
-      link: https://torale.ai
-
-features:
-  - title: AI-Powered Task Creation
-    details: Describe what you want to monitor in plain English. Our AI generates the perfect search query, condition, and schedule automatically.
-
-  - title: Grounded Search
-    details: Search the web with real-time results from Google Search, evaluated by LLMs for accurate, source-backed answers.
-
-  - title: Intelligent Conditions
-    details: Define specific trigger conditions in natural language. The system evaluates search results and determines when your criteria are met.
-
-  - title: Visual Schedule Builder
-    details: Choose from preset schedules (hourly, daily, weekly) or build custom schedules with an intuitive visual interface. No cron knowledge required.
-
-  - title: Automated Scheduling
-    details: Configure when checks run using cron expressions. Temporal workflows handle execution, retries, and error recovery automatically.
-
-  - title: State Tracking
-    details: Compare results over time to detect meaningful changes. Get notified once when conditions are met, not repeatedly for the same information.
+      text: API Reference
+      link: /api/overview
 ---
 
-## What is Torale?
+## Overview
 
-Torale automates web monitoring by executing scheduled searches, evaluating results against your conditions, and sending notifications when conditions are met. Instead of manually checking websites for updates, you create monitoring tasks that handle the search, evaluation, and notification process automatically.
+Torale executes scheduled web searches, evaluates results against trigger conditions, and stores execution history. Grounded search combines Google Search with LLM evaluation for source-backed monitoring.
 
 ## Example
 
@@ -60,17 +41,7 @@ if executions[0].condition_met:
     print(executions[0].result["answer"])
 ```
 
-## Use Cases
-
-**Product Launch Monitoring** - Get notified when companies announce release dates for new products you're interested in.
-
-**Price Tracking** - Monitor price changes across retailers and get alerted when items drop below your target price.
-
-**Stock Availability** - Track when out-of-stock items become available for purchase.
-
-**Event & Ticketing** - Know immediately when tickets go on sale for concerts, sports events, or festivals.
-
-## How It Works
+## Architecture
 
 ```mermaid
 ---
@@ -79,30 +50,25 @@ config:
   theme: base
 ---
 flowchart LR
-    A[Create Task]
-    B[Schedule]
-    C[Search Web]
+    A[Task]
+    B[Temporal]
+    C[Search]
     D[Evaluate]
-    E[Notify]
+    E[Store]
 
     A --> B --> C --> D --> E
 ```
 
-Torale combines four core capabilities to automate web monitoring:
+**Core Components:**
+- **Grounded Search**: Google Search API via Gemini LLM with source attribution
+- **Temporal Workflows**: Cron-based scheduling with automatic retries and state management
+- **State Tracking**: Detects changes between executions to prevent duplicate notifications
+- **Condition Evaluation**: LLM-based determination of trigger condition status
 
-**Grounded Search** uses Google Search to find current information on the web, with LLM-powered answer extraction that provides concise, source-backed responses.
+## Interfaces
 
-**Intelligent Conditions** evaluate whether your specific trigger criteria have been met. The system understands natural language conditions and makes intelligent determinations based on search results.
-
-**Automated Scheduling** runs your tasks on configurable cron schedules. Temporal workflows handle execution timing, automatic retries on failures, and durable state management across system restarts.
-
-**State Tracking** compares current results with previous executions to identify meaningful changes. This prevents duplicate notifications when information hasn't actually changed.
-
-## Get Started
-
-Choose your preferred method:
-
-- [Web Dashboard](/getting-started/web-dashboard) - Sign up at torale.ai and create tasks through the UI
-- [CLI](/getting-started/cli) - Install the command-line tool for terminal-based task management
-- [Python SDK](/getting-started/sdk) - Integrate monitoring into your Python applications
-- [Self-Hosted](/getting-started/self-hosted) - Run Torale on your own infrastructure
+- [Web Dashboard](/getting-started/web-dashboard) - Browser-based task management
+- [CLI](/getting-started/cli) - Command-line interface
+- [Python SDK](/getting-started/sdk) - Programmatic access
+- [API](/api/overview) - REST API reference
+- [Self-Hosted](/getting-started/self-hosted) - Deploy on your infrastructure

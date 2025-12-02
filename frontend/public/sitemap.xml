@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Main landing page -->
+  <url>
+    <loc>https://torale.ai/</loc>
+    <priority>1.0</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+
+  <!-- Public pages -->
+  <url>
+    <loc>https://torale.ai/changelog</loc>
+    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+
+  <!-- Authentication pages -->
+  <url>
+    <loc>https://torale.ai/sign-in</loc>
+    <priority>0.6</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://torale.ai/sign-up</loc>
+    <priority>0.6</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+
+  <!-- Legal pages -->
+  <url>
+    <loc>https://torale.ai/terms</loc>
+    <priority>0.4</priority>
+    <changefreq>quarterly</changefreq>
+  </url>
+  <url>
+    <loc>https://torale.ai/privacy</loc>
+    <priority>0.4</priority>
+    <changefreq>quarterly</changefreq>
+  </url>
+</urlset>
