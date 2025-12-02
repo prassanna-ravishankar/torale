@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="frontend/public/brand/svg/logo.svg" alt="τorale" width="120" height="120">
+  <img src="./frontend/public/logo.svg" alt="τorale" width="120" height="120">
   <h1>τorale</h1>
   <p><strong>Grounded search monitoring platform for AI-powered conditional automation</strong></p>
 
@@ -543,7 +543,7 @@ just test-e2e
 - `test_schedule.sh` - Tests automatic scheduled task execution
 - `test_grounded_search.sh` - Tests grounded search monitoring functionality
 
-See [docs/TESTING.md](docs/TESTING.md) for detailed testing guide, including debugging workflows and troubleshooting.
+See [docs-site/contributing/testing.md](https://docs.torale.ai/contributing/testing) for detailed testing guide, including debugging workflows and troubleshooting.
 
 ## Deployment
 
@@ -567,7 +567,7 @@ Then add 3 GitHub secrets (outputted by script):
 - `GCP_SERVICE_ACCOUNT`
 - `GCP_WORKLOAD_IDENTITY_PROVIDER`
 
-See [docs/CI-CD.md](docs/CI-CD.md) for detailed setup.
+See [CI/CD Setup](https://docs.torale.ai/deployment/ci-cd) for detailed setup.
 
 **Automatic deployments:**
 - **Push to `main`** → Production deployment (`torale` namespace)
@@ -618,7 +618,7 @@ just k8s-logs-workers # View worker logs
 - API: https://api.torale.ai
 - Temporal UI: `just k8s-port-forward-temporal` → http://localhost:8080
 
-See [docs/k8s-deployment.md](docs/k8s-deployment.md) for detailed guide.
+See [Kubernetes Deployment](https://docs.torale.ai/deployment/kubernetes) for detailed guide.
 
 ## How Grounded Search Works
 

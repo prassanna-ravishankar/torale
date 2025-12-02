@@ -1,5 +1,14 @@
 [
   {
+    "id": "2025-12-02-next-gen-design-system",
+    "date": "2025-12-02",
+    "title": "Next-Gen Design System & Documentation Overhaul",
+    "description": "Complete platform redesign with neo-brutalist 'The Machine' design system featuring Space Grotesk, JetBrains Mono, and Inter typography. Comprehensive mobile-first responsive design with bottom navigation, brutalist toast notifications, and modernized admin console. Documentation consolidated into docs-site with VitePress theme, comprehensive sitemap system for SEO, legal pages (Terms & Privacy) with admin transparency disclosures, and fixed mobile UX issues including dashboard overflow and changelog layout improvements.",
+    "category": "improvement",
+    "requestedBy": [],
+    "pr": 94
+  },
+  {
     "id": "2025-12-01-critical-ux-fixes",
     "date": "2025-12-01",
     "title": "Critical UX Improvements & Bug Fixes",

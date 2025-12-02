@@ -279,20 +279,20 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="text-2xl font-bold tracking-tight">
-            Create Monitoring Task
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border-2 border-zinc-900 shadow-brutalist-lg">
+        <DialogHeader className="flex-shrink-0 border-b-2 border-zinc-100 pb-4">
+          <DialogTitle className="text-2xl font-bold font-grotesk tracking-tight">
+            Create Monitor
           </DialogTitle>
-          <DialogDescription>
-            Create a new monitoring task. Fill in the details below or use Magic Input.
+          <DialogDescription className="text-zinc-500">
+            Define what you want to track and when to notify you
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Magic Input Section */}
-          <div className="bg-muted/30 p-4 rounded-lg border border-dashed border-muted-foreground/25 space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-primary">
+          <div className="bg-zinc-50 p-4 border-2 border-zinc-200 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-bold font-grotesk text-zinc-900">
               <Sparkles className="w-4 h-4" />
               Magic Auto-Fill
             </div>
@@ -329,8 +329,8 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
 
             {/* Template Selection */}
             {templates.length > 0 && (
-              <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
-                <Label className="text-xs font-medium text-muted-foreground mb-2 block">
+              <div className="bg-zinc-50 p-3 border-2 border-zinc-100">
+                <Label className="text-[10px] font-mono uppercase text-zinc-400 mb-2 block tracking-wider">
                   Start with a template (Optional)
                 </Label>
                 <Select value={selectedTemplateId} onValueChange={handleTemplateSelect}>
@@ -373,7 +373,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
             <div className="space-y-4">
               {/* Task Name */}
               <div className="space-y-2">
-                <Label htmlFor="name" className="font-semibold">Task Name</Label>
+                <Label htmlFor="name" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Monitor Name</Label>
                 <Input
                   id="name"
                   placeholder="e.g., iPhone 16 Release Monitor"
@@ -395,8 +395,8 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
 
               {/* Search Query */}
               <div className="space-y-2">
-                <Label htmlFor="searchQuery" className="font-semibold flex items-center gap-2">
-                  <Search className="h-4 w-4" />
+                <Label htmlFor="searchQuery" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
+                  <Search className="h-3 w-3" />
                   What to Monitor
                 </Label>
                 <Textarea
@@ -421,8 +421,8 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
 
               {/* Condition Description */}
               <div className="space-y-2">
-                <Label htmlFor="condition" className="font-semibold flex items-center gap-2">
-                  <Bell className="h-4 w-4" />
+                <Label htmlFor="condition" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
+                  <Bell className="h-3 w-3" />
                   When to Notify
                 </Label>
                 <Textarea
@@ -483,11 +483,11 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
               </div>
 
               <CollapsibleContent className="space-y-4 pt-2 animate-in slide-in-from-top-2 fade-in duration-200">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border border-border/50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-zinc-50 border-2 border-zinc-100">
                   {/* Schedule */}
                   <div className="space-y-2">
-                    <Label htmlFor="schedule" className="text-sm font-medium flex items-center gap-2">
-                      <Clock className="h-3.5 w-3.5" />
+                    <Label htmlFor="schedule" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
+                      <Clock className="h-3 w-3" />
                       Check Frequency
                     </Label>
                     <div className="space-y-2">
@@ -562,8 +562,8 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
 
                   {/* Notification Behavior */}
                   <div className="space-y-2">
-                    <Label htmlFor="notifyBehavior" className="text-sm font-medium flex items-center gap-2">
-                      <Bell className="h-3.5 w-3.5" />
+                    <Label htmlFor="notifyBehavior" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
+                      <Bell className="h-3 w-3" />
                       Notification Mode
                     </Label>
                     <Select
@@ -596,13 +596,13 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
           </form>
         </div>
 
-        <DialogFooter className="pt-4 border-t flex-shrink-0">
+        <DialogFooter className="pt-4 border-t-2 border-zinc-100 flex-shrink-0 gap-3">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleCreateTask} disabled={isSubmitting}>
+          <Button onClick={handleCreateTask} disabled={isSubmitting} className="shadow-brutalist">
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Task
+            Create Monitor
           </Button>
         </DialogFooter>
       </DialogContent>

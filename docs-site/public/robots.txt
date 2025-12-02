@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://docs.torale.ai/sitemap.xml
+
+# Also link to main app sitemaps
+Sitemap: https://torale.ai/sitemap-index.xml

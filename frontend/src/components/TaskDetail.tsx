@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import type { Task, TaskExecution } from '@/types'
 import api from '@/lib/api'
 import { toast } from 'sonner'
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ExecutionTimeline } from "@/components/ExecutionTimeline";
 import { StateComparison } from "@/components/StateComparison";
 import { CronDisplay } from "@/components/ui/CronDisplay";
@@ -28,6 +29,9 @@ import {
   Pause,
   Check,
   X,
+  ChevronDown,
+  ChevronUp,
+  Settings,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -61,6 +65,8 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isExecuting, setIsExecuting] = useState(false);
   const [activeTab, setActiveTab] = useState("executions");
+  const [configExpanded, setConfigExpanded] = useState(false);
+  const [lastKnownStateExpanded, setLastKnownStateExpanded] = useState(false);
 
   const loadData = useCallback(async (skipLoadingState = false) => {
     if (!skipLoadingState) {
@@ -186,10 +192,17 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-6xl mx-auto p-8">
+      {/* Breadcrumb */}
+      <div className="font-mono text-xs text-zinc-400 mb-4">
+        <a href="/dashboard" className="hover:text-zinc-900 transition-colors">Monitors</a>
+        {' / '}
+        <span className="text-zinc-900">{task.name}</span>
+      </div>
+
       {/* Just Created Banner */}
       {isJustCreated && (
-        <div className="bg-muted/30 p-6 rounded-lg border border-border/50 animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="bg-emerald-50 p-6 border-2 border-emerald-200 animate-in fade-in slide-in-from-top-4 duration-500">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-start gap-3 flex-1">
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -275,14 +288,17 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         </div>
       )}
 
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-4 flex-1">
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <h1>{task.name}</h1>
+      {/* Header Section */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-4">
+          <Link to="/dashboard">
+            <Button variant="ghost" size="icon" className="shrink-0">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <h1 className="font-grotesk text-2xl md:text-4xl font-bold truncate">{task.name}</h1>
               <Badge
                 variant={
                   status.activityState === TaskActivityState.ACTIVE
@@ -291,87 +307,104 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                     ? 'default'
                     : 'secondary'
                 }
-                className="flex items-center gap-1"
+                className="flex items-center gap-1 shrink-0"
               >
                 <StatusIcon className="h-3 w-3" />
                 {status.label}
               </Badge>
             </div>
-            <p className="text-muted-foreground">{task.search_query}</p>
+            <p className="text-zinc-500 text-sm truncate">{task.search_query}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Action Buttons - Stack on mobile */}
+        <div className="flex items-center gap-2 flex-wrap mb-6 lg:mb-8">
           <Button
             variant="outline"
             onClick={handleExecute}
             disabled={isExecuting}
+            size="sm"
           >
             {isExecuting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Play className="mr-2 h-4 w-4" />
             )}
-            Run Now
+            <span className="hidden sm:inline">Run Now</span>
+            <span className="sm:hidden">Run</span>
           </Button>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Trash2 className="h-4 w-4" />
+              <Button variant="outline" size="sm">
+                <Trash2 className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Delete</span>
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Task</AlertDialogTitle>
-                <AlertDialogDescription>
+            <AlertDialogContent className="border-2 border-zinc-900 shadow-brutalist-lg">
+              <AlertDialogHeader className="border-b-2 border-zinc-100 pb-4">
+                <AlertDialogTitle className="font-grotesk">Delete Monitor</AlertDialogTitle>
+                <AlertDialogDescription className="text-zinc-500">
                   Are you sure you want to delete "{task.name}"? This action cannot be
                   undone. All execution history will be permanently deleted.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
+              <AlertDialogFooter className="gap-3">
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                <AlertDialogAction onClick={handleDelete} className="shadow-brutalist">Delete</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+      {/* Task Configuration - Collapsible on Mobile, Always Visible on Desktop */}
+      <Collapsible open={configExpanded} onOpenChange={setConfigExpanded} className="lg:contents">
+        <div className="lg:hidden mb-4">
+          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-mono text-zinc-500 hover:text-zinc-900 transition-colors w-full justify-between p-3 bg-white border-2 border-zinc-200">
+            <div className="flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              <span>Task Configuration</span>
+            </div>
+            {configExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </CollapsibleTrigger>
+        </div>
+
+        <CollapsibleContent className="lg:contents" forceMount>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card className="border-2">
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-zinc-400">
               <Clock className="h-4 w-4" />
-              <p>Schedule</p>
+              <p className="text-[10px] font-mono uppercase tracking-wider">Schedule</p>
             </div>
           </CardHeader>
           <CardContent>
-            <CronDisplay cron={task.schedule} className="text-sm" />
+            <CronDisplay cron={task.schedule} className="text-sm font-mono text-zinc-700" />
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2">
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-zinc-400">
               <Search className="h-4 w-4" />
-              <p>Trigger Condition</p>
+              <p className="text-[10px] font-mono uppercase tracking-wider">Trigger Condition</p>
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-sm">{task.condition_description}</p>
+            <p className="text-sm text-zinc-700 leading-relaxed">{task.condition_description}</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2">
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-zinc-400">
               <Bell className="h-4 w-4" />
-              <p>When to Notify</p>
+              <p className="text-[10px] font-mono uppercase tracking-wider">When to Notify</p>
             </div>
           </CardHeader>
           <CardContent>
-            <p className="capitalize text-sm">
+            <p className="text-sm font-mono uppercase tracking-wider text-zinc-700">
               {task.notify_behavior === 'once' && 'Once only'}
               {task.notify_behavior === 'always' && 'Every time'}
               {task.notify_behavior === 'track_state' && 'On changes'}
@@ -380,20 +413,20 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               <Switch
                 checked={task.is_active}
                 onCheckedChange={handleToggle}
-                className="data-[state=unchecked]:bg-muted data-[state=unchecked]:border-border"
+                className="data-[state=checked]:bg-zinc-900 data-[state=unchecked]:bg-zinc-200 border-2 border-zinc-900"
               />
-              <span className={`text-sm ${task.is_active ? 'text-muted-foreground' : 'font-medium'}`}>
-                {task.is_active ? "Active" : "Paused - Click to resume"}
+              <span className={`text-xs font-mono uppercase tracking-wider ${task.is_active ? 'text-zinc-700' : 'text-zinc-900 font-bold'}`}>
+                {task.is_active ? "Active" : "Paused"}
               </span>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2">
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-zinc-400">
               <Mail className="h-4 w-4" />
-              <p>Notification Channels</p>
+              <p className="text-[10px] font-mono uppercase tracking-wider">Notification Channels</p>
             </div>
           </CardHeader>
           <CardContent>
@@ -404,7 +437,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                   notificationEmail={task.notification_email}
                   webhookUrl={task.webhook_url}
                 />
-                <div className="space-y-1 text-xs text-muted-foreground">
+                <div className="space-y-1 text-xs font-mono text-zinc-600">
                   {task.notification_channels.includes('email') && (
                     <div className="flex items-start gap-1.5">
                       <Mail className="h-3 w-3 mt-0.5 shrink-0" />
@@ -424,11 +457,13 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No channels configured</p>
+              <p className="text-sm font-mono text-zinc-600">No channels configured</p>
             )}
           </CardContent>
         </Card>
-      </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Notification Behavior Explanation - Miller's Law: Keep info concise (3-5 bullets) */}
       <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
@@ -459,23 +494,36 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       </div>
 
       {task.last_known_state && (
-        <Card>
-          <CardHeader>
-            <h3>Last Known State</h3>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm space-y-2">
-              {Object.entries(task.last_known_state).map(([key, value]) => (
-                <div key={key} className="flex items-start gap-2">
-                  <span className="font-medium min-w-[150px]">{key}:</span>
-                  <span className="text-muted-foreground">
-                    {typeof value === "object" ? JSON.stringify(value, null, 2) : String(value)}
-                  </span>
-                </div>
-              ))}
+        <Collapsible open={lastKnownStateExpanded} onOpenChange={setLastKnownStateExpanded}>
+          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-mono text-zinc-500 hover:text-zinc-900 transition-colors w-full justify-between p-3 bg-zinc-900 border border-zinc-800">
+            <span className="text-[10px] uppercase text-zinc-500 tracking-wider">Last Known State (Dev)</span>
+            {lastKnownStateExpanded ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="bg-zinc-900 border-t-0 border border-zinc-800 p-4">
+              <div className="text-xs font-mono space-y-2 overflow-x-auto">
+                {Object.entries(task.last_known_state).map(([key, value]) => (
+                  <div key={key} className="flex flex-col gap-1">
+                    <span className="text-zinc-400">{key.replace(/_/g, ' ')}</span>
+                    {Array.isArray(value) ? (
+                      value.length > 3 ? (
+                        <span className="text-zinc-300 break-words">{value.slice(0, 3).join(", ")} +{value.length - 3} more</span>
+                      ) : (
+                        <span className="text-zinc-300 break-words">{value.join(", ")}</span>
+                      )
+                    ) : typeof value === "object" && value !== null ? (
+                      <pre className="text-xs p-2 bg-zinc-950 text-zinc-400 border border-zinc-800 overflow-x-auto">
+                        {JSON.stringify(value, null, 2)}
+                      </pre>
+                    ) : (
+                      <span className="text-zinc-300 break-words">{String(value)}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

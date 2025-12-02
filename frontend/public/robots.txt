@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://torale.ai/sitemap.xml
+Sitemap: https://torale.ai/sitemap-index.xml
+Sitemap: https://docs.torale.ai/sitemap.xml
+
+# Disallow authenticated areas
+Disallow: /dashboard
+Disallow: /tasks/
+Disallow: /admin
+Disallow: /settings/
+
+# Disallow waitlist (temporary page)
+Disallow: /waitlist

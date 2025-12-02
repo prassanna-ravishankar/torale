@@ -1,19 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '@/lib/api'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
-import { Loader2, Users, Copy, Trash2, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { WaitlistEntryCard } from './cards/WaitlistEntryCard'
+import { Loader2, Users, Copy, Trash2, CheckCircle2, Clock, UserCheck } from 'lucide-react'
 
 interface WaitlistEntry {
   id: string
@@ -84,161 +73,189 @@ export function WaitlistTable() {
   }
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      pending: 'outline',
-      invited: 'secondary',
-      converted: 'default',
+    switch (status) {
+      case 'converted':
+        return (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-mono uppercase tracking-wider border border-emerald-200">
+            <CheckCircle2 className="h-3 w-3" />
+            Converted
+          </span>
+        )
+      case 'invited':
+        return (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-mono uppercase tracking-wider border border-blue-200">
+            <UserCheck className="h-3 w-3" />
+            Invited
+          </span>
+        )
+      case 'pending':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-mono uppercase tracking-wider border border-amber-200">
+            <Clock className="h-3 w-3" />
+            Pending
+          </span>
+        )
     }
-
-    return (
-      <Badge variant={variants[status] || 'default'}>
-        {status}
-      </Badge>
-    )
   }
 
   if (loading && !entries.length) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center h-64 bg-white border-2 border-zinc-200">
+        <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
       </div>
     )
   }
+
+  const filterButtons = [
+    { value: null, label: 'All' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'converted', label: 'Converted' },
+  ]
 
   return (
     <div className="space-y-4">
       {/* Stats Cards */}
       {stats && (
-        <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-            </CardContent>
-          </Card>
+        <div className="grid gap-4 md:grid-cols-3">
+          {/* Total */}
+          <div className="bg-white border-2 border-zinc-200 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+                Total
+              </span>
+              <div className="bg-zinc-100 w-8 h-8 flex items-center justify-center">
+                <Users className="h-4 w-4 text-zinc-600" />
+              </div>
+            </div>
+            <p className="text-2xl font-grotesk font-bold tracking-tight">{stats.total}</p>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.pending}</div>
-            </CardContent>
-          </Card>
+          {/* Pending */}
+          <div className="bg-white border-2 border-zinc-200 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+                Pending
+              </span>
+              <div className="bg-amber-50 w-8 h-8 flex items-center justify-center border border-amber-200">
+                <Clock className="h-4 w-4 text-amber-600" />
+              </div>
+            </div>
+            <p className="text-2xl font-grotesk font-bold tracking-tight text-amber-600">{stats.pending}</p>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Converted</CardTitle>
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.converted}</div>
-            </CardContent>
-          </Card>
+          {/* Converted */}
+          <div className="bg-white border-2 border-zinc-200 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+                Converted
+              </span>
+              <div className="bg-emerald-50 w-8 h-8 flex items-center justify-center border border-emerald-200">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              </div>
+            </div>
+            <p className="text-2xl font-grotesk font-bold tracking-tight text-emerald-600">{stats.converted}</p>
+          </div>
         </div>
       )}
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Waitlist Entries</CardTitle>
-          <CardDescription className="text-sm">Manage users waiting for access</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2 mb-4">
-            <Button
-              variant={statusFilter === null ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter(null)}
-            >
-              All
-            </Button>
-            <Button
-              variant={statusFilter === 'pending' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter('pending')}
-            >
-              Pending
-            </Button>
-            <Button
-              variant={statusFilter === 'converted' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter('converted')}
-            >
-              Converted
-            </Button>
+      {/* Waitlist Table */}
+      <div className="bg-white border-2 border-zinc-200">
+        {/* Header */}
+        <div className="p-4 border-b border-zinc-200 flex items-center gap-3">
+          <div className="bg-zinc-900 text-white w-8 h-8 flex items-center justify-center shrink-0">
+            <Users className="h-4 w-4" />
           </div>
+          <div>
+            <h3 className="text-sm font-grotesk font-bold">Waitlist Entries</h3>
+            <p className="text-[10px] font-mono text-zinc-400">
+              Manage users waiting for access
+            </p>
+          </div>
+        </div>
 
-          {entries.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No waitlist entries found
-            </div>
-          ) : (
-            <>
-              {/* Desktop Table View */}
-              <div className="hidden md:block">
-                <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entries.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {entry.email}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyEmail(entry.email)}
+        {/* Filters */}
+        <div className="p-4 border-b border-zinc-200 flex flex-wrap gap-2">
+          {filterButtons.map((btn) => (
+            <button
+              key={btn.value ?? 'all'}
+              onClick={() => setStatusFilter(btn.value)}
+              className={`px-3 py-1.5 text-xs font-mono transition-colors ${
+                statusFilter === btn.value
+                  ? 'bg-zinc-900 text-white'
+                  : 'border border-zinc-200 text-zinc-600 hover:border-zinc-400'
+              }`}
+            >
+              {btn.label}
+            </button>
+          ))}
+        </div>
+
+        {entries.length === 0 ? (
+          <div className="p-8 text-center">
+            <Users className="h-5 w-5 text-zinc-400 mx-auto mb-2" />
+            <p className="text-xs text-zinc-500 font-mono">No waitlist entries found</p>
+          </div>
+        ) : (
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-zinc-200 bg-zinc-50">
+                    <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Email</th>
+                    <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Joined</th>
+                    <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Status</th>
+                    <th className="text-right p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map((entry) => (
+                    <tr key={entry.id} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-mono text-zinc-900">{entry.email}</span>
+                          <button
+                            onClick={() => copyEmail(entry.email)}
+                            className="p-1 text-zinc-400 hover:text-zinc-900 transition-colors"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="p-3 text-xs font-mono text-zinc-500">
+                        {new Date(entry.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="p-3">{getStatusBadge(entry.status)}</td>
+                      <td className="p-3 text-right">
+                        <button
+                          onClick={() => deleteEntry(entry.id)}
+                          className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                         >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(entry.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(entry.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteEntry(entry.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-              </div>
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-              {/* Mobile Card View */}
-              <div className="block md:hidden space-y-4">
-                {entries.map((entry) => (
-                  <WaitlistEntryCard
-                    key={entry.id}
-                    entry={entry}
-                    onCopyEmail={copyEmail}
-                    onDelete={deleteEntry}
-                    getStatusBadge={getStatusBadge}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+            {/* Mobile Card View */}
+            <div className="block md:hidden p-4 space-y-3">
+              {entries.map((entry) => (
+                <WaitlistEntryCard
+                  key={entry.id}
+                  entry={entry}
+                  onCopyEmail={copyEmail}
+                  onDelete={deleteEntry}
+                  getStatusBadge={getStatusBadge}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }
