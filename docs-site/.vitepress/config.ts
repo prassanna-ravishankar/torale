@@ -177,7 +177,7 @@ export default withMermaid(
       light: 'github-light',
       dark: 'github-dark'
     },
-    lineNumbers: true
+    lineNumbers: false
   },
 
   mermaid: {
