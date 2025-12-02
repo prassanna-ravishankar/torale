@@ -100,7 +100,7 @@ export function OverviewStats() {
                 className={`h-full transition-all ${
                   capacityPercentage > 80 ? 'bg-red-500' : capacityPercentage > 60 ? 'bg-amber-500' : 'bg-emerald-500'
                 }`}
-                style={{ width: `${capacityPercentage}%` }}
+                style={{ width: `${Math.min(capacityPercentage, 100)}%` }}
               />
             </div>
             <p className="text-xs font-mono text-zinc-500">
