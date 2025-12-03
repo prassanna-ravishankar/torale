@@ -16,6 +16,14 @@ class NotifyBehavior(str, Enum):
     TRACK_STATE = "track_state"  # Notify only when state changes
 
 
+class TaskState(str, Enum):
+    """Task state enum - represents what the task is currently doing."""
+
+    ACTIVE = "active"  # Monitoring on schedule
+    PAUSED = "paused"  # User manually stopped
+    COMPLETED = "completed"  # Auto-stopped after notify_behavior="once" success
+
+
 class TaskStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
@@ -44,7 +52,7 @@ class TaskBase(BaseModel):
     schedule: str
     executor_type: ExecutorType = ExecutorType.LLM_GROUNDED_SEARCH
     config: dict
-    is_active: bool = True
+    state: TaskState = TaskState.ACTIVE
 
     # Grounded search fields
     search_query: str | None = None
@@ -67,7 +75,7 @@ class TaskUpdate(BaseModel):
     name: str | None = None
     schedule: str | None = None
     config: dict | None = None
-    is_active: bool | None = None
+    state: TaskState | None = None
     search_query: str | None = None
     condition_description: str | None = None
     notify_behavior: NotifyBehavior | None = None
@@ -138,7 +146,7 @@ class TaskTemplate(TaskTemplateBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    is_active: bool = True
+    state: TaskState = TaskState.ACTIVE
     created_at: datetime
     updated_at: datetime | None = None
 

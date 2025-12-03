@@ -320,7 +320,7 @@ torale task list --json
   {
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "name": "iPhone Monitor",
-    "is_active": true,
+    "state": "active",
     ...
   }
 ]
@@ -333,7 +333,7 @@ torale task list --json
 torale task list --json | jq -r '.[].id'
 
 # Filter active tasks
-torale task list --json | jq '.[] | select(.is_active == true)'
+torale task list --json | jq '.[] | select(.state == true)'
 
 # Count tasks
 torale task list --json | jq 'length'

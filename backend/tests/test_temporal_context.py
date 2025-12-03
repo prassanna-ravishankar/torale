@@ -39,6 +39,7 @@ class TestTemporalContext:
             "config": json.dumps({"model": "gemini-2.0-flash-exp"}),
             "last_known_state": {"previous": "state"},
             "notify_behavior": "track_state",
+            "state": "active",
         }
 
         # Mock last execution
@@ -97,6 +98,7 @@ class TestTemporalContext:
             "config": json.dumps({"model": "gemini-2.0-flash-exp"}),
             "last_known_state": None,
             "notify_behavior": "once",
+            "state": "active",
         }
 
         mock_conn = AsyncMock()
@@ -152,6 +154,7 @@ class TestTemporalContext:
             "config": json.dumps({"model": "gemini-2.0-flash-exp"}),
             "last_known_state": {"previous": "info"},
             "notify_behavior": "track_state",  # Important: track_state behavior
+            "state": "active",
         }
 
         mock_last_execution = {
@@ -220,7 +223,7 @@ class TestRunImmediately:
                 "id": task_id,
                 "name": "Test",
                 "user_id": user_id,
-                "is_active": True,
+                "state": "active",
                 "schedule": "0 9 * * *",
                 "config": {"model": "gemini-2.0-flash-exp"},
                 "created_at": datetime.now(),
@@ -231,9 +234,26 @@ class TestRunImmediately:
             {"id": uuid4()},  # Execution creation
         ]
 
-        # Mock Temporal client
+        # Mock Temporal client for both schedule creation and immediate execution
+        import grpc
+
+        # Create a simple exception that mimics RPCError
+        class FakeRPCError(Exception):
+            """Mock RPCError for testing"""
+            def __init__(self, status):
+                self.status = status
+                super().__init__(f"RPC error with status {status}")
+
+        mock_rpc_error = FakeRPCError(grpc.StatusCode.NOT_FOUND)
+
         mock_client = AsyncMock()
         mock_client.start_workflow.return_value = MagicMock(id="workflow-123")
+        mock_client.create_schedule = AsyncMock(return_value=None)
+
+        # Mock schedule handle to raise NOT_FOUND (new task, no schedule exists yet)
+        mock_schedule_handle = AsyncMock()
+        mock_schedule_handle.unpause = AsyncMock(side_effect=mock_rpc_error)
+        mock_client.get_schedule_handle = MagicMock(return_value=mock_schedule_handle)
 
         task_data = TaskCreate(
             name="Test Task",
@@ -244,8 +264,13 @@ class TestRunImmediately:
             run_immediately=True,
         )
 
-        with patch("torale.api.routers.tasks.get_temporal_client", return_value=mock_client):
-            await create_task(task_data, mock_user, mock_db)
+        # Patch RPCError to use our fake
+        with patch("torale.core.task_state.RPCError", FakeRPCError):
+            with patch("torale.api.routers.tasks.get_temporal_client", return_value=mock_client):
+                # Mock the state manager's temporal client
+                with patch("torale.core.task_state.TaskStateManager._get_temporal_client", AsyncMock(return_value=mock_client)):
+                    await create_task(task_data, mock_user, mock_db)
 
-        # Should start workflow for immediate execution
+        # Should create schedule and start workflow for immediate execution
+        assert mock_client.create_schedule.called
         assert mock_client.start_workflow.called

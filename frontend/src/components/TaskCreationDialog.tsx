@@ -256,7 +256,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
         config: {
           search_provider: "google"
         },
-        is_active: true,
+        state: "active",
         run_immediately: true,
       });
 

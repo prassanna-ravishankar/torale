@@ -1,9 +1,11 @@
 /**
- * Task status logic - derive task activity state from current data.
+ * Task status logic - now uses explicit state from backend.
  *
  * This is the single source of truth for task status across the frontend.
  * All status display logic should use these functions.
  */
+
+import type { TaskState } from '@/types';
 
 export enum TaskActivityState {
   ACTIVE = 'active',
@@ -20,50 +22,37 @@ export interface TaskStatusInfo {
 }
 
 /**
- * Derive task status from is_active and latest execution result.
+ * Get task status directly from state (no more derivation logic).
  *
- * Logic:
- * - Active (is_active=true): Task is monitoring on schedule
- * - Completed (is_active=false + last_execution.condition_met=true):
- *     Auto-stopped after notify_behavior="once" success
- * - Paused (is_active=false + last_execution.condition_met=false/null):
- *     User manually stopped
+ * The backend now provides explicit state, so we just map it to display metadata.
  *
- * @param isActive - Whether task is currently active (monitoring)
- * @param lastExecutionConditionMet - Whether the latest execution met its condition
- *                                     (null/undefined if task never executed)
+ * @param state - Task state from backend ('active' | 'paused' | 'completed')
  * @returns TaskStatusInfo with activity state and display metadata
  */
-export function getTaskStatus(
-  isActive: boolean,
-  lastExecutionConditionMet: boolean | null | undefined
-): TaskStatusInfo {
-  if (isActive) {
-    return {
+export function getTaskStatus(state: TaskState): TaskStatusInfo {
+  const configs: Record<TaskState, TaskStatusInfo> = {
+    active: {
       activityState: TaskActivityState.ACTIVE,
       iconName: 'Activity',
       label: 'Monitoring',
       color: 'green',
       description: 'Actively checking on schedule',
-    };
-  }
-
-  // Inactive - determine why
-  if (lastExecutionConditionMet) {
-    return {
+    },
+    completed: {
       activityState: TaskActivityState.COMPLETED,
       iconName: 'CheckCircle',
       label: 'Completed',
       color: 'blue',
       description: 'Notified once and auto-stopped',
-    };
-  }
-
-  return {
-    activityState: TaskActivityState.PAUSED,
-    iconName: 'Pause',
-    label: 'Paused',
-    color: 'yellow',
-    description: 'Manually paused by user',
+    },
+    paused: {
+      activityState: TaskActivityState.PAUSED,
+      iconName: 'Pause',
+      label: 'Paused',
+      color: 'yellow',
+      description: 'Manually paused by user',
+    },
   };
+
+  return configs[state];
 }

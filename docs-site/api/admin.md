@@ -321,7 +321,7 @@ List all users with activity statistics.
       "id": "660e8400-e29b-41d4-a716-446655440000",
       "email": "user@example.com",
       "clerk_user_id": "user_2abc...",
-      "is_active": true,
+      "state": "active",
       "tasks_count": 8,
       "active_tasks_count": 5,
       "executions_24h": 45,

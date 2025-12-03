@@ -8,7 +8,8 @@ from temporalio import activity
 
 from torale.core.config import settings
 from torale.core.email_verification import EmailVerificationService
-from torale.core.models import NotifyBehavior, TaskStatus
+from torale.core.models import NotifyBehavior, TaskState, TaskStatus
+from torale.core.task_state_machine import TaskStateMachine
 from torale.core.webhook import WebhookDeliveryService, build_webhook_payload
 from torale.executors import GroundedSearchExecutor
 from torale.notifications.novu_service import novu_service
@@ -40,6 +41,18 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
                 "status": "skipped",
                 "reason": "task_deleted",
                 "message": f"Task {task_id} was deleted but schedule still exists",
+            }
+
+        # Check if task is active - skip execution if paused or completed
+        if task["state"] != "active":
+            logger.info(
+                f"Task {task_id} is not active (state={task['state']}). "
+                f"Skipping execution. This can happen if schedule wasn't paused properly."
+            )
+            return {
+                "status": "skipped",
+                "reason": "task_not_active",
+                "message": f"Task {task_id} is in state {task['state']} (not active)",
             }
 
         # Parse config if it's a JSON string
@@ -164,16 +177,24 @@ async def execute_task(task_id: str, execution_id: str) -> dict:
                         UUID(task_id),
                     )
 
-                    # Auto-disable task if notify_behavior is "once"
+                    # Auto-complete task if notify_behavior is "once"
                     if notify_behavior == NotifyBehavior.ONCE.value:
-                        await conn.execute(
-                            """
-                            UPDATE tasks
-                            SET is_active = false
-                            WHERE id = $1
-                            """,
-                            UUID(task_id),
-                        )
+                        # Transition to completed state via state machine
+                        try:
+                            state_machine = TaskStateMachine(db_conn=conn)
+                            result = await state_machine.complete(
+                                task_id=UUID(task_id),
+                                current_state=TaskState.ACTIVE,
+                            )
+                            logger.info(
+                                f"Task {task_id} completed - schedule {result['schedule_action']}"
+                            )
+                        except Exception as e:
+                            # Log error but don't fail the workflow
+                            logger.error(
+                                f"Failed to complete task {task_id}: {str(e)}. "
+                                f"State machine transition failed. Manual cleanup may be required."
+                            )
 
             else:
                 raise ValueError(f"Unsupported executor type: {task['executor_type']}")

@@ -56,11 +56,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
     loadTasks();
   }, [syncUser]);
 
-  const handleToggleTask = async (id: string, isActive: boolean) => {
+  const handleToggleTask = async (id: string, newState: 'active' | 'paused') => {
     try {
-      await api.updateTask(id, { is_active: isActive });
+      await api.updateTask(id, { state: newState });
       await loadTasks();
-      toast.success(isActive ? 'Task activated' : 'Task paused');
+      toast.success(newState === 'active' ? 'Task activated' : 'Task paused');
     } catch (error) {
       console.error('Failed to toggle task:', error);
       toast.error('Failed to update task');
@@ -105,7 +105,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   const filteredTasks = tasks.filter((task) => {
     // Filter by status
     if (activeFilter !== 'all') {
-      const status = getTaskStatus(task.is_active, task.last_execution?.condition_met);
+      const status = getTaskStatus(task.state);
       if (activeFilter === 'active' && status.activityState !== TaskActivityState.ACTIVE) return false;
       if (activeFilter === 'completed' && status.activityState !== TaskActivityState.COMPLETED) return false;
       if (activeFilter === 'paused' && status.activityState !== TaskActivityState.PAUSED) return false;
@@ -122,15 +122,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   });
 
   // Calculate stats
-  const activeCount = tasks.filter((t) => t.is_active).length;
-  const completedCount = tasks.filter((t) => {
-    const status = getTaskStatus(t.is_active, t.last_execution?.condition_met);
-    return status.activityState === TaskActivityState.COMPLETED;
-  }).length;
-  const pausedCount = tasks.filter((t) => {
-    const status = getTaskStatus(t.is_active, t.last_execution?.condition_met);
-    return status.activityState === TaskActivityState.PAUSED;
-  }).length;
+  const activeCount = tasks.filter((t) => t.state === 'active').length;
+  const completedCount = tasks.filter((t) => t.state === 'completed').length;
+  const pausedCount = tasks.filter((t) => t.state === 'paused').length;
 
   if (isLoading) {
     return (
@@ -276,7 +270,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
               <tbody>
                 <AnimatePresence>
                   {filteredTasks.map((task) => {
-                    const status = getTaskStatus(task.is_active, task.last_execution?.condition_met);
+                    const status = getTaskStatus(task.state);
                     const StatusIcon = {
                       Activity,
                       CheckCircle,

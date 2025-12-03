@@ -116,9 +116,10 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   const handleToggle = async () => {
     if (!task) return;
     try {
-      await api.updateTask(taskId, { is_active: !task.is_active });
+      const newState = task.state === 'active' ? 'paused' : 'active';
+      await api.updateTask(taskId, { state: newState });
       await loadData();
-      toast.success(task.is_active ? 'Task paused' : 'Task activated');
+      toast.success(newState === 'active' ? 'Task activated' : 'Task paused');
     } catch (error) {
       console.error("Failed to toggle task:", error);
       toast.error('Failed to update task');
@@ -171,7 +172,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   }
 
   // Get task status from centralized logic
-  const status = getTaskStatus(task.is_active, task.last_execution?.condition_met);
+  const status = getTaskStatus(task.state);
 
   // Map icon name to Lucide icon component
   const StatusIcon = {
@@ -411,12 +412,12 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             </p>
             <div className="flex items-center gap-2 mt-3">
               <Switch
-                checked={task.is_active}
+                checked={task.state === 'active'}
                 onCheckedChange={handleToggle}
                 className="data-[state=checked]:bg-zinc-900 data-[state=unchecked]:bg-zinc-200 border-2 border-zinc-900"
               />
-              <span className={`text-xs font-mono uppercase tracking-wider ${task.is_active ? 'text-zinc-700' : 'text-zinc-900 font-bold'}`}>
-                {task.is_active ? "Active" : "Paused"}
+              <span className={`text-xs font-mono uppercase tracking-wider ${task.state === 'active' ? 'text-zinc-700' : 'text-zinc-900 font-bold'}`}>
+                {task.state === 'active' ? "Active" : "Paused"}
               </span>
             </div>
           </CardContent>

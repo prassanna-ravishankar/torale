@@ -74,7 +74,7 @@ torale task list --json
   {
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "name": "iPhone Monitor",
-    "is_active": true
+    "state": "active"
   }
 ]
 ```
@@ -280,7 +280,7 @@ jobs:
         env:
           TORALE_API_KEY: ${{ secrets.TORALE_API_KEY }}
         run: |
-          torale task list --json | jq '.[] | select(.is_active == false)'
+          torale task list --json | jq '.[] | select(.state == false)'
 ```
 
 ### GitLab CI

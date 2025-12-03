@@ -168,7 +168,7 @@ task = client.tasks.get(task_id="550e8400-...")
 task = client.tasks.update(
     task_id="550e8400-...",
     name="New Name",
-    is_active=False
+    state="paused"  # "active", "paused", or "completed"
 )
 
 # Delete task

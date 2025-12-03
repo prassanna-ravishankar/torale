@@ -134,7 +134,7 @@ def display_dashboard():
     print("=" * 60)
 
     # Summary
-    active = sum(1 for t in tasks if t.is_active)
+    active = sum(1 for t in tasks if t.state == "active")
     met_condition = sum(1 for t in tasks if t.condition_met)
 
     print(f"\nTotal Tasks: {len(tasks)}")
@@ -148,7 +148,7 @@ def display_dashboard():
     print("=" * 60)
 
     for task in tasks:
-        status = "✓ ACTIVE" if task.is_active else "⏸ PAUSED"
+        status = "✓ ACTIVE" if task.state == "active" else "⏸ PAUSED"
         condition = "✓ MET" if task.condition_met else "⏳ WAITING"
 
         print(f"\n{task.name}")
@@ -213,7 +213,7 @@ def cleanup_old_tasks():
             latest = executions[0]
             if datetime.fromisoformat(latest.created_at.replace('Z', '+00:00')) < thirty_days_ago:
                 # Pause task
-                client.tasks.update(task.id, is_active=False)
+                client.tasks.update(task.id, state="paused")
                 print(f"Paused: {task.name} (inactive for 30+ days)")
                 paused_count += 1
 

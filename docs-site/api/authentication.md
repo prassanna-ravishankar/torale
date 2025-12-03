@@ -145,7 +145,7 @@ Authorization: Bearer {clerk_jwt_token}
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "clerk_user_id": "user_2abc...",
   "email": "user@example.com",
-  "is_active": true,
+  "state": "active",
   "created_at": "2024-01-15T10:30:00Z"
 }
 ```
@@ -168,7 +168,7 @@ Authorization: Bearer {api_key}
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "email": "user@example.com",
-  "is_active": true,
+  "state": "active",
   "created_at": "2024-01-15T10:30:00Z"
 }
 ```
@@ -238,7 +238,7 @@ Authorization: Bearer {clerk_jwt_token_or_api_key}
     "name": "CLI Key",
     "created_at": "2024-01-15T10:30:00Z",
     "last_used_at": "2024-01-20T15:45:00Z",
-    "is_active": true
+    "state": "active"
   },
   {
     "id": "770e8400-e29b-41d4-a716-446655440000",
@@ -246,7 +246,7 @@ Authorization: Bearer {clerk_jwt_token_or_api_key}
     "name": "Production Script",
     "created_at": "2024-01-10T09:00:00Z",
     "last_used_at": "2024-01-20T16:00:00Z",
-    "is_active": true
+    "state": "active"
   }
 ]
 ```
