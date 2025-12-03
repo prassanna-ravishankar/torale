@@ -4,11 +4,9 @@ import type { Task, TaskExecution } from '@/types'
 import api from '@/lib/api'
 import { toast } from 'sonner'
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { InfoCard, CollapsibleSection, StatusBadge } from "@/components/torale";
 import { ExecutionTimeline } from "@/components/ExecutionTimeline";
 import { StateComparison } from "@/components/StateComparison";
 import { CronDisplay } from "@/components/ui/CronDisplay";
@@ -29,9 +27,6 @@ import {
   Pause,
   Check,
   X,
-  ChevronDown,
-  ChevronUp,
-  Settings,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -58,13 +53,14 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const isJustCreated = searchParams.get('justCreated') === 'true';
+  const tabFromUrl = searchParams.get('tab') as 'executions' | 'notifications' | 'changes' | null;
 
   const [task, setTask] = useState<Task | null>(null);
   const [executions, setExecutions] = useState<TaskExecution[]>([]);
   const [notifications, setNotifications] = useState<TaskExecution[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExecuting, setIsExecuting] = useState(false);
-  const [activeTab, setActiveTab] = useState("executions");
+  const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "executions");
   const [configExpanded, setConfigExpanded] = useState(false);
   const [lastKnownStateExpanded, setLastKnownStateExpanded] = useState(false);
 
@@ -94,6 +90,19 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Sync activeTab to URL
+  useEffect(() => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      if (activeTab !== 'executions') {
+        newParams.set('tab', activeTab);
+      } else {
+        newParams.delete('tab');
+      }
+      return newParams;
+    }, { replace: true });
+  }, [activeTab, setSearchParams]);
 
   // Auto-refresh executions while first execution is pending/running (for just-created tasks)
   useEffect(() => {
@@ -299,19 +308,15 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <h1 className="font-grotesk text-2xl md:text-4xl font-bold truncate">{task.name}</h1>
-              <Badge
+              <StatusBadge
                 variant={
-                  status.activityState === TaskActivityState.ACTIVE
-                    ? 'default'
-                    : status.activityState === TaskActivityState.COMPLETED
-                    ? 'default'
-                    : 'secondary'
+                  status.activityState === 'active'
+                    ? 'active'
+                    : status.activityState === 'completed'
+                    ? 'completed'
+                    : 'paused'
                 }
-                className="flex items-center gap-1 shrink-0"
-              >
-                <StatusIcon className="h-3 w-3" />
-                {status.label}
-              </Badge>
+              />
             </div>
             <p className="text-zinc-500 text-sm truncate">{task.search_query}</p>
           </div>
@@ -359,51 +364,24 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       </div>
 
       {/* Task Configuration - Collapsible on Mobile, Always Visible on Desktop */}
-      <Collapsible open={configExpanded} onOpenChange={setConfigExpanded} className="lg:contents">
-        <div className="lg:hidden mb-4">
-          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-mono text-zinc-500 hover:text-zinc-900 transition-colors w-full justify-between p-3 bg-white border-2 border-zinc-200">
-            <div className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              <span>Task Configuration</span>
-            </div>
-            {configExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </CollapsibleTrigger>
-        </div>
-
-        <CollapsibleContent className="lg:contents" forceMount>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card className="border-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-zinc-400">
-              <Clock className="h-4 w-4" />
-              <p className="text-[10px] font-mono uppercase tracking-wider">Schedule</p>
-            </div>
-          </CardHeader>
-          <CardContent>
+      <CollapsibleSection
+        title="Task Configuration"
+        open={configExpanded}
+        onOpenChange={setConfigExpanded}
+        variant="mobile"
+        className="lg:contents"
+        contentClassName="lg:contents"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <InfoCard icon={Clock} label="Schedule">
             <CronDisplay cron={task.schedule} className="text-sm font-mono text-zinc-700" />
-          </CardContent>
-        </Card>
+          </InfoCard>
 
-        <Card className="border-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-zinc-400">
-              <Search className="h-4 w-4" />
-              <p className="text-[10px] font-mono uppercase tracking-wider">Trigger Condition</p>
-            </div>
-          </CardHeader>
-          <CardContent>
+          <InfoCard icon={Search} label="Trigger Condition">
             <p className="text-sm text-zinc-700 leading-relaxed">{task.condition_description}</p>
-          </CardContent>
-        </Card>
+          </InfoCard>
 
-        <Card className="border-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-zinc-400">
-              <Bell className="h-4 w-4" />
-              <p className="text-[10px] font-mono uppercase tracking-wider">When to Notify</p>
-            </div>
-          </CardHeader>
-          <CardContent>
+          <InfoCard icon={Bell} label="When to Notify">
             <p className="text-sm font-mono uppercase tracking-wider text-zinc-700">
               {task.notify_behavior === 'once' && 'Once only'}
               {task.notify_behavior === 'always' && 'Every time'}
@@ -419,17 +397,9 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                 {task.is_active ? "Active" : "Paused"}
               </span>
             </div>
-          </CardContent>
-        </Card>
+          </InfoCard>
 
-        <Card className="border-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-zinc-400">
-              <Mail className="h-4 w-4" />
-              <p className="text-[10px] font-mono uppercase tracking-wider">Notification Channels</p>
-            </div>
-          </CardHeader>
-          <CardContent>
+          <InfoCard icon={Mail} label="Notification Channels">
             {task.notification_channels && task.notification_channels.length > 0 ? (
               <div className="space-y-3">
                 <NotificationChannelBadges
@@ -459,11 +429,9 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             ) : (
               <p className="text-sm font-mono text-zinc-600">No channels configured</p>
             )}
-          </CardContent>
-        </Card>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+          </InfoCard>
+        </div>
+      </CollapsibleSection>
 
       {/* Notification Behavior Explanation - Miller's Law: Keep info concise (3-5 bullets) */}
       <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
@@ -494,36 +462,35 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       </div>
 
       {task.last_known_state && (
-        <Collapsible open={lastKnownStateExpanded} onOpenChange={setLastKnownStateExpanded}>
-          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-mono text-zinc-500 hover:text-zinc-900 transition-colors w-full justify-between p-3 bg-zinc-900 border border-zinc-800">
-            <span className="text-[10px] uppercase text-zinc-500 tracking-wider">Last Known State (Dev)</span>
-            {lastKnownStateExpanded ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="bg-zinc-900 border-t-0 border border-zinc-800 p-4">
-              <div className="text-xs font-mono space-y-2 overflow-x-auto">
-                {Object.entries(task.last_known_state).map(([key, value]) => (
-                  <div key={key} className="flex flex-col gap-1">
-                    <span className="text-zinc-400">{key.replace(/_/g, ' ')}</span>
-                    {Array.isArray(value) ? (
-                      value.length > 3 ? (
-                        <span className="text-zinc-300 break-words">{value.slice(0, 3).join(", ")} +{value.length - 3} more</span>
-                      ) : (
-                        <span className="text-zinc-300 break-words">{value.join(", ")}</span>
-                      )
-                    ) : typeof value === "object" && value !== null ? (
-                      <pre className="text-xs p-2 bg-zinc-950 text-zinc-400 border border-zinc-800 overflow-x-auto">
-                        {JSON.stringify(value, null, 2)}
-                      </pre>
+        <CollapsibleSection
+          title="Last Known State (Dev)"
+          open={lastKnownStateExpanded}
+          onOpenChange={setLastKnownStateExpanded}
+          variant="dark"
+        >
+          <div className="bg-zinc-900 border-t-0 border border-zinc-800 p-4">
+            <div className="text-xs font-mono space-y-2 overflow-x-auto">
+              {Object.entries(task.last_known_state).map(([key, value]) => (
+                <div key={key} className="flex flex-col gap-1">
+                  <span className="text-zinc-400">{key.replace(/_/g, ' ')}</span>
+                  {Array.isArray(value) ? (
+                    value.length > 3 ? (
+                      <span className="text-zinc-300 break-words">{value.slice(0, 3).join(", ")} +{value.length - 3} more</span>
                     ) : (
-                      <span className="text-zinc-300 break-words">{String(value)}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      <span className="text-zinc-300 break-words">{value.join(", ")}</span>
+                    )
+                  ) : typeof value === "object" && value !== null ? (
+                    <pre className="text-xs p-2 bg-zinc-950 text-zinc-400 border border-zinc-800 overflow-x-auto">
+                      {JSON.stringify(value, null, 2)}
+                    </pre>
+                  ) : (
+                    <span className="text-zinc-300 break-words">{String(value)}</span>
+                  )}
+                </div>
+              ))}
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
+        </CollapsibleSection>
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

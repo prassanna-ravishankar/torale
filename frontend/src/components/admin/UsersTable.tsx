@@ -27,6 +27,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { SectionLabel, BrutalistCard, StatusBadge } from '@/components/torale'
 
 interface UserData {
   id: string
@@ -219,15 +220,15 @@ export function UsersTable() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 bg-white border-2 border-zinc-200">
+      <BrutalistCard className="flex items-center justify-center h-64">
         <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
-      </div>
+      </BrutalistCard>
     )
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64 bg-white border-2 border-zinc-200">
+      <BrutalistCard className="flex items-center justify-center h-64">
         <div className="text-center">
           <p className="text-sm font-mono text-red-600">Error: {error}</p>
           <button
@@ -237,7 +238,7 @@ export function UsersTable() {
             Retry
           </button>
         </div>
-      </div>
+      </BrutalistCard>
     )
   }
 
@@ -252,11 +253,9 @@ export function UsersTable() {
   return (
     <div className="space-y-4">
       {/* Capacity Card */}
-      <div className="bg-white border-2 border-zinc-200 p-4">
+      <BrutalistCard className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
-            Platform Capacity
-          </span>
+          <SectionLabel>Platform Capacity</SectionLabel>
           <div className="bg-zinc-100 w-8 h-8 flex items-center justify-center">
             <Users className="h-4 w-4 text-zinc-600" />
           </div>
@@ -278,7 +277,7 @@ export function UsersTable() {
             {data.capacity.available} seats available
           </p>
         </div>
-      </div>
+      </BrutalistCard>
 
       {/* Bulk Actions Toolbar */}
       {selectedUserIds.size > 0 && (
@@ -313,7 +312,7 @@ export function UsersTable() {
       )}
 
       {/* Users Table */}
-      <div className="bg-white border-2 border-zinc-200">
+      <BrutalistCard>
         {/* Header */}
         <div className="p-4 border-b border-zinc-200 flex items-center gap-3">
           <div className="bg-zinc-900 text-white w-8 h-8 flex items-center justify-center shrink-0">
@@ -341,23 +340,14 @@ export function UsersTable() {
                     aria-label="Select all users"
                   />
                 </th>
-                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Email</th>
-                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Role</th>
-                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Status</th>
-                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Joined</th>
-                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-                  <ListChecks className="h-3 w-3 inline mr-1" />
-                  Tasks
-                </th>
-                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-                  <Activity className="h-3 w-3 inline mr-1" />
-                  Runs
-                </th>
-                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-                  <Zap className="h-3 w-3 inline mr-1" />
-                  Triggered
-                </th>
-                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Actions</th>
+                <th className="text-left p-3"><SectionLabel>Email</SectionLabel></th>
+                <th className="text-left p-3"><SectionLabel>Role</SectionLabel></th>
+                <th className="text-left p-3"><SectionLabel>Status</SectionLabel></th>
+                <th className="text-left p-3"><SectionLabel>Joined</SectionLabel></th>
+                <th className="text-left p-3"><SectionLabel icon={ListChecks}>Tasks</SectionLabel></th>
+                <th className="text-left p-3"><SectionLabel icon={Activity}>Runs</SectionLabel></th>
+                <th className="text-left p-3"><SectionLabel icon={Zap}>Triggered</SectionLabel></th>
+                <th className="text-left p-3"><SectionLabel>Actions</SectionLabel></th>
               </tr>
             </thead>
             <tbody>
@@ -396,20 +386,7 @@ export function UsersTable() {
                       </td>
                       <td className="p-3">{getRoleBadge(user.role)}</td>
                       <td className="p-3">
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider border ${
-                          user.is_active
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : 'bg-zinc-50 text-zinc-500 border-zinc-200'
-                        }`}>
-                          {user.is_active ? (
-                            <>
-                              <CheckCircle2 className="h-3 w-3" />
-                              Active
-                            </>
-                          ) : (
-                            'Inactive'
-                          )}
-                        </span>
+                        <StatusBadge variant={user.is_active ? 'active' : 'paused'} />
                       </td>
                       <td className="p-3 text-xs font-mono text-zinc-500">
                         {user.created_at
@@ -471,7 +448,7 @@ export function UsersTable() {
             ))
           )}
         </div>
-      </div>
+      </BrutalistCard>
 
       {/* Single User Role Edit Dialog */}
       <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>

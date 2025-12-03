@@ -22,6 +22,7 @@ import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ApiKey } from '@/types';
+import { SectionLabel, BrutalistCard, StatusBadge } from '@/components/torale';
 
 export const ApiKeyManagementSection: React.FC = () => {
   const { user } = useAuth();
@@ -127,7 +128,7 @@ export const ApiKeyManagementSection: React.FC = () => {
 
   if (!isDeveloper) {
     return (
-      <div className="bg-white border-2 border-zinc-200">
+      <BrutalistCard>
         <div className="p-4 border-b border-zinc-200">
           <p className="text-xs text-zinc-500">
             Programmatic access to Torale API via Python SDK
@@ -142,7 +143,7 @@ export const ApiKeyManagementSection: React.FC = () => {
             </p>
           </div>
         </div>
-      </div>
+      </BrutalistCard>
     );
   }
 
@@ -150,7 +151,7 @@ export const ApiKeyManagementSection: React.FC = () => {
 
   return (
     <>
-      <div className="bg-white border-2 border-zinc-200">
+      <BrutalistCard>
         {/* Header */}
         <div className="p-4 border-b border-zinc-200">
           <p className="text-xs text-zinc-500">
@@ -195,10 +196,7 @@ export const ApiKeyManagementSection: React.FC = () => {
                           </button>
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] font-mono uppercase tracking-wider border border-emerald-200">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Active
-                          </span>
+                          <StatusBadge variant="active" size="sm" />
                         </div>
                       </div>
                     </div>
@@ -231,7 +229,7 @@ export const ApiKeyManagementSection: React.FC = () => {
               {/* Revoked Keys (if any) */}
               {apiKeys.filter((k) => !k.is_active).length > 0 && (
                 <div className="space-y-2 pt-3 border-t border-zinc-200">
-                  <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">Revoked Keys</p>
+                  <SectionLabel>Revoked Keys</SectionLabel>
                   {apiKeys
                     .filter((k) => !k.is_active)
                     .map((key) => (
@@ -256,7 +254,7 @@ export const ApiKeyManagementSection: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
+      </BrutalistCard>
 
       {/* Create API Key Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>

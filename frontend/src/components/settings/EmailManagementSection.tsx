@@ -14,6 +14,7 @@ import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { EmailVerificationModal } from './EmailVerificationModal';
+import { SectionLabel, BrutalistCard, StatusBadge } from '@/components/torale';
 
 export const EmailManagementSection: React.FC = () => {
   const { user } = useAuth();
@@ -72,7 +73,7 @@ export const EmailManagementSection: React.FC = () => {
 
   return (
     <>
-      <div className="bg-white border-2 border-zinc-200">
+      <BrutalistCard>
         {/* Header */}
         <div className="p-4 border-b border-zinc-200">
           <p className="text-xs text-zinc-500">
@@ -97,12 +98,9 @@ export const EmailManagementSection: React.FC = () => {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs sm:text-sm font-mono text-zinc-900 break-all">{clerkEmail}</p>
-                      <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 mt-0.5">Account Email</p>
+                      <SectionLabel className="mt-0.5">Account Email</SectionLabel>
                       <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] font-mono uppercase tracking-wider border border-emerald-200">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Verified
-                        </span>
+                        <StatusBadge variant="active" label="Verified" size="sm" />
                         <span className="px-1.5 py-0.5 bg-zinc-900 text-white text-[9px] font-mono uppercase tracking-wider">
                           Default
                         </span>
@@ -123,7 +121,7 @@ export const EmailManagementSection: React.FC = () => {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-xs sm:text-sm font-mono text-zinc-900 break-all">{email}</p>
-                          <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 mt-0.5">Custom Email</p>
+                          <SectionLabel className="mt-0.5">Custom Email</SectionLabel>
                         </div>
                         <button
                           onClick={() => handleDeleteClick(email)}
@@ -138,10 +136,7 @@ export const EmailManagementSection: React.FC = () => {
                         </button>
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] font-mono uppercase tracking-wider border border-emerald-200">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Verified
-                        </span>
+                        <StatusBadge variant="active" label="Verified" size="sm" />
                       </div>
                     </div>
                   </div>
@@ -168,7 +163,7 @@ export const EmailManagementSection: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
+      </BrutalistCard>
 
       {/* Email Verification Modal */}
       <EmailVerificationModal

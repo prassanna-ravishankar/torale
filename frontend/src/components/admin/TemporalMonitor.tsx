@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { formatDistanceToNow } from 'date-fns'
-import { ExternalLink, Loader2, Clock, Play, Pause, CheckCircle2, XCircle, RefreshCw, Calendar } from 'lucide-react'
+import { ExternalLink, Loader2, Clock, Play, Pause, Calendar } from 'lucide-react'
 import { formatDuration } from '@/lib/utils'
 import { WorkflowCard } from './cards/WorkflowCard'
 import { ScheduleCard } from './cards/ScheduleCard'
+import { SectionLabel, BrutalistCard, StatusBadge } from '@/components/torale'
 
 interface Workflow {
   workflow_id: string
@@ -54,49 +55,17 @@ export function TemporalMonitor() {
     }
   }
 
-  const getWorkflowStatusBadge = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-mono uppercase tracking-wider border border-emerald-200">
-            <CheckCircle2 className="h-3 w-3" />
-            Completed
-          </span>
-        )
-      case 'FAILED':
-        return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-50 text-red-700 text-[10px] font-mono uppercase tracking-wider border border-red-200">
-            <XCircle className="h-3 w-3" />
-            Failed
-          </span>
-        )
-      case 'RUNNING':
-        return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-mono uppercase tracking-wider border border-blue-200">
-            <RefreshCw className="h-3 w-3 animate-spin" />
-            Running
-          </span>
-        )
-      default:
-        return (
-          <span className="inline-flex items-center px-1.5 py-0.5 bg-zinc-50 text-zinc-600 text-[10px] font-mono uppercase tracking-wider border border-zinc-200">
-            {status}
-          </span>
-        )
-    }
-  }
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 bg-white border-2 border-zinc-200">
+      <BrutalistCard className="flex items-center justify-center h-64">
         <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
-      </div>
+      </BrutalistCard>
     )
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64 bg-white border-2 border-zinc-200">
+      <BrutalistCard className="flex items-center justify-center h-64">
         <div className="text-center">
           <p className="text-sm font-mono text-red-600">Error: {error}</p>
           <button
@@ -106,12 +75,12 @@ export function TemporalMonitor() {
             Retry
           </button>
         </div>
-      </div>
+      </BrutalistCard>
     )
   }
 
   return (
-    <div className="bg-white border-2 border-zinc-200">
+    <BrutalistCard>
       {/* Header with Tabs */}
       <div className="border-b border-zinc-200">
         <div className="p-4 border-b border-zinc-200 flex items-center gap-3">
@@ -161,11 +130,11 @@ export function TemporalMonitor() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-zinc-200 bg-zinc-50">
-                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Workflow ID</th>
-                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Type</th>
-                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Status</th>
-                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Started</th>
-                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Duration</th>
+                  <th className="text-left p-3"><SectionLabel>Workflow ID</SectionLabel></th>
+                  <th className="text-left p-3"><SectionLabel>Type</SectionLabel></th>
+                  <th className="text-left p-3"><SectionLabel>Status</SectionLabel></th>
+                  <th className="text-left p-3"><SectionLabel>Started</SectionLabel></th>
+                  <th className="text-left p-3"><SectionLabel>Duration</SectionLabel></th>
                 </tr>
               </thead>
               <tbody>
@@ -191,7 +160,13 @@ export function TemporalMonitor() {
                         </a>
                       </td>
                       <td className="p-3 text-xs font-mono text-zinc-600">{workflow.workflow_type}</td>
-                      <td className="p-3">{getWorkflowStatusBadge(workflow.status)}</td>
+                      <td className="p-3">
+                        <StatusBadge variant={
+                          workflow.status === 'COMPLETED' ? 'completed' :
+                          workflow.status === 'FAILED' ? 'failed' :
+                          workflow.status === 'RUNNING' ? 'running' : 'unknown'
+                        } />
+                      </td>
                       <td className="p-3 text-xs font-mono text-zinc-500">
                         {workflow.start_time
                           ? formatDistanceToNow(new Date(workflow.start_time), { addSuffix: true })
@@ -232,10 +207,10 @@ export function TemporalMonitor() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-zinc-200 bg-zinc-50">
-                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Schedule ID</th>
-                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Cron Spec</th>
-                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Status</th>
-                  <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Recent Actions</th>
+                  <th className="text-left p-3"><SectionLabel>Schedule ID</SectionLabel></th>
+                  <th className="text-left p-3"><SectionLabel>Cron Spec</SectionLabel></th>
+                  <th className="text-left p-3"><SectionLabel>Status</SectionLabel></th>
+                  <th className="text-left p-3"><SectionLabel>Recent Actions</SectionLabel></th>
                 </tr>
               </thead>
               <tbody>
@@ -258,23 +233,7 @@ export function TemporalMonitor() {
                         </code>
                       </td>
                       <td className="p-3">
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider border ${
-                          schedule.paused
-                            ? 'bg-amber-50 text-amber-700 border-amber-200'
-                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        }`}>
-                          {schedule.paused ? (
-                            <>
-                              <Pause className="h-3 w-3" />
-                              Paused
-                            </>
-                          ) : (
-                            <>
-                              <Play className="h-3 w-3" />
-                              Running
-                            </>
-                          )}
-                        </span>
+                        <StatusBadge variant={schedule.paused ? 'paused' : 'running'} />
                       </td>
                       <td className="p-3 text-sm font-mono text-zinc-900">{schedule.recent_actions}</td>
                     </tr>
@@ -297,6 +256,6 @@ export function TemporalMonitor() {
           </div>
         </>
       )}
-    </div>
+    </BrutalistCard>
   )
 }

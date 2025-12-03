@@ -1,16 +1,12 @@
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { TaskExecution } from "@/types";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { GroundingSourceList } from "@/components/ui/GroundingSourceList";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { StatusBadge, SectionLabel, CollapsibleSection, BrutalistCard } from "@/components/torale";
 import {
   CheckCircle2,
   XCircle,
   Clock,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 
 interface ExecutionTimelineProps {
@@ -48,36 +44,30 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-          <Card
+          <BrutalistCard
             className={
               highlightNotifications && execution.condition_met
-                ? "border-2 border-emerald-500 bg-emerald-50/30"
-                : "border-2"
+                ? "border-emerald-500 bg-emerald-50/30"
+                : ""
             }
           >
-            <div className="p-4">
               {/* Layer 1: Status Summary (Always Visible) */}
               <div className="flex items-center justify-between gap-4 mb-3">
                 <div className="flex items-center gap-3">
                   <div className="shrink-0">{getStatusIcon(execution.status)}</div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge
+                    <StatusBadge
                       variant={
                         execution.status === "success"
-                          ? "default"
+                          ? "success"
                           : execution.status === "failed"
-                          ? "destructive"
-                          : "secondary"
+                          ? "failed"
+                          : "pending"
                       }
-                    >
-                      {execution.status}
-                    </Badge>
+                    />
 
                     {execution.condition_met && (
-                      <Badge className="bg-emerald-50 text-emerald-600 border-emerald-200">
-                        <CheckCircle2 className="mr-1 h-3 w-3" />
-                        Condition Met
-                      </Badge>
+                      <StatusBadge variant="met" />
                     )}
                   </div>
                 </div>
@@ -90,7 +80,7 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
               {/* Layer 2: PRIMARY INFO - Answer & Sources (Always Visible) */}
               {execution.result?.answer && (
                 <div className="mb-3 p-4 bg-white border-2 border-zinc-200">
-                  <p className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider mb-3">Answer</p>
+                  <SectionLabel className="mb-3">Answer</SectionLabel>
                   <div className="text-sm prose prose-sm max-w-none">
                     <ReactMarkdown
                       components={{
@@ -112,7 +102,7 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
 
               {execution.grounding_sources && execution.grounding_sources.length > 0 && (
                 <div className="p-4 bg-white border-2 border-zinc-200 mb-3">
-                  <p className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider mb-3">Sources</p>
+                  <SectionLabel className="mb-3">Sources</SectionLabel>
                   <GroundingSourceList
                     sources={execution.grounding_sources}
                     title=""
@@ -121,22 +111,13 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
               )}
 
               {/* Layer 3: METADATA (Collapsible - Change Summary, Current State) */}
-              <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-                <CollapsibleTrigger className="flex items-center gap-2 text-xs font-mono text-zinc-500 hover:text-zinc-900 transition-colors mb-3">
-                  {isExpanded ? (
-                    <>
-                      <ChevronUp className="w-3 h-3" />
-                      Hide Metadata
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="w-3 h-3" />
-                      Show Metadata
-                    </>
-                  )}
-                </CollapsibleTrigger>
-
-                <CollapsibleContent className="space-y-3">
+              <CollapsibleSection
+                title="Metadata"
+                open={isExpanded}
+                onOpenChange={setIsExpanded}
+                variant="default"
+              >
+                <div className="space-y-3">
                   {execution.change_summary && (
                     <div className="p-3 bg-emerald-50 border border-emerald-200">
                       <p className="text-sm text-emerald-900 font-medium">
@@ -175,19 +156,18 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
                       </div>
                     </div>
                   )}
-                </CollapsibleContent>
-              </Collapsible>
+                </div>
+              </CollapsibleSection>
 
               {execution.error_message && (
                 <div className="p-4 bg-red-50 border-2 border-red-200">
-                  <p className="text-[10px] font-mono uppercase text-red-400 tracking-wider mb-2">Error</p>
+                  <SectionLabel className="mb-2 text-red-400">Error</SectionLabel>
                   <p className="text-sm text-red-600 font-mono">
                     {execution.error_message}
                   </p>
                 </div>
               )}
-            </div>
-          </Card>
+          </BrutalistCard>
   );
 };
 

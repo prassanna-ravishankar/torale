@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import {
   Loader2,
   Copy,
   CheckCircle2,
@@ -14,10 +9,9 @@ import {
   Send,
   Eye,
   EyeOff,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { SectionLabel, BrutalistCard, CollapsibleSection } from '@/components/torale';
 import { toast } from 'sonner';
 import type { WebhookConfig } from '@/types';
 
@@ -142,14 +136,14 @@ export const WebhookConfigSection: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="bg-white border-2 border-zinc-200 p-8 flex items-center justify-center">
+      <BrutalistCard className="p-8 flex items-center justify-center">
         <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
-      </div>
+      </BrutalistCard>
     );
   }
 
   return (
-    <div className="bg-white border-2 border-zinc-200">
+    <BrutalistCard>
       {/* Header */}
       <div className="p-4 border-b border-zinc-200 flex items-center justify-between">
         <p className="text-xs text-zinc-500">
@@ -274,16 +268,11 @@ export const WebhookConfigSection: React.FC = () => {
         )}
 
         {/* Documentation */}
-        <Collapsible open={isDocOpen} onOpenChange={setIsDocOpen}>
-          <CollapsibleTrigger className="w-full flex items-center justify-between p-3 bg-zinc-50 border border-zinc-200 hover:bg-zinc-100 transition-colors">
-            <span className="text-xs font-mono text-zinc-600">Webhook Documentation</span>
-            {isDocOpen ? (
-              <ChevronUp className="h-4 w-4 text-zinc-400" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-zinc-400" />
-            )}
-          </CollapsibleTrigger>
-          <CollapsibleContent>
+        <CollapsibleSection
+          title="Webhook Documentation"
+          open={isDocOpen}
+          onOpenChange={setIsDocOpen}
+        >
             <div className="bg-zinc-900 text-zinc-300 p-4 space-y-4 text-xs font-mono border-x border-b border-zinc-200">
               <div>
                 <h4 className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">Signature Header</h4>
@@ -319,9 +308,8 @@ export const WebhookConfigSection: React.FC = () => {
                 <p className="text-zinc-400">Exponential backoff: 1min → 5min → 15min</p>
               </div>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+        </CollapsibleSection>
       </div>
-    </div>
+    </BrutalistCard>
   );
 };

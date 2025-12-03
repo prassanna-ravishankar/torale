@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, Mail, Webhook, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { WebhookDelivery, NotificationSend } from '@/types';
+import { SectionLabel, BrutalistCard, StatusBadge } from '@/components/torale';
 
 export const NotificationHistorySection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'emails' | 'webhooks'>('emails');
@@ -86,7 +87,7 @@ export const NotificationHistorySection: React.FC = () => {
   };
 
   return (
-    <div className="bg-white border-2 border-zinc-200">
+    <BrutalistCard>
       {/* Header */}
       <div className="p-4 border-b border-zinc-200">
         <p className="text-xs text-zinc-500">
@@ -216,6 +217,6 @@ export const NotificationHistorySection: React.FC = () => {
           )
         )}
       </div>
-    </div>
+    </BrutalistCard>
   );
 };

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { Users, ListChecks, Activity, TrendingUp, Loader2, Search, Zap } from 'lucide-react'
+import { SectionLabel, BrutalistCard } from '@/components/torale'
 
 interface PlatformStats {
   users: {
@@ -81,11 +82,9 @@ export function OverviewStats() {
       {/* KPI Cards Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* User Capacity */}
-        <div className="bg-white border-2 border-zinc-200 p-4">
+        <BrutalistCard className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
-              User Capacity
-            </span>
+            <SectionLabel>User Capacity</SectionLabel>
             <div className="bg-zinc-100 w-8 h-8 flex items-center justify-center">
               <Users className="h-4 w-4 text-zinc-600" />
             </div>
@@ -107,14 +106,12 @@ export function OverviewStats() {
               {stats.users.available} seats available
             </p>
           </div>
-        </div>
+        </BrutalistCard>
 
         {/* Active Tasks */}
-        <div className="bg-white border-2 border-zinc-200 p-4">
+        <BrutalistCard className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
-              Active Tasks
-            </span>
+            <SectionLabel>Active Tasks</SectionLabel>
             <div className="bg-zinc-100 w-8 h-8 flex items-center justify-center">
               <ListChecks className="h-4 w-4 text-zinc-600" />
             </div>
@@ -133,14 +130,12 @@ export function OverviewStats() {
               </span>
             </div>
           </div>
-        </div>
+        </BrutalistCard>
 
         {/* 24h Executions */}
-        <div className="bg-white border-2 border-zinc-200 p-4">
+        <BrutalistCard className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
-              24h Executions
-            </span>
+            <SectionLabel>24h Executions</SectionLabel>
             <div className="bg-zinc-100 w-8 h-8 flex items-center justify-center">
               <Activity className="h-4 w-4 text-zinc-600" />
             </div>
@@ -161,14 +156,12 @@ export function OverviewStats() {
               )}
             </div>
           </div>
-        </div>
+        </BrutalistCard>
 
         {/* Success Rate */}
-        <div className="bg-white border-2 border-zinc-200 p-4">
+        <BrutalistCard className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
-              Success Rate
-            </span>
+            <SectionLabel>Success Rate</SectionLabel>
             <div className="bg-zinc-100 w-8 h-8 flex items-center justify-center">
               <TrendingUp className="h-4 w-4 text-zinc-600" />
             </div>
@@ -179,11 +172,11 @@ export function OverviewStats() {
             </p>
             <p className="text-xs font-mono text-zinc-500">Last 24 hours</p>
           </div>
-        </div>
+        </BrutalistCard>
       </div>
 
       {/* Popular Queries */}
-      <div className="bg-white border-2 border-zinc-200">
+      <BrutalistCard>
         <div className="p-4 border-b border-zinc-200 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-grotesk font-bold">Popular Queries</h3>
@@ -231,7 +224,7 @@ export function OverviewStats() {
             </div>
           )}
         </div>
-      </div>
+      </BrutalistCard>
     </div>
   )
 }

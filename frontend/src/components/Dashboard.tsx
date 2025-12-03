@@ -9,6 +9,7 @@ import { TaskEditDialog } from '@/components/TaskEditDialog';
 import { StatCard } from '@/components/ui/StatCard';
 import { CronDisplay } from '@/components/ui/CronDisplay';
 import { Button } from '@/components/ui/button';
+import { SectionLabel, FilterGroup, EmptyState, StatusBadge, type FilterOption } from '@/components/torale';
 import { Plus, Search, Loader2, Filter, LayoutGrid, List as ListIcon, Play, Settings, Activity, CheckCircle, Pause } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -176,59 +177,34 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
           </div>
         </header>
 
-        {/* Stats Row */}
+        {/* Stats Row - Now clickable to filter */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-          <StatCard label="Active Monitors" value={activeCount.toString()} />
-          <StatCard label="Total Tasks" value={tasks.length.toString()} />
-          <StatCard label="Completed" value={completedCount.toString()} />
-          <StatCard label="Paused" value={pausedCount.toString()} />
+          <div onClick={() => setActiveFilter('active')} className="cursor-pointer">
+            <StatCard label="Active Monitors" value={activeCount.toString()} />
+          </div>
+          <div onClick={() => setActiveFilter('all')} className="cursor-pointer">
+            <StatCard label="Total Tasks" value={tasks.length.toString()} />
+          </div>
+          <div onClick={() => setActiveFilter('completed')} className="cursor-pointer">
+            <StatCard label="Completed" value={completedCount.toString()} />
+          </div>
+          <div onClick={() => setActiveFilter('paused')} className="cursor-pointer">
+            <StatCard label="Paused" value={pausedCount.toString()} />
+          </div>
         </div>
 
         {/* Filters & View Toggle */}
         <div className="flex justify-between items-center mb-6">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setActiveFilter('all')}
-              className={`px-3 py-1.5 border border-zinc-200 rounded-sm text-xs font-medium transition-colors flex items-center gap-2 ${
-                activeFilter === 'all'
-                  ? 'bg-zinc-900 text-white border-zinc-900'
-                  : 'bg-white text-zinc-600 hover:border-zinc-400'
-              }`}
-            >
-              <Filter className="w-3 h-3" />
-              All ({tasks.length})
-            </button>
-            <button
-              onClick={() => setActiveFilter('active')}
-              className={`px-3 py-1.5 border border-zinc-200 rounded-sm text-xs font-medium transition-colors ${
-                activeFilter === 'active'
-                  ? 'bg-zinc-900 text-white border-zinc-900'
-                  : 'bg-white text-zinc-600 hover:border-zinc-400'
-              }`}
-            >
-              Active ({activeCount})
-            </button>
-            <button
-              onClick={() => setActiveFilter('completed')}
-              className={`px-3 py-1.5 border border-zinc-200 rounded-sm text-xs font-medium transition-colors ${
-                activeFilter === 'completed'
-                  ? 'bg-zinc-900 text-white border-zinc-900'
-                  : 'bg-white text-zinc-600 hover:border-zinc-400'
-              }`}
-            >
-              Completed ({completedCount})
-            </button>
-            <button
-              onClick={() => setActiveFilter('paused')}
-              className={`px-3 py-1.5 border border-zinc-200 rounded-sm text-xs font-medium transition-colors ${
-                activeFilter === 'paused'
-                  ? 'bg-zinc-900 text-white border-zinc-900'
-                  : 'bg-white text-zinc-600 hover:border-zinc-400'
-              }`}
-            >
-              Paused ({pausedCount})
-            </button>
-          </div>
+          <FilterGroup
+            filters={[
+              { id: 'all', label: 'All', count: tasks.length, icon: Filter },
+              { id: 'active', label: 'Active', count: activeCount },
+              { id: 'completed', label: 'Completed', count: completedCount },
+              { id: 'paused', label: 'Paused', count: pausedCount },
+            ]}
+            active={activeFilter}
+            onChange={(filterId) => setActiveFilter(filterId as 'all' | 'active' | 'completed' | 'paused')}
+          />
 
           <div className="flex bg-white border border-zinc-200 rounded-sm p-0.5">
             <button
@@ -248,29 +224,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
 
         {/* Monitors Grid/Table */}
         {filteredTasks.length === 0 ? (
-          <motion.button
-            onClick={() => setIsCreating(true)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="w-full border-2 border-dashed border-zinc-200 rounded-sm flex flex-col items-center justify-center p-12 text-zinc-400 hover:border-zinc-400 hover:text-zinc-600 transition-all group min-h-[200px]"
-          >
-            <div className="w-12 h-12 rounded-full bg-zinc-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-              <Plus className="w-6 h-6" />
-            </div>
-            <span className="font-mono text-xs uppercase tracking-widest font-bold">
-              {searchQuery ? 'No monitors match your search' : 'Deploy New Monitor'}
-            </span>
-          </motion.button>
+          <EmptyState
+            icon={Plus}
+            title={searchQuery ? 'No monitors match your search' : 'Deploy New Monitor'}
+            action={{
+              label: 'Create Monitor',
+              onClick: () => setIsCreating(true),
+            }}
+          />
         ) : viewMode === 'list' ? (
           <div className="bg-white border-2 border-zinc-200 overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b-2 border-zinc-200 bg-zinc-50">
-                  <th className="text-left p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Monitor</th>
-                  <th className="text-left p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Status</th>
-                  <th className="text-left p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider hidden md:table-cell">Schedule</th>
-                  <th className="text-left p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider hidden lg:table-cell">Last Run</th>
-                  <th className="text-right p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Actions</th>
+                  <th className="text-left p-4"><SectionLabel>Monitor</SectionLabel></th>
+                  <th className="text-left p-4"><SectionLabel>Status</SectionLabel></th>
+                  <th className="text-left p-4 hidden md:table-cell"><SectionLabel>Schedule</SectionLabel></th>
+                  <th className="text-left p-4 hidden lg:table-cell"><SectionLabel>Last Run</SectionLabel></th>
+                  <th className="text-right p-4"><SectionLabel>Actions</SectionLabel></th>
                 </tr>
               </thead>
               <tbody>
