@@ -177,6 +177,55 @@ class TaskStateManager:
                     logger.error(f"Failed to pause schedule {schedule_id}: {str(e)}")
                     raise
 
+    async def delete_schedule(self, task_id: UUID) -> dict:
+        """
+        Delete a Temporal schedule permanently.
+
+        This is used when a task reaches COMPLETED state and should not run again
+        unless explicitly re-activated by the user.
+
+        Args:
+            task_id: UUID of the task
+
+        Returns:
+            dict with:
+                - success: bool
+                - schedule_action: str ("deleted", "not_found_ok")
+                - error: str | None
+
+        Raises:
+            Exception: If deletion fails unexpectedly
+        """
+        schedule_id = f"schedule-{task_id}"
+        client = await self._get_temporal_client()
+
+        try:
+            schedule_handle = client.get_schedule_handle(schedule_id)
+            logger.info(f"Deleting schedule {schedule_id}")
+            await schedule_handle.delete()
+            logger.info(f"Successfully deleted schedule {schedule_id}")
+            return {
+                "success": True,
+                "schedule_action": "deleted",
+                "error": None,
+            }
+        except RPCError as e:
+            if e.status == RPCStatusCode.NOT_FOUND:
+                # Schedule doesn't exist - that's fine, already deleted
+                logger.info(
+                    f"Schedule {schedule_id} not found when deleting - "
+                    f"already deleted or never existed"
+                )
+                return {
+                    "success": True,
+                    "schedule_action": "not_found_ok",
+                    "error": None,
+                }
+            else:
+                # Real RPC error
+                logger.error(f"Failed to delete schedule {schedule_id}: {str(e)}")
+                raise
+
     async def deactivate_task(
         self,
         task_id: UUID,

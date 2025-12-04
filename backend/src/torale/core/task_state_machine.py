@@ -89,11 +89,14 @@ class TaskStateMachine:
                     user_id=user_id,
                     schedule=schedule,
                 )
-            else:  # PAUSED or COMPLETED
+            elif to_state == TaskState.PAUSED:
                 result = await self._state_manager.set_task_active_state(
                     task_id,
                     is_active=False,
                 )
+            elif to_state == TaskState.COMPLETED:
+                # Delete schedule for completed tasks (won't run again unless re-activated)
+                result = await self._state_manager.delete_schedule(task_id)
 
             logger.info(f"Task {task_id} transitioned: {from_state.value} → {to_state.value}")
             return result
