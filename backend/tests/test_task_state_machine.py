@@ -58,10 +58,10 @@ class TestTaskStateMachine:
 
     @pytest.mark.asyncio
     async def test_valid_transition_active_to_completed(self, mock_db_conn, task_data):
-        """Test that ACTIVE → COMPLETED is a valid transition"""
+        """Test that ACTIVE → COMPLETED is a valid transition and deletes schedule"""
         mock_state_manager = MagicMock()
-        mock_state_manager.set_task_active_state = AsyncMock(
-            return_value={"success": True, "schedule_action": "paused", "error": None}
+        mock_state_manager.delete_schedule = AsyncMock(
+            return_value={"success": True, "schedule_action": "deleted", "error": None}
         )
 
         with patch(
@@ -75,6 +75,8 @@ class TestTaskStateMachine:
             )
 
         assert result["success"] is True
+        assert result["schedule_action"] == "deleted"
+        mock_state_manager.delete_schedule.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_valid_transition_paused_to_active(self, mock_db_conn, task_data):
@@ -220,8 +222,8 @@ class TestTaskStateMachine:
     async def test_complete_convenience_method(self, mock_db_conn, task_data):
         """Test the complete() convenience method"""
         mock_state_manager = MagicMock()
-        mock_state_manager.set_task_active_state = AsyncMock(
-            return_value={"success": True, "schedule_action": "paused", "error": None}
+        mock_state_manager.delete_schedule = AsyncMock(
+            return_value={"success": True, "schedule_action": "deleted", "error": None}
         )
 
         with patch(
@@ -233,6 +235,8 @@ class TestTaskStateMachine:
             )
 
         assert result["success"] is True
+        assert result["schedule_action"] == "deleted"
+        mock_state_manager.delete_schedule.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_activate_convenience_method(self, mock_db_conn, task_data):
