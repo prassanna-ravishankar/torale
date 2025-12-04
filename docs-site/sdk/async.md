@@ -82,7 +82,7 @@ task_ids = ["task-id-1", "task-id-2", "task-id-3"]
 tasks = asyncio.run(get_task_details(task_ids))
 
 for task in tasks:
-    print(f"{task.name}: {task.is_active}")
+    print(f"{task.name}: {task.state}")
 ```
 
 ## With FastAPI

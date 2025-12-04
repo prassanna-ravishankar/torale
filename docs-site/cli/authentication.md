@@ -44,7 +44,7 @@ torale auth whoami
 {
   "id": "660e8400-e29b-41d4-a716-446655440000",
   "email": "user@example.com",
-  "is_active": true
+  "state": "active"
 }
 ```
 

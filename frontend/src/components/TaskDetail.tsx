@@ -125,9 +125,11 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   const handleToggle = async () => {
     if (!task) return;
     try {
-      await api.updateTask(taskId, { is_active: !task.is_active });
+      // Toggle between active and paused (completed tasks handled separately with badge)
+      const newState = task.state === 'active' ? 'paused' : 'active';
+      await api.updateTask(taskId, { state: newState });
       await loadData();
-      toast.success(task.is_active ? 'Task paused' : 'Task activated');
+      toast.success(newState === 'active' ? 'Task activated' : 'Task paused');
     } catch (error) {
       console.error("Failed to toggle task:", error);
       toast.error('Failed to update task');
@@ -180,7 +182,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   }
 
   // Get task status from centralized logic
-  const status = getTaskStatus(task.is_active, task.last_execution?.condition_met);
+  const status = getTaskStatus(task.state);
 
   // Map icon name to Lucide icon component
   const StatusIcon = {
@@ -380,14 +382,33 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               {task.notify_behavior === 'track_state' && 'On changes'}
             </p>
             <div className="flex items-center gap-2 mt-3">
-              <Switch
-                checked={task.is_active}
-                onCheckedChange={handleToggle}
-                className="data-[state=checked]:bg-zinc-900 data-[state=unchecked]:bg-zinc-200 border-2 border-zinc-900"
-              />
-              <span className={`text-xs font-mono uppercase tracking-wider ${task.is_active ? 'text-zinc-700' : 'text-zinc-900 font-bold'}`}>
-                {task.is_active ? "Active" : "Paused"}
-              </span>
+              {task.state === 'completed' ? (
+                <div className="flex flex-col gap-2">
+                  <Badge variant="default" className="bg-emerald-100 text-emerald-900 border-2 border-emerald-900 font-mono text-xs uppercase tracking-wider">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Completed
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleToggle}
+                    className="text-xs h-7 px-2 font-mono uppercase tracking-wider hover:bg-zinc-100"
+                  >
+                    Re-activate
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Switch
+                    checked={task.state === 'active'}
+                    onCheckedChange={handleToggle}
+                    className="data-[state=checked]:bg-zinc-900 data-[state=unchecked]:bg-zinc-200 border-2 border-zinc-900"
+                  />
+                  <span className={`text-xs font-mono uppercase tracking-wider ${task.state === 'active' ? 'text-zinc-700' : 'text-zinc-900 font-bold'}`}>
+                    {task.state === 'active' ? "Active" : "Paused"}
+                  </span>
+                </>
+              )}
             </div>
           </InfoCard>
 

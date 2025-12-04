@@ -140,7 +140,7 @@ Content-Type: application/json
     "model": "gemini-2.0-flash-exp",
     "search_provider": "google"
   },
-  "is_active": true,
+  "state": "active",
   "condition_met": false,
   "last_known_state": null,
   "last_notified_at": null,
@@ -246,7 +246,7 @@ Authorization: Bearer {api_key}
       "condition_description": "A specific date has been announced",
       "schedule": "0 9 * * *",
       "notify_behavior": "once",
-      "is_active": true,
+      "state": "active",
       "condition_met": true,
       "last_notified_at": "2024-01-15T14:23:45Z",
       "created_at": "2024-01-15T10:30:00Z",
@@ -301,7 +301,7 @@ Authorization: Bearer {api_key}
     "model": "gemini-2.0-flash-exp",
     "search_provider": "google"
   },
-  "is_active": true,
+  "state": "active",
   "condition_met": true,
   "last_known_state": {
     "answer": "iPhone 16 releases September 20, 2024",
@@ -340,7 +340,7 @@ Content-Type: application/json
   "condition_description": "New condition",
   "schedule": "0 */6 * * *",
   "notify_behavior": "track_state",
-  "is_active": true
+  "state": "active"
 }
 ```
 
@@ -360,7 +360,7 @@ curl -X PUT https://api.torale.ai/api/v1/tasks/550e8400-e29b-41d4-a716-446655440
 curl -X PUT https://api.torale.ai/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000 \
   -H "Authorization: Bearer sk_..." \
   -H "Content-Type: application/json" \
-  -d '{"is_active": false}'
+  -d '{"state": "paused"}'
 ```
 
 ### Delete Task
@@ -557,7 +557,7 @@ print(f"Answer: {preview.answer}")
 # List tasks
 tasks = client.tasks.list(active=True)
 for task in tasks:
-    print(f"{task.name}: {task.is_active}")
+    print(f"{task.name}: {task.state}")
 
 # Get specific task
 task = client.tasks.get("550e8400-e29b-41d4-a716-446655440000")

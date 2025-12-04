@@ -6,6 +6,7 @@ testing all CRUD operations, notifications, and error handling.
 Prerequisites:
 - Local dev environment running (`just dev`)
 - TORALE_NOAUTH=1 environment variable set
+- Temporal scheduler workers running (required for schedule creation)
 
 Run with:
     # Run all tests (will auto-skip if API not available)
@@ -16,6 +17,10 @@ Run with:
 
 Note: These tests automatically skip if the API server isn't running (similar to
       test_gemini_integration.py). They're safe to run in CI.
+
+WARNING: Most tests create tasks which trigger Temporal schedule creation.
+         This requires Temporal scheduler workers to be running in self-hosted
+         Temporal (local dev). In production (Temporal Cloud), schedulers are managed.
 """
 
 import os
@@ -27,6 +32,9 @@ import pytest
 
 from torale.sdk import Torale
 from torale.sdk.exceptions import AuthenticationError, NotFoundError, ValidationError
+
+# NOTE: These tests create tasks which try to create Temporal schedules.
+# Temporal scheduler workers are now enabled in docker-compose.yml by default.
 
 
 def check_api_available() -> bool:

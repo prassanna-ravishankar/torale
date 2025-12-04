@@ -142,6 +142,13 @@ torale/
 ```
 
 ## Database Schema
+
+**For detailed architecture documentation**, see [docs-site/architecture/](docs-site/architecture/):
+- [Task State Machine](docs-site/architecture/task-state-machine.md) - Task lifecycle and state transitions
+- [Database Schema](docs-site/architecture/database-schema.md) - Full schema documentation
+- [Architecture Overview](docs-site/architecture/overview.md) - System design and components
+
+**Quick Reference Schema:**
 ```sql
 -- Clerk-authenticated users
 CREATE TABLE users (
@@ -173,7 +180,7 @@ CREATE TABLE tasks (
   schedule TEXT NOT NULL, -- cron expression
   executor_type TEXT NOT NULL DEFAULT 'llm_grounded_search',
   config JSONB NOT NULL,
-  is_active BOOLEAN DEFAULT true,
+  state TEXT NOT NULL DEFAULT 'active',  -- 'active', 'paused', 'completed'
 
   -- Grounded search monitoring fields
   search_query TEXT,  -- "When is next iPhone release?"
@@ -184,7 +191,8 @@ CREATE TABLE tasks (
   last_notified_at TIMESTAMP WITH TIME ZONE,
 
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CHECK (state IN ('active', 'paused', 'completed'))
 );
 
 CREATE TABLE task_executions (
@@ -216,10 +224,11 @@ CREATE TABLE task_templates (
   schedule TEXT NOT NULL DEFAULT '0 9 * * *',  -- Default cron schedule
   notify_behavior TEXT NOT NULL DEFAULT 'once',
   config JSONB DEFAULT '{"model": "gemini-2.0-flash-exp"}',  -- Default executor config
-  is_active BOOLEAN NOT NULL DEFAULT true,
+  state TEXT NOT NULL DEFAULT 'active',  -- Template availability: 'active', 'paused'
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  CHECK (notify_behavior IN ('once', 'always', 'track_state'))
+  CHECK (notify_behavior IN ('once', 'always', 'track_state')),
+  CHECK (state IN ('active', 'paused'))
 );
 ```
 

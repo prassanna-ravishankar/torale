@@ -181,6 +181,7 @@ class TestDeletedTaskHandling:
             "config": json.dumps({"model": "gemini-2.0-flash-exp"}),
             "last_known_state": None,
             "notify_behavior": "once",
+            "state": "active",
         }
 
         # Mock database connection
@@ -245,10 +246,21 @@ class TestUpdateTaskRollback:
 
         # Mock database - task exists and is active
         mock_db = AsyncMock(spec=Database)
-        existing_task = {"id": task_id, "user_id": user_id, "is_active": True, "name": "Test Task"}
+        existing_task = {
+            "id": task_id,
+            "user_id": user_id,
+            "state": "active",
+            "name": "Test Task",
+            "schedule": "0 9 * * *",
+        }
         mock_db.fetch_one.side_effect = [
             existing_task,  # First call: verify task exists
-            {"id": task_id, "is_active": False, "name": "Test Task"},  # Second call: UPDATE returns
+            {
+                "id": task_id,
+                "state": "paused",
+                "name": "Test Task",
+                "schedule": "0 9 * * *",
+            },  # Second call: UPDATE returns
         ]
         mock_db.execute.return_value = None
 
@@ -259,7 +271,7 @@ class TestUpdateTaskRollback:
         mock_client = AsyncMock(spec=Client)
         mock_client.get_schedule_handle.return_value = mock_schedule
 
-        task_update = TaskUpdate(is_active=False)
+        task_update = TaskUpdate(state="paused")
 
         with patch("torale.api.routers.tasks.get_temporal_client", return_value=mock_client):
             # Should raise HTTPException with 500 status
@@ -267,14 +279,12 @@ class TestUpdateTaskRollback:
                 await update_task(task_id, task_update, mock_user, mock_db)
 
             assert exc_info.value.status_code == 500
-            assert "Failed to pause schedule" in exc_info.value.detail
+            assert "Failed to change task state" in exc_info.value.detail
             assert "rolled back" in exc_info.value.detail.lower()
 
         # Verify rollback was attempted
-        rollback_calls = [
-            call for call in mock_db.execute.call_args_list if "is_active" in str(call)
-        ]
-        assert len(rollback_calls) >= 1, "Should attempt to rollback is_active"
+        rollback_calls = [call for call in mock_db.execute.call_args_list if "state" in str(call)]
+        assert len(rollback_calls) >= 1, "Should attempt to rollback state"
 
     @pytest.mark.asyncio
     async def test_update_task_rolls_back_on_unpause_failure(self):
@@ -300,10 +310,21 @@ class TestUpdateTaskRollback:
 
         # Mock database - task exists and is inactive
         mock_db = AsyncMock(spec=Database)
-        existing_task = {"id": task_id, "user_id": user_id, "is_active": False, "name": "Test Task"}
+        existing_task = {
+            "id": task_id,
+            "user_id": user_id,
+            "state": "paused",
+            "name": "Test Task",
+            "schedule": "0 9 * * *",
+        }
         mock_db.fetch_one.side_effect = [
             existing_task,  # First call: verify task exists
-            {"id": task_id, "is_active": True, "name": "Test Task"},  # Second call: UPDATE returns
+            {
+                "id": task_id,
+                "state": "active",
+                "name": "Test Task",
+                "schedule": "0 9 * * *",
+            },  # Second call: UPDATE returns
         ]
         mock_db.execute.return_value = None
 
@@ -314,7 +335,7 @@ class TestUpdateTaskRollback:
         mock_client = AsyncMock(spec=Client)
         mock_client.get_schedule_handle.return_value = mock_schedule
 
-        task_update = TaskUpdate(is_active=True)
+        task_update = TaskUpdate(state="active")
 
         with patch("torale.api.routers.tasks.get_temporal_client", return_value=mock_client):
             # Should raise HTTPException with 500 status
@@ -322,14 +343,12 @@ class TestUpdateTaskRollback:
                 await update_task(task_id, task_update, mock_user, mock_db)
 
             assert exc_info.value.status_code == 500
-            assert "Failed to unpause schedule" in exc_info.value.detail
+            assert "Failed to change task state" in exc_info.value.detail
             assert "rolled back" in exc_info.value.detail.lower()
 
         # Verify rollback was attempted
-        rollback_calls = [
-            call for call in mock_db.execute.call_args_list if "is_active" in str(call)
-        ]
-        assert len(rollback_calls) >= 1, "Should attempt to rollback is_active"
+        rollback_calls = [call for call in mock_db.execute.call_args_list if "state" in str(call)]
+        assert len(rollback_calls) >= 1, "Should attempt to rollback state"
 
     @pytest.mark.skip(
         reason="Cannot mock 'except RPCError' clause - exception handling uses MRO not isinstance(). "
