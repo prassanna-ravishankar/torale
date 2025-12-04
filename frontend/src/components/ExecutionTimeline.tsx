@@ -51,6 +51,7 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
                 : ""
             }
           >
+            <div className="p-4">
               {/* Layer 1: Status Summary (Always Visible) */}
               <div className="flex items-center justify-between gap-4 mb-3">
                 <div className="flex items-center gap-3">
@@ -167,6 +168,7 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
                   </p>
                 </div>
               )}
+            </div>
           </BrutalistCard>
   );
 };

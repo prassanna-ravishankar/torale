@@ -277,10 +277,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
                         </div>
                       </BrutalistTableCell>
                       <BrutalistTableCell>
-                        <div className="flex items-center gap-2">
-                          <StatusIcon className="h-4 w-4" style={{ color: status.color }} />
-                          <span className="text-sm whitespace-nowrap">{status.label}</span>
-                        </div>
+                        <StatusBadge
+                          variant={
+                            status.activityState === 'active'
+                              ? 'active'
+                              : status.activityState === 'completed'
+                              ? 'completed'
+                              : 'paused'
+                          }
+                        />
                       </BrutalistTableCell>
                       <BrutalistTableCell className="hidden md:table-cell">
                         <CronDisplay cron={task.schedule} className="text-sm font-mono text-zinc-600" showRaw={false} />
