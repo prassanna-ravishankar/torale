@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Any, Literal
@@ -29,6 +30,20 @@ class TaskStatus(str, Enum):
     RUNNING = "running"
     SUCCESS = "success"
     FAILED = "failed"
+
+
+# Temporal Workflow Models
+
+
+@dataclass
+class TaskExecutionRequest:
+    """Request to execute a task via Temporal workflow."""
+
+    task_id: str
+    execution_id: str
+    user_id: str
+    task_name: str
+    suppress_notifications: bool = False  # For preview/manual runs
 
 
 # Notification Models

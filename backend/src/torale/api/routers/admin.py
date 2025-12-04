@@ -636,9 +636,8 @@ async def deactivate_user(
     for task_id, state in active_tasks:
         try:
             current_state = TaskState(state)
-            if current_state == TaskState.ACTIVE:
-                await state_machine.pause(task_id=task_id, current_state=current_state)
-                paused_count += 1
+            await state_machine.pause(task_id=task_id, current_state=current_state)
+            paused_count += 1
         except Exception as e:
             failed_tasks.append({"task_id": str(task_id), "error": str(e)})
 

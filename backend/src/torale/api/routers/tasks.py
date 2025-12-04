@@ -19,12 +19,14 @@ from torale.core.models import (
     Task,
     TaskCreate,
     TaskExecution,
+    TaskExecutionRequest,
     TaskState,
     TaskUpdate,
 )
 from torale.core.task_state_machine import InvalidTransitionError, TaskStateMachine
+from torale.core.task_state import TaskStateManager
 from torale.notifications import NotificationValidationError, validate_notification
-from torale.workers.workflows import TaskExecutionRequest, TaskExecutionWorkflow
+from torale.workers.workflows import TaskExecutionWorkflow
 
 logger = logging.getLogger(__name__)
 
@@ -245,8 +247,6 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
     # Create Temporal schedule for automatic execution if task is active
     if task.state == TaskState.ACTIVE:
         try:
-            from torale.core.task_state import TaskStateManager
-
             state_manager = TaskStateManager(db_conn=db)
             # For new tasks, create the schedule directly (not a transition)
             await state_manager.set_task_active_state(

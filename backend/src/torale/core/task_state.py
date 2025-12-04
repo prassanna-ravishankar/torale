@@ -13,6 +13,8 @@ from temporalio.client import Client, Schedule, ScheduleActionStartWorkflow, Sch
 from temporalio.service import RPCError
 
 from torale.core.config import settings
+from torale.core.models import TaskExecutionRequest
+from torale.workers.workflows import TaskExecutionWorkflow
 
 logger = logging.getLogger(__name__)
 
@@ -111,9 +113,6 @@ class TaskStateManager:
                     logger.info(f"Schedule {schedule_id} not found, creating new schedule")
 
                     try:
-                        # Import here to avoid circular dependency
-                        from torale.workers.workflows import TaskExecutionRequest, TaskExecutionWorkflow
-
                         logger.info(f"Creating schedule with cron: {schedule}, task_queue: {settings.temporal_task_queue}")
                         await client.create_schedule(
                             id=schedule_id,

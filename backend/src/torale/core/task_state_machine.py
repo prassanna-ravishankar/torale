@@ -1,20 +1,12 @@
 """Task State Machine - Manages state transitions with Temporal side effects."""
 
 import logging
-from enum import Enum
 from uuid import UUID
 
+from torale.core.models import TaskState
 from torale.core.task_state import TaskStateManager
 
 logger = logging.getLogger(__name__)
-
-
-class TaskState(str, Enum):
-    """Task state enum."""
-
-    ACTIVE = "active"
-    PAUSED = "paused"
-    COMPLETED = "completed"
 
 
 class InvalidTransitionError(Exception):

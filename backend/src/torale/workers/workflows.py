@@ -1,17 +1,9 @@
-from dataclasses import dataclass
 from datetime import timedelta
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-
-@dataclass
-class TaskExecutionRequest:
-    task_id: str
-    execution_id: str
-    user_id: str
-    task_name: str
-    suppress_notifications: bool = False  # For preview/manual runs
+from torale.core.models import TaskExecutionRequest
 
 
 @workflow.defn
