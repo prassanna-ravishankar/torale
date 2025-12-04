@@ -280,7 +280,7 @@ jobs:
         env:
           TORALE_API_KEY: ${{ secrets.TORALE_API_KEY }}
         run: |
-          torale task list --json | jq '.[] | select(.state == false)'
+          torale task list --json | jq '.[] | select(.state == "paused")'
 ```
 
 ### GitLab CI

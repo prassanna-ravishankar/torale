@@ -333,7 +333,7 @@ torale task list --json
 torale task list --json | jq -r '.[].id'
 
 # Filter active tasks
-torale task list --json | jq '.[] | select(.state == true)'
+torale task list --json | jq '.[] | select(.state == "active")'
 
 # Count tasks
 torale task list --json | jq 'length'
