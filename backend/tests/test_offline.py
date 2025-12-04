@@ -35,6 +35,7 @@ def test_models():
     print(f"{GREEN}✓ TaskCreate model works{RESET}")
 
     # Test Task
+    now = datetime.now()
     task = Task(
         id=uuid4(),
         user_id=uuid4(),
@@ -45,7 +46,8 @@ def test_models():
         condition_description="test condition",
         config={"model": "gemini-2.0-flash-exp"},
         is_active=True,
-        created_at=datetime.now(),
+        created_at=now,
+        state_changed_at=now,
     )
     assert task.name == "Test Task"
     print(f"{GREEN}✓ Task model works{RESET}")

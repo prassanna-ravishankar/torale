@@ -218,6 +218,7 @@ class TestRunImmediately:
         from datetime import datetime
 
         mock_db = AsyncMock(spec=Database)
+        now = datetime.now()
         mock_db.fetch_one.side_effect = [
             {
                 "id": task_id,
@@ -226,7 +227,8 @@ class TestRunImmediately:
                 "state": "active",
                 "schedule": "0 9 * * *",
                 "config": {"model": "gemini-2.0-flash-exp"},
-                "created_at": datetime.now(),
+                "created_at": now,
+                "state_changed_at": now,
                 "search_query": "test query",
                 "condition_description": "test condition",
                 "notify_behavior": "once",
