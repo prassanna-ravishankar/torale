@@ -20,9 +20,11 @@ import {
   BrutalistTableRow,
   BrutalistTableHead,
   BrutalistTableCell,
-  type FilterOption
+  ActionMenu,
+  type FilterOption,
+  type Action
 } from '@/components/torale';
-import { Plus, Search, Loader2, Filter, LayoutGrid, List as ListIcon, Play, Settings, Activity, CheckCircle, Pause } from 'lucide-react';
+import { Plus, Search, Loader2, Filter, LayoutGrid, List as ListIcon, Play, Settings, Activity, CheckCircle, Pause, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
@@ -289,23 +291,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
                         )}
                       </BrutalistTableCell>
                       <BrutalistTableCell align="right">
-                        <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleExecuteTask(task.id)}
-                            className="h-8 w-8 p-0"
+                        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => handleToggleTask(task.id, task.state === 'active' ? 'paused' : 'active')}
+                            className="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-sm transition-colors"
+                            title={task.state === 'active' ? 'Pause monitor' : 'Resume monitor'}
                           >
-                            <Play className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditTask(task.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Button>
+                            {task.state === 'active' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                          </button>
+                          <ActionMenu actions={[
+                            { id: 'edit', label: 'Edit', icon: Settings, onClick: () => handleEditTask(task.id) },
+                            { id: 'execute', label: 'Run Now', icon: Play, onClick: () => handleExecuteTask(task.id) },
+                            { id: 'toggle', label: task.state === 'active' ? 'Pause' : 'Resume', icon: task.state === 'active' ? Pause : Play, onClick: () => handleToggleTask(task.id, task.state === 'active' ? 'paused' : 'active'), separator: true },
+                            { id: 'delete', label: 'Delete', icon: Trash2, onClick: () => { if (confirm('Are you sure you want to delete "' + task.name + '"?')) { handleDeleteTask(task.id); } }, variant: 'destructive' },
+                          ]} />
                         </div>
                       </BrutalistTableCell>
                     </BrutalistTableRow>
