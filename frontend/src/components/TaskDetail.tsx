@@ -308,15 +308,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <h1 className="font-grotesk text-2xl md:text-4xl font-bold truncate">{task.name}</h1>
-              <StatusBadge
-                variant={
-                  status.activityState === 'active'
-                    ? 'active'
-                    : status.activityState === 'completed'
-                    ? 'completed'
-                    : 'paused'
-                }
-              />
+              <StatusBadge variant={status.activityState} />
             </div>
             <p className="text-zinc-500 text-sm truncate">{task.search_query}</p>
           </div>

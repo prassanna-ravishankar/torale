@@ -31,15 +31,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   action,
   className,
 }) => {
-  const content = (
-    <div
-      className={cn(
-        'w-full border-2 border-dashed border-zinc-200 rounded-sm flex flex-col items-center justify-center p-12 text-zinc-400 transition-all min-h-[200px]',
-        action && 'hover:border-zinc-400 hover:text-zinc-600 cursor-pointer group',
-        className
-      )}
-      onClick={action?.onClick}
-    >
+  const commonContent = (
+    <>
       <div className="w-12 h-12 rounded-full bg-zinc-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
         <Icon className="w-6 h-6" />
       </div>
@@ -51,7 +44,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           {description}
         </p>
       )}
-    </div>
+    </>
   );
 
   if (action) {
@@ -59,16 +52,28 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       <motion.button
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="w-full"
+        onClick={action.onClick}
+        className={cn(
+          'w-full border-2 border-dashed border-zinc-200 rounded-sm flex flex-col items-center justify-center p-12 text-zinc-400 transition-all min-h-[200px]',
+          'hover:border-zinc-400 hover:text-zinc-600 cursor-pointer group',
+          className
+        )}
       >
-        {content}
+        {commonContent}
       </motion.button>
     );
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      {content}
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className={cn(
+        'w-full border-2 border-dashed border-zinc-200 rounded-sm flex flex-col items-center justify-center p-12 text-zinc-400 transition-all min-h-[200px]',
+        className
+      )}
+    >
+      {commonContent}
     </motion.div>
   );
 };

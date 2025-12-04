@@ -38,8 +38,20 @@ export const BrutalistCard: React.FC<BrutalistCardProps> = ({
     ghost: 'bg-transparent',
   };
 
-  const cardContent = (
-    <div
+  const animationProps = {
+    ...(animate && {
+      layout: true,
+      initial: { opacity: 0, y: 10 },
+      animate: { opacity: 1, y: 0 },
+      exit: { opacity: 0, scale: 0.95 },
+    }),
+    ...(hoverEffect && {
+      whileHover: { y: -2, boxShadow: '0 10px 30px -10px rgba(0,0,0,0.1)' },
+    }),
+  };
+
+  return (
+    <motion.div
       className={cn(
         baseStyles,
         variantStyles[variant],
@@ -47,40 +59,10 @@ export const BrutalistCard: React.FC<BrutalistCardProps> = ({
         className
       )}
       onClick={onClick}
+      {...animationProps}
+      {...motionProps}
     >
       {children}
-    </div>
+    </motion.div>
   );
-
-  if (animate || hoverEffect) {
-    const animationProps = {
-      ...(animate && {
-        layout: true,
-        initial: { opacity: 0, y: 10 },
-        animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, scale: 0.95 },
-      }),
-      ...(hoverEffect && {
-        whileHover: { y: -2, boxShadow: '0 10px 30px -10px rgba(0,0,0,0.1)' },
-      }),
-    };
-
-    return (
-      <motion.div
-        className={cn(
-          baseStyles,
-          variantStyles[variant],
-          onClick && 'cursor-pointer',
-          className
-        )}
-        onClick={onClick}
-        {...animationProps}
-        {...motionProps}
-      >
-        {children}
-      </motion.div>
-    );
-  }
-
-  return cardContent;
 };

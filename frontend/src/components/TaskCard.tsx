@@ -131,15 +131,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
       {/* Bottom: Footer with Status */}
       <div className="bg-zinc-50 p-3 border-t border-zinc-100 flex justify-between items-center">
-        <StatusBadge
-          variant={
-            status.activityState === 'active'
-              ? 'active'
-              : status.activityState === 'completed'
-              ? 'completed'
-              : 'paused'
-          }
-        />
+        <StatusBadge variant={status.activityState} />
         <span className="text-[10px] text-zinc-400 font-mono">
           {task.last_execution?.completed_at
             ? `Run: ${new Date(task.last_execution.completed_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
