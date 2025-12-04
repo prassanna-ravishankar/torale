@@ -201,7 +201,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
 
         {/* Filters & View Toggle */}
         <div className="flex justify-between items-center mb-6">
-          <FilterGroup
+          <FilterGroup<'all' | 'active' | 'completed' | 'paused'>
             filters={[
               { id: 'all', label: 'All', count: tasks.length, icon: Filter },
               { id: 'active', label: 'Active', count: activeCount },
@@ -209,7 +209,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
               { id: 'paused', label: 'Paused', count: pausedCount },
             ]}
             active={activeFilter}
-            onChange={(filterId) => setActiveFilter(filterId as 'all' | 'active' | 'completed' | 'paused')}
+            onChange={setActiveFilter}
           />
 
           <div className="flex bg-white border border-zinc-200 rounded-sm p-0.5">
@@ -253,11 +253,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
               <AnimatePresence>
                 {filteredTasks.map((task) => {
                   const status = getTaskStatus(task.state);
-                  const StatusIcon = {
-                    Activity,
-                    CheckCircle,
-                    Pause,
-                  }[status.iconName];
 
                   return (
                     <BrutalistTableRow
