@@ -8,7 +8,6 @@ the database and Temporal schedules. All code that changes is_active MUST use th
 import logging
 from uuid import UUID
 
-from temporalio.api.enums.v1 import WorkflowExecutionStatus
 from temporalio.client import Client, Schedule, ScheduleActionStartWorkflow, ScheduleSpec
 from temporalio.service import RPCError, RPCStatusCode
 

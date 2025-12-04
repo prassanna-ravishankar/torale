@@ -32,12 +32,11 @@ def upgrade() -> None:
         ),
     )
 
-    # Backfill existing rows: set state_changed_at to created_at for new tasks,
-    # or updated_at for existing tasks (best approximation)
+    # Backfill existing rows: set state_changed_at to updated_at (if exists) or created_at
+    # This provides the best approximation for when state last changed
     op.execute("""
         UPDATE tasks
         SET state_changed_at = COALESCE(updated_at, created_at)
-        WHERE state_changed_at = created_at  -- Only update backfilled defaults
     """)
 
 
