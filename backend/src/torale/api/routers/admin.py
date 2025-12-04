@@ -15,6 +15,9 @@ from temporalio.client import Client
 from torale.api.clerk_auth import ClerkUser, clerk_client, require_admin
 from torale.api.users import get_async_session
 from torale.core.config import settings
+from torale.core.database import Database, get_db
+from torale.core.models import TaskState
+from torale.core.task_state_machine import TaskStateMachine
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -105,7 +108,7 @@ async def get_platform_stats(
             COUNT(*) as total_tasks,
             SUM(CASE WHEN condition_met = true THEN 1 ELSE 0 END) as triggered_tasks
         FROM tasks
-        WHERE is_active = true
+        WHERE state = 'active'
         """)
     )
     task_row = task_result.first()
@@ -196,7 +199,7 @@ async def list_all_queries(
     - Task details (name, query, condition, schedule)
     - Execution statistics (count, trigger count, condition_met)
     """
-    active_filter = "AND t.is_active = true" if active_only else ""
+    active_filter = "AND t.state = 'active'" if active_only else ""
 
     result = await session.execute(
         text(f"""
@@ -206,7 +209,7 @@ async def list_all_queries(
             t.search_query,
             t.condition_description,
             t.schedule,
-            t.is_active,
+            t.state,
             t.condition_met,
             t.created_at,
             u.email as user_email,
@@ -230,7 +233,7 @@ async def list_all_queries(
             "search_query": row[2],
             "condition_description": row[3],
             "schedule": row[4],
-            "is_active": row[5],
+            "state": row[5],
             "condition_met": row[6],
             "created_at": row[7].isoformat() if row[7] else None,
             "user_email": row[8],
@@ -594,18 +597,19 @@ async def deactivate_user(
     user_id: UUID,
     admin: ClerkUser = Depends(require_admin),
     session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """
     Manually deactivate a user account.
 
-    This sets is_active = false and deactivates all their tasks.
+    This sets user.is_active = false and pauses all their active tasks via state machine.
     Frees up a seat in the capacity limit.
 
     Path Parameters:
     - user_id: UUID of the user to deactivate
 
     Returns:
-    - Status confirmation
+    - Status confirmation with count of tasks paused
     """
     # Check if user exists
     check_result = await session.execute(
@@ -617,14 +621,30 @@ async def deactivate_user(
             detail="User not found",
         )
 
-    # Deactivate user and all their tasks in a single transaction
+    # Fetch all active tasks for this user
+    tasks_result = await session.execute(
+        text("SELECT id, state FROM tasks WHERE user_id = :user_id AND state = 'active'"),
+        {"user_id": user_id},
+    )
+    active_tasks = [(row[0], row[1]) for row in tasks_result]
+
+    # Pause each active task via state machine
+    state_machine = TaskStateMachine(db_conn=db)
+    paused_count = 0
+    failed_tasks = []
+
+    for task_id, state in active_tasks:
+        try:
+            current_state = TaskState(state)
+            await state_machine.pause(task_id=task_id, current_state=current_state)
+            paused_count += 1
+        except Exception as e:
+            failed_tasks.append({"task_id": str(task_id), "error": str(e)})
+
+    # Deactivate user
     try:
         await session.execute(
             text("UPDATE users SET is_active = false, updated_at = NOW() WHERE id = :user_id"),
-            {"user_id": user_id},
-        )
-        await session.execute(
-            text("UPDATE tasks SET is_active = false, updated_at = NOW() WHERE user_id = :user_id"),
             {"user_id": user_id},
         )
         await session.commit()
@@ -635,7 +655,12 @@ async def deactivate_user(
             detail=f"Failed to deactivate user: {str(e)}",
         ) from e
 
-    return {"status": "deactivated", "user_id": str(user_id)}
+    return {
+        "status": "deactivated",
+        "user_id": str(user_id),
+        "tasks_paused": paused_count,
+        "tasks_failed": failed_tasks if failed_tasks else None,
+    }
 
 
 @router.patch("/users/{user_id}/role")

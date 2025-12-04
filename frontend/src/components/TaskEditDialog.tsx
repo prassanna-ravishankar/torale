@@ -147,7 +147,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
         notify_behavior: notifyBehavior,
         executor_type: "llm_grounded_search",
         config: {},
-        is_active: true
+        state: "active"
       });
 
       setName(suggestion.name);

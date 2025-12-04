@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Any, Literal
@@ -16,11 +17,33 @@ class NotifyBehavior(str, Enum):
     TRACK_STATE = "track_state"  # Notify only when state changes
 
 
+class TaskState(str, Enum):
+    """Task state enum - represents what the task is currently doing."""
+
+    ACTIVE = "active"  # Monitoring on schedule
+    PAUSED = "paused"  # User manually stopped
+    COMPLETED = "completed"  # Auto-stopped after notify_behavior="once" success
+
+
 class TaskStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
     SUCCESS = "success"
     FAILED = "failed"
+
+
+# Temporal Workflow Models
+
+
+@dataclass
+class TaskExecutionRequest:
+    """Request to execute a task via Temporal workflow."""
+
+    task_id: str
+    execution_id: str
+    user_id: str
+    task_name: str
+    suppress_notifications: bool = False  # For preview/manual runs
 
 
 # Notification Models
@@ -44,7 +67,7 @@ class TaskBase(BaseModel):
     schedule: str
     executor_type: ExecutorType = ExecutorType.LLM_GROUNDED_SEARCH
     config: dict
-    is_active: bool = True
+    state: TaskState = TaskState.ACTIVE
 
     # Grounded search fields
     search_query: str | None = None
@@ -67,7 +90,7 @@ class TaskUpdate(BaseModel):
     name: str | None = None
     schedule: str | None = None
     config: dict | None = None
-    is_active: bool | None = None
+    state: TaskState | None = None
     search_query: str | None = None
     condition_description: str | None = None
     notify_behavior: NotifyBehavior | None = None
@@ -81,6 +104,7 @@ class Task(TaskBase):
     user_id: UUID
     created_at: datetime
     updated_at: datetime | None = None
+    state_changed_at: datetime  # When task state last changed
 
     # Grounded search state tracking
     condition_met: bool = False  # DEPRECATED: Will be removed, use last_execution.condition_met
@@ -138,7 +162,7 @@ class TaskTemplate(TaskTemplateBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    is_active: bool = True
+    state: TaskState = TaskState.ACTIVE
     created_at: datetime
     updated_at: datetime | None = None
 

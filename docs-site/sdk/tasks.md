@@ -44,7 +44,7 @@ tasks = client.tasks.list(page=2, limit=10)
 task = client.tasks.get("task-id")
 
 print(f"Name: {task.name}")
-print(f"Active: {task.is_active}")
+print(f"Active: {task.state}")
 print(f"Condition met: {task.condition_met}")
 ```
 
@@ -60,7 +60,7 @@ task = client.tasks.update(
 # Pause task
 task = client.tasks.update(
     "task-id",
-    is_active=False
+    state="paused"
 )
 
 # Change notification behavior

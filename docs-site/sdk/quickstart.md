@@ -96,7 +96,7 @@ if preview.condition_met:
 tasks = client.tasks.list()
 
 for task in tasks:
-    print(f"{task.name}: {task.is_active}")
+    print(f"{task.name}: {task.state}")
 
 # Filter active tasks only
 active_tasks = client.tasks.list(active=True)
@@ -111,7 +111,7 @@ print(f"Name: {task.name}")
 print(f"Query: {task.search_query}")
 print(f"Condition: {task.condition_description}")
 print(f"Schedule: {task.schedule}")
-print(f"Active: {task.is_active}")
+print(f"Active: {task.state}")
 ```
 
 ### Update Task
@@ -126,7 +126,7 @@ task = client.tasks.update(
 # Pause task
 task = client.tasks.update(
     "task-id",
-    is_active=False
+    state="paused"
 )
 
 # Change notification behavior
@@ -197,7 +197,7 @@ task = client.tasks.create(
 )
 
 print(f"\nCreated task: {task.id}")
-print(f"Active: {task.is_active}")
+print(f"Active: {task.state}")
 
 # Check execution status after a moment
 import time
@@ -215,7 +215,7 @@ if executions:
 # List all tasks
 print("\nAll tasks:")
 for t in client.tasks.list():
-    print(f"- {t.name}: {'active' if t.is_active else 'paused'}")
+    print(f"- {t.name}: {t.state}")
 ```
 
 ## Environment Variables

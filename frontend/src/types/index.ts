@@ -1,4 +1,5 @@
 export type TaskStatus = "pending" | "running" | "success" | "failed";
+export type TaskState = "active" | "paused" | "completed";
 export type NotifyBehavior = "once" | "always" | "track_state";
 export type ExecutorType = "llm_grounded_search";
 export type NotificationChannelType = "email" | "webhook";
@@ -28,7 +29,7 @@ export interface Task {
   condition_description: string;
   notify_behavior: NotifyBehavior;
   config: Record<string, any>;
-  is_active: boolean;
+  state: TaskState;
 
   // DEPRECATED: Use last_execution.condition_met instead (will be removed)
   condition_met: boolean;
@@ -60,7 +61,7 @@ export interface TaskCreatePayload {
   notify_behavior: NotifyBehavior;
   executor_type: ExecutorType;
   config: Record<string, any>;
-  is_active: boolean;
+  state: TaskState;
   run_immediately?: boolean;  // Execute task immediately after creation
   notifications?: NotificationConfig[];  // Notification configurations (optional)
 }
@@ -109,7 +110,7 @@ export interface TaskTemplate {
   schedule: string;
   notify_behavior: NotifyBehavior;
   config: Record<string, any>;
-  is_active: boolean;
+  state: TaskState;
   created_at: string;
   updated_at: string | null;
 }

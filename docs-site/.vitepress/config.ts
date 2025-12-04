@@ -134,6 +134,7 @@ export default withMermaid(
           items: [
             { text: 'Overview', link: '/architecture/overview' },
             { text: 'Grounded Search', link: '/architecture/grounded-search' },
+            { text: 'Task State Machine', link: '/architecture/task-state-machine' },
             { text: 'State Tracking', link: '/architecture/state-tracking' },
             { text: 'Database Schema', link: '/architecture/database-schema' },
             { text: 'Executors', link: '/architecture/executors' },

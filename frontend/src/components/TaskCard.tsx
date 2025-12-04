@@ -31,7 +31,7 @@ import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
 
 interface TaskCardProps {
   task: Task;
-  onToggle: (id: string, isActive: boolean) => void;
+  onToggle: (id: string, newState: 'active' | 'paused') => void;
   onDelete: (id: string) => void;
   onExecute: (id: string) => void;
   onEdit: (id: string) => void;
@@ -86,11 +86,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onEdit,
   onClick,
 }) => {
-  const status = getTaskStatus(task.is_active, task.last_execution?.condition_met);
+  const status = getTaskStatus(task.state);
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onToggle(task.id, !task.is_active);
+    onToggle(task.id, task.state === 'active' ? 'paused' : 'active');
   };
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -154,7 +154,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               Run Now
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleToggle}>
-              {task.is_active ? (
+              {task.state === 'active' ? (
                 <>
                   <Pause className="mr-2 h-4 w-4" />
                   Pause
