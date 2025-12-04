@@ -8,9 +8,9 @@ the database and Temporal schedules. All code that changes is_active MUST use th
 import logging
 from uuid import UUID
 
-import grpc
+from temporalio.api.enums.v1 import WorkflowExecutionStatus
 from temporalio.client import Client, Schedule, ScheduleActionStartWorkflow, ScheduleSpec
-from temporalio.service import RPCError
+from temporalio.service import RPCError, RPCStatusCode
 
 from torale.core.config import settings
 from torale.core.models import TaskExecutionRequest
@@ -108,7 +108,7 @@ class TaskStateManager:
                     "error": None,
                 }
             except RPCError as e:
-                if e.status == grpc.StatusCode.NOT_FOUND:
+                if e.status == RPCStatusCode.NOT_FOUND:
                     # Schedule doesn't exist, create it
                     logger.info(f"Schedule {schedule_id} not found, creating new schedule")
 
@@ -162,7 +162,7 @@ class TaskStateManager:
                     "error": None,
                 }
             except RPCError as e:
-                if e.status == grpc.StatusCode.NOT_FOUND:
+                if e.status == RPCStatusCode.NOT_FOUND:
                     # Schedule doesn't exist - that's fine for deactivation
                     logger.info(
                         f"Schedule {schedule_id} not found when deactivating - "
