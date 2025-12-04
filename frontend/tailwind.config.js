@@ -31,6 +31,9 @@ export default {
       },
 
       colors: {
+        brand: {
+          orange: "hsl(10, 90%, 55%)",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

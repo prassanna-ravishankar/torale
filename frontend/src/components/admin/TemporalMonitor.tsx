@@ -166,7 +166,7 @@ export function TemporalMonitor() {
                             COMPLETED: 'completed',
                             FAILED: 'failed',
                             RUNNING: 'running',
-                          } as const)[workflow.status] || 'paused'
+                          } as const)[workflow.status] || 'unknown'
                         } />
                       </td>
                       <td className="p-3 text-xs font-mono text-zinc-500">

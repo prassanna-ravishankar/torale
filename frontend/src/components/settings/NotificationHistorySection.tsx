@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, Mail, Webhook } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { WebhookDelivery, NotificationSend } from '@/types';
-import { SectionLabel, BrutalistCard, StatusBadge } from '@/components/torale';
+import { SectionLabel, BrutalistCard, StatusBadge, type StatusVariant } from '@/components/torale';
 
 export const NotificationHistorySection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'emails' | 'webhooks'>('emails');
@@ -54,7 +54,7 @@ export const NotificationHistorySection: React.FC = () => {
     return date.toLocaleDateString();
   };
 
-  const getStatusVariant = (status: string): 'completed' | 'failed' | 'pending' | 'paused' => {
+  const getStatusVariant = (status: string): StatusVariant => {
     switch (status) {
       case 'success':
         return 'completed';
@@ -63,7 +63,7 @@ export const NotificationHistorySection: React.FC = () => {
       case 'retrying':
         return 'pending';
       default:
-        return 'paused';
+        return 'unknown';
     }
   };
 

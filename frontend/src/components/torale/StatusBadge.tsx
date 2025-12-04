@@ -150,7 +150,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
         config.bg,
         config.text,
         config.border,
-        size === 'sm' ? 'text-[10px]' : 'text-[9px]',
+        size === 'sm' ? 'text-[9px]' : 'text-[10px]',
         className
       )}
     >
