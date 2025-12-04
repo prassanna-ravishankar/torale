@@ -237,7 +237,7 @@ class TestRunImmediately:
         ]
 
         # Mock Temporal client for both schedule creation and immediate execution
-        import grpc
+        from temporalio.service import RPCStatusCode
 
         # Create a simple exception that mimics RPCError
         class FakeRPCError(Exception):
@@ -247,7 +247,7 @@ class TestRunImmediately:
                 self.status = status
                 super().__init__(f"RPC error with status {status}")
 
-        mock_rpc_error = FakeRPCError(grpc.StatusCode.NOT_FOUND)
+        mock_rpc_error = FakeRPCError(RPCStatusCode.NOT_FOUND)
 
         mock_client = AsyncMock()
         mock_client.start_workflow.return_value = MagicMock(id="workflow-123")
