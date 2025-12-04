@@ -16,3 +16,12 @@ export { ActionMenu } from './ActionMenu';
 export type { Action } from './ActionMenu';
 
 export { EmptyState } from './EmptyState';
+
+export {
+  BrutalistTable,
+  BrutalistTableHeader,
+  BrutalistTableBody,
+  BrutalistTableRow,
+  BrutalistTableHead,
+  BrutalistTableCell,
+} from './BrutalistTable';

@@ -1,7 +1,6 @@
 import React from 'react';
-import { motion } from '@/lib/motion-compat';
 import type { Task } from '@/types';
-import { StatusBadge, SectionLabel, ActionMenu, type Action } from '@/components/torale';
+import { StatusBadge, SectionLabel, ActionMenu, BrutalistCard, type Action } from '@/components/torale';
 import { Clock, Globe, Trash2, Play, Edit, Pause } from 'lucide-react';
 import { CronDisplay } from '@/components/ui/CronDisplay';
 import { getTaskStatus } from '@/lib/taskStatus';
@@ -29,7 +28,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onClick,
 }) => {
   const status = getTaskStatus(task.is_active, task.last_execution?.condition_met);
-  const successRate = 99.8;
+
+  // TODO: Calculate actual success rate from task execution history
+  // For now using placeholder. Backend should provide:
+  // - total_executions: number
+  // - successful_executions: number
+  // Then: successRate = (successful_executions / total_executions) * 100
+  const successRate = 99.8; // Placeholder
 
   // Build actions array for ActionMenu
   const actions: Action[] = [
@@ -71,14 +76,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   };
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      whileHover={{ y: -2, boxShadow: "0 10px 30px -10px rgba(0,0,0,0.1)" }}
-      className="bg-white border border-zinc-200 group relative flex flex-col cursor-pointer"
+    <BrutalistCard
+      variant="clickable"
+      animate={true}
+      hoverEffect={true}
       onClick={() => onClick(task.id)}
+      className="group relative"
     >
       {/* Top Bar: Icon + Name + Actions */}
       <div className="p-4 border-b border-zinc-100 flex justify-between items-start">
@@ -146,6 +149,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
       {/* Hover Selection Border */}
       <div className="absolute inset-0 border-2 border-transparent group-hover:border-zinc-900 pointer-events-none transition-colors" />
-    </motion.div>
+    </BrutalistCard>
   );
 };
