@@ -52,9 +52,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     },
     {
       id: 'toggle',
-      label: task.is_active ? 'Pause' : 'Resume',
-      icon: task.is_active ? Pause : Play,
-      onClick: () => onToggle(task.id, !task.is_active),
+      label: task.state === 'active' ? 'Pause' : 'Resume',
+      icon: task.state === 'active' ? Pause : Play,
+      onClick: () => onToggle(task.id, task.state === 'active' ? 'paused' : 'active'),
       separator: true,
     },
     {
