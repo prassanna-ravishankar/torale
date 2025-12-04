@@ -11,9 +11,10 @@ Run with integration tests:
 """
 
 import os
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
+
+import pytest
 
 from torale.core.task_state import TaskStateManager
 
@@ -111,7 +112,6 @@ class TestTaskStateManager:
         assert isinstance(result["schedule_action"], str)
 
 
-
 @pytest.mark.integration
 class TestTaskStateManagerIntegration:
     """Integration tests with real Temporal server
@@ -163,8 +163,9 @@ class TestTaskStateManagerIntegration:
         assert pause_result["schedule_action"] == "paused"
 
         # Verify we can query the schedule (it exists)
-        from torale.core.config import settings
         from temporalio.client import Client
+
+        from torale.core.config import settings
 
         if settings.temporal_api_key:
             client = await Client.connect(
@@ -208,8 +209,9 @@ class TestTaskStateManagerIntegration:
         assert result["schedule_action"] == "created"
 
         # Verify schedule exists in Temporal
-        from torale.core.config import settings
         from temporalio.client import Client
+
+        from torale.core.config import settings
 
         if settings.temporal_api_key:
             client = await Client.connect(
@@ -250,9 +252,7 @@ class TestTaskStateManagerIntegration:
             user_id=integration_task_data["user_id"],
             schedule=integration_task_data["schedule"],
         )
-        await manager.deactivate_task(
-            task_id=integration_task_data["task_id"], reason="manual"
-        )
+        await manager.deactivate_task(task_id=integration_task_data["task_id"], reason="manual")
 
         # Now reactivate
         result = await manager.activate_task(
@@ -266,8 +266,9 @@ class TestTaskStateManagerIntegration:
         assert result["schedule_action"] == "unpaused"
 
         # Verify it's unpaused
-        from torale.core.config import settings
         from temporalio.client import Client
+
+        from torale.core.config import settings
 
         if settings.temporal_api_key:
             client = await Client.connect(

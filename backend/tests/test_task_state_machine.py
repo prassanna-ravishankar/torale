@@ -3,9 +3,10 @@
 Unit tests verify that state machine validates transitions correctly.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
+
+import pytest
 
 from torale.core.task_state_machine import InvalidTransitionError, TaskState, TaskStateMachine
 
@@ -41,7 +42,9 @@ class TestTaskStateMachine:
             return_value={"success": True, "schedule_action": "paused", "error": None}
         )
 
-        with patch("torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager):
+        with patch(
+            "torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager
+        ):
             machine = TaskStateMachine(db_conn=mock_db_conn)
             result = await machine.transition(
                 task_id=task_data["task_id"],
@@ -61,7 +64,9 @@ class TestTaskStateMachine:
             return_value={"success": True, "schedule_action": "paused", "error": None}
         )
 
-        with patch("torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager):
+        with patch(
+            "torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager
+        ):
             machine = TaskStateMachine(db_conn=mock_db_conn)
             result = await machine.transition(
                 task_id=task_data["task_id"],
@@ -79,7 +84,9 @@ class TestTaskStateMachine:
             return_value={"success": True, "schedule_action": "unpaused", "error": None}
         )
 
-        with patch("torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager):
+        with patch(
+            "torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager
+        ):
             machine = TaskStateMachine(db_conn=mock_db_conn)
             result = await machine.transition(
                 task_id=task_data["task_id"],
@@ -100,7 +107,9 @@ class TestTaskStateMachine:
             return_value={"success": True, "schedule_action": "unpaused", "error": None}
         )
 
-        with patch("torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager):
+        with patch(
+            "torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager
+        ):
             machine = TaskStateMachine(db_conn=mock_db_conn)
             result = await machine.transition(
                 task_id=task_data["task_id"],
@@ -149,7 +158,9 @@ class TestTaskStateMachine:
             return_value={"success": True, "schedule_action": "paused", "error": None}
         )
 
-        with patch("torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager):
+        with patch(
+            "torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager
+        ):
             machine = TaskStateMachine(db_conn=mock_db_conn)
             result = await machine.transition(
                 task_id=task_data["task_id"],
@@ -169,7 +180,9 @@ class TestTaskStateMachine:
             side_effect=Exception("Temporal connection failed")
         )
 
-        with patch("torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager):
+        with patch(
+            "torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager
+        ):
             machine = TaskStateMachine(db_conn=mock_db_conn)
 
             with pytest.raises(Exception) as exc_info:
@@ -192,7 +205,9 @@ class TestTaskStateMachine:
             return_value={"success": True, "schedule_action": "paused", "error": None}
         )
 
-        with patch("torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager):
+        with patch(
+            "torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager
+        ):
             machine = TaskStateMachine(db_conn=mock_db_conn)
             result = await machine.pause(
                 task_id=task_data["task_id"], current_state=TaskState.ACTIVE
@@ -209,7 +224,9 @@ class TestTaskStateMachine:
             return_value={"success": True, "schedule_action": "paused", "error": None}
         )
 
-        with patch("torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager):
+        with patch(
+            "torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager
+        ):
             machine = TaskStateMachine(db_conn=mock_db_conn)
             result = await machine.complete(
                 task_id=task_data["task_id"], current_state=TaskState.ACTIVE
@@ -225,7 +242,9 @@ class TestTaskStateMachine:
             return_value={"success": True, "schedule_action": "unpaused", "error": None}
         )
 
-        with patch("torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager):
+        with patch(
+            "torale.core.task_state_machine.TaskStateManager", return_value=mock_state_manager
+        ):
             machine = TaskStateMachine(db_conn=mock_db_conn)
             result = await machine.activate(
                 task_id=task_data["task_id"],

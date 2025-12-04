@@ -6,7 +6,7 @@ from uuid import UUID
 import grpc
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from temporalio.client import Client, Schedule, ScheduleActionStartWorkflow, ScheduleSpec
+from temporalio.client import Client
 from temporalio.service import RPCError
 
 from torale.api.auth import CurrentUserOrTestUser
@@ -23,8 +23,8 @@ from torale.core.models import (
     TaskState,
     TaskUpdate,
 )
-from torale.core.task_state_machine import InvalidTransitionError, TaskStateMachine
 from torale.core.task_state import TaskStateManager
+from torale.core.task_state_machine import InvalidTransitionError, TaskStateMachine
 from torale.notifications import NotificationValidationError, validate_notification
 from torale.workers.workflows import TaskExecutionWorkflow
 
@@ -791,9 +791,7 @@ async def update_task(
             ) from e
         except Exception as e:
             # Temporal operation failed - rollback database
-            logger.error(
-                f"Failed to transition task {task_id} state: {str(e)}. Rolling back."
-            )
+            logger.error(f"Failed to transition task {task_id} state: {str(e)}. Rolling back.")
             await db.execute(
                 "UPDATE tasks SET state = $1 WHERE id = $2",
                 existing["state"],

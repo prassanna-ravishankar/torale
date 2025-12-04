@@ -72,7 +72,9 @@ class TaskStateMachine:
         """
         # 1. Validate transition
         if not self._is_valid_transition(from_state, to_state):
-            raise InvalidTransitionError(f"Cannot transition from {from_state.value} to {to_state.value}")
+            raise InvalidTransitionError(
+                f"Cannot transition from {from_state.value} to {to_state.value}"
+            )
 
         # 2. Update database FIRST (fail fast if DB error)
         await self._update_database_state(task_id, to_state)

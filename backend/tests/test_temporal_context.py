@@ -240,6 +240,7 @@ class TestRunImmediately:
         # Create a simple exception that mimics RPCError
         class FakeRPCError(Exception):
             """Mock RPCError for testing"""
+
             def __init__(self, status):
                 self.status = status
                 super().__init__(f"RPC error with status {status}")
@@ -268,7 +269,10 @@ class TestRunImmediately:
         with patch("torale.core.task_state.RPCError", FakeRPCError):
             with patch("torale.api.routers.tasks.get_temporal_client", return_value=mock_client):
                 # Mock the state manager's temporal client
-                with patch("torale.core.task_state.TaskStateManager._get_temporal_client", AsyncMock(return_value=mock_client)):
+                with patch(
+                    "torale.core.task_state.TaskStateManager._get_temporal_client",
+                    AsyncMock(return_value=mock_client),
+                ):
                     await create_task(task_data, mock_user, mock_db)
 
         # Should create schedule and start workflow for immediate execution

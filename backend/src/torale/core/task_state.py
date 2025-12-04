@@ -113,7 +113,9 @@ class TaskStateManager:
                     logger.info(f"Schedule {schedule_id} not found, creating new schedule")
 
                     try:
-                        logger.info(f"Creating schedule with cron: {schedule}, task_queue: {settings.temporal_task_queue}")
+                        logger.info(
+                            f"Creating schedule with cron: {schedule}, task_queue: {settings.temporal_task_queue}"
+                        )
                         await client.create_schedule(
                             id=schedule_id,
                             schedule=Schedule(
@@ -138,7 +140,9 @@ class TaskStateManager:
                             "error": None,
                         }
                     except Exception as create_error:
-                        logger.error(f"Failed to create schedule {schedule_id}: {type(create_error).__name__}: {str(create_error)}")
+                        logger.error(
+                            f"Failed to create schedule {schedule_id}: {type(create_error).__name__}: {str(create_error)}"
+                        )
                         raise
                 else:
                     # Real RPC error
