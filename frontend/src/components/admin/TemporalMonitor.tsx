@@ -162,9 +162,11 @@ export function TemporalMonitor() {
                       <td className="p-3 text-xs font-mono text-zinc-600">{workflow.workflow_type}</td>
                       <td className="p-3">
                         <StatusBadge variant={
-                          workflow.status === 'COMPLETED' ? 'completed' :
-                          workflow.status === 'FAILED' ? 'failed' :
-                          workflow.status === 'RUNNING' ? 'running' : 'unknown'
+                          ({
+                            COMPLETED: 'completed',
+                            FAILED: 'failed',
+                            RUNNING: 'running',
+                          } as const)[workflow.status] || 'paused'
                         } />
                       </td>
                       <td className="p-3 text-xs font-mono text-zinc-500">

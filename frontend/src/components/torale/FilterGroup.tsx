@@ -6,28 +6,29 @@ import { cn } from '@/lib/utils';
  * FilterGroup - Data-driven filter button group
  *
  * Replaces repeated filter button patterns with consistent styling
+ * Generic type T ensures type-safe filter IDs
  */
 
-export interface FilterOption {
-  id: string;
+export interface FilterOption<T extends string = string> {
+  id: T;
   label: string;
   count?: number;
   icon?: LucideIcon;
 }
 
-interface FilterGroupProps {
-  filters: FilterOption[];
-  active: string;
-  onChange: (filterId: string) => void;
+interface FilterGroupProps<T extends string = string> {
+  filters: FilterOption<T>[];
+  active: T;
+  onChange: (filterId: T) => void;
   className?: string;
 }
 
-export const FilterGroup: React.FC<FilterGroupProps> = ({
+export const FilterGroup = <T extends string = string>({
   filters,
   active,
   onChange,
   className,
-}) => {
+}: FilterGroupProps<T>) => {
   return (
     <div className={cn('flex gap-2', className)}>
       {filters.map((filter) => {

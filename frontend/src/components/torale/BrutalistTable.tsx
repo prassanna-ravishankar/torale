@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion, MotionProps } from '@/lib/motion-compat';
 import { cn } from '@/lib/utils';
 
 /**
@@ -26,7 +27,7 @@ interface BrutalistTableBodyProps {
   className?: string;
 }
 
-interface BrutalistTableRowProps {
+interface BrutalistTableRowProps extends Omit<MotionProps, 'onClick'> {
   children: React.ReactNode;
   onClick?: () => void;
   className?: string;
@@ -83,18 +84,20 @@ export const BrutalistTableRow: React.FC<BrutalistTableRowProps> = ({
   children,
   onClick,
   className,
+  ...motionProps
 }) => {
   return (
-    <tr
+    <motion.tr
       onClick={onClick}
       className={cn(
         'border-b border-zinc-200 last:border-0',
         onClick && 'cursor-pointer hover:bg-zinc-50 transition-colors',
         className
       )}
+      {...motionProps}
     >
       {children}
-    </tr>
+    </motion.tr>
   );
 };
 

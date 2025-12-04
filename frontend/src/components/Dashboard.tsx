@@ -263,6 +263,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
                     <BrutalistTableRow
                       key={task.id}
                       onClick={() => onTaskClick(task.id)}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
                     >
                       <BrutalistTableCell>
                         <div className="flex flex-col gap-1">
@@ -271,15 +274,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
                         </div>
                       </BrutalistTableCell>
                       <BrutalistTableCell>
-                        <StatusBadge
-                          variant={
-                            status.activityState === 'active'
-                              ? 'active'
-                              : status.activityState === 'completed'
-                              ? 'completed'
-                              : 'paused'
-                          }
-                        />
+                        <StatusBadge variant={status.activityState} />
                       </BrutalistTableCell>
                       <BrutalistTableCell className="hidden md:table-cell">
                         <CronDisplay cron={task.schedule} className="text-sm font-mono text-zinc-600" showRaw={false} />
