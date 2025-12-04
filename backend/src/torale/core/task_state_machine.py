@@ -134,7 +134,7 @@ class TaskStateMachine:
             state: New state
         """
         await self.db_conn.execute(
-            "UPDATE tasks SET state = $1, updated_at = NOW() WHERE id = $2",
+            "UPDATE tasks SET state = $1, state_changed_at = NOW(), updated_at = NOW() WHERE id = $2",
             state.value,
             task_id,
         )

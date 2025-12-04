@@ -104,6 +104,7 @@ class Task(TaskBase):
     user_id: UUID
     created_at: datetime
     updated_at: datetime | None = None
+    state_changed_at: datetime  # When task state last changed
 
     # Grounded search state tracking
     condition_met: bool = False  # DEPRECATED: Will be removed, use last_execution.condition_met
