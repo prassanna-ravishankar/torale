@@ -21,12 +21,53 @@ const NOTIFY_BEHAVIOR_LABELS = {
   'track_state': 'On changes'
 } as const;
 
+// Shared status rendering logic
+const renderTaskStatus = (task: Task, onToggle: () => void) => {
+  if (task.state === 'completed') {
+    return {
+      badge: (
+        <Badge variant="default" className="bg-emerald-100 text-emerald-900 border border-emerald-900 text-xs">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Completed
+        </Badge>
+      ),
+      button: (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggle}
+          className="text-xs h-7 px-2 font-mono uppercase tracking-wider hover:bg-zinc-100"
+        >
+          Re-activate
+        </Button>
+      )
+    };
+  }
+
+  return {
+    badge: null,
+    button: (
+      <div className="flex items-center gap-1.5">
+        <Switch
+          checked={task.state === 'active'}
+          onCheckedChange={onToggle}
+          className="data-[state=checked]:bg-zinc-900 data-[state=unchecked]:bg-zinc-200 border-2 border-zinc-900 h-4 w-7"
+        />
+        <span className="text-xs font-mono text-zinc-700">
+          {task.state === 'active' ? "Active" : "Paused"}
+        </span>
+      </div>
+    )
+  };
+};
+
 export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
   task,
   configExpanded,
   onConfigExpandedChange,
   onToggle,
 }) => {
+  const statusControls = renderTaskStatus(task, onToggle);
   // Compact list for mobile/tablet
   const configList = (
     <div className="space-y-3 p-4 bg-white border-t-2 border-zinc-200">
@@ -53,27 +94,15 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
         <Bell className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">Notify</div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-mono text-zinc-900">
-              {NOTIFY_BEHAVIOR_LABELS[task.notify_behavior]}
-            </span>
-            <span className="text-zinc-400">•</span>
-            {task.state === 'completed' ? (
-              <Badge variant="default" className="bg-emerald-100 text-emerald-900 border border-emerald-900 text-xs">
-                Completed
-              </Badge>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <Switch
-                  checked={task.state === 'active'}
-                  onCheckedChange={onToggle}
-                  className="data-[state=checked]:bg-zinc-900 data-[state=unchecked]:bg-zinc-200 border-2 border-zinc-900 h-4 w-7"
-                />
-                <span className="text-xs font-mono text-zinc-700">
-                  {task.state === 'active' ? "Active" : "Paused"}
-                </span>
-              </div>
-            )}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-mono text-zinc-900">
+                {NOTIFY_BEHAVIOR_LABELS[task.notify_behavior]}
+              </span>
+              <span className="text-zinc-400">•</span>
+              {statusControls.badge || statusControls.button}
+            </div>
+            {statusControls.badge && statusControls.button}
           </div>
         </div>
       </div>
@@ -120,32 +149,13 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
           {NOTIFY_BEHAVIOR_LABELS[task.notify_behavior]}
         </p>
         <div className="flex items-center gap-2 mt-3">
-          {task.state === 'completed' ? (
+          {statusControls.badge ? (
             <div className="flex flex-col gap-2">
-              <Badge variant="default" className="bg-emerald-100 text-emerald-900 border-2 border-emerald-900 font-mono text-xs uppercase tracking-wider">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Completed
-              </Badge>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onToggle}
-                className="text-xs h-7 px-2 font-mono uppercase tracking-wider hover:bg-zinc-100"
-              >
-                Re-activate
-              </Button>
+              {statusControls.badge}
+              {statusControls.button}
             </div>
           ) : (
-            <>
-              <Switch
-                checked={task.state === 'active'}
-                onCheckedChange={onToggle}
-                className="data-[state=checked]:bg-zinc-900 data-[state=unchecked]:bg-zinc-200 border-2 border-zinc-900"
-              />
-              <span className={`text-xs font-mono uppercase tracking-wider ${task.state === 'active' ? 'text-zinc-700' : 'text-zinc-900 font-bold'}`}>
-                {task.state === 'active' ? "Active" : "Paused"}
-              </span>
-            </>
+            statusControls.button
           )}
         </div>
       </InfoCard>
