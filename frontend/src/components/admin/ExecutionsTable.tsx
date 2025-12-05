@@ -5,6 +5,7 @@ import { formatDuration } from '@/lib/utils'
 import { ExecutionCard } from './cards/ExecutionCard'
 import { Loader2, Activity, ChevronDown, Link2 } from 'lucide-react'
 import { SectionLabel, BrutalistCard, StatusBadge } from '@/components/torale'
+import type { TaskStatus } from '@/types'
 
 interface GroundingSource {
   title: string
@@ -14,7 +15,7 @@ interface GroundingSource {
 interface Execution {
   id: string
   task_id: string
-  status: string
+  status: TaskStatus
   started_at: string
   completed_at: string | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -163,7 +164,7 @@ export function ExecutionsTable() {
                   <td className="p-3 text-xs font-mono text-zinc-600">{execution.user_email}</td>
                   <td className="p-3 text-xs font-mono text-zinc-700 max-w-xs truncate">{execution.search_query}</td>
                   <td className="p-3">
-                    <StatusBadge variant={(execution.status as 'success' | 'failed' | 'running') || 'pending'} />
+                    <StatusBadge variant={execution.status} />
                   </td>
                   <td className="p-3">
                     {execution.condition_met !== null && (
