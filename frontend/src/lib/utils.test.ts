@@ -109,4 +109,10 @@ describe('formatTimeAgo', () => {
     const dateString = '2024-12-25T12:00:00Z'; // Exactly 7 days ago
     expect(formatTimeAgo(dateString)).toBe('7d ago');
   });
+
+  it('handles invalid date strings', () => {
+    expect(formatTimeAgo('not-a-date')).toBe('Invalid date');
+    expect(formatTimeAgo('')).toBe('Invalid date');
+    expect(formatTimeAgo('invalid-timestamp')).toBe('Invalid date');
+  });
 });

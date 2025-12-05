@@ -40,13 +40,21 @@ export function formatDuration(
  */
 export function formatTimeAgo(dateString: string): string {
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) {
+    return 'Invalid date';
+  }
+
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
 
+  const MINS_IN_HOUR = 60;
+  const MINS_IN_DAY = MINS_IN_HOUR * 24;
+  const MINS_IN_WEEK = MINS_IN_DAY * 7;
+
   if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-  if (diffMins < 10080) return `${Math.floor(diffMins / 1440)}d ago`;
+  if (diffMins < MINS_IN_HOUR) return `${diffMins}m ago`;
+  if (diffMins < MINS_IN_DAY) return `${Math.floor(diffMins / MINS_IN_HOUR)}h ago`;
+  if (diffMins < MINS_IN_WEEK) return `${Math.floor(diffMins / MINS_IN_DAY)}d ago`;
   return date.toLocaleDateString();
 }
