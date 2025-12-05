@@ -34,6 +34,7 @@ api:
   autoscaling:
     minReplicas: 1
     maxReplicas: 10
+    targetCPUUtilizationPercentage: 90
   resources:
     requests:
       cpu: 50m
@@ -47,6 +48,7 @@ worker:
   autoscaling:
     minReplicas: 1
     maxReplicas: 10
+    targetCPUUtilizationPercentage: 90
   resources:
     requests:
       cpu: 25m
@@ -60,6 +62,7 @@ frontend:
   autoscaling:
     minReplicas: 1
     maxReplicas: 10
+    targetCPUUtilizationPercentage: 90
   resources:
     requests:
       cpu: 25m
