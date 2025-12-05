@@ -317,45 +317,85 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
           </div>
         </div>
 
-        {/* Action Buttons - Stack on mobile */}
-        <div className="flex items-center gap-2 flex-wrap mb-6 lg:mb-8">
-          <Button
-            variant="outline"
-            onClick={handleExecute}
-            disabled={isExecuting}
-            size="sm"
-          >
-            {isExecuting ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Play className="mr-2 h-4 w-4" />
-            )}
-            <span className="hidden sm:inline">Run Now</span>
-            <span className="sm:hidden">Run</span>
-          </Button>
+      </div>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Trash2 className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Delete</span>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="border-2 border-zinc-900 shadow-brutalist-lg">
-              <AlertDialogHeader className="border-b-2 border-zinc-100 pb-4">
-                <AlertDialogTitle className="font-grotesk">Delete Monitor</AlertDialogTitle>
-                <AlertDialogDescription className="text-zinc-500">
-                  Are you sure you want to delete "{task.name}"? This action cannot be
-                  undone. All execution history will be permanently deleted.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="gap-3">
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="shadow-brutalist">Delete</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+      {/* Latest Execution - Prominent on Mobile */}
+      {firstExecution && (
+        <div
+          className="bg-white border-2 border-zinc-200 p-4 hover:border-zinc-400 transition-colors cursor-pointer"
+          onClick={() => setActiveTab('executions')}
+        >
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <StatusBadge variant={
+                firstExecution.status === 'success' ? 'success' :
+                firstExecution.status === 'failed' ? 'failed' :
+                firstExecution.status === 'running' ? 'running' : 'pending'
+              } />
+              <span className="text-sm font-mono text-zinc-500">
+                Latest result
+              </span>
+            </div>
+            <span className="text-xs font-mono text-zinc-400">
+              {new Date(firstExecution.started_at).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+            </span>
+          </div>
+          {firstExecution.result?.answer && (
+            <p className="text-sm text-zinc-700 leading-relaxed line-clamp-3">
+              {firstExecution.result.answer}
+            </p>
+          )}
+          {firstExecution.condition_met !== undefined && (
+            <div className="mt-3 pt-3 border-zinc-100 flex items-center justify-between">
+              <span className="text-xs font-mono text-zinc-500">Condition</span>
+              <StatusBadge variant={firstExecution.condition_met ? 'met' : 'not_met'} size="sm" />
+            </div>
+          )}
         </div>
+      )}
+
+      {/* Action Buttons - Compact */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          onClick={handleExecute}
+          disabled={isExecuting}
+          size="sm"
+        >
+          {isExecuting ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Play className="mr-2 h-4 w-4" />
+          )}
+          Run Now
+        </Button>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="border-2 border-zinc-900 shadow-brutalist-lg">
+            <AlertDialogHeader className="border-b-2 border-zinc-100 pb-4">
+              <AlertDialogTitle className="font-grotesk">Delete Monitor</AlertDialogTitle>
+              <AlertDialogDescription className="text-zinc-500">
+                Are you sure you want to delete "{task.name}"? This action cannot be
+                undone. All execution history will be permanently deleted.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-3">
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="shadow-brutalist">Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {/* Task Configuration - Collapsible on Mobile, Always Visible on Desktop */}
@@ -447,34 +487,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         </div>
       </CollapsibleSection>
 
-      {/* Notification Behavior Explanation - Miller's Law: Keep info concise (3-5 bullets) */}
-      <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
-        <div className="flex items-start gap-3">
-          <Bell className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-          <div className="flex-1">
-            <h3 className="text-sm font-medium mb-1">How You'll Be Notified</h3>
-            {task.notify_behavior === 'once' && (
-              <p className="text-sm text-muted-foreground">
-                <strong>Notify Once:</strong> You'll receive an email the first time we detect your condition is met,
-                then monitoring will automatically stop. Perfect for one-time announcements like release dates.
-              </p>
-            )}
-            {task.notify_behavior === 'always' && (
-              <p className="text-sm text-muted-foreground">
-                <strong>Always Notify:</strong> You'll receive an email every time your condition is met.
-                Great for recurring opportunities like stock availability or price changes.
-              </p>
-            )}
-            {task.notify_behavior === 'track_state' && (
-              <p className="text-sm text-muted-foreground">
-                <strong>Track Changes:</strong> You'll receive an email only when the information changes from our last check.
-                Ideal for monitoring updates and changes over time.
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
       {task.last_known_state && (
         <CollapsibleSection
           title="Last Known State (Dev)"
@@ -508,18 +520,20 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="relative">
-          <TabsList className="w-full overflow-x-auto flex-nowrap scrollbar-hide">
-            <TabsTrigger value="executions">
-              All Executions <span className="text-xs text-zinc-500 ml-1.5">({executions.length})</span>
-            </TabsTrigger>
-            <TabsTrigger value="notifications">
-              Notifications <span className="text-xs text-zinc-500 ml-1.5">({notifications.length})</span>
-            </TabsTrigger>
-            <TabsTrigger value="changes">State Changes</TabsTrigger>
-          </TabsList>
-          {/* Scroll hint gradient */}
-          <div className="absolute top-0 right-0 h-full w-12 bg-gradient-to-l from-zinc-50 to-transparent pointer-events-none" />
+        <div className="sticky top-0 z-10 bg-zinc-50 pb-2 -mx-8 px-8">
+          <div className="relative">
+            <TabsList className="w-full overflow-x-auto flex-nowrap scrollbar-hide">
+              <TabsTrigger value="executions">
+                All Executions <span className="text-xs text-zinc-500 ml-1.5">({executions.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="notifications">
+                Notifications <span className="text-xs text-zinc-500 ml-1.5">({notifications.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="changes">State Changes</TabsTrigger>
+            </TabsList>
+            {/* Scroll hint gradient */}
+            <div className="absolute top-0 right-0 h-full w-12 bg-gradient-to-l from-zinc-50 to-transparent pointer-events-none" />
+          </div>
         </div>
 
         <TabsContent value="executions" className="mt-6">
