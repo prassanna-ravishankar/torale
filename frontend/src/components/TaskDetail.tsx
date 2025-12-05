@@ -92,13 +92,21 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
 
   // Sync activeTab to URL
   useEffect(() => {
-    const newParams = new URLSearchParams(searchParams);
+    const currentTab = searchParams.get('tab');
+    // Only update if the URL state is different from the desired activeTab
     if (activeTab !== 'executions') {
-      newParams.set('tab', activeTab);
+      if (currentTab !== activeTab) {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set('tab', activeTab);
+        setSearchParams(newParams, { replace: true });
+      }
     } else {
-      newParams.delete('tab');
+      if (currentTab) {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('tab');
+        setSearchParams(newParams, { replace: true });
+      }
     }
-    setSearchParams(newParams, { replace: true });
   }, [activeTab, searchParams, setSearchParams]);
 
   // Auto-refresh executions while first execution is pending/running (for just-created tasks)
