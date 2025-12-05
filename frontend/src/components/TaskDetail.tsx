@@ -12,7 +12,7 @@ import { ExecutionTimeline } from "@/components/ExecutionTimeline";
 import { StateComparison } from "@/components/StateComparison";
 import { CronDisplay } from "@/components/ui/CronDisplay";
 import { NotificationChannelBadges } from "@/components/notifications/NotificationChannelBadges";
-import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
+import { getTaskStatus } from '@/lib/taskStatus';
 import {
   ArrowLeft,
   Clock,
@@ -184,13 +184,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
 
   // Get task status from centralized logic
   const status = getTaskStatus(task.state);
-
-  // Map icon name to Lucide icon component
-  const StatusIcon = {
-    Activity,
-    CheckCircle,
-    Pause,
-  }[status.iconName];
 
   const firstExecution = executions[0];
   const isFirstExecutionComplete = firstExecution?.status === 'success';
