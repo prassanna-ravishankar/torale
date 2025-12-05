@@ -1,3 +1,8 @@
+---
+name: torale-animation-patterns
+description: Animation and motion design patterns for Torale's neo-brutalist interface using Framer Motion. Covers spring physics ("The Snap"), mechanical button feedback ("The Click"), card hover effects ("The Lift"), and live status indicators. Includes responsive animations, loading states, and stagger effects for UI transitions.
+---
+
 # Torale Animation Patterns
 
 Motion design patterns for Torale using Framer Motion. Animations should feel mechanical, precise, and purposeful.
@@ -163,7 +168,7 @@ Show background work with pulsing indicators:
 ```typescript
 // Badge with live indicator
 <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white border-2 border-zinc-900">
-  <div className="w-2 h-2 bg-[hsl(10,90%,55%)] rounded-full animate-pulse" />
+  <div className="w-2 h-2 bg-brand-orange rounded-full animate-pulse" />
   <span className="text-xs font-mono font-bold uppercase">Incoming Signals</span>
 </div>
 ```

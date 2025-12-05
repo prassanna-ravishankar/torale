@@ -1,6 +1,32 @@
+---
+name: torale-component-library
+description: Reference for Torale's shared component library (@/components/torale). Documents StatusBadge (11 variants), BrutalistCard, BrutalistTable, ActionMenu, FilterGroup, EmptyState, and other reusable components. Always import these instead of copy-pasting. Includes usage examples for buttons, cards, inputs, and terminal blocks.
+---
+
 # Torale Component Library
 
-Pre-built components following Torale's design system. Copy-paste these into your React components.
+Pre-built components following Torale's design system.
+
+## Shared Component Library
+
+**Import from `@/components/torale`:**
+
+The following components are available as reusable, tested components. **Always use these instead of copying/pasting:**
+
+- **StatusBadge** - Unified status indicators with 11 variants
+- **BrutalistCard** - Card container with variants (default, clickable, ghost)
+- **BrutalistTable*** - Table components (Table, Header, Body, Row, Head, Cell)
+- **ActionMenu** - Dropdown menu with actions (edit, delete, etc.)
+- **FilterGroup** - Type-safe filter tabs with counts
+- **EmptyState** - Empty state with optional action button
+- **SectionLabel** - Consistent section headers
+
+**When to use shared components:**
+- ✅ **Always** import from `@/components/torale` when available
+- ✅ Check the library before creating custom components
+- ✅ Suggest improvements to shared components instead of creating variants
+- ❌ Don't copy-paste component code from skills - import instead
+- ❌ Don't shadow imported components with local definitions
 
 ## Required Dependencies
 
@@ -30,7 +56,7 @@ import { ArrowRight } from 'lucide-react';
 
 <motion.button
   whileTap={{ scale: 0.98, y: 1 }}
-  className="inline-flex items-center gap-2 bg-zinc-900 text-white px-5 py-2 text-sm font-bold hover:bg-[hsl(10,90%,55%)] transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] active:translate-y-[2px] active:shadow-none"
+  className="inline-flex items-center gap-2 bg-zinc-900 text-white px-5 py-2 text-sm font-bold hover:bg-brand-orange transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] active:translate-y-[2px] active:shadow-none"
 >
   Deploy Monitor
   <ArrowRight className="w-4 h-4" />
@@ -56,45 +82,52 @@ import { ArrowRight } from 'lucide-react';
 
 ## Status Badges
 
+**Import from shared components:**
+
 ```typescript
-import { Activity, AlertCircle, AlertTriangle, PauseCircle } from 'lucide-react';
+import { StatusBadge } from '@/components/torale';
 
-type MonitorStatus = "active" | "paused" | "error" | "degraded";
+// Basic usage
+<StatusBadge variant="active" />
+<StatusBadge variant="success" />
+<StatusBadge variant="failed" />
 
-const StatusBadge = ({ status }: { status: MonitorStatus }) => {
-  const config = {
-    active: {
-      style: "bg-emerald-50 text-emerald-600 border-emerald-200",
-      icon: Activity,
-      label: "Active"
-    },
-    paused: {
-      style: "bg-zinc-50 text-zinc-500 border-zinc-200",
-      icon: PauseCircle,
-      label: "Paused"
-    },
-    error: {
-      style: "bg-red-50 text-red-600 border-red-200",
-      icon: AlertTriangle,
-      label: "Error"
-    },
-    degraded: {
-      style: "bg-amber-50 text-amber-600 border-amber-200",
-      icon: AlertCircle,
-      label: "Degraded"
-    }
-  };
+// With custom label
+<StatusBadge variant="success" label="Verified" />
 
-  const { style, icon: Icon, label } = config[status];
-
-  return (
-    <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-sm border text-[10px] font-mono uppercase tracking-wider ${style}`}>
-      <Icon className="w-3 h-3" />
-      {label}
-    </div>
-  );
-};
+// With custom size
+<StatusBadge variant="running" size="md" />
 ```
+
+**Available variants:**
+- `'active'` - Green with Activity icon (task is running)
+- `'success'` - Green with CheckCircle2 icon (execution succeeded)
+- `'completed'` - Blue with CheckCircle icon (task finished)
+- `'paused'` - Gray with PauseCircle icon (task paused)
+- `'failed'` - Red with XCircle icon (execution failed)
+- `'pending'` - Gray with Clock icon (waiting to start)
+- `'running'` - Amber with Clock icon (currently executing)
+- `'met'` - Green with CheckCircle2 icon (condition satisfied)
+- `'not_met'` - Gray with no icon (condition not satisfied)
+- `'triggered'` - Green with Zap icon (notification triggered)
+- `'unknown'` - Amber with AlertCircle icon (unknown status)
+
+**Props:**
+```typescript
+interface StatusBadgeProps {
+  variant: StatusVariant;
+  label?: string;      // Override default label
+  icon?: React.ReactNode;  // Override default icon
+  className?: string;  // Additional classes
+  size?: 'sm' | 'md'; // Size (default: 'sm')
+}
+```
+
+**Icon semantics:**
+- Use `'success'` (CheckCircle2) for successful operations/verifications
+- Use `'completed'` (CheckCircle) for finished tasks
+- Use `'active'` (Activity) for currently active/monitoring tasks
+- Use `'running'` (Clock) for in-progress executions
 
 ## Signal Card (Dashboard Monitor Card)
 
@@ -270,7 +303,7 @@ const TerminalBlock = ({ children }: { children: React.ReactNode }) => (
 // Usage
 <TerminalBlock>
   <div className="flex gap-2">
-    <span className="text-[hsl(10,90%,55%)]">➜</span>
+    <span className="text-brand-orange">➜</span>
     <span>npm install torale</span>
   </div>
 </TerminalBlock>
