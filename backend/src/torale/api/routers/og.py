@@ -96,14 +96,20 @@ async def generate_task_og_image(
         title_font = ImageFont.truetype(str(TITLE_FONT_PATH), 28)  # Space Grotesk Bold
         desc_font = ImageFont.truetype(str(DESC_FONT_PATH), 18)  # Inter Regular
     except OSError:
-        # Fallback to system fonts
+        # Fallback to system fonts (try Linux paths first, then macOS)
         try:
-            title_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 28)
-            desc_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 18)
+            # Try Linux system fonts (common in Docker containers)
+            title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+            desc_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
         except OSError:
-            # Final fallback
-            title_font = ImageFont.load_default()
-            desc_font = ImageFont.load_default()
+            try:
+                # Try macOS system fonts
+                title_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 28)
+                desc_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 18)
+            except OSError:
+                # Final fallback (basic PIL font)
+                title_font = ImageFont.load_default()
+                desc_font = ImageFont.load_default()
 
     # Text overlay zones (in 1200x630 dimensions)
     # Title box: (344,217) to (950,294)
@@ -171,4 +177,10 @@ async def generate_task_og_image(
     img.save(img_byte_arr, format="JPEG", quality=85, optimize=True)
     img_byte_arr.seek(0)
 
-    return Response(content=img_byte_arr.getvalue(), media_type="image/jpeg")
+    # Cache for 1 hour (social media crawlers will cache this)
+    # TODO: Implement Redis/S3 caching for immutable images
+    return Response(
+        content=img_byte_arr.getvalue(),
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )

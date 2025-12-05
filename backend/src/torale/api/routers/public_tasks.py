@@ -142,12 +142,14 @@ async def get_public_task_by_vanity_url(
             detail="Task not found",
         )
 
-    # Increment view count for public tasks (non-owners only)
-    if is_public and not is_owner:
-        await db.execute(
-            "UPDATE tasks SET view_count = view_count + 1 WHERE id = $1",
-            row["id"],
-        )
+    # TODO: Implement async view counting
+    # Synchronous UPDATE on every read causes write amplification and contention
+    # Move to Redis counter + async sync, or use dedicated analytics table
+    # if is_public and not is_owner:
+    #     await db.execute(
+    #         "UPDATE tasks SET view_count = view_count + 1 WHERE id = $1",
+    #         row["id"],
+    #     )
 
     from torale.api.routers.tasks import _parse_task_with_execution
 
