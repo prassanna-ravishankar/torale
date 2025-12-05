@@ -15,6 +15,9 @@ export {
   useSpring,
 } from "motion/react";
 
+// Re-export types
+export type { MotionProps } from "motion/react";
+
 // Animation presets for <400ms interactions
 export const animations = {
   fadeIn: {

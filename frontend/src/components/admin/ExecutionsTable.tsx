@@ -3,7 +3,9 @@ import { api } from '@/lib/api'
 import { formatDistanceToNow } from 'date-fns'
 import { formatDuration } from '@/lib/utils'
 import { ExecutionCard } from './cards/ExecutionCard'
-import { Loader2, Activity, ChevronDown, CheckCircle2, XCircle, Clock, Zap, Link2 } from 'lucide-react'
+import { Loader2, Activity, ChevronDown, Link2 } from 'lucide-react'
+import { SectionLabel, BrutalistCard, StatusBadge } from '@/components/torale'
+import type { TaskStatus } from '@/types'
 
 interface GroundingSource {
   title: string
@@ -13,7 +15,7 @@ interface GroundingSource {
 interface Execution {
   id: string
   task_id: string
-  status: string
+  status: TaskStatus
   started_at: string
   completed_at: string | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,49 +63,17 @@ export function ExecutionsTable() {
     { value: 'running', label: 'Running' },
   ]
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'success':
-        return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-mono uppercase tracking-wider border border-emerald-200">
-            <CheckCircle2 className="h-3 w-3" />
-            Success
-          </span>
-        )
-      case 'failed':
-        return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-50 text-red-700 text-[10px] font-mono uppercase tracking-wider border border-red-200">
-            <XCircle className="h-3 w-3" />
-            Failed
-          </span>
-        )
-      case 'running':
-        return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-mono uppercase tracking-wider border border-amber-200">
-            <Clock className="h-3 w-3" />
-            Running
-          </span>
-        )
-      default:
-        return (
-          <span className="inline-flex items-center px-1.5 py-0.5 bg-zinc-50 text-zinc-600 text-[10px] font-mono uppercase tracking-wider border border-zinc-200">
-            {status}
-          </span>
-        )
-    }
-  }
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 bg-white border-2 border-zinc-200">
+      <BrutalistCard className="flex items-center justify-center h-64">
         <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
-      </div>
+      </BrutalistCard>
     )
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64 bg-white border-2 border-zinc-200">
+      <BrutalistCard className="flex items-center justify-center h-64">
         <div className="text-center">
           <p className="text-sm font-mono text-red-600">Error: {error}</p>
           <button
@@ -113,12 +83,12 @@ export function ExecutionsTable() {
             Retry
           </button>
         </div>
-      </div>
+      </BrutalistCard>
     )
   }
 
   return (
-    <div className="bg-white border-2 border-zinc-200">
+    <BrutalistCard>
       {/* Header */}
       <div className="p-4 border-b border-zinc-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -171,13 +141,13 @@ export function ExecutionsTable() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-zinc-200 bg-zinc-50">
-              <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">User</th>
-              <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Query</th>
-              <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Status</th>
-              <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Condition</th>
-              <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Started</th>
-              <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Duration</th>
-              <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Sources</th>
+              <th className="text-left p-3"><SectionLabel>User</SectionLabel></th>
+              <th className="text-left p-3"><SectionLabel>Query</SectionLabel></th>
+              <th className="text-left p-3"><SectionLabel>Status</SectionLabel></th>
+              <th className="text-left p-3"><SectionLabel>Condition</SectionLabel></th>
+              <th className="text-left p-3"><SectionLabel>Started</SectionLabel></th>
+              <th className="text-left p-3"><SectionLabel>Duration</SectionLabel></th>
+              <th className="text-left p-3"><SectionLabel>Sources</SectionLabel></th>
             </tr>
           </thead>
           <tbody>
@@ -193,17 +163,12 @@ export function ExecutionsTable() {
                 <tr key={execution.id} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
                   <td className="p-3 text-xs font-mono text-zinc-600">{execution.user_email}</td>
                   <td className="p-3 text-xs font-mono text-zinc-700 max-w-xs truncate">{execution.search_query}</td>
-                  <td className="p-3">{getStatusBadge(execution.status)}</td>
+                  <td className="p-3">
+                    <StatusBadge variant={execution.status} />
+                  </td>
                   <td className="p-3">
                     {execution.condition_met !== null && (
-                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider border ${
-                        execution.condition_met
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-zinc-50 text-zinc-500 border-zinc-200'
-                      }`}>
-                        {execution.condition_met && <Zap className="h-3 w-3" />}
-                        {execution.condition_met ? 'Met' : 'Not met'}
-                      </span>
+                      <StatusBadge variant={execution.condition_met ? 'met' : 'not_met'} />
                     )}
                   </td>
                   <td className="p-3 text-xs font-mono text-zinc-500">
@@ -238,6 +203,6 @@ export function ExecutionsTable() {
           executions.map((execution) => <ExecutionCard key={execution.id} execution={execution} />)
         )}
       </div>
-    </div>
+    </BrutalistCard>
   )
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { AlertTriangle, Loader2, CheckCircle2, Search, User, Clock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { SectionLabel, BrutalistCard } from '@/components/torale'
 
 interface ErrorExecution {
   id: string
@@ -38,15 +39,15 @@ export function ErrorsList() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 bg-white border-2 border-zinc-200">
+      <BrutalistCard className="flex items-center justify-center h-64">
         <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
-      </div>
+      </BrutalistCard>
     )
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64 bg-white border-2 border-zinc-200">
+      <BrutalistCard className="flex items-center justify-center h-64">
         <div className="text-center">
           <p className="text-sm font-mono text-red-600">Error: {error}</p>
           <button
@@ -56,12 +57,12 @@ export function ErrorsList() {
             Retry
           </button>
         </div>
-      </div>
+      </BrutalistCard>
     )
   }
 
   return (
-    <div className="bg-white border-2 border-zinc-200">
+    <BrutalistCard>
       {/* Header */}
       <div className="p-4 border-b border-zinc-200 flex items-center gap-3">
         <div className="bg-red-600 text-white w-8 h-8 flex items-center justify-center shrink-0">
@@ -113,9 +114,8 @@ export function ErrorsList() {
 
                   {/* Query */}
                   <div>
-                    <div className="flex items-center gap-1 mb-1">
-                      <Search className="h-3 w-3 text-red-400" />
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-red-500">Query</span>
+                    <div className="mb-1">
+                      <SectionLabel icon={Search} className="text-red-500">Query</SectionLabel>
                     </div>
                     <p className="text-xs font-mono text-red-800 break-words pl-4">
                       {errorExec.search_query}
@@ -124,9 +124,8 @@ export function ErrorsList() {
 
                   {/* Error Message */}
                   <div>
-                    <div className="flex items-center gap-1 mb-1">
-                      <AlertTriangle className="h-3 w-3 text-red-400" />
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-red-500">Error</span>
+                    <div className="mb-1">
+                      <SectionLabel icon={AlertTriangle} className="text-red-500">Error</SectionLabel>
                     </div>
                     <div className="p-2 bg-red-100 border border-red-300 ml-4">
                       <p className="text-xs font-mono text-red-900 break-words">
@@ -147,6 +146,6 @@ export function ErrorsList() {
           </div>
         )}
       </div>
-    </div>
+    </BrutalistCard>
   )
 }

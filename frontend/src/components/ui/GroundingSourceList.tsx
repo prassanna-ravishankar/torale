@@ -27,11 +27,11 @@ export const GroundingSourceList: React.FC<GroundingSourceListProps> = ({
             href={source.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-start gap-2 p-2 rounded-md hover:bg-muted transition-colors group"
+            className="flex items-start gap-2 p-2 border border-zinc-200 hover:border-zinc-900 hover:bg-zinc-50 transition-colors group"
           >
-            <ExternalLink className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground group-hover:text-primary" />
+            <ExternalLink className="h-4 w-4 shrink-0 mt-0.5 text-zinc-400 group-hover:text-brand-orange" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm group-hover:text-primary">
+              <p className="text-sm text-zinc-700 group-hover:text-zinc-900 group-hover:underline break-words">
                 {source.title}
               </p>
             </div>

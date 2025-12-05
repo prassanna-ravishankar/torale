@@ -1,3 +1,8 @@
+---
+name: torale-design-system
+description: Apply Torale's neo-brutalist "The Machine" design language to components and pages. Defines typography (tri-font stack), color palette, spacing rules, component patterns, animation physics, and microcopy voice. Use when creating UI components, styling pages, choosing colors/fonts/spacing, or writing interface text.
+---
+
 # Torale Design System
 
 Apply Torale's neo-brutalist design language to components and pages.
@@ -46,8 +51,12 @@ text-amber-600 bg-amber-50 border-amber-200
 // Critical (Red)
 text-red-600 bg-red-50 border-red-200
 
-// Action (Brand)
-bg-[hsl(10,90%,55%)] // Primary buttons & active states
+// Action (Brand Orange)
+bg-brand-orange text-brand-orange  // Primary buttons & active states
+hover:bg-brand-orange hover:text-brand-orange  // Hover states
+
+// Defined in tailwind.config.js:
+// brand: { orange: "hsl(10, 90%, 55%)" }
 ```
 
 ## Layout & Spacing
@@ -71,7 +80,7 @@ bg-[hsl(10,90%,55%)] // Primary buttons & active states
 
 ```typescript
 // Primary Action
-<button className="bg-zinc-900 text-white px-5 py-2 text-sm font-bold hover:bg-[hsl(10,90%,55%)] transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] active:translate-y-[2px] active:shadow-none">
+<button className="bg-zinc-900 text-white px-5 py-2 text-sm font-bold hover:bg-brand-orange transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] active:translate-y-[2px] active:shadow-none">
   Deploy Monitor
 </button>
 

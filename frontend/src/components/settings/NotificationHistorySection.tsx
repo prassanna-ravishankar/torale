@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Mail, Webhook, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Loader2, Mail, Webhook } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { WebhookDelivery, NotificationSend } from '@/types';
+import { SectionLabel, BrutalistCard, StatusBadge, type StatusVariant } from '@/components/torale';
 
 export const NotificationHistorySection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'emails' | 'webhooks'>('emails');
@@ -53,40 +54,21 @@ export const NotificationHistorySection: React.FC = () => {
     return date.toLocaleDateString();
   };
 
-  const StatusBadge = ({ status }: { status: string }) => {
+  const getStatusVariant = (status: string): StatusVariant => {
     switch (status) {
       case 'success':
-        return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] font-mono uppercase tracking-wider border border-emerald-200">
-            <CheckCircle2 className="h-3 w-3" />
-            Success
-          </span>
-        );
+        return 'success';
       case 'failed':
-        return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-50 text-red-700 text-[9px] font-mono uppercase tracking-wider border border-red-200">
-            <XCircle className="h-3 w-3" />
-            Failed
-          </span>
-        );
+        return 'failed';
       case 'retrying':
-        return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 text-[9px] font-mono uppercase tracking-wider border border-amber-200">
-            <Clock className="h-3 w-3" />
-            Retrying
-          </span>
-        );
+        return 'pending';
       default:
-        return (
-          <span className="inline-flex items-center px-1.5 py-0.5 bg-zinc-50 text-zinc-600 text-[9px] font-mono uppercase tracking-wider border border-zinc-200">
-            {status}
-          </span>
-        );
+        return 'unknown';
     }
   };
 
   return (
-    <div className="bg-white border-2 border-zinc-200">
+    <BrutalistCard>
       {/* Header */}
       <div className="p-4 border-b border-zinc-200">
         <p className="text-xs text-zinc-500">
@@ -150,7 +132,7 @@ export const NotificationHistorySection: React.FC = () => {
                       <p className="text-xs sm:text-sm font-mono text-zinc-900 break-all">{send.recipient}</p>
                       <p className="text-[10px] font-mono text-zinc-400 mt-0.5">{formatDate(send.created_at)}</p>
                       <div className="flex items-center gap-1.5 mt-2">
-                        <StatusBadge status={send.status} />
+                        <StatusBadge variant={getStatusVariant(send.status)} />
                       </div>
                     </div>
                   </div>
@@ -191,7 +173,7 @@ export const NotificationHistorySection: React.FC = () => {
                             {delivery.http_status_code}
                           </span>
                         )}
-                        <StatusBadge status={delivery.status} />
+                        <StatusBadge variant={getStatusVariant(delivery.status)} />
                       </div>
 
                       {/* Retry Info */}
@@ -216,6 +198,6 @@ export const NotificationHistorySection: React.FC = () => {
           )
         )}
       </div>
-    </div>
+    </BrutalistCard>
   );
 };

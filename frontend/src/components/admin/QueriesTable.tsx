@@ -3,7 +3,8 @@ import { Switch } from '@/components/ui/switch'
 import { api } from '@/lib/api'
 import { QueryCard } from './cards/QueryCard'
 import { CronDisplay } from '@/components/ui/CronDisplay'
-import { Loader2, Search, Zap, CheckCircle2, XCircle } from 'lucide-react'
+import { Loader2, Search, Zap } from 'lucide-react'
+import { SectionLabel, BrutalistCard, StatusBadge } from '@/components/torale'
 
 interface Query {
   id: string
@@ -44,15 +45,15 @@ export function QueriesTable() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 bg-white border-2 border-zinc-200">
+      <BrutalistCard className="flex items-center justify-center h-64">
         <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
-      </div>
+      </BrutalistCard>
     )
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64 bg-white border-2 border-zinc-200">
+      <BrutalistCard className="flex items-center justify-center h-64">
         <div className="text-center">
           <p className="text-sm font-mono text-red-600">Error: {error}</p>
           <button
@@ -62,12 +63,12 @@ export function QueriesTable() {
             Retry
           </button>
         </div>
-      </div>
+      </BrutalistCard>
     )
   }
 
   return (
-    <div className="bg-white border-2 border-zinc-200">
+    <BrutalistCard>
       {/* Header */}
       <div className="p-4 border-b border-zinc-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -99,14 +100,14 @@ export function QueriesTable() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-zinc-200 bg-zinc-50">
-              <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">User</th>
-              <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Name</th>
-              <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Search Query</th>
-              <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Condition</th>
-              <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Schedule</th>
-              <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Status</th>
-              <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Executions</th>
-              <th className="text-left p-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Triggered</th>
+              <th className="text-left p-3"><SectionLabel>User</SectionLabel></th>
+              <th className="text-left p-3"><SectionLabel>Name</SectionLabel></th>
+              <th className="text-left p-3"><SectionLabel>Search Query</SectionLabel></th>
+              <th className="text-left p-3"><SectionLabel>Condition</SectionLabel></th>
+              <th className="text-left p-3"><SectionLabel>Schedule</SectionLabel></th>
+              <th className="text-left p-3"><SectionLabel>Status</SectionLabel></th>
+              <th className="text-left p-3"><SectionLabel>Executions</SectionLabel></th>
+              <th className="text-left p-3"><SectionLabel>Triggered</SectionLabel></th>
             </tr>
           </thead>
           <tbody>
@@ -129,19 +130,8 @@ export function QueriesTable() {
                   </td>
                   <td className="p-3">
                     <div className="flex gap-1">
-                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider border ${
-                        query.is_active
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-zinc-50 text-zinc-500 border-zinc-200'
-                      }`}>
-                        {query.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                      {query.condition_met && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-mono uppercase tracking-wider border border-emerald-200">
-                          <Zap className="h-3 w-3" />
-                          Met
-                        </span>
-                      )}
+                      <StatusBadge variant={query.is_active ? 'active' : 'paused'} />
+                      {query.condition_met && <StatusBadge variant="met" />}
                     </div>
                   </td>
                   <td className="p-3 text-sm font-mono text-zinc-900">{query.execution_count}</td>
@@ -169,6 +159,6 @@ export function QueriesTable() {
           queries.map((query) => <QueryCard key={query.id} query={query} />)
         )}
       </div>
-    </div>
+    </BrutalistCard>
   )
 }

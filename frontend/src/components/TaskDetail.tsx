@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { InfoCard, CollapsibleSection, StatusBadge } from "@/components/torale";
 import { ExecutionTimeline } from "@/components/ExecutionTimeline";
 import { StateComparison } from "@/components/StateComparison";
 import { CronDisplay } from "@/components/ui/CronDisplay";
@@ -29,9 +28,6 @@ import {
   Pause,
   Check,
   X,
-  ChevronDown,
-  ChevronUp,
-  Settings,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -58,13 +54,14 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const isJustCreated = searchParams.get('justCreated') === 'true';
+  const tabFromUrl = searchParams.get('tab') as 'executions' | 'notifications' | 'changes' | null;
 
   const [task, setTask] = useState<Task | null>(null);
   const [executions, setExecutions] = useState<TaskExecution[]>([]);
   const [notifications, setNotifications] = useState<TaskExecution[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExecuting, setIsExecuting] = useState(false);
-  const [activeTab, setActiveTab] = useState("executions");
+  const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "executions");
   const [configExpanded, setConfigExpanded] = useState(false);
   const [lastKnownStateExpanded, setLastKnownStateExpanded] = useState(false);
 
@@ -94,6 +91,19 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Sync activeTab to URL
+  useEffect(() => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      if (activeTab !== 'executions') {
+        newParams.set('tab', activeTab);
+      } else {
+        newParams.delete('tab');
+      }
+      return newParams;
+    }, { replace: true });
+  }, [activeTab, setSearchParams]);
 
   // Auto-refresh executions while first execution is pending/running (for just-created tasks)
   useEffect(() => {
@@ -301,111 +311,108 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <h1 className="font-grotesk text-2xl md:text-4xl font-bold truncate">{task.name}</h1>
-              <Badge
-                variant={
-                  status.activityState === TaskActivityState.ACTIVE
-                    ? 'default'
-                    : status.activityState === TaskActivityState.COMPLETED
-                    ? 'default'
-                    : 'secondary'
-                }
-                className="flex items-center gap-1 shrink-0"
-              >
-                <StatusIcon className="h-3 w-3" />
-                {status.label}
-              </Badge>
+              <StatusBadge variant={status.activityState} />
             </div>
             <p className="text-zinc-500 text-sm truncate">{task.search_query}</p>
           </div>
         </div>
 
-        {/* Action Buttons - Stack on mobile */}
-        <div className="flex items-center gap-2 flex-wrap mb-6 lg:mb-8">
-          <Button
-            variant="outline"
-            onClick={handleExecute}
-            disabled={isExecuting}
-            size="sm"
-          >
-            {isExecuting ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Play className="mr-2 h-4 w-4" />
-            )}
-            <span className="hidden sm:inline">Run Now</span>
-            <span className="sm:hidden">Run</span>
-          </Button>
+      </div>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Trash2 className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Delete</span>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="border-2 border-zinc-900 shadow-brutalist-lg">
-              <AlertDialogHeader className="border-b-2 border-zinc-100 pb-4">
-                <AlertDialogTitle className="font-grotesk">Delete Monitor</AlertDialogTitle>
-                <AlertDialogDescription className="text-zinc-500">
-                  Are you sure you want to delete "{task.name}"? This action cannot be
-                  undone. All execution history will be permanently deleted.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="gap-3">
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="shadow-brutalist">Delete</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+      {/* Latest Execution - Prominent on Mobile */}
+      {firstExecution && (
+        <div
+          className="bg-white border-2 border-zinc-200 p-4 hover:border-zinc-400 transition-colors cursor-pointer"
+          onClick={() => setActiveTab('executions')}
+        >
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <StatusBadge variant={firstExecution.status} />
+              <span className="text-sm font-mono text-zinc-500">
+                Latest result
+              </span>
+            </div>
+            <span className="text-xs font-mono text-zinc-400">
+              {new Date(firstExecution.started_at).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+            </span>
+          </div>
+          {firstExecution.result?.answer && (
+            <p className="text-sm text-zinc-700 leading-relaxed line-clamp-3">
+              {firstExecution.result.answer}
+            </p>
+          )}
+          {firstExecution.condition_met !== undefined && (
+            <div className="mt-3 pt-3 border-zinc-100 flex items-center justify-between">
+              <span className="text-xs font-mono text-zinc-500">Condition</span>
+              <StatusBadge variant={firstExecution.condition_met ? 'met' : 'not_met'} size="sm" />
+            </div>
+          )}
         </div>
+      )}
+
+      {/* Action Buttons - Compact */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          onClick={handleExecute}
+          disabled={isExecuting}
+          size="sm"
+        >
+          {isExecuting ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Play className="mr-2 h-4 w-4" />
+          )}
+          Run Now
+        </Button>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="border-2 border-zinc-900 shadow-brutalist-lg">
+            <AlertDialogHeader className="border-b-2 border-zinc-100 pb-4">
+              <AlertDialogTitle className="font-grotesk">Delete Monitor</AlertDialogTitle>
+              <AlertDialogDescription className="text-zinc-500">
+                Are you sure you want to delete "{task.name}"? This action cannot be
+                undone. All execution history will be permanently deleted.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-3">
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="shadow-brutalist">Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {/* Task Configuration - Collapsible on Mobile, Always Visible on Desktop */}
-      <Collapsible open={configExpanded} onOpenChange={setConfigExpanded} className="lg:contents">
-        <div className="lg:hidden mb-4">
-          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-mono text-zinc-500 hover:text-zinc-900 transition-colors w-full justify-between p-3 bg-white border-2 border-zinc-200">
-            <div className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              <span>Task Configuration</span>
-            </div>
-            {configExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </CollapsibleTrigger>
-        </div>
-
-        <CollapsibleContent className="lg:contents" forceMount>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card className="border-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-zinc-400">
-              <Clock className="h-4 w-4" />
-              <p className="text-[10px] font-mono uppercase tracking-wider">Schedule</p>
-            </div>
-          </CardHeader>
-          <CardContent>
+      <CollapsibleSection
+        title="Task Configuration"
+        open={configExpanded}
+        onOpenChange={setConfigExpanded}
+        variant="mobile"
+        className="lg:contents"
+        contentClassName="lg:contents"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <InfoCard icon={Clock} label="Schedule">
             <CronDisplay cron={task.schedule} className="text-sm font-mono text-zinc-700" />
-          </CardContent>
-        </Card>
+          </InfoCard>
 
-        <Card className="border-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-zinc-400">
-              <Search className="h-4 w-4" />
-              <p className="text-[10px] font-mono uppercase tracking-wider">Trigger Condition</p>
-            </div>
-          </CardHeader>
-          <CardContent>
+          <InfoCard icon={Search} label="Trigger Condition">
             <p className="text-sm text-zinc-700 leading-relaxed">{task.condition_description}</p>
-          </CardContent>
-        </Card>
+          </InfoCard>
 
-        <Card className="border-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-zinc-400">
-              <Bell className="h-4 w-4" />
-              <p className="text-[10px] font-mono uppercase tracking-wider">When to Notify</p>
-            </div>
-          </CardHeader>
-          <CardContent>
+          <InfoCard icon={Bell} label="When to Notify">
             <p className="text-sm font-mono uppercase tracking-wider text-zinc-700">
               {task.notify_behavior === 'once' && 'Once only'}
               {task.notify_behavior === 'always' && 'Every time'}
@@ -440,17 +447,9 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                 </>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </InfoCard>
 
-        <Card className="border-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 text-zinc-400">
-              <Mail className="h-4 w-4" />
-              <p className="text-[10px] font-mono uppercase tracking-wider">Notification Channels</p>
-            </div>
-          </CardHeader>
-          <CardContent>
+          <InfoCard icon={Mail} label="Notification Channels">
             {task.notification_channels && task.notification_channels.length > 0 ? (
               <div className="space-y-3">
                 <NotificationChannelBadges
@@ -480,83 +479,58 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             ) : (
               <p className="text-sm font-mono text-zinc-600">No channels configured</p>
             )}
-          </CardContent>
-        </Card>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* Notification Behavior Explanation - Miller's Law: Keep info concise (3-5 bullets) */}
-      <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
-        <div className="flex items-start gap-3">
-          <Bell className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-          <div className="flex-1">
-            <h3 className="text-sm font-medium mb-1">How You'll Be Notified</h3>
-            {task.notify_behavior === 'once' && (
-              <p className="text-sm text-muted-foreground">
-                <strong>Notify Once:</strong> You'll receive an email the first time we detect your condition is met,
-                then monitoring will automatically stop. Perfect for one-time announcements like release dates.
-              </p>
-            )}
-            {task.notify_behavior === 'always' && (
-              <p className="text-sm text-muted-foreground">
-                <strong>Always Notify:</strong> You'll receive an email every time your condition is met.
-                Great for recurring opportunities like stock availability or price changes.
-              </p>
-            )}
-            {task.notify_behavior === 'track_state' && (
-              <p className="text-sm text-muted-foreground">
-                <strong>Track Changes:</strong> You'll receive an email only when the information changes from our last check.
-                Ideal for monitoring updates and changes over time.
-              </p>
-            )}
-          </div>
+          </InfoCard>
         </div>
-      </div>
+      </CollapsibleSection>
 
       {task.last_known_state && (
-        <Collapsible open={lastKnownStateExpanded} onOpenChange={setLastKnownStateExpanded}>
-          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-mono text-zinc-500 hover:text-zinc-900 transition-colors w-full justify-between p-3 bg-zinc-900 border border-zinc-800">
-            <span className="text-[10px] uppercase text-zinc-500 tracking-wider">Last Known State (Dev)</span>
-            {lastKnownStateExpanded ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="bg-zinc-900 border-t-0 border border-zinc-800 p-4">
-              <div className="text-xs font-mono space-y-2 overflow-x-auto">
-                {Object.entries(task.last_known_state).map(([key, value]) => (
-                  <div key={key} className="flex flex-col gap-1">
-                    <span className="text-zinc-400">{key.replace(/_/g, ' ')}</span>
-                    {Array.isArray(value) ? (
-                      value.length > 3 ? (
-                        <span className="text-zinc-300 break-words">{value.slice(0, 3).join(", ")} +{value.length - 3} more</span>
-                      ) : (
-                        <span className="text-zinc-300 break-words">{value.join(", ")}</span>
-                      )
-                    ) : typeof value === "object" && value !== null ? (
-                      <pre className="text-xs p-2 bg-zinc-950 text-zinc-400 border border-zinc-800 overflow-x-auto">
-                        {JSON.stringify(value, null, 2)}
-                      </pre>
+        <CollapsibleSection
+          title="Last Known State (Dev)"
+          open={lastKnownStateExpanded}
+          onOpenChange={setLastKnownStateExpanded}
+          variant="dark"
+        >
+          <div className="bg-zinc-900 border-t-0 border border-zinc-800 p-4">
+            <div className="text-xs font-mono space-y-2 overflow-x-auto">
+              {Object.entries(task.last_known_state).map(([key, value]) => (
+                <div key={key} className="flex flex-col gap-1">
+                  <span className="text-zinc-400">{key.replace(/_/g, ' ')}</span>
+                  {Array.isArray(value) ? (
+                    value.length > 3 ? (
+                      <span className="text-zinc-300 break-words">{value.slice(0, 3).join(", ")} +{value.length - 3} more</span>
                     ) : (
-                      <span className="text-zinc-300 break-words">{String(value)}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      <span className="text-zinc-300 break-words">{value.join(", ")}</span>
+                    )
+                  ) : typeof value === "object" && value !== null ? (
+                    <pre className="text-xs p-2 bg-zinc-950 text-zinc-400 border border-zinc-800 overflow-x-auto">
+                      {JSON.stringify(value, null, 2)}
+                    </pre>
+                  ) : (
+                    <span className="text-zinc-300 break-words">{String(value)}</span>
+                  )}
+                </div>
+              ))}
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
+        </CollapsibleSection>
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="executions">
-            All Executions ({executions.length})
-          </TabsTrigger>
-          <TabsTrigger value="notifications">
-            Notifications ({notifications.length})
-          </TabsTrigger>
-          <TabsTrigger value="changes">State Changes</TabsTrigger>
-        </TabsList>
+        <div className="sticky top-0 z-10 bg-zinc-50 pb-2 -mx-8 px-8">
+          <div className="relative">
+            <TabsList className="w-full overflow-x-auto flex-nowrap scrollbar-hide">
+              <TabsTrigger value="executions">
+                All Executions <span className="text-xs text-zinc-500 ml-1.5">({executions.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="notifications">
+                Notifications <span className="text-xs text-zinc-500 ml-1.5">({notifications.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="changes">State Changes</TabsTrigger>
+            </TabsList>
+            {/* Scroll hint gradient */}
+            <div className="absolute top-0 right-0 h-full w-12 bg-gradient-to-l from-zinc-50 to-transparent pointer-events-none" />
+          </div>
+        </div>
 
         <TabsContent value="executions" className="mt-6">
           <ExecutionTimeline executions={executions} />
