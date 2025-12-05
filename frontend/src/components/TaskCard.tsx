@@ -151,9 +151,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </span>
       </div>
 
-      {/* Hover Selection Border */}
-      <div className="absolute inset-0 border-2 border-transparent group-hover:border-zinc-900 pointer-events-none transition-colors" />
-
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent className="border-2 border-zinc-900 shadow-brutalist-lg">
