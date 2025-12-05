@@ -508,12 +508,12 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="w-full overflow-x-auto">
           <TabsTrigger value="executions">
-            All Executions ({executions.length})
+            All Executions <span className="text-xs text-zinc-500 ml-1.5">({executions.length})</span>
           </TabsTrigger>
           <TabsTrigger value="notifications">
-            Notifications ({notifications.length})
+            Notifications <span className="text-xs text-zinc-500 ml-1.5">({notifications.length})</span>
           </TabsTrigger>
           <TabsTrigger value="changes">State Changes</TabsTrigger>
         </TabsList>
