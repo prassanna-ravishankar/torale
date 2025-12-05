@@ -80,8 +80,17 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
         <div className="flex-1 min-w-0">
           <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">Channels</div>
           {task.notification_channels && task.notification_channels.length > 0 ? (
-            <div className="text-sm text-zinc-900">
-              {task.notification_channels.join(', ')}
+            <div className="text-sm text-zinc-900 space-y-1">
+              {task.notification_channels.includes('email') && (
+                <div className="truncate">
+                  email ({task.notification_email || 'Default (Clerk email)'})
+                </div>
+              )}
+              {task.notification_channels.includes('webhook') && (
+                <div className="truncate">
+                  webhook {task.webhook_url && `(${task.webhook_url})`}
+                </div>
+              )}
             </div>
           ) : (
             <span className="text-sm text-zinc-500">None configured</span>
