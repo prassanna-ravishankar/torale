@@ -444,17 +444,20 @@ torale task list
 
 ## Design Principles
 
-### Core Philosophy
-1. **KISS (Keep It Simple, Stupid)**: Prefer simple solutions over complex ones
-2. **YAGNI (You Aren't Gonna Need It)**: Avoid overengineering, build only what's needed now
-3. **Readable Code**: Keep files light, create abstractions when they improve readability
-4. **Future-Aware Design**: Keep post-MVP requirements in sight, design interfaces that won't create rework later - but don't build those features now
+### Guiding Laws
+- **Tesler's Law**: Complexity is conserved—move it into components, out of usage sites
+- **Jakob's Law**: Developers expect familiar patterns. Boring beats brilliant.
+- **Occam's Razor**: Simplest pattern that solves the problem wins
+
+### From Software Engineering
+- **"Make the change easy, then make the easy change"** (Kent Beck)
+- **Principle of Least Astonishment**: Code should do what it looks like it does
+- **Third time, extract**: Abstract after repetition, not before
 
 ### Practical Application
-- Design clean interfaces (like the executor pattern) that support future extensions without current complexity
+- Absorb complexity into components, export simple interfaces
 - Prefer composition over inheritance
-- Write code that's easy to understand and modify
-- Make decisions that minimize future technical debt without over-engineering present solutions
+- Design clean interfaces that support future extensions without current complexity
 
 ## Development Workflow
 
