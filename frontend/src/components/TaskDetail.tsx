@@ -327,11 +327,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         >
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex items-center gap-2">
-              <StatusBadge variant={
-                firstExecution.status === 'success' ? 'success' :
-                firstExecution.status === 'failed' ? 'failed' :
-                firstExecution.status === 'running' ? 'running' : 'pending'
-              } />
+              <StatusBadge variant={firstExecution.status} />
               <span className="text-sm font-mono text-zinc-500">
                 Latest result
               </span>
