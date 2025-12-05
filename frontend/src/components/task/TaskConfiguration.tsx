@@ -53,7 +53,7 @@ const renderTaskStatus = (task: Task, onToggle: () => void) => {
           onCheckedChange={onToggle}
           className="data-[state=checked]:bg-zinc-900 data-[state=unchecked]:bg-zinc-200 border-2 border-zinc-900 h-4 w-7"
         />
-        <span className="text-xs font-mono text-zinc-700">
+        <span className={`text-xs font-mono ${task.state === 'active' ? 'text-zinc-700' : 'text-zinc-900 font-bold'}`}>
           {task.state === 'active' ? "Active" : "Paused"}
         </span>
       </div>
@@ -121,7 +121,7 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
               )}
               {task.notification_channels.includes('webhook') && (
                 <div className="truncate">
-                  webhook {task.webhook_url && `(${task.webhook_url})`}
+                  webhook ({task.webhook_url || 'Default webhook'})
                 </div>
               )}
             </div>
