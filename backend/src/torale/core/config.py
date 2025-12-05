@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     api_port: int = 8000
     api_reload: bool = False
 
+    # Frontend URL for SEO (sitemap, OpenGraph, etc.)
+    frontend_url: str = "https://torale.ai"
+
     # Development/testing mode - disable authentication
     torale_noauth: bool = False
     torale_noauth_email: str = "test@example.com"

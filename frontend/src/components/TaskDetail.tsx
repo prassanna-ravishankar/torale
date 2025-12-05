@@ -22,6 +22,9 @@ import {
   Mail,
   Check,
   X,
+  Copy,
+  Eye,
+  Users,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -39,12 +42,16 @@ interface TaskDetailProps {
   taskId: string;
   onBack: () => void;
   onDeleted: () => void;
+  isPublicView?: boolean; // True when viewing someone else's public task
+  currentUserId?: string; // Current user's ID (if authenticated)
 }
 
 export const TaskDetail: React.FC<TaskDetailProps> = ({
   taskId,
   onBack,
   onDeleted,
+  isPublicView = false,
+  currentUserId,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const isJustCreated = searchParams.get('justCreated') === 'true';
@@ -58,6 +65,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "executions");
   const [configExpanded, setConfigExpanded] = useState(false);
   const [lastKnownStateExpanded, setLastKnownStateExpanded] = useState(false);
+  const [isForking, setIsForking] = useState(false);
 
   const loadData = useCallback(async (skipLoadingState = false) => {
     if (!skipLoadingState) {
@@ -154,6 +162,21 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
     } catch (error) {
       console.error("Failed to delete task:", error);
       toast.error('Failed to delete task');
+    }
+  };
+
+  const handleFork = async () => {
+    setIsForking(true);
+    try {
+      const forkedTask = await api.forkTask(taskId);
+      toast.success('Task copied to your dashboard!');
+      // Redirect to the new task
+      window.location.href = `/dashboard?task=${forkedTask.id}`;
+    } catch (error) {
+      console.error("Failed to fork task:", error);
+      toast.error('Failed to copy task');
+    } finally {
+      setIsForking(false);
     }
   };
 
@@ -341,43 +364,77 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         </div>
       )}
 
-      {/* Action Buttons - Compact */}
+      {/* Action Buttons - Different for owner vs public viewer */}
       <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          onClick={handleExecute}
-          disabled={isExecuting}
-          size="sm"
-        >
-          {isExecuting ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Play className="mr-2 h-4 w-4" />
-          )}
-          Run Now
-        </Button>
-
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
+        {isPublicView ? (
+          // Public viewer: Show fork button and stats
+          <>
+            <Button
+              onClick={handleFork}
+              disabled={isForking}
+              size="sm"
+              className="gap-2"
+            >
+              {isForking ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+              {isForking ? 'Copying...' : 'Make a Copy'}
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent className="border-2 border-zinc-900 shadow-brutalist-lg">
-            <AlertDialogHeader className="border-b-2 border-zinc-100 pb-4">
-              <AlertDialogTitle className="font-grotesk">Delete Monitor</AlertDialogTitle>
-              <AlertDialogDescription className="text-zinc-500">
-                Are you sure you want to delete "{task.name}"? This action cannot be
-                undone. All execution history will be permanently deleted.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="gap-3">
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="shadow-brutalist">Delete</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+            {task.is_public && (
+              <div className="flex items-center gap-4 text-sm text-muted-foreground ml-4">
+                <div className="flex items-center gap-1">
+                  <Eye className="h-4 w-4" />
+                  {task.view_count}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Users className="h-4 w-4" />
+                  {task.subscriber_count}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          // Owner: Show run and delete buttons
+          <>
+            <Button
+              variant="outline"
+              onClick={handleExecute}
+              disabled={isExecuting}
+              size="sm"
+            >
+              {isExecuting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="mr-2 h-4 w-4" />
+              )}
+              Run Now
+            </Button>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="border-2 border-zinc-900 shadow-brutalist-lg">
+                <AlertDialogHeader className="border-b-2 border-zinc-100 pb-4">
+                  <AlertDialogTitle className="font-grotesk">Delete Monitor</AlertDialogTitle>
+                  <AlertDialogDescription className="text-zinc-500">
+                    Are you sure you want to delete "{task.name}"? This action cannot be
+                    undone. All execution history will be permanently deleted.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="gap-3">
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="shadow-brutalist">Delete</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
+        )}
       </div>
 
       {/* Task Configuration - Collapsible on Mobile, Always Visible on Desktop */}

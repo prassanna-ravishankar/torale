@@ -11,8 +11,12 @@ from torale.api.routers import (
     auth,
     email_verification,
     notifications,
+    og,
+    public_tasks,
+    sitemap,
     tasks,
     templates,
+    usernames,
     waitlist,
     webhooks,
 )
@@ -86,12 +90,18 @@ app.include_router(admin.router)
 # Waitlist routes
 app.include_router(waitlist.router, tags=["waitlist"])
 
+# SEO routes (at root level for standard locations)
+app.include_router(sitemap.router)
+
 # API routes
 app.include_router(tasks.router, prefix="/api/v1")
 app.include_router(templates.router, prefix="/api/v1")
 app.include_router(email_verification.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
+app.include_router(usernames.router, prefix="/api/v1")
+app.include_router(public_tasks.router, prefix="/api/v1")
+app.include_router(og.router, prefix="/api/v1")
 
 
 @app.get("/health")

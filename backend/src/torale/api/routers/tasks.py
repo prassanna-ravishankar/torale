@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from temporalio.client import Client
 from temporalio.service import RPCError
 
-from torale.api.auth import CurrentUserOrTestUser
+from torale.api.auth import CurrentUserOrTestUser, OptionalUser
 from torale.api.dependencies import get_genai_client
 from torale.core.config import settings
 from torale.core.database import Database, get_db
@@ -26,6 +26,7 @@ from torale.core.models import (
 from torale.core.task_state import TaskStateManager
 from torale.core.task_state_machine import InvalidTransitionError, TaskStateMachine
 from torale.notifications import NotificationValidationError, validate_notification
+from torale.utils.slug import generate_unique_slug
 from torale.workers.workflows import TaskExecutionWorkflow
 
 logger = logging.getLogger(__name__)
@@ -646,7 +647,14 @@ Examples:
 
 
 @router.get("/{task_id}", response_model=Task)
-async def get_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
+async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get_db)):
+    """
+    Get a task by ID. Supports both authenticated and unauthenticated access.
+
+    - If user is authenticated and owns the task: full task details
+    - If task is public: read-only access for anyone
+    - Otherwise: 404
+    """
     # Embed latest execution via LEFT JOIN
     query = """
         SELECT t.*,
@@ -660,10 +668,10 @@ async def get_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_
                e.grounding_sources as exec_grounding_sources
         FROM tasks t
         LEFT JOIN task_executions e ON t.last_execution_id = e.id
-        WHERE t.id = $1 AND t.user_id = $2
+        WHERE t.id = $1
     """
 
-    row = await db.fetch_one(query, task_id, user.id)
+    row = await db.fetch_one(query, task_id)
 
     if not row:
         raise HTTPException(
@@ -671,7 +679,214 @@ async def get_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_
             detail="Task not found",
         )
 
+    # Check permissions: owner has full access, others only if public
+    is_owner = user is not None and row["user_id"] == user.id
+    is_public = row["is_public"]
+
+    if not is_owner and not is_public:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    # Increment view count for public tasks (non-owners only)
+    if is_public and not is_owner:
+        await db.execute(
+            "UPDATE tasks SET view_count = view_count + 1 WHERE id = $1",
+            task_id,
+        )
+
     return _parse_task_with_execution(row)
+
+
+class VisibilityUpdateRequest(BaseModel):
+    """Request to toggle task visibility."""
+
+    is_public: bool = Field(..., description="Whether the task should be public")
+
+
+class VisibilityUpdateResponse(BaseModel):
+    """Response after updating visibility."""
+
+    is_public: bool
+    slug: str | None = None
+    username_required: bool = Field(
+        False, description="True if user needs to set username before making task public"
+    )
+
+
+@router.patch("/{task_id}/visibility", response_model=VisibilityUpdateResponse)
+async def update_task_visibility(
+    task_id: UUID,
+    request: VisibilityUpdateRequest,
+    user: CurrentUser,
+    db: Database = Depends(get_db),
+):
+    """
+    Toggle task visibility between public and private.
+
+    When making a task public:
+    - User must have a username set
+    - A slug will be auto-generated from the task name if not already set
+    """
+    # Verify task belongs to user
+    task_query = """
+        SELECT id, name, slug, is_public
+        FROM tasks
+        WHERE id = $1 AND user_id = $2
+    """
+
+    task = await db.fetch_one(task_query, task_id, user.id)
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    # If making public, check user has username
+    if request.is_public:
+        user_query = "SELECT username FROM users WHERE id = $1"
+        user_row = await db.fetch_one(user_query, user.id)
+
+        if not user_row or not user_row["username"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You must set a username before making tasks public",
+            )
+
+        # Generate slug if not already set
+        slug = task["slug"]
+        if not slug:
+            slug = await generate_unique_slug(task["name"], user.id, db)
+            # Update both is_public and slug
+            await db.execute(
+                "UPDATE tasks SET is_public = $1, slug = $2 WHERE id = $3",
+                request.is_public,
+                slug,
+                task_id,
+            )
+        else:
+            # Update only is_public
+            await db.execute(
+                "UPDATE tasks SET is_public = $1 WHERE id = $2",
+                request.is_public,
+                task_id,
+            )
+
+        return VisibilityUpdateResponse(is_public=True, slug=slug)
+
+    # Making private - just update is_public
+    await db.execute(
+        "UPDATE tasks SET is_public = $1 WHERE id = $2",
+        request.is_public,
+        task_id,
+    )
+
+    return VisibilityUpdateResponse(is_public=False)
+
+
+class ForkTaskRequest(BaseModel):
+    """Request to fork a public task."""
+
+    name: str | None = Field(None, description="Optional new name for the forked task")
+
+
+@router.post("/{task_id}/fork", response_model=Task)
+async def fork_task(
+    task_id: UUID,
+    request: ForkTaskRequest,
+    user: CurrentUser,
+    db: Database = Depends(get_db),
+):
+    """
+    Fork a public task. Creates a copy of the task configuration for the current user.
+
+    - Task must be public to fork
+    - Forked task starts in PAUSED state
+    - Tracks original task via forked_from_task_id
+    - User can optionally provide a new name
+    """
+    # Get the source task
+    source_query = """
+        SELECT t.*
+        FROM tasks t
+        WHERE t.id = $1
+    """
+
+    source = await db.fetch_one(source_query, task_id)
+
+    if not source:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    # Check if task is public (or user owns it)
+    is_owner = source["user_id"] == user.id
+    is_public = source["is_public"]
+
+    if not is_public and not is_owner:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    # Prevent forking your own task
+    if is_owner:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot fork your own task. Create a copy from the task list instead.",
+        )
+
+    # Increment subscriber count on original task
+    await db.execute(
+        "UPDATE tasks SET subscriber_count = subscriber_count + 1 WHERE id = $1",
+        task_id,
+    )
+
+    # Determine name for forked task
+    fork_name = request.name if request.name else f"{source['name']} (Copy)"
+
+    # Create forked task (in PAUSED state, not public)
+    fork_query = """
+        INSERT INTO tasks (
+            user_id, name, schedule, executor_type, config, state,
+            search_query, condition_description, notify_behavior, notifications,
+            notification_channels, notification_email, webhook_url, webhook_secret,
+            forked_from_task_id, is_public
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        RETURNING *
+    """
+
+    forked_row = await db.fetch_one(
+        fork_query,
+        user.id,
+        fork_name,
+        source["schedule"],
+        source["executor_type"],
+        source["config"],
+        TaskState.PAUSED.value,
+        source["search_query"],
+        source["condition_description"],
+        source["notify_behavior"],
+        source["notifications"],
+        source["notification_channels"],
+        source["notification_email"],
+        source["webhook_url"],
+        source["webhook_secret"],
+        task_id,
+        False,  # Forked tasks start as private
+    )
+
+    if not forked_row:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to fork task",
+        )
+
+    return Task(**parse_task_row(forked_row))
 
 
 @router.put("/{task_id}", response_model=Task)
