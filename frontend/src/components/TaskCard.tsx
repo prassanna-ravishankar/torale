@@ -39,6 +39,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 }) => {
   const status = getTaskStatus(task.state);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const isTaskActive = task.state === 'active';
 
   // TODO: Calculate actual success rate from task execution history
   // For now using placeholder. Backend should provide:
@@ -68,9 +69,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     },
     {
       id: 'toggle',
-      label: task.state === 'active' ? 'Pause' : 'Resume',
-      icon: task.state === 'active' ? Pause : Play,
-      onClick: () => onToggle(task.id, task.state === 'active' ? 'paused' : 'active'),
+      label: isTaskActive ? 'Pause' : 'Resume',
+      icon: isTaskActive ? Pause : Play,
+      onClick: () => onToggle(task.id, isTaskActive ? 'paused' : 'active'),
       separator: true,
     },
     {
@@ -84,7 +85,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   const handleQuickToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onToggle(task.id, task.state === 'active' ? 'paused' : 'active');
+    onToggle(task.id, isTaskActive ? 'paused' : 'active');
   };
 
   return (
@@ -115,9 +116,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <button
             onClick={handleQuickToggle}
             className="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-sm transition-colors"
-            title={task.state === 'active' ? 'Pause monitor' : 'Resume monitor'}
+            title={isTaskActive ? 'Pause monitor' : 'Resume monitor'}
           >
-            {task.state === 'active' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            {isTaskActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           </button>
           <ActionMenu actions={actions} />
         </div>

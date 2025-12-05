@@ -57,7 +57,7 @@ export const NotificationHistorySection: React.FC = () => {
   const getStatusVariant = (status: string): StatusVariant => {
     switch (status) {
       case 'success':
-        return 'completed';
+        return 'success';
       case 'failed':
         return 'failed';
       case 'retrying':

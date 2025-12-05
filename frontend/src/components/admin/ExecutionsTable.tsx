@@ -163,11 +163,7 @@ export function ExecutionsTable() {
                   <td className="p-3 text-xs font-mono text-zinc-600">{execution.user_email}</td>
                   <td className="p-3 text-xs font-mono text-zinc-700 max-w-xs truncate">{execution.search_query}</td>
                   <td className="p-3">
-                    <StatusBadge variant={
-                      execution.status === 'success' ? 'success' :
-                      execution.status === 'failed' ? 'failed' :
-                      execution.status === 'running' ? 'running' : 'pending'
-                    } />
+                    <StatusBadge variant={(execution.status as 'success' | 'failed' | 'running') || 'pending'} />
                   </td>
                   <td className="p-3">
                     {execution.condition_met !== null && (

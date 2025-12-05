@@ -271,6 +271,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
               <AnimatePresence>
                 {filteredTasks.map((task) => {
                   const status = getTaskStatus(task.state);
+                  const isTaskActive = task.state === 'active';
 
                   return (
                     <BrutalistTableRow
@@ -309,16 +310,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
                       <BrutalistTableCell align="right">
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                           <button
-                            onClick={() => handleToggleTask(task.id, task.state === 'active' ? 'paused' : 'active')}
+                            onClick={() => handleToggleTask(task.id, isTaskActive ? 'paused' : 'active')}
                             className="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-sm transition-colors"
-                            title={task.state === 'active' ? 'Pause monitor' : 'Resume monitor'}
+                            title={isTaskActive ? 'Pause monitor' : 'Resume monitor'}
                           >
-                            {task.state === 'active' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                            {isTaskActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                           </button>
                           <ActionMenu actions={[
                             { id: 'edit', label: 'Edit', icon: Settings, onClick: () => handleEditTask(task.id) },
                             { id: 'execute', label: 'Run Now', icon: Play, onClick: () => handleExecuteTask(task.id) },
-                            { id: 'toggle', label: task.state === 'active' ? 'Pause' : 'Resume', icon: task.state === 'active' ? Pause : Play, onClick: () => handleToggleTask(task.id, task.state === 'active' ? 'paused' : 'active'), separator: true },
+                            { id: 'toggle', label: isTaskActive ? 'Pause' : 'Resume', icon: isTaskActive ? Pause : Play, onClick: () => handleToggleTask(task.id, isTaskActive ? 'paused' : 'active'), separator: true },
                             { id: 'delete', label: 'Delete', icon: Trash2, onClick: () => confirmDelete(task), variant: 'destructive' },
                           ]} />
                         </div>

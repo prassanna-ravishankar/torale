@@ -100,7 +100,7 @@ export const EmailManagementSection: React.FC = () => {
                       <p className="text-xs sm:text-sm font-mono text-zinc-900 break-all">{clerkEmail}</p>
                       <SectionLabel className="mt-0.5">Account Email</SectionLabel>
                       <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                        <StatusBadge variant="active" label="Verified" size="sm" />
+                        <StatusBadge variant="success" label="Verified" size="sm" />
                         <span className="px-1.5 py-0.5 bg-zinc-900 text-white text-[9px] font-mono uppercase tracking-wider">
                           Default
                         </span>
@@ -136,7 +136,7 @@ export const EmailManagementSection: React.FC = () => {
                         </button>
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                        <StatusBadge variant="active" label="Verified" size="sm" />
+                        <StatusBadge variant="success" label="Verified" size="sm" />
                       </div>
                     </div>
                   </div>
