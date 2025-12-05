@@ -289,9 +289,9 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
         verified_emails = task["verified_notification_emails"] or []
         notification_channels = task.get("notification_channels") or ["email"]
 
-        # FIRST EXECUTION: Send welcome email
+        # FIRST EXECUTION: Send welcome email and/or webhook
         if result.get("is_first_execution"):
-            activity.logger.info(f"First execution - sending welcome email to {clerk_email}")
+            activity.logger.info(f"First execution for task {task_id}")
 
             if "email" in notification_channels:
                 await novu_service.send_welcome_email(
@@ -308,10 +308,13 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
                     },
                     task_id=task_id,
                 )
-            return  # Welcome email sent, done
+                activity.logger.info(f"Welcome email sent to {clerk_email}")
 
-        # EMAIL NOTIFICATION
-        if "email" in notification_channels:
+            # Continue to webhook processing for first execution
+            # (Skip regular email notification logic below)
+
+        # EMAIL NOTIFICATION (non-first execution)
+        if "email" in notification_channels and not result.get("is_first_execution"):
             # Determine recipient email (Clerk email is always verified)
             recipient_email = clerk_email  # Default to Clerk email
 

@@ -187,11 +187,9 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   const isFirstExecutionComplete = firstExecution?.status === 'success';
 
   const handleDismissBanner = () => {
-    setSearchParams(prev => {
-      const newParams = new URLSearchParams(prev);
-      newParams.delete('justCreated');
-      return newParams;
-    });
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('justCreated');
+    setSearchParams(newParams);
   };
 
   return (
