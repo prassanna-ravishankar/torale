@@ -269,6 +269,74 @@ const getStatusVariant = (status: string): StatusVariant => {
 
 ---
 
+## 8. Responsive Components Over Media Query Duplication
+
+**Pattern**: Build responsive behavior into shared components instead of duplicating logic across usage sites.
+
+**❌ Wrong**:
+```tsx
+// Every file duplicates responsive logic
+<div className="hidden md:flex gap-2">
+  {filters.map(f => <button>{f.label}</button>)}
+</div>
+<select className="md:hidden">
+  {filters.map(f => <option>{f.label}</option>)}
+</select>
+```
+
+**✅ Right**:
+```tsx
+// Component handles responsive behavior
+<FilterGroup
+  filters={filters}
+  active={activeFilter}
+  onChange={setActiveFilter}
+  responsive={true}  // Auto-switches to dropdown on mobile
+/>
+```
+
+**Implementation in component**:
+```tsx
+interface FilterGroupProps<T extends string> {
+  responsive?: boolean; // Enable mobile dropdown
+}
+
+export const FilterGroup = ({ responsive, ... }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Desktop: horizontal tabs (hidden on mobile if responsive)
+  const tabs = (
+    <div className={cn('flex gap-2', responsive && 'hidden md:flex')}>
+      {/* Tab buttons */}
+    </div>
+  );
+
+  // Mobile: custom dropdown (only shown if responsive)
+  const dropdown = responsive && (
+    <div className="md:hidden">
+      <button onClick={() => setIsOpen(!isOpen)}>
+        {/* Trigger */}
+      </button>
+      {isOpen && (
+        <div className="absolute border-2 border-zinc-900 shadow-brutalist">
+          {/* Custom dropdown menu */}
+        </div>
+      )}
+    </div>
+  );
+
+  return <>{tabs}{dropdown}</>;
+};
+```
+
+**Why**:
+- Solves mobile overflow once at component level
+- Consistent responsive behavior everywhere the component is used
+- Cleaner usage sites (one prop vs duplicated media queries)
+- Easier to update responsive breakpoints globally
+
+---
+
 ## General Principles
 
 1. **Rely on Component Defaults**: Check parent component capabilities before adding custom styling (e.g., BrutalistCard's built-in hover effects)

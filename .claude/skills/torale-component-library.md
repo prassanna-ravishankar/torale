@@ -17,9 +17,10 @@ The following components are available as reusable, tested components. **Always 
 - **BrutalistCard** - Card container with variants (default, clickable, ghost)
 - **BrutalistTable*** - Table components (Table, Header, Body, Row, Head, Cell)
 - **ActionMenu** - Dropdown menu with actions (edit, delete, etc.)
-- **FilterGroup** - Type-safe filter tabs with counts
+- **FilterGroup** - Type-safe filter tabs with optional responsive dropdown for mobile
 - **EmptyState** - Empty state with optional action button
 - **SectionLabel** - Consistent section headers
+- **CollapsibleSection** - Collapsible sections with consistent trigger styling
 
 **When to use shared components:**
 - ✅ **Always** import from `@/components/torale` when available
@@ -128,6 +129,71 @@ interface StatusBadgeProps {
 - Use `'completed'` (CheckCircle) for finished tasks
 - Use `'active'` (Activity) for currently active/monitoring tasks
 - Use `'running'` (Clock) for in-progress executions
+
+## FilterGroup
+
+**Import from shared components:**
+
+```typescript
+import { FilterGroup } from '@/components/torale';
+
+// Basic usage (desktop tabs only)
+<FilterGroup
+  filters={[
+    { id: 'all', label: 'All', count: tasks.length, icon: Filter },
+    { id: 'active', label: 'Active', count: activeCount },
+    { id: 'completed', label: 'Completed', count: completedCount },
+  ]}
+  active={activeFilter}
+  onChange={setActiveFilter}
+/>
+
+// Responsive (tabs on desktop, dropdown on mobile)
+<FilterGroup
+  filters={filters}
+  active={activeFilter}
+  onChange={setActiveFilter}
+  responsive={true}  // Auto-switches to custom dropdown on mobile
+/>
+```
+
+**Props:**
+```typescript
+interface FilterOption<T extends string> {
+  id: T;
+  label: string;
+  count?: number;      // Optional count shown in parentheses
+  icon?: LucideIcon;   // Optional icon (shown before label)
+}
+
+interface FilterGroupProps<T extends string> {
+  filters: FilterOption<T>[];
+  active: T;
+  onChange: (filterId: T) => void;
+  className?: string;
+  responsive?: boolean; // Enable mobile dropdown (default: false)
+}
+```
+
+**Responsive behavior:**
+- **Desktop (`md+`)**: Horizontal tabs with icons, labels, and counts
+- **Mobile (`< md`)**: Custom brutalist dropdown when `responsive={true}`
+  - Trigger shows active filter with icon + count
+  - Menu has 2px black border + brutalist shadow
+  - Items show icons, labels, counts, and checkmark for active
+  - Chevron rotates when open
+  - Closes on click outside
+
+**Type-safe usage:**
+```typescript
+type FilterType = 'all' | 'active' | 'completed' | 'paused';
+
+<FilterGroup<FilterType>
+  filters={[...]}
+  active={activeFilter}
+  onChange={setActiveFilter}  // No type assertion needed!
+/>
+```
 
 ## Signal Card (Dashboard Monitor Card)
 
