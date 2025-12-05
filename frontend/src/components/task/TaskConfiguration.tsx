@@ -15,6 +15,12 @@ interface TaskConfigurationProps {
   onToggle: () => void;
 }
 
+const NOTIFY_BEHAVIOR_LABELS = {
+  'once': 'Once only',
+  'always': 'Every time',
+  'track_state': 'On changes'
+} as const;
+
 export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
   task,
   configExpanded,
@@ -49,9 +55,7 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
           <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">Notify</div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-mono text-zinc-900">
-              {task.notify_behavior === 'once' && 'Once only'}
-              {task.notify_behavior === 'always' && 'Every time'}
-              {task.notify_behavior === 'track_state' && 'On changes'}
+              {NOTIFY_BEHAVIOR_LABELS[task.notify_behavior]}
             </span>
             <span className="text-zinc-400">•</span>
             {task.state === 'completed' ? (
@@ -63,7 +67,7 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
                 <Switch
                   checked={task.state === 'active'}
                   onCheckedChange={onToggle}
-                  className="data-[state=checked]:bg-zinc-900 h-4 w-7"
+                  className="data-[state=checked]:bg-zinc-900 data-[state=unchecked]:bg-zinc-200 border-2 border-zinc-900 h-4 w-7"
                 />
                 <span className="text-xs font-mono text-zinc-700">
                   {task.state === 'active' ? "Active" : "Paused"}
@@ -113,9 +117,7 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
 
       <InfoCard icon={Bell} label="When to Notify">
         <p className="text-sm font-mono uppercase tracking-wider text-zinc-700">
-          {task.notify_behavior === 'once' && 'Once only'}
-          {task.notify_behavior === 'always' && 'Every time'}
-          {task.notify_behavior === 'track_state' && 'On changes'}
+          {NOTIFY_BEHAVIOR_LABELS[task.notify_behavior]}
         </p>
         <div className="flex items-center gap-2 mt-3">
           {task.state === 'completed' ? (
