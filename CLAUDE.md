@@ -98,5 +98,6 @@ refactor: code change that neither fixes nor adds
 | DB schema | `docs-site/architecture/database-schema.md` |
 | Migrations | `backend/alembic/versions/` |
 | UI components | `frontend/src/components/torale/` |
+| Changelog | `frontend/public/changelog.json` (auto-rendered) |
 | Deployment | `docs-site/deployment/` |
 | Architecture | `docs-site/architecture/` |

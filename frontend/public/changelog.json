@@ -1,5 +1,14 @@
 [
   {
+    "id": "2025-12-05-design-system-components",
+    "date": "2025-12-05",
+    "title": "Reusable Design System Components",
+    "description": "New shared component library for consistent UI across the app. Includes StatusBadge, FilterGroup, ActionMenu, BrutalistCard, CollapsibleSection, and EmptyState components. Dashboard list view now has expandable rows with quick actions. Improved mobile experience with responsive filters that collapse to dropdowns on small screens.",
+    "category": "improvement",
+    "requestedBy": ["Kat"],
+    "pr": 98
+  },
+  {
     "id": "2025-12-02-next-gen-design-system",
     "date": "2025-12-02",
     "title": "Next-Gen Design System & Documentation Overhaul",
