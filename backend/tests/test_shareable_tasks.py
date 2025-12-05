@@ -567,3 +567,81 @@ class TestTaskForking:
         # Verify the INSERT call includes the default name
         insert_call = [call for call in mock_db.fetch_one.call_args_list if call]
         assert len(insert_call) > 0
+
+    @pytest.mark.asyncio
+    async def test_fork_scrubs_sensitive_fields(self, mock_user, mock_db):
+        """Test forking another user's task scrubs webhook secrets and email."""
+        from datetime import UTC, datetime
+
+        source_task_id = uuid4()
+        other_user_id = uuid4()
+        request = ForkTaskRequest(name="Forked Task")
+        now = datetime.now(UTC)
+
+        # Mock source task with sensitive data
+        mock_db.fetch_one.side_effect = [
+            {
+                "id": source_task_id,
+                "user_id": other_user_id,  # Not the current user
+                "name": "Original Task",
+                "is_public": True,
+                "schedule": "0 9 * * *",
+                "executor_type": "llm_grounded_search",
+                "config": '{"key": "value"}',
+                "search_query": "test query",
+                "condition_description": "test condition",
+                "notify_behavior": "always",
+                "notifications": '[{"type": "email", "address": "owner@example.com"}]',
+                "notification_channels": ["email", "webhook"],
+                "notification_email": "owner@example.com",  # Should be scrubbed
+                "webhook_url": "https://example.com/webhook",  # Should be scrubbed
+                "webhook_secret": "super_secret_token",  # Should be scrubbed
+            },
+            # Forked task returned - sensitive fields should be None
+            {
+                "id": uuid4(),
+                "user_id": mock_user.id,
+                "name": "Forked Task",
+                "schedule": "0 9 * * *",
+                "executor_type": "llm_grounded_search",
+                "config": '{"key": "value"}',
+                "state": "paused",
+                "search_query": "test query",
+                "condition_description": "test condition",
+                "notify_behavior": "always",
+                "notifications": '[{"type": "email", "address": "owner@example.com"}]',
+                "notification_channels": [],  # Scrubbed
+                "notification_email": None,  # Scrubbed
+                "webhook_url": None,  # Scrubbed
+                "webhook_secret": None,  # Scrubbed
+                "is_public": False,
+                "slug": None,
+                "view_count": 0,
+                "subscriber_count": 0,
+                "forked_from_task_id": source_task_id,
+                "created_at": now,
+                "updated_at": now,
+                "state_changed_at": now,
+                "last_execution_id": None,
+                "last_known_state": None,
+            },
+        ]
+
+        result = await fork_task(source_task_id, request, mock_user, mock_db)
+
+        # Verify task was still forked successfully
+        assert result.name == "Forked Task"
+        assert result.forked_from_task_id == source_task_id
+
+        # Verify the INSERT call passed scrubbed values (not the original sensitive data)
+        # The second fetch_one call is the INSERT RETURNING
+        insert_call = mock_db.fetch_one.call_args_list[1]
+        insert_args = insert_call[0]  # Positional args
+
+        # Args order: query_string(0), user_id(1), name(2), schedule(3), executor_type(4), config(5), state(6),
+        #             search_query(7), condition_description(8), notify_behavior(9), notifications(10),
+        #             notification_channels(11), notification_email(12), webhook_url(13), webhook_secret(14)
+        assert insert_args[11] == []  # notification_channels should be empty list
+        assert insert_args[12] is None  # notification_email should be None
+        assert insert_args[13] is None  # webhook_url should be None
+        assert insert_args[14] is None  # webhook_secret should be None

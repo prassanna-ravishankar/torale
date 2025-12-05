@@ -857,6 +857,21 @@ async def fork_task(
     # Determine name for forked task
     fork_name = request.name if request.name else f"{source['name']} (Copy)"
 
+    # Scrub sensitive fields when forking another user's task
+    # Owner duplicating their own task can keep their settings
+    if is_owner:
+        # Keep all notification settings when duplicating own task
+        notification_email = source["notification_email"]
+        webhook_url = source["webhook_url"]
+        webhook_secret = source["webhook_secret"]
+        notification_channels = source["notification_channels"]
+    else:
+        # Scrub sensitive fields when forking someone else's task
+        notification_email = None
+        webhook_url = None
+        webhook_secret = None
+        notification_channels = []
+
     # Create forked task (in PAUSED state, not public)
     fork_query = """
         INSERT INTO tasks (
@@ -881,10 +896,10 @@ async def fork_task(
         source["condition_description"],
         source["notify_behavior"],
         source["notifications"],
-        source["notification_channels"],
-        source["notification_email"],
-        source["webhook_url"],
-        source["webhook_secret"],
+        notification_channels,
+        notification_email,
+        webhook_url,
+        webhook_secret,
         task_id,
         False,  # Forked tasks start as private
     )

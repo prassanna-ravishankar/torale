@@ -1,5 +1,6 @@
 """OpenGraph image generation for shareable tasks."""
 
+import asyncio
 import io
 from pathlib import Path
 from uuid import UUID
@@ -59,35 +60,23 @@ def wrap_text(text: str, font: ImageFont.ImageFont, max_width: int) -> list[str]
     return lines
 
 
-@router.get("/tasks/{task_id}.jpg")
-@limiter.limit("5/minute")
-async def generate_task_og_image(
-    request: Request,
-    task_id: UUID,
-    db: Database = Depends(get_db),
-):
+def _generate_og_image_sync(task_name: str, search_query: str) -> bytes:
     """
-    Generate OpenGraph image for a task.
+    Synchronous image generation function (CPU/IO intensive).
 
-    Returns a 1200x630 JPEG image with task details.
-    Only works for public tasks.
+    This function performs blocking operations and should be called via
+    asyncio.to_thread() to avoid blocking the event loop.
+
+    Args:
+        task_name: Task name to display
+        search_query: Search query to display
+
+    Returns:
+        JPEG image bytes
+
+    Raises:
+        HTTPException if template not found
     """
-    # Get task info
-    task_query = """
-        SELECT t.name, t.search_query, t.is_public, u.username
-        FROM tasks t
-        INNER JOIN users u ON t.user_id = u.id
-        WHERE t.id = $1
-    """
-
-    task = await db.fetch_one(task_query, task_id)
-
-    if not task or not task["is_public"]:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found or not public",
-        )
-
     # Load template image
     if not TEMPLATE_PATH.exists():
         raise HTTPException(
@@ -131,7 +120,7 @@ async def generate_task_og_image(
     desc_max_width = (828 - 368) - 20  # Box width minus padding
 
     # Draw title (task name) - wrapped and centered
-    title_lines = wrap_text(task["name"], title_font, title_max_width)
+    title_lines = wrap_text(task_name, title_font, title_max_width)
 
     # Calculate total height for vertical centering
     total_title_height = 0
@@ -156,7 +145,7 @@ async def generate_task_og_image(
         y_position += line_height + 10
 
     # Draw search query - wrapped and centered
-    query_lines = wrap_text(task["search_query"], desc_font, desc_max_width)
+    query_lines = wrap_text(search_query, desc_font, desc_max_width)
 
     # Calculate total height for vertical centering
     total_desc_height = 0
@@ -185,10 +174,53 @@ async def generate_task_og_image(
     img.save(img_byte_arr, format="JPEG", quality=85, optimize=True)
     img_byte_arr.seek(0)
 
+    return img_byte_arr.getvalue()
+
+
+@router.get("/tasks/{task_id}.jpg")
+@limiter.limit("5/minute")
+async def generate_task_og_image(
+    request: Request,
+    task_id: UUID,
+    db: Database = Depends(get_db),
+):
+    """
+    Generate OpenGraph image for a task.
+
+    Returns a 1200x630 JPEG image with task details.
+    Only works for public tasks.
+
+    Image generation is CPU/IO intensive and runs in a thread pool
+    to avoid blocking the async event loop.
+    """
+    # Get task info
+    task_query = """
+        SELECT t.name, t.search_query, t.is_public, u.username
+        FROM tasks t
+        INNER JOIN users u ON t.user_id = u.id
+        WHERE t.id = $1
+    """
+
+    task = await db.fetch_one(task_query, task_id)
+
+    if not task or not task["is_public"]:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found or not public",
+        )
+
+    # Generate image in thread pool to avoid blocking event loop
+    # This keeps the server responsive during CPU/IO intensive operations
+    image_bytes = await asyncio.to_thread(
+        _generate_og_image_sync,
+        task["name"],
+        task["search_query"]
+    )
+
     # Cache for 1 hour (social media crawlers will cache this)
     # TODO: Implement Redis/S3 caching for immutable images
     return Response(
-        content=img_byte_arr.getvalue(),
+        content=image_bytes,
         media_type="image/jpeg",
         headers={"Cache-Control": "public, max-age=3600"},
     )
