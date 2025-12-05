@@ -3,28 +3,21 @@ import { motion, AnimatePresence } from '@/lib/motion-compat';
 import api from '@/lib/api';
 import type { Task } from '@/types';
 import { TaskCard } from '@/components/TaskCard';
+import { TaskListRow } from '@/components/TaskListRow';
 import { TaskCreationDialog } from '@/components/TaskCreationDialog';
 import { TaskPreviewModal } from '@/components/TaskPreviewModal';
 import { TaskEditDialog } from '@/components/TaskEditDialog';
 import { StatCard } from '@/components/ui/StatCard';
-import { CronDisplay } from '@/components/ui/CronDisplay';
-import { Button } from '@/components/ui/button';
 import {
-  SectionLabel,
   FilterGroup,
   EmptyState,
-  StatusBadge,
   BrutalistTable,
   BrutalistTableHeader,
   BrutalistTableBody,
   BrutalistTableRow,
   BrutalistTableHead,
-  BrutalistTableCell,
-  ActionMenu,
-  type FilterOption,
-  type Action
 } from '@/components/torale';
-import { Plus, Search, Loader2, Filter, LayoutGrid, List as ListIcon, Play, Settings, Activity, CheckCircle, Pause, Trash2 } from 'lucide-react';
+import { Plus, Search, Loader2, Filter, LayoutGrid, List as ListIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
@@ -265,69 +258,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
                 <BrutalistTableHead>Status</BrutalistTableHead>
                 <BrutalistTableHead className="hidden md:table-cell">Schedule</BrutalistTableHead>
                 <BrutalistTableHead className="hidden lg:table-cell">Last Run</BrutalistTableHead>
-                <BrutalistTableHead align="right">Actions</BrutalistTableHead>
               </BrutalistTableRow>
             </BrutalistTableHeader>
             <BrutalistTableBody>
               <AnimatePresence>
-                {filteredTasks.map((task) => {
-                  const status = getTaskStatus(task.state);
-                  const isTaskActive = task.state === 'active';
-
-                  return (
-                    <BrutalistTableRow
-                      key={task.id}
-                      onClick={() => onTaskClick(task.id)}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                    >
-                      <BrutalistTableCell>
-                        <div className="flex flex-col gap-1">
-                          <span className="font-grotesk font-bold text-sm">{task.name}</span>
-                          <span className="text-xs text-zinc-500 truncate max-w-xs">{task.search_query}</span>
-                        </div>
-                      </BrutalistTableCell>
-                      <BrutalistTableCell>
-                        <StatusBadge variant={status.activityState} />
-                      </BrutalistTableCell>
-                      <BrutalistTableCell className="hidden md:table-cell">
-                        <CronDisplay cron={task.schedule} className="text-sm font-mono text-zinc-600" showRaw={false} />
-                      </BrutalistTableCell>
-                      <BrutalistTableCell className="hidden lg:table-cell">
-                        {task.last_execution ? (
-                          <span className="text-sm text-zinc-600">
-                            {new Date(task.last_execution.started_at).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-zinc-400">Never</span>
-                        )}
-                      </BrutalistTableCell>
-                      <BrutalistTableCell align="right">
-                        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={() => handleToggleTask(task.id, isTaskActive ? 'paused' : 'active')}
-                            className="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-sm transition-colors"
-                            title={isTaskActive ? 'Pause monitor' : 'Resume monitor'}
-                          >
-                            {isTaskActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                          </button>
-                          <ActionMenu actions={[
-                            { id: 'edit', label: 'Edit', icon: Settings, onClick: () => handleEditTask(task.id) },
-                            { id: 'execute', label: 'Run Now', icon: Play, onClick: () => handleExecuteTask(task.id) },
-                            { id: 'toggle', label: isTaskActive ? 'Pause' : 'Resume', icon: isTaskActive ? Pause : Play, onClick: () => handleToggleTask(task.id, isTaskActive ? 'paused' : 'active'), separator: true },
-                            { id: 'delete', label: 'Delete', icon: Trash2, onClick: () => confirmDelete(task), variant: 'destructive' },
-                          ]} />
-                        </div>
-                      </BrutalistTableCell>
-                    </BrutalistTableRow>
-                  );
-                })}
+                {filteredTasks.map((task) => (
+                  <TaskListRow
+                    key={task.id}
+                    task={task}
+                    onToggle={handleToggleTask}
+                    onDelete={handleDeleteTask}
+                    onExecute={handleExecuteTask}
+                    onEdit={handleEditTask}
+                    onClick={onTaskClick}
+                  />
+                ))}
               </AnimatePresence>
             </BrutalistTableBody>
           </BrutalistTable>
