@@ -12,7 +12,7 @@ import { ExecutionTimeline } from "@/components/ExecutionTimeline";
 import { StateComparison } from "@/components/StateComparison";
 import { CronDisplay } from "@/components/ui/CronDisplay";
 import { NotificationChannelBadges } from "@/components/notifications/NotificationChannelBadges";
-import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
+import { getTaskStatus } from '@/lib/taskStatus';
 import {
   ArrowLeft,
   Clock,
@@ -23,9 +23,7 @@ import {
   Trash2,
   Mail,
   Webhook,
-  Activity,
   CheckCircle,
-  Pause,
   Check,
   X,
 } from "lucide-react";
@@ -184,13 +182,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
 
   // Get task status from centralized logic
   const status = getTaskStatus(task.state);
-
-  // Map icon name to Lucide icon component
-  const StatusIcon = {
-    Activity,
-    CheckCircle,
-    Pause,
-  }[status.iconName];
 
   const firstExecution = executions[0];
   const isFirstExecutionComplete = firstExecution?.status === 'success';
@@ -395,15 +386,14 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       </div>
 
       {/* Task Configuration - Collapsible on Mobile, Always Visible on Desktop */}
-      <CollapsibleSection
-        title="Task Configuration"
-        open={configExpanded}
-        onOpenChange={setConfigExpanded}
-        variant="mobile"
-        className="lg:contents"
-        contentClassName="lg:contents"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="lg:contents">
+        <CollapsibleSection
+          title="Task Configuration"
+          open={configExpanded}
+          onOpenChange={setConfigExpanded}
+          variant="mobile"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <InfoCard icon={Clock} label="Schedule">
             <CronDisplay cron={task.schedule} className="text-sm font-mono text-zinc-700" />
           </InfoCard>
@@ -481,7 +471,8 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             )}
           </InfoCard>
         </div>
-      </CollapsibleSection>
+        </CollapsibleSection>
+      </div>
 
       {task.last_known_state && (
         <CollapsibleSection
