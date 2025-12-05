@@ -459,22 +459,70 @@ class TestTaskForking:
         assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_fork_own_task_fails(self, mock_user, mock_db):
-        """Test forking your own task - should fail."""
+    async def test_fork_own_task_succeeds(self, mock_user, mock_db):
+        """Test forking your own task - should succeed (duplicate behavior)."""
+        from datetime import UTC, datetime
+
         task_id = uuid4()
-        request = ForkTaskRequest()
+        request = ForkTaskRequest(name="My Duplicate")
+        now = datetime.now(UTC)
 
-        mock_db.fetch_one.return_value = {
-            "id": task_id,
-            "user_id": mock_user.id,  # Own task
-            "is_public": True,
-        }
+        # Mock source task and forked task queries
+        mock_db.fetch_one.side_effect = [
+            {
+                "id": task_id,
+                "user_id": mock_user.id,  # Own task
+                "name": "Original Task",
+                "is_public": True,
+                "schedule": "0 9 * * *",
+                "executor_type": "llm_grounded_search",
+                "config": '{"key": "value"}',
+                "search_query": "test query",
+                "condition_description": "test condition",
+                "notify_behavior": "always",
+                "notifications": "[]",
+                "notification_channels": [],
+                "notification_email": None,
+                "webhook_url": None,
+                "webhook_secret": None,
+            },
+            # Forked task returned
+            {
+                "id": uuid4(),
+                "user_id": mock_user.id,
+                "name": "My Duplicate",
+                "schedule": "0 9 * * *",
+                "executor_type": "llm_grounded_search",
+                "config": '{"key": "value"}',
+                "state": "paused",
+                "search_query": "test query",
+                "condition_description": "test condition",
+                "notify_behavior": "always",
+                "notifications": "[]",
+                "notification_channels": [],
+                "notification_email": None,
+                "webhook_url": None,
+                "webhook_secret": None,
+                "is_public": False,
+                "slug": None,
+                "view_count": 0,
+                "subscriber_count": 0,
+                "forked_from_task_id": task_id,
+                "created_at": now,
+                "updated_at": now,
+                "state_changed_at": now,
+                "last_execution_id": None,
+                "last_known_state": None,
+            },
+        ]
 
-        with pytest.raises(HTTPException) as exc_info:
-            await fork_task(task_id, request, mock_user, mock_db)
+        result = await fork_task(task_id, request, mock_user, mock_db)
 
-        assert exc_info.value.status_code == 400
-        assert "Cannot fork your own task" in exc_info.value.detail
+        # Should succeed and create a duplicate
+        assert result.name == "My Duplicate"
+        assert result.forked_from_task_id == task_id
+        # Owner duplicating their own task - subscriber count should still increment
+        assert mock_db.execute.call_count >= 1
 
     @pytest.mark.asyncio
     async def test_fork_uses_default_name(self, mock_user, mock_db):

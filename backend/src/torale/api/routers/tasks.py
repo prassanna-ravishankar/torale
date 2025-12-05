@@ -689,12 +689,12 @@ async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get
             detail="Task not found",
         )
 
-    # Increment view count for public tasks (non-owners only)
-    if is_public and not is_owner:
-        await db.execute(
-            "UPDATE tasks SET view_count = view_count + 1 WHERE id = $1",
-            task_id,
-        )
+    # TODO: Implement async view counting (see public_tasks.py)
+    # if is_public and not is_owner:
+    #     await db.execute(
+    #         "UPDATE tasks SET view_count = view_count + 1 WHERE id = $1",
+    #         task_id,
+    #     )
 
     return _parse_task_with_execution(row)
 
@@ -758,14 +758,27 @@ async def update_task_visibility(
         # Generate slug if not already set
         slug = task["slug"]
         if not slug:
-            slug = await generate_unique_slug(task["name"], user.id, db)
-            # Update both is_public and slug
-            await db.execute(
-                "UPDATE tasks SET is_public = $1, slug = $2 WHERE id = $3",
-                request.is_public,
-                slug,
-                task_id,
-            )
+            # Retry loop to handle race condition on slug uniqueness
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    slug = await generate_unique_slug(task["name"], user.id, db)
+                    # Update both is_public and slug
+                    await db.execute(
+                        "UPDATE tasks SET is_public = $1, slug = $2 WHERE id = $3",
+                        request.is_public,
+                        slug,
+                        task_id,
+                    )
+                    break  # Success, exit retry loop
+                except Exception as e:
+                    # Check if it's a uniqueness violation
+                    if "unique constraint" in str(e).lower() and attempt < max_retries - 1:
+                        logger.warning(
+                            f"Slug collision on attempt {attempt + 1}, retrying..."
+                        )
+                        continue  # Retry with new slug
+                    raise  # Re-raise if not uniqueness error or out of retries
         else:
             # Update only is_public
             await db.execute(
@@ -822,7 +835,7 @@ async def fork_task(
             detail="Task not found",
         )
 
-    # Check if task is public (or user owns it)
+    # Check if task is public or user owns it
     is_owner = source["user_id"] == user.id
     is_public = source["is_public"]
 
@@ -832,12 +845,8 @@ async def fork_task(
             detail="Task not found",
         )
 
-    # Prevent forking your own task
-    if is_owner:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot fork your own task. Create a copy from the task list instead.",
-        )
+    # Allow owners to fork (duplicate) their own tasks
+    # Frontend can show "Duplicate" for owners, "Fork" for others
 
     # Increment subscriber count on original task
     await db.execute(

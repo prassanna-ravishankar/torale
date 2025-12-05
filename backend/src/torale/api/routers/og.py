@@ -4,12 +4,18 @@ import io
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from PIL import Image, ImageDraw, ImageFont
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from torale.core.database import Database, get_db
 
 router = APIRouter(prefix="/api/v1/og", tags=["opengraph"])
+
+# Rate limiter for OG image generation (CPU-intensive)
+# Very conservative: 5 requests per minute per IP
+limiter = Limiter(key_func=get_remote_address)
 
 # Paths to assets
 STATIC_DIR = Path(__file__).parent.parent.parent.parent.parent / "static"
@@ -54,7 +60,9 @@ def wrap_text(text: str, font: ImageFont.ImageFont, max_width: int) -> list[str]
 
 
 @router.get("/tasks/{task_id}.jpg")
+@limiter.limit("5/minute")
 async def generate_task_og_image(
+    request: Request,
     task_id: UUID,
     db: Database = Depends(get_db),
 ):

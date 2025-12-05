@@ -2,14 +2,20 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from torale.api.auth import OptionalUser
 from torale.core.database import Database, get_db
 from torale.core.models import Task
 
 router = APIRouter(prefix="/public", tags=["public"])
+
+# Rate limiter for public endpoints (based on IP)
+# At ~100 users, be conservative: 10 requests per minute per IP
+limiter = Limiter(key_func=get_remote_address)
 
 
 class PublicTasksResponse(BaseModel):
@@ -22,7 +28,9 @@ class PublicTasksResponse(BaseModel):
 
 
 @router.get("/tasks", response_model=PublicTasksResponse)
+@limiter.limit("10/minute")
 async def list_public_tasks(
+    request: Request,
     offset: int = Query(0, ge=0, description="Number of tasks to skip"),
     limit: int = Query(20, ge=1, le=100, description="Number of tasks to return"),
     sort_by: str = Query("recent", enum=["recent", "popular"], description="Sort order"),
@@ -86,7 +94,9 @@ async def list_public_tasks(
 
 
 @router.get("/tasks/@{username}/{slug}", response_model=Task)
+@limiter.limit("20/minute")
 async def get_public_task_by_vanity_url(
+    request: Request,
     username: str,
     slug: str,
     user: OptionalUser,
@@ -157,7 +167,9 @@ async def get_public_task_by_vanity_url(
 
 
 @router.get("/tasks/id/{task_id}", response_model=Task)
+@limiter.limit("20/minute")
 async def get_public_task_by_id(
+    request: Request,
     task_id: UUID,
     user: OptionalUser,
     db: Database = Depends(get_db),
