@@ -1,6 +1,6 @@
 ---
 name: torale-design-patterns
-description: Core implementation patterns for Torale's brutalist design system. Focuses on critical anti-patterns to avoid (AnimatePresence motion chains, component shadowing, native dialogs) and key principles (type safety, responsive components, design tokens). Teaches decision-making over exhaustive examples.
+description: Core implementation patterns for Torale's brutalist design system. Focuses on anti-patterns to avoid and key principles (type safety, responsive components, design tokens, StatusBadge variant selection). Teaches decision-making over exhaustive examples.
 ---
 
 # Torale Design System - Implementation Patterns
@@ -187,6 +187,29 @@ const tabs = <div className={cn('flex gap-2', responsive && 'hidden md:flex')}>.
 const dropdown = responsive && <div className="md:hidden">...</div>
 return <>{tabs}{dropdown}</>
 ```
+
+## 9. StatusBadge Variant Selection
+
+**Why it matters**: Consistent decision-making for status display across the app.
+
+**Decision order:**
+1. **Types align?** → Direct pass-through (e.g., `TaskStatus` is subset of `StatusVariant`)
+2. **Boolean condition?** → Simple ternary (readable, no helper needed)
+3. **Multi-value mapping?** → Map object with fallback
+
+```tsx
+// 1. Direct pass-through - types already compatible
+variant={execution.status}
+
+// 2. Boolean ternary - self-documenting
+variant={condition_met ? 'met' : 'not_met'}
+variant={user.is_active ? 'active' : 'paused'}
+
+// 3. Map object - when values don't align
+variant={({ COMPLETED: 'completed', FAILED: 'failed' } as const)[status] || 'unknown'}
+```
+
+**Don't** extract helpers for one-off mappings. **Do** extract when same mapping appears twice.
 
 ## General Principles
 
