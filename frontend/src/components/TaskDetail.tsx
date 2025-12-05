@@ -23,9 +23,7 @@ import {
   Trash2,
   Mail,
   Webhook,
-  Activity,
   CheckCircle,
-  Pause,
   Check,
   X,
 } from "lucide-react";
