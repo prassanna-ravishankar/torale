@@ -218,7 +218,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
         </div>
 
         {/* Filters & View Toggle */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6 gap-3">
           <FilterGroup<'all' | 'active' | 'completed' | 'paused'>
             filters={[
               { id: 'all', label: 'All', count: tasks.length, icon: Filter },
@@ -228,6 +228,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
             ]}
             active={activeFilter}
             onChange={setActiveFilter}
+            responsive={true}
           />
 
           <div className="flex bg-white border border-zinc-200 rounded-sm p-0.5">
