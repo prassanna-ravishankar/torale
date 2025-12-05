@@ -3,6 +3,7 @@ import { Loader2, Mail, Webhook } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { WebhookDelivery, NotificationSend } from '@/types';
 import { SectionLabel, BrutalistCard, StatusBadge, type StatusVariant } from '@/components/torale';
+import { formatTimeAgo } from '@/lib/utils';
 
 export const NotificationHistorySection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'emails' | 'webhooks'>('emails');
@@ -42,17 +43,6 @@ export const NotificationHistorySection: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-    return date.toLocaleDateString();
-  };
 
   const getStatusVariant = (status: string): StatusVariant => {
     switch (status) {
@@ -130,7 +120,7 @@ export const NotificationHistorySection: React.FC = () => {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs sm:text-sm font-mono text-zinc-900 break-all">{send.recipient}</p>
-                      <p className="text-[10px] font-mono text-zinc-400 mt-0.5">{formatDate(send.created_at)}</p>
+                      <p className="text-[10px] font-mono text-zinc-400 mt-0.5">{formatTimeAgo(send.created_at)}</p>
                       <div className="flex items-center gap-1.5 mt-2">
                         <StatusBadge variant={getStatusVariant(send.status)} />
                       </div>
@@ -166,7 +156,7 @@ export const NotificationHistorySection: React.FC = () => {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs sm:text-sm font-mono text-zinc-900 break-all">{delivery.webhook_url}</p>
-                      <p className="text-[10px] font-mono text-zinc-400 mt-0.5">{formatDate(delivery.created_at)}</p>
+                      <p className="text-[10px] font-mono text-zinc-400 mt-0.5">{formatTimeAgo(delivery.created_at)}</p>
                       <div className="flex flex-wrap items-center gap-1.5 mt-2">
                         {delivery.http_status_code && (
                           <span className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 text-[9px] font-mono">
@@ -180,7 +170,7 @@ export const NotificationHistorySection: React.FC = () => {
                       {delivery.attempts > 1 && (
                         <p className="text-[10px] font-mono text-zinc-500 mt-2">
                           Attempt {delivery.attempts}
-                          {delivery.next_retry_at && ` • Next retry: ${formatDate(delivery.next_retry_at)}`}
+                          {delivery.next_retry_at && ` • Next retry: ${formatTimeAgo(delivery.next_retry_at)}`}
                         </p>
                       )}
 

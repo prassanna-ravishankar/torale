@@ -4,6 +4,7 @@ import { StatusBadge, SectionLabel, ActionMenu, BrutalistCard, type Action } fro
 import { Clock, Globe, Trash2, Play, Edit, Pause } from 'lucide-react';
 import { CronDisplay } from '@/components/ui/CronDisplay';
 import { getTaskStatus } from '@/lib/taskStatus';
+import { formatTimeAgo } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,13 +41,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const status = getTaskStatus(task.state);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isTaskActive = task.state === 'active';
-
-  // TODO: Calculate actual success rate from task execution history
-  // For now using placeholder. Backend should provide:
-  // - total_executions: number
-  // - successful_executions: number
-  // Then: successRate = (successful_executions / total_executions) * 100
-  const successRate = 99.8; // Placeholder
 
   const handleDelete = () => {
     onDelete(task.id);
@@ -134,10 +128,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           </div>
         </div>
         <div>
-          <SectionLabel className="mb-1">Uptime</SectionLabel>
+          <SectionLabel className="mb-1">Last Check</SectionLabel>
           <div className="flex items-center gap-1.5 text-xs font-mono text-zinc-600">
-            <div className={`w-1.5 h-1.5 rounded-full ${successRate > 99 ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-            {successRate}%
+            <Clock className="w-3 h-3" />
+            {task.last_execution?.started_at
+              ? formatTimeAgo(task.last_execution.started_at)
+              : 'Not run yet'}
           </div>
         </div>
       </div>
