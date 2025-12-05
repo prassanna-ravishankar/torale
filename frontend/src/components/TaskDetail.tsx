@@ -4,26 +4,22 @@ import type { Task, TaskExecution } from '@/types'
 import api from '@/lib/api'
 import { toast } from 'sonner'
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InfoCard, CollapsibleSection, StatusBadge } from "@/components/torale";
+import { StatusBadge } from "@/components/torale";
 import { ExecutionTimeline } from "@/components/ExecutionTimeline";
 import { StateComparison } from "@/components/StateComparison";
 import { CronDisplay } from "@/components/ui/CronDisplay";
-import { NotificationChannelBadges } from "@/components/notifications/NotificationChannelBadges";
+import { TaskConfiguration } from "@/components/task/TaskConfiguration";
+import { CollapsibleSection } from "@/components/torale";
 import { getTaskStatus } from '@/lib/taskStatus';
 import {
   ArrowLeft,
   Clock,
-  Search,
   Bell,
   Play,
   Loader2,
   Trash2,
   Mail,
-  Webhook,
-  CheckCircle,
   Check,
   X,
 } from "lucide-react";
@@ -386,93 +382,12 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       </div>
 
       {/* Task Configuration - Collapsible on Mobile, Always Visible on Desktop */}
-      <div className="lg:contents">
-        <CollapsibleSection
-          title="Task Configuration"
-          open={configExpanded}
-          onOpenChange={setConfigExpanded}
-          variant="mobile"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <InfoCard icon={Clock} label="Schedule">
-            <CronDisplay cron={task.schedule} className="text-sm font-mono text-zinc-700" />
-          </InfoCard>
-
-          <InfoCard icon={Search} label="Trigger Condition">
-            <p className="text-sm text-zinc-700 leading-relaxed">{task.condition_description}</p>
-          </InfoCard>
-
-          <InfoCard icon={Bell} label="When to Notify">
-            <p className="text-sm font-mono uppercase tracking-wider text-zinc-700">
-              {task.notify_behavior === 'once' && 'Once only'}
-              {task.notify_behavior === 'always' && 'Every time'}
-              {task.notify_behavior === 'track_state' && 'On changes'}
-            </p>
-            <div className="flex items-center gap-2 mt-3">
-              {task.state === 'completed' ? (
-                <div className="flex flex-col gap-2">
-                  <Badge variant="default" className="bg-emerald-100 text-emerald-900 border-2 border-emerald-900 font-mono text-xs uppercase tracking-wider">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Completed
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleToggle}
-                    className="text-xs h-7 px-2 font-mono uppercase tracking-wider hover:bg-zinc-100"
-                  >
-                    Re-activate
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <Switch
-                    checked={task.state === 'active'}
-                    onCheckedChange={handleToggle}
-                    className="data-[state=checked]:bg-zinc-900 data-[state=unchecked]:bg-zinc-200 border-2 border-zinc-900"
-                  />
-                  <span className={`text-xs font-mono uppercase tracking-wider ${task.state === 'active' ? 'text-zinc-700' : 'text-zinc-900 font-bold'}`}>
-                    {task.state === 'active' ? "Active" : "Paused"}
-                  </span>
-                </>
-              )}
-            </div>
-          </InfoCard>
-
-          <InfoCard icon={Mail} label="Notification Channels">
-            {task.notification_channels && task.notification_channels.length > 0 ? (
-              <div className="space-y-3">
-                <NotificationChannelBadges
-                  channels={task.notification_channels}
-                  notificationEmail={task.notification_email}
-                  webhookUrl={task.webhook_url}
-                />
-                <div className="space-y-1 text-xs font-mono text-zinc-600">
-                  {task.notification_channels.includes('email') && (
-                    <div className="flex items-start gap-1.5">
-                      <Mail className="h-3 w-3 mt-0.5 shrink-0" />
-                      <span className="truncate">
-                        {task.notification_email || 'Default (Clerk email)'}
-                      </span>
-                    </div>
-                  )}
-                  {task.notification_channels.includes('webhook') && (
-                    <div className="flex items-start gap-1.5">
-                      <Webhook className="h-3 w-3 mt-0.5 shrink-0" />
-                      <span className="truncate">
-                        {task.webhook_url || 'Default webhook'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm font-mono text-zinc-600">No channels configured</p>
-            )}
-          </InfoCard>
-        </div>
-        </CollapsibleSection>
-      </div>
+      <TaskConfiguration
+        task={task}
+        configExpanded={configExpanded}
+        onConfigExpandedChange={setConfigExpanded}
+        onToggle={handleToggle}
+      />
 
       {task.last_known_state && (
         <CollapsibleSection
