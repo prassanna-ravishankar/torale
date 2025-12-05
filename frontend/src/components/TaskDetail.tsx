@@ -387,6 +387,77 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
 
       {/* Task Configuration - Collapsible on Mobile, Always Visible on Desktop */}
       {(() => {
+        // Compact list for mobile/tablet
+        const configList = (
+          <div className="space-y-3 p-4 bg-white border-t-2 border-zinc-200">
+            {/* Schedule */}
+            <div className="flex items-start gap-3">
+              <Clock className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">Schedule</div>
+                <CronDisplay cron={task.schedule} className="text-sm font-mono text-zinc-900" />
+              </div>
+            </div>
+
+            {/* Trigger Condition */}
+            <div className="flex items-start gap-3">
+              <Search className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">Trigger</div>
+                <p className="text-sm text-zinc-900 leading-relaxed">{task.condition_description}</p>
+              </div>
+            </div>
+
+            {/* When to Notify + Status */}
+            <div className="flex items-start gap-3">
+              <Bell className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">Notify</div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-mono text-zinc-900">
+                    {task.notify_behavior === 'once' && 'Once only'}
+                    {task.notify_behavior === 'always' && 'Every time'}
+                    {task.notify_behavior === 'track_state' && 'On changes'}
+                  </span>
+                  <span className="text-zinc-400">•</span>
+                  {task.state === 'completed' ? (
+                    <Badge variant="default" className="bg-emerald-100 text-emerald-900 border border-emerald-900 text-[10px]">
+                      Completed
+                    </Badge>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <Switch
+                        checked={task.state === 'active'}
+                        onCheckedChange={handleToggle}
+                        className="data-[state=checked]:bg-zinc-900 scale-75"
+                      />
+                      <span className="text-xs font-mono text-zinc-700">
+                        {task.state === 'active' ? "Active" : "Paused"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Notification Channels */}
+            <div className="flex items-start gap-3">
+              <Mail className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">Channels</div>
+                {task.notification_channels && task.notification_channels.length > 0 ? (
+                  <div className="text-sm text-zinc-900">
+                    {task.notification_channels.join(', ')}
+                  </div>
+                ) : (
+                  <span className="text-sm text-zinc-500">None configured</span>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+
+        // Card grid for desktop
         const configCards = (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <InfoCard icon={Clock} label="Schedule">
@@ -470,7 +541,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
 
         return (
           <>
-            {/* Mobile: Collapsible */}
+            {/* Mobile: Collapsible with list */}
             <div className="lg:hidden">
               <CollapsibleSection
                 title="Task Configuration"
@@ -478,11 +549,11 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                 onOpenChange={setConfigExpanded}
                 variant="mobile"
               >
-                {configCards}
+                {configList}
               </CollapsibleSection>
             </div>
 
-            {/* Desktop: Always visible */}
+            {/* Desktop: Always visible cards */}
             <div className="hidden lg:block">
               {configCards}
             </div>
