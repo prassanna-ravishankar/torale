@@ -1,9 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Task } from '@/types';
 import { StatusBadge, SectionLabel, ActionMenu, BrutalistCard, type Action } from '@/components/torale';
 import { Clock, Globe, Trash2, Play, Edit, Pause } from 'lucide-react';
 import { CronDisplay } from '@/components/ui/CronDisplay';
 import { getTaskStatus } from '@/lib/taskStatus';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 /**
  * TaskCard - Signal Card design from MockDashboard.tsx
@@ -28,6 +38,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onClick,
 }) => {
   const status = getTaskStatus(task.state);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // TODO: Calculate actual success rate from task execution history
   // For now using placeholder. Backend should provide:
@@ -35,6 +46,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   // - successful_executions: number
   // Then: successRate = (successful_executions / total_executions) * 100
   const successRate = 99.8; // Placeholder
+
+  const handleDelete = () => {
+    onDelete(task.id);
+    setShowDeleteDialog(false);
+  };
 
   // Build actions array for ActionMenu
   const actions: Action[] = [
@@ -61,11 +77,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       id: 'delete',
       label: 'Delete',
       icon: Trash2,
-      onClick: () => {
-        if (confirm(`Are you sure you want to delete "${task.name}"?`)) {
-          onDelete(task.id);
-        }
-      },
+      onClick: () => setShowDeleteDialog(true),
       variant: 'destructive',
     },
   ];
@@ -141,6 +153,24 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
       {/* Hover Selection Border */}
       <div className="absolute inset-0 border-2 border-transparent group-hover:border-zinc-900 pointer-events-none transition-colors" />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="border-2 border-zinc-900 shadow-brutalist-lg">
+          <AlertDialogHeader className="border-b-2 border-zinc-100 pb-4">
+            <AlertDialogTitle className="font-grotesk">Delete Monitor</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-500">
+              Are you sure you want to delete "{task.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-3">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="shadow-brutalist">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </BrutalistCard>
   );
 };
