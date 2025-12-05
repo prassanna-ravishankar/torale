@@ -6,6 +6,7 @@ import {
 } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SectionLabel } from './SectionLabel';
 
 /**
  * CollapsibleSection - Unified collapsible section with consistent trigger styling
@@ -67,9 +68,9 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
       <CollapsibleTrigger
         className={cn(triggerStyles[variant], triggerClassName)}
       >
-        <span className="text-[10px] uppercase text-zinc-500 tracking-wider">
+        <SectionLabel className="text-zinc-500">
           {title}
-        </span>
+        </SectionLabel>
         {expanded ? (
           <ChevronUp className="w-4 h-4 text-zinc-500" />
         ) : (
