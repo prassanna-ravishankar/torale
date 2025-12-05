@@ -28,6 +28,8 @@ torale/
 └── docs-site/               # Documentation (VitePress)
 ```
 
+**Tooling**: `uv` (backend), `npm` (frontend), `vite` (docs-site), `justfile` for commands (`just dev-all-noauth`, `just test`, etc.)
+
 **Architecture**: Frontend → FastAPI → Temporal (scheduling) → Workers → Gemini + Google Search → Notifications
 
 See `docs-site/architecture/` for detailed docs.
@@ -38,14 +40,12 @@ See `docs-site/architecture/` for detailed docs.
 
 **Common workflow**:
 1. Create branch
-2. Build and iterate locally (`just dev`)
+2. Build and iterate locally (`just dev-all-noauth`)
 3. Push, let CI build
 4. Gemini reviews PR automatically - address feedback
 5. Merge when green
 
-**Key commands**: `just dev` (local), `just test` (tests). See `justfile` for all commands.
-
-**Workflows**: `.github/workflows/` - `ci.yml` (checks), `deploy.yml` (prod), `staging.yml` (staging)
+**Workflows**: `.github/workflows/` - `backend-pr.yml` + `frontend-pr.yml` (checks), `production.yml` (prod), `staging.yml` (staging)
 
 ## Design Principles
 
@@ -69,8 +69,6 @@ See `docs-site/architecture/` for detailed docs.
 See `.claude/skills/` for implementation guidance:
 - **`torale-design-patterns.md`** - UI patterns, anti-patterns, StatusBadge usage
 - **`torale-component-library.md`** - When to use shared components vs custom
-
-**Don't reproduce skill content here** - point Claude to the skills.
 
 ## Critical Patterns
 
@@ -96,7 +94,7 @@ refactor: code change that neither fixes nor adds
 
 | What | Where |
 |------|-------|
-| API endpoints | `backend/src/torale/api/routes/` |
+| API endpoints | `backend/src/torale/api/routers/` |
 | DB schema | `docs-site/architecture/database-schema.md` |
 | Migrations | `backend/alembic/versions/` |
 | UI components | `frontend/src/components/torale/` |
