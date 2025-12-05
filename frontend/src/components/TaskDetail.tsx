@@ -508,15 +508,19 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full overflow-x-auto">
-          <TabsTrigger value="executions">
-            All Executions <span className="text-xs text-zinc-500 ml-1.5">({executions.length})</span>
-          </TabsTrigger>
-          <TabsTrigger value="notifications">
-            Notifications <span className="text-xs text-zinc-500 ml-1.5">({notifications.length})</span>
-          </TabsTrigger>
-          <TabsTrigger value="changes">State Changes</TabsTrigger>
-        </TabsList>
+        <div className="relative">
+          <TabsList className="w-full overflow-x-auto flex-nowrap scrollbar-hide">
+            <TabsTrigger value="executions">
+              All Executions <span className="text-xs text-zinc-500 ml-1.5">({executions.length})</span>
+            </TabsTrigger>
+            <TabsTrigger value="notifications">
+              Notifications <span className="text-xs text-zinc-500 ml-1.5">({notifications.length})</span>
+            </TabsTrigger>
+            <TabsTrigger value="changes">State Changes</TabsTrigger>
+          </TabsList>
+          {/* Scroll hint gradient */}
+          <div className="absolute top-0 right-0 h-full w-12 bg-gradient-to-l from-zinc-50 to-transparent pointer-events-none" />
+        </div>
 
         <TabsContent value="executions" className="mt-6">
           <ExecutionTimeline executions={executions} />
