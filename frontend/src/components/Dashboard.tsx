@@ -21,16 +21,6 @@ import { Plus, Search, Loader2, Filter, LayoutGrid, List as ListIcon } from 'luc
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 /**
  * Dashboard - Mission Control layout from MockDashboard.tsx
@@ -47,7 +37,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [previewTask, setPreviewTask] = useState<Task | null>(null);
   const [editTask, setEditTask] = useState<Task | null>(null);
-  const [deleteTask, setDeleteTask] = useState<Task | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'completed' | 'paused'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,16 +79,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
     try {
       await api.deleteTask(id);
       await loadTasks();
-      setDeleteTask(null);
       toast.success('Task deleted');
     } catch (error) {
       console.error('Failed to delete task:', error);
       toast.error('Failed to delete task');
     }
-  };
-
-  const confirmDelete = (task: Task) => {
-    setDeleteTask(task);
   };
 
   const handleExecuteTask = (id: string) => {
@@ -196,18 +180,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
 
         {/* Stats Row - Now clickable to filter */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-          <div onClick={() => setActiveFilter('active')} className="cursor-pointer">
+          <button onClick={() => setActiveFilter('active')} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
             <StatCard label="Active Monitors" value={activeCount.toString()} />
-          </div>
-          <div onClick={() => setActiveFilter('all')} className="cursor-pointer">
+          </button>
+          <button onClick={() => setActiveFilter('all')} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
             <StatCard label="Total Tasks" value={tasks.length.toString()} />
-          </div>
-          <div onClick={() => setActiveFilter('completed')} className="cursor-pointer">
+          </button>
+          <button onClick={() => setActiveFilter('completed')} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
             <StatCard label="Completed" value={completedCount.toString()} />
-          </div>
-          <div onClick={() => setActiveFilter('paused')} className="cursor-pointer">
+          </button>
+          <button onClick={() => setActiveFilter('paused')} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
             <StatCard label="Paused" value={pausedCount.toString()} />
-          </div>
+          </button>
         </div>
 
         {/* Filters & View Toggle */}
@@ -320,24 +304,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
           onSuccess={handleTaskUpdated}
         />
       )}
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteTask} onOpenChange={(open) => !open && setDeleteTask(null)}>
-        <AlertDialogContent className="border-2 border-zinc-900 shadow-brutalist-lg">
-          <AlertDialogHeader className="border-b-2 border-zinc-100 pb-4">
-            <AlertDialogTitle className="font-grotesk">Delete Monitor</AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-500">
-              Are you sure you want to delete "{deleteTask?.name}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-3">
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteTask && handleDeleteTask(deleteTask.id)} className="shadow-brutalist">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };
