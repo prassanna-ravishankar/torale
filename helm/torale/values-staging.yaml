@@ -1,10 +1,6 @@
 # Staging values for Torale on GKE ClusterKit
 # Deployed to staging.torale.ai for pre-production testing
 
-global:
-  projectId: baldmaninc
-  region: us-central1
-
 domains:
   frontend: staging.torale.ai
   api: api.staging.torale.ai
@@ -17,13 +13,9 @@ clerk:
 image:
   tag: staging
 
-# Cloud SQL connection (same database as production)
+# Cloud SQL connection (uses shared clusterkit database)
 database:
   connectionName: "baldmaninc:us-central1:clusterkit-db"
-  host: "127.0.0.1"
-  port: 5432
-  name: torale
-  user: torale
 
 # Temporal Cloud configuration (same namespace, different task queue)
 temporal:
@@ -79,10 +71,4 @@ ingress:
 
 # GKE Managed Certificate
 certificate:
-  enabled: true
   name: torale-staging-cert
-
-# Secrets (reuse production secrets in staging namespace)
-secrets:
-  external: true
-  name: torale-secrets
