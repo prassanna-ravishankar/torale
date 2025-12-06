@@ -1,0 +1,112 @@
+{{- if .Values.httproute.enabled -}}
+{{- $namespace := .Release.Namespace -}}
+{{- $fullName := include "torale.fullname" . -}}
+{{- $isStagingRelease := eq $namespace "torale-staging" -}}
+{{- $targetNamespace := ternary "torale-staging" "torale" $isStagingRelease -}}
+{{- $envPrefix := ternary "staging-" "" $isStagingRelease -}}
+---
+# Frontend HTTPRoute
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: torale-{{ $envPrefix }}main
+  namespace: torale  # HTTPRoutes always in torale namespace (same as Gateway)
+  labels:
+    {{- include "torale.labels" . | nindent 4 }}
+    app.kubernetes.io/component: routing
+  annotations:
+    # REQUIRED: Disable Cloudflare proxy for GCP SSL to work
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ .Values.httproute.gatewayName }}
+    namespace: torale
+  hostnames:
+  - {{ .Values.domains.frontend | quote }}
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: {{ $fullName }}-frontend
+      {{- if $isStagingRelease }}
+      namespace: {{ $targetNamespace }}  # Cross-namespace reference for staging
+      {{- end }}
+      port: {{ .Values.frontend.service.port }}
+      weight: 1
+---
+# API HTTPRoute
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: torale-{{ $envPrefix }}api
+  namespace: torale
+  labels:
+    {{- include "torale.labels" . | nindent 4 }}
+    app.kubernetes.io/component: routing
+  annotations:
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ .Values.httproute.gatewayName }}
+    namespace: torale
+  hostnames:
+  - {{ .Values.domains.api | quote }}
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: {{ $fullName }}-api
+      {{- if $isStagingRelease }}
+      namespace: {{ $targetNamespace }}
+      {{- end }}
+      port: {{ .Values.api.service.port }}
+      weight: 1
+{{- if .Values.docs.enabled }}
+---
+# Docs HTTPRoute
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: torale-{{ $envPrefix }}docs
+  namespace: torale
+  labels:
+    {{- include "torale.labels" . | nindent 4 }}
+    app.kubernetes.io/component: routing
+  annotations:
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ .Values.httproute.gatewayName }}
+    namespace: torale
+  hostnames:
+  - {{ .Values.domains.docs | quote }}
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: {{ $fullName }}-docs
+      {{- if $isStagingRelease }}
+      namespace: {{ $targetNamespace }}
+      {{- end }}
+      port: {{ .Values.docs.service.port }}
+      weight: 1
+{{- end }}
+{{- end }}

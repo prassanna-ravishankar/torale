@@ -193,7 +193,7 @@ docs:
 # Database configuration (Cloud SQL)
 database:
   # Cloud SQL instance connection name
-  connectionName: "baldmaninc:us-central1:torale-db"
+  connectionName: "baldmaninc:us-central1:clusterkit-db"
   host: "127.0.0.1"  # Cloud SQL Proxy
   port: 5432
   name: torale
@@ -232,9 +232,15 @@ novu:
   welcomeWorkflowId: "torale-task-welcome"
   applicationId: "1mO9V2spkNCO"  # Production app ID
 
-# Ingress configuration
-ingress:
+# Gateway API HTTPRoute configuration (replaces Ingress)
+httproute:
   enabled: true
+  gatewayName: clusterkit-gateway
+
+# Legacy Ingress (DEPRECATED - using Gateway API now)
+# ClusterKit Terraform manages the Gateway and SSL certificates
+ingress:
+  enabled: false
   className: gce
   annotations:
     kubernetes.io/ingress.class: "gce"
@@ -248,9 +254,10 @@ ingress:
     enabled: true
     certificateName: torale-cert
 
-# GKE Managed Certificate
+# GKE Managed Certificate (DEPRECATED - Gateway handles SSL)
+# ClusterKit Terraform manages SSL certificates
 certificate:
-  enabled: true
+  enabled: false
   name: torale-cert
 
 # ConfigMap for non-sensitive configuration

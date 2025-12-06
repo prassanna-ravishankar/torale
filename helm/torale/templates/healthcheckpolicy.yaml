@@ -1,0 +1,84 @@
+{{- if .Values.api.enabled -}}
+---
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: {{ include "torale.fullname" . }}-api-healthcheck
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "torale.api.labels" . | nindent 4 }}
+spec:
+  default:
+    checkIntervalSec: 5
+    timeoutSec: 5
+    healthyThreshold: 2
+    unhealthyThreshold: 2
+    logConfig:
+      enabled: false
+    config:
+      type: HTTP
+      httpHealthCheck:
+        portSpecification: USE_SERVING_PORT
+        requestPath: {{ .Values.api.readinessProbe.httpGet.path }}
+  targetRef:
+    group: ""
+    kind: Service
+    name: {{ include "torale.fullname" . }}-api
+{{- end }}
+
+{{- if .Values.frontend.enabled -}}
+---
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: {{ include "torale.fullname" . }}-frontend-healthcheck
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "torale.frontend.labels" . | nindent 4 }}
+spec:
+  default:
+    checkIntervalSec: 5
+    timeoutSec: 5
+    healthyThreshold: 2
+    unhealthyThreshold: 2
+    logConfig:
+      enabled: false
+    config:
+      type: HTTP
+      httpHealthCheck:
+        portSpecification: USE_SERVING_PORT
+        requestPath: /
+  targetRef:
+    group: ""
+    kind: Service
+    name: {{ include "torale.fullname" . }}-frontend
+{{- end }}
+
+{{- if .Values.docs.enabled -}}
+---
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: {{ include "torale.fullname" . }}-docs-healthcheck
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "torale.labels" . | nindent 4 }}
+    app.kubernetes.io/component: docs
+spec:
+  default:
+    checkIntervalSec: 5
+    timeoutSec: 5
+    healthyThreshold: 2
+    unhealthyThreshold: 2
+    logConfig:
+      enabled: false
+    config:
+      type: HTTP
+      httpHealthCheck:
+        portSpecification: USE_SERVING_PORT
+        requestPath: /
+  targetRef:
+    group: ""
+    kind: Service
+    name: {{ include "torale.fullname" . }}-docs
+{{- end }}

@@ -150,4 +150,4 @@ jobs:
           echo ""
           kubectl get pods -n torale -o wide
           echo ""
-          kubectl get ingress -n torale
+          kubectl get httproute -n torale

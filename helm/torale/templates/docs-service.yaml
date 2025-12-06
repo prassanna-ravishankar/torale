@@ -6,6 +6,8 @@ metadata:
   labels:
     {{- include "torale.labels" . | nindent 4 }}
     app.kubernetes.io/component: docs
+  annotations:
+    cloud.google.com/neg-health-check: '{"http":{"port":{{ .Values.docs.service.targetPort | default 80 }},"request_path":"/"}}'
 spec:
   type: {{ .Values.docs.service.type }}
   ports:

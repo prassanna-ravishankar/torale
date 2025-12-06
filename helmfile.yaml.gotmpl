@@ -152,10 +152,6 @@ releases:
     set:
       - name: image.tag
         value: {{ env "IMAGE_TAG" | default "latest" }}
-      - name: image.repository
-        value: {{ env "GCP_PROJECT_ID" | default "baldmaninc" }}
-      - name: global.projectId
-        value: {{ env "GCP_PROJECT_ID" | default "baldmaninc" }}
       - name: temporal.taskQueue
         value: {{ env "TEMPORAL_TASK_QUEUE" | default .Values.taskQueue }}
     missingFileHandler: Warn
