@@ -15,8 +15,8 @@ from torale.core.database import Database, get_db
 router = APIRouter(prefix="/api/v1/og", tags=["opengraph"])
 
 # Rate limiter for OG image generation (CPU-intensive)
-# Very conservative: 5 requests per minute per IP
-limiter = Limiter(key_func=get_remote_address)
+# Global limit: 10 requests per minute across all IPs (cost control)
+limiter = Limiter(key_func=lambda request: "global")
 
 # Paths to assets
 STATIC_DIR = Path(__file__).parent.parent.parent.parent.parent / "static"
@@ -178,7 +178,7 @@ def _generate_og_image_sync(task_name: str, search_query: str) -> bytes:
 
 
 @router.get("/tasks/{task_id}.jpg")
-@limiter.limit("5/minute")
+@limiter.limit("10/minute")
 async def generate_task_og_image(
     request: Request,
     task_id: UUID,
