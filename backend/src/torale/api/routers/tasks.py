@@ -808,11 +808,12 @@ async def fork_task(
     # If either the subscriber count increment or task creation fails, both are rolled back
     async with db.acquire() as conn:
         async with conn.transaction():
-            # Increment subscriber count on original task
-            await conn.execute(
-                "UPDATE tasks SET subscriber_count = subscriber_count + 1 WHERE id = $1",
-                task_id,
-            )
+            # Increment subscriber count on original task only if forked by another user
+            if not is_owner:
+                await conn.execute(
+                    "UPDATE tasks SET subscriber_count = subscriber_count + 1 WHERE id = $1",
+                    task_id,
+                )
 
             # Create forked task (in PAUSED state, not public)
             fork_query = """

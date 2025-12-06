@@ -147,7 +147,7 @@ async def get_public_task_by_vanity_url(
         WHERE t.user_id = $1 AND t.slug = $2
     """
 
-    row = await db.fetch_one(task_query, user_row["id"], slug)
+    row = await db.fetch_one(task_query, user_row["id"], slug.lower())
 
     if not row:
         raise HTTPException(
@@ -174,9 +174,7 @@ async def get_public_task_by_vanity_url(
     #         row["id"],
     #     )
 
-    from torale.api.routers.tasks import _parse_task_with_execution
-
-    return _parse_task_with_execution(row)
+    return parse_task_with_execution(row)
 
 
 @router.get("/tasks/id/{task_id}", response_model=Task)

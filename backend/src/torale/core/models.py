@@ -121,6 +121,7 @@ class Task(TaskBase):
     view_count: int = 0
     subscriber_count: int = 0
     forked_from_task_id: UUID | None = None
+    creator_username: str | None = None  # Username of the task creator
 
 
 class TaskExecutionBase(BaseModel):
