@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "torale.api.labels" . | nindent 4 }}
   annotations:
-    cloud.google.com/backend-config: '{"ports": {"80":"{{ include "torale.fullname" . }}-api"}}'
+    cloud.google.com/neg-health-check: '{"http":{"port":{{ .Values.api.service.targetPort }},"request_path":"{{ .Values.api.readinessProbe.httpGet.path }}"}}'
 spec:
   type: {{ .Values.api.service.type }}
   ports:
