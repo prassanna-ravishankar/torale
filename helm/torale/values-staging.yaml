@@ -13,10 +13,6 @@ clerk:
 image:
   tag: staging
 
-# Cloud SQL connection (uses shared clusterkit database)
-database:
-  connectionName: "baldmaninc:us-central1:clusterkit-db"
-
 # Temporal Cloud configuration (same namespace, different task queue)
 temporal:
   host: us-central1.gcp.api.temporal.io:7233
