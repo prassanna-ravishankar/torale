@@ -93,8 +93,8 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrade schema."""
-    # Drop reserved_usernames table
-    op.execute("DROP TABLE IF EXISTS reserved_usernames CASCADE")
+    # Drop reserved_usernames table (no CASCADE needed - no dependencies)
+    op.execute("DROP TABLE IF EXISTS reserved_usernames")
 
     # Remove indexes from tasks
     op.execute("DROP INDEX IF EXISTS idx_tasks_forked_from")
