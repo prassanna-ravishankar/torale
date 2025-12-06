@@ -25,6 +25,48 @@ TITLE_FONT_PATH = FONT_DIR / "SpaceGrotesk-Bold.ttf"
 DESC_FONT_PATH = FONT_DIR / "Inter-Regular.ttf"
 
 
+def _load_fonts() -> tuple[ImageFont.ImageFont, ImageFont.ImageFont]:
+    """
+    Load fonts for OG image generation with multi-platform fallbacks.
+
+    Attempts to load fonts in this order:
+    1. Torale brand fonts (Space Grotesk + Inter)
+    2. Linux system fonts (DejaVu - common in Docker)
+    3. macOS system fonts (Helvetica)
+    4. PIL default fonts
+
+    Returns:
+        Tuple of (title_font, desc_font)
+    """
+    try:
+        # Use Torale design system fonts
+        title_font = ImageFont.truetype(str(TITLE_FONT_PATH), 28)  # Space Grotesk Bold
+        desc_font = ImageFont.truetype(str(DESC_FONT_PATH), 18)  # Inter Regular
+        return title_font, desc_font
+    except OSError:
+        pass
+
+    # Fallback to system fonts (try Linux paths first, then macOS)
+    try:
+        # Try Linux system fonts (common in Docker containers)
+        title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+        desc_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
+        return title_font, desc_font
+    except OSError:
+        pass
+
+    try:
+        # Try macOS system fonts
+        title_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 28)
+        desc_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 18)
+        return title_font, desc_font
+    except OSError:
+        pass
+
+    # Final fallback (basic PIL font)
+    return ImageFont.load_default(), ImageFont.load_default()
+
+
 def wrap_text(text: str, font: ImageFont.ImageFont, max_width: int) -> list[str]:
     """
     Wrap text to fit within max_width pixels.
@@ -86,28 +128,8 @@ def _generate_og_image_sync(task_name: str, search_query: str) -> bytes:
     img = Image.open(TEMPLATE_PATH).copy()
     draw = ImageDraw.Draw(img)
 
-    # Load Torale brand fonts (Space Grotesk for titles, Inter for body)
-    try:
-        # Use Torale design system fonts
-        title_font = ImageFont.truetype(str(TITLE_FONT_PATH), 28)  # Space Grotesk Bold
-        desc_font = ImageFont.truetype(str(DESC_FONT_PATH), 18)  # Inter Regular
-    except OSError:
-        # Fallback to system fonts (try Linux paths first, then macOS)
-        try:
-            # Try Linux system fonts (common in Docker containers)
-            title_font = ImageFont.truetype(
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28
-            )
-            desc_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
-        except OSError:
-            try:
-                # Try macOS system fonts
-                title_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 28)
-                desc_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 18)
-            except OSError:
-                # Final fallback (basic PIL font)
-                title_font = ImageFont.load_default()
-                desc_font = ImageFont.load_default()
+    # Load fonts with multi-platform fallbacks
+    title_font, desc_font = _load_fonts()
 
     # Text overlay zones (in 1200x630 dimensions)
     # Title box: (344,217) to (950,294)

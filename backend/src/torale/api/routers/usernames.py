@@ -45,7 +45,7 @@ async def check_username_availability(
         UsernameAvailabilityResponse with availability status and any error message
     """
     # Validate username format
-    is_valid, error = validate_username(username)
+    is_valid, error = await validate_username(username, db)
     if not is_valid:
         return UsernameAvailabilityResponse(available=False, error=error)
 
@@ -78,7 +78,7 @@ async def set_username(
     username = request.username.lower().strip()
 
     # Validate username format
-    is_valid, error = validate_username(username)
+    is_valid, error = await validate_username(username, db)
     if not is_valid:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
 

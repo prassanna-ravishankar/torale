@@ -5,38 +5,14 @@ from uuid import UUID
 
 from torale.core.database import Database
 
-# Reserved usernames that cannot be used
-# NOTE: This list must be kept in sync with the database migration
-# (alembic/versions/a1b2c3d4e5f6_add_shareable_tasks_and_usernames.py)
-# TODO: Consider making validate_username async and querying reserved_usernames table
-# to have a single source of truth
-RESERVED_USERNAMES = {
-    "admin",
-    "api",
-    "explore",
-    "settings",
-    "support",
-    "help",
-    "www",
-    "app",
-    "dashboard",
-    "tasks",
-    "public",
-    "auth",
-    "signin",
-    "signup",
-    "login",
-    "logout",
-    "register",
-}
 
-
-def validate_username(username: str) -> tuple[bool, str]:
+async def validate_username(username: str, db: Database) -> tuple[bool, str]:
     """
-    Validate username format.
+    Validate username format and check against reserved usernames.
 
     Args:
         username: The username to validate
+        db: Database connection for checking reserved usernames
 
     Returns:
         Tuple of (is_valid, error_message)
@@ -57,7 +33,12 @@ def validate_username(username: str) -> tuple[bool, str]:
             "Username must start with a letter and contain only lowercase letters, numbers, hyphens, and underscores",
         )
 
-    if username in RESERVED_USERNAMES:
+    # Check against reserved usernames table (single source of truth)
+    reserved = await db.fetch_one(
+        "SELECT username FROM reserved_usernames WHERE username = $1",
+        username,
+    )
+    if reserved:
         return False, "This username is reserved"
 
     return True, ""

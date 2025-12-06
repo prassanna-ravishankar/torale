@@ -25,7 +25,7 @@ class User(Base):
     clerk_user_id = Column(String, unique=True, nullable=False, index=True)
     email = Column(String(length=320), unique=True, index=True, nullable=False)
     first_name = Column(String, nullable=True)
-    username = Column(String(50), unique=True, nullable=True, index=True)
+    username = Column(String(30), unique=True, nullable=True, index=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     updated_at = Column(

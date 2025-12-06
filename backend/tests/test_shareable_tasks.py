@@ -38,14 +38,36 @@ def mock_db():
     db.fetch_one = AsyncMock()
     db.fetch_all = AsyncMock()
     db.execute = AsyncMock()
+
+    # Mock connection with transaction support
+    mock_conn = MagicMock()
+    mock_conn.execute = AsyncMock()
+    mock_conn.fetchrow = AsyncMock()
+    mock_conn.fetch = AsyncMock()
+
+    # Mock transaction context manager
+    mock_transaction = MagicMock()
+    mock_transaction.__aenter__ = AsyncMock(return_value=mock_transaction)
+    mock_transaction.__aexit__ = AsyncMock(return_value=None)
+    mock_conn.transaction = MagicMock(return_value=mock_transaction)
+
+    # Mock acquire context manager
+    mock_acquire = MagicMock()
+    mock_acquire.__aenter__ = AsyncMock(return_value=mock_conn)
+    mock_acquire.__aexit__ = AsyncMock(return_value=None)
+    db.acquire = MagicMock(return_value=mock_acquire)
+
     return db
 
 
 class TestUsernameValidation:
     """Tests for username validation."""
 
-    def test_valid_username(self):
+    @pytest.mark.asyncio
+    async def test_valid_username(self, mock_db):
         """Test valid username formats."""
+        mock_db.fetch_one.return_value = None  # Not reserved
+
         valid_usernames = [
             "alice",
             "bob123",
@@ -54,31 +76,35 @@ class TestUsernameValidation:
             "a1b2c3",
         ]
         for username in valid_usernames:
-            is_valid, error = validate_username(username)
+            is_valid, error = await validate_username(username, mock_db)
             assert is_valid, f"Username '{username}' should be valid but got error: {error}"
             assert error == ""
 
-    def test_username_too_short(self):
+    @pytest.mark.asyncio
+    async def test_username_too_short(self, mock_db):
         """Test username shorter than 3 characters."""
-        is_valid, error = validate_username("ab")
+        is_valid, error = await validate_username("ab", mock_db)
         assert not is_valid
         assert "at least 3 characters" in error
 
-    def test_username_too_long(self):
+    @pytest.mark.asyncio
+    async def test_username_too_long(self, mock_db):
         """Test username longer than 30 characters."""
-        is_valid, error = validate_username("a" * 31)
+        is_valid, error = await validate_username("a" * 31, mock_db)
         assert not is_valid
         assert "30 characters or less" in error
 
-    def test_username_invalid_start(self):
+    @pytest.mark.asyncio
+    async def test_username_invalid_start(self, mock_db):
         """Test username not starting with letter."""
         invalid_starts = ["1user", "_user", "-user"]
         for username in invalid_starts:
-            is_valid, error = validate_username(username)
+            is_valid, error = await validate_username(username, mock_db)
             assert not is_valid
             assert "start with a letter" in error
 
-    def test_username_invalid_characters(self):
+    @pytest.mark.asyncio
+    async def test_username_invalid_characters(self, mock_db):
         """Test username with invalid characters."""
         invalid_usernames = [
             "user@name",
@@ -87,14 +113,18 @@ class TestUsernameValidation:
             "user!",
         ]
         for username in invalid_usernames:
-            is_valid, error = validate_username(username)
+            is_valid, error = await validate_username(username, mock_db)
             assert not is_valid
 
-    def test_reserved_username(self):
+    @pytest.mark.asyncio
+    async def test_reserved_username(self, mock_db):
         """Test reserved usernames are rejected."""
+        # Mock database returning reserved username match
+        mock_db.fetch_one.return_value = {"username": "admin"}
+
         reserved = ["admin", "api", "explore", "settings", "support"]
         for username in reserved:
-            is_valid, error = validate_username(username)
+            is_valid, error = await validate_username(username, mock_db)
             assert not is_valid
             assert "reserved" in error
 
@@ -137,7 +167,9 @@ class TestUsernameEndpoints:
     @pytest.mark.asyncio
     async def test_check_availability_endpoint(self, mock_db):
         """Test GET /api/v1/users/username/available."""
-        mock_db.fetch_one.return_value = None
+        # First call: reserved check (None = not reserved)
+        # Second call: availability check (None = available)
+        mock_db.fetch_one.side_effect = [None, None]
 
         result = await check_username_availability("newuser", mock_db)
 
@@ -156,7 +188,9 @@ class TestUsernameEndpoints:
     async def test_set_username_success(self, mock_user, mock_db):
         """Test PATCH /api/v1/users/me/username - successful update."""
         request = SetUsernameRequest(username="newusername")
-        mock_db.fetch_one.return_value = None  # Username available
+        # First call: reserved check (None = not reserved)
+        # Second call: availability check (None = available)
+        mock_db.fetch_one.side_effect = [None, None]
 
         result = await set_username(request, mock_user, mock_db)
 
@@ -168,7 +202,9 @@ class TestUsernameEndpoints:
     async def test_set_username_taken(self, mock_user, mock_db):
         """Test setting username that's already taken."""
         request = SetUsernameRequest(username="takenname")
-        mock_db.fetch_one.return_value = {"id": uuid4()}  # Username taken
+        # First call: reserved check (None = not reserved)
+        # Second call: availability check (user found = taken)
+        mock_db.fetch_one.side_effect = [None, {"id": uuid4()}]
 
         with pytest.raises(HTTPException) as exc_info:
             await set_username(request, mock_user, mock_db)
@@ -180,6 +216,8 @@ class TestUsernameEndpoints:
     async def test_set_username_invalid(self, mock_user, mock_db):
         """Test setting invalid username."""
         request = SetUsernameRequest(username="admin")  # Reserved
+        # Reserved username found in DB
+        mock_db.fetch_one.return_value = {"username": "admin"}
 
         with pytest.raises(HTTPException) as exc_info:
             await set_username(request, mock_user, mock_db)
@@ -304,11 +342,13 @@ class TestPublicTaskAccess:
     @pytest.mark.asyncio
     async def test_get_public_task_unauthenticated(self, mock_db):
         """Test accessing public task without authentication."""
+        from datetime import UTC, datetime
+
         task_id = uuid4()
         user_id = uuid4()
+        now = datetime.now(UTC)
 
-        # Mock task query
-
+        # Complete mock task with all required fields for _parse_task_with_execution
         mock_task_row = {
             "id": task_id,
             "user_id": user_id,
@@ -316,21 +356,45 @@ class TestPublicTaskAccess:
             "is_public": True,
             "slug": "public-task",
             "view_count": 0,
+            "subscriber_count": 0,
             "config": "{}",
             "last_known_state": None,
             "notifications": "[]",
+            "schedule": "0 9 * * *",
+            "executor_type": "llm_grounded_search",
+            "search_query": "test query",
+            "condition_description": "test condition",
+            "notify_behavior": "always",
+            "notification_channels": [],
+            "notification_email": None,
+            "webhook_url": None,
+            "webhook_secret": None,
+            "state": "active",
+            "forked_from_task_id": None,
+            "created_at": now,
+            "updated_at": now,
+            "state_changed_at": now,
+            "last_execution_id": None,
+            # Execution fields (LEFT JOIN result - no execution)
             "exec_id": None,
+            "exec_condition_met": None,
+            "exec_started_at": None,
+            "exec_completed_at": None,
+            "exec_status": None,
+            "exec_result": None,
+            "exec_change_summary": None,
+            "exec_grounding_sources": None,
         }
 
         mock_db.fetch_one.return_value = mock_task_row
 
-        # Call with no user (OptionalUser = None)
-        # Will fail due to _parse_task_with_execution parsing incomplete mock data
-        with pytest.raises(Exception):  # noqa: B017
-            await get_task(task_id, None, mock_db)
+        # Call with no user (OptionalUser = None) - should succeed for public tasks
+        result = await get_task(task_id, None, mock_db)
 
-        # Verify view count increment was attempted
-        # (We expect 2 fetch_one calls: task fetch + view count update context)
+        # Verify public task is accessible
+        assert result.id == task_id
+        assert result.name == "Public Task"
+        assert result.is_public is True
 
     @pytest.mark.asyncio
     async def test_get_private_task_unauthenticated(self, mock_db):
@@ -384,59 +448,59 @@ class TestTaskForking:
         request = ForkTaskRequest(name="My Fork")
         now = datetime.now(UTC)
 
-        # Mock source task query
-        mock_db.fetch_one.side_effect = [
-            {
-                "id": source_task_id,
-                "user_id": other_user_id,  # Not the current user
-                "name": "Original Task",
-                "is_public": True,
-                "schedule": "0 9 * * *",
-                "executor_type": "llm_grounded_search",
-                "config": '{"key": "value"}',
-                "search_query": "test query",
-                "condition_description": "test condition",
-                "notify_behavior": "always",
-                "notifications": "[]",
-                "notification_channels": [],
-                "notification_email": None,
-                "webhook_url": None,
-                "webhook_secret": None,
-            },
-            # Forked task returned - complete with all required fields
-            {
-                "id": uuid4(),
-                "user_id": mock_user.id,
-                "name": "My Fork",
-                "schedule": "0 9 * * *",
-                "executor_type": "llm_grounded_search",
-                "config": '{"key": "value"}',
-                "state": "paused",
-                "search_query": "test query",
-                "condition_description": "test condition",
-                "notify_behavior": "always",
-                "notifications": "[]",
-                "notification_channels": [],
-                "notification_email": None,
-                "webhook_url": None,
-                "webhook_secret": None,
-                "is_public": False,
-                "slug": None,
-                "view_count": 0,
-                "subscriber_count": 0,
-                "forked_from_task_id": source_task_id,
-                "created_at": now,
-                "updated_at": now,
-                "state_changed_at": now,
-                "last_execution_id": None,
-                "last_known_state": None,
-            },
-        ]
+        # Mock source task query (uses db.fetch_one)
+        mock_db.fetch_one.return_value = {
+            "id": source_task_id,
+            "user_id": other_user_id,  # Not the current user
+            "name": "Original Task",
+            "is_public": True,
+            "schedule": "0 9 * * *",
+            "executor_type": "llm_grounded_search",
+            "config": '{"key": "value"}',
+            "search_query": "test query",
+            "condition_description": "test condition",
+            "notify_behavior": "always",
+            "notifications": "[]",
+            "notification_channels": [],
+            "notification_email": None,
+            "webhook_url": None,
+            "webhook_secret": None,
+        }
+
+        # Mock forked task returned from INSERT (uses conn.fetchrow within transaction)
+        mock_conn = await mock_db.acquire().__aenter__()
+        mock_conn.fetchrow.return_value = {
+            "id": uuid4(),
+            "user_id": mock_user.id,
+            "name": "My Fork",
+            "schedule": "0 9 * * *",
+            "executor_type": "llm_grounded_search",
+            "config": '{"key": "value"}',
+            "state": "paused",
+            "search_query": "test query",
+            "condition_description": "test condition",
+            "notify_behavior": "always",
+            "notifications": "[]",
+            "notification_channels": [],
+            "notification_email": None,
+            "webhook_url": None,
+            "webhook_secret": None,
+            "is_public": False,
+            "slug": None,
+            "view_count": 0,
+            "subscriber_count": 0,
+            "forked_from_task_id": source_task_id,
+            "created_at": now,
+            "updated_at": now,
+            "state_changed_at": now,
+            "last_execution_id": None,
+            "last_known_state": None,
+        }
 
         result = await fork_task(source_task_id, request, mock_user, mock_db)
 
-        # Verify subscriber count increment was called
-        assert mock_db.execute.call_count >= 1  # increment subscriber count
+        # Verify operations were called within transaction
+        assert mock_conn.execute.call_count >= 1  # increment subscriber count
         assert result.name == "My Fork"
         assert result.forked_from_task_id == source_task_id
 
@@ -467,54 +531,54 @@ class TestTaskForking:
         request = ForkTaskRequest(name="My Duplicate")
         now = datetime.now(UTC)
 
-        # Mock source task and forked task queries
-        mock_db.fetch_one.side_effect = [
-            {
-                "id": task_id,
-                "user_id": mock_user.id,  # Own task
-                "name": "Original Task",
-                "is_public": True,
-                "schedule": "0 9 * * *",
-                "executor_type": "llm_grounded_search",
-                "config": '{"key": "value"}',
-                "search_query": "test query",
-                "condition_description": "test condition",
-                "notify_behavior": "always",
-                "notifications": "[]",
-                "notification_channels": [],
-                "notification_email": None,
-                "webhook_url": None,
-                "webhook_secret": None,
-            },
-            # Forked task returned
-            {
-                "id": uuid4(),
-                "user_id": mock_user.id,
-                "name": "My Duplicate",
-                "schedule": "0 9 * * *",
-                "executor_type": "llm_grounded_search",
-                "config": '{"key": "value"}',
-                "state": "paused",
-                "search_query": "test query",
-                "condition_description": "test condition",
-                "notify_behavior": "always",
-                "notifications": "[]",
-                "notification_channels": [],
-                "notification_email": None,
-                "webhook_url": None,
-                "webhook_secret": None,
-                "is_public": False,
-                "slug": None,
-                "view_count": 0,
-                "subscriber_count": 0,
-                "forked_from_task_id": task_id,
-                "created_at": now,
-                "updated_at": now,
-                "state_changed_at": now,
-                "last_execution_id": None,
-                "last_known_state": None,
-            },
-        ]
+        # Mock source task query
+        mock_db.fetch_one.return_value = {
+            "id": task_id,
+            "user_id": mock_user.id,  # Own task
+            "name": "Original Task",
+            "is_public": True,
+            "schedule": "0 9 * * *",
+            "executor_type": "llm_grounded_search",
+            "config": '{"key": "value"}',
+            "search_query": "test query",
+            "condition_description": "test condition",
+            "notify_behavior": "always",
+            "notifications": "[]",
+            "notification_channels": [],
+            "notification_email": None,
+            "webhook_url": None,
+            "webhook_secret": None,
+        }
+
+        # Mock forked task returned from INSERT within transaction
+        mock_conn = await mock_db.acquire().__aenter__()
+        mock_conn.fetchrow.return_value = {
+            "id": uuid4(),
+            "user_id": mock_user.id,
+            "name": "My Duplicate",
+            "schedule": "0 9 * * *",
+            "executor_type": "llm_grounded_search",
+            "config": '{"key": "value"}',
+            "state": "paused",
+            "search_query": "test query",
+            "condition_description": "test condition",
+            "notify_behavior": "always",
+            "notifications": "[]",
+            "notification_channels": [],
+            "notification_email": None,
+            "webhook_url": None,
+            "webhook_secret": None,
+            "is_public": False,
+            "slug": None,
+            "view_count": 0,
+            "subscriber_count": 0,
+            "forked_from_task_id": task_id,
+            "created_at": now,
+            "updated_at": now,
+            "state_changed_at": now,
+            "last_execution_id": None,
+            "last_known_state": None,
+        }
 
         result = await fork_task(task_id, request, mock_user, mock_db)
 
@@ -522,7 +586,7 @@ class TestTaskForking:
         assert result.name == "My Duplicate"
         assert result.forked_from_task_id == task_id
         # Owner duplicating their own task - subscriber count should still increment
-        assert mock_db.execute.call_count >= 1
+        assert mock_conn.execute.call_count >= 1
 
     @pytest.mark.asyncio
     async def test_fork_uses_default_name(self, mock_user, mock_db):
@@ -579,53 +643,53 @@ class TestTaskForking:
         now = datetime.now(UTC)
 
         # Mock source task with sensitive data
-        mock_db.fetch_one.side_effect = [
-            {
-                "id": source_task_id,
-                "user_id": other_user_id,  # Not the current user
-                "name": "Original Task",
-                "is_public": True,
-                "schedule": "0 9 * * *",
-                "executor_type": "llm_grounded_search",
-                "config": '{"key": "value"}',
-                "search_query": "test query",
-                "condition_description": "test condition",
-                "notify_behavior": "always",
-                "notifications": '[{"type": "email", "address": "owner@example.com"}]',
-                "notification_channels": ["email", "webhook"],
-                "notification_email": "owner@example.com",  # Should be scrubbed
-                "webhook_url": "https://example.com/webhook",  # Should be scrubbed
-                "webhook_secret": "super_secret_token",  # Should be scrubbed
-            },
-            # Forked task returned - sensitive fields should be None
-            {
-                "id": uuid4(),
-                "user_id": mock_user.id,
-                "name": "Forked Task",
-                "schedule": "0 9 * * *",
-                "executor_type": "llm_grounded_search",
-                "config": '{"key": "value"}',
-                "state": "paused",
-                "search_query": "test query",
-                "condition_description": "test condition",
-                "notify_behavior": "always",
-                "notifications": '[{"type": "email", "address": "owner@example.com"}]',
-                "notification_channels": [],  # Scrubbed
-                "notification_email": None,  # Scrubbed
-                "webhook_url": None,  # Scrubbed
-                "webhook_secret": None,  # Scrubbed
-                "is_public": False,
-                "slug": None,
-                "view_count": 0,
-                "subscriber_count": 0,
-                "forked_from_task_id": source_task_id,
-                "created_at": now,
-                "updated_at": now,
-                "state_changed_at": now,
-                "last_execution_id": None,
-                "last_known_state": None,
-            },
-        ]
+        mock_db.fetch_one.return_value = {
+            "id": source_task_id,
+            "user_id": other_user_id,  # Not the current user
+            "name": "Original Task",
+            "is_public": True,
+            "schedule": "0 9 * * *",
+            "executor_type": "llm_grounded_search",
+            "config": '{"key": "value"}',
+            "search_query": "test query",
+            "condition_description": "test condition",
+            "notify_behavior": "always",
+            "notifications": '[{"type": "email", "address": "owner@example.com"}]',
+            "notification_channels": ["email", "webhook"],
+            "notification_email": "owner@example.com",  # Should be scrubbed
+            "webhook_url": "https://example.com/webhook",  # Should be scrubbed
+            "webhook_secret": "super_secret_token",  # Should be scrubbed
+        }
+
+        # Mock forked task returned from INSERT within transaction
+        mock_conn = await mock_db.acquire().__aenter__()
+        mock_conn.fetchrow.return_value = {
+            "id": uuid4(),
+            "user_id": mock_user.id,
+            "name": "Forked Task",
+            "schedule": "0 9 * * *",
+            "executor_type": "llm_grounded_search",
+            "config": '{"key": "value"}',
+            "state": "paused",
+            "search_query": "test query",
+            "condition_description": "test condition",
+            "notify_behavior": "always",
+            "notifications": '[{"type": "email", "address": "owner@example.com"}]',
+            "notification_channels": [],  # Scrubbed
+            "notification_email": None,  # Scrubbed
+            "webhook_url": None,  # Scrubbed
+            "webhook_secret": None,  # Scrubbed
+            "is_public": False,
+            "slug": None,
+            "view_count": 0,
+            "subscriber_count": 0,
+            "forked_from_task_id": source_task_id,
+            "created_at": now,
+            "updated_at": now,
+            "state_changed_at": now,
+            "last_execution_id": None,
+            "last_known_state": None,
+        }
 
         result = await fork_task(source_task_id, request, mock_user, mock_db)
 
@@ -634,8 +698,8 @@ class TestTaskForking:
         assert result.forked_from_task_id == source_task_id
 
         # Verify the INSERT call passed scrubbed values (not the original sensitive data)
-        # The second fetch_one call is the INSERT RETURNING
-        insert_call = mock_db.fetch_one.call_args_list[1]
+        # Check the args passed to conn.fetchrow within the transaction
+        insert_call = mock_conn.fetchrow.call_args_list[0]
         insert_args = insert_call[0]  # Positional args
 
         # Args order: query_string(0), user_id(1), name(2), schedule(3), executor_type(4), config(5), state(6),

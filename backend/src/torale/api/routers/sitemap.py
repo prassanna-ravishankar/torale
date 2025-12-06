@@ -1,5 +1,7 @@
 """Sitemap generation for SEO."""
 
+import xml.etree.ElementTree as ET
+
 from fastapi import APIRouter, Depends, Response
 
 from torale.core.config import settings
@@ -28,12 +30,11 @@ async def generate_sitemap(db: Database = Depends(get_db)):
 
     tasks = await db.fetch_all(tasks_query)
 
-    # Build XML sitemap
+    # Build XML sitemap using xml.etree
     base_url = settings.frontend_url or "https://torale.ai"
 
-    # Start XML
-    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    # Create root element with namespace
+    urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
 
     # Static pages
     static_pages = [
@@ -42,27 +43,27 @@ async def generate_sitemap(db: Database = Depends(get_db)):
     ]
 
     for page in static_pages:
-        xml += "  <url>\n"
-        xml += f"    <loc>{page['loc']}</loc>\n"
-        xml += f"    <changefreq>{page['changefreq']}</changefreq>\n"
-        xml += f"    <priority>{page['priority']}</priority>\n"
-        xml += "  </url>\n"
+        url_elem = ET.SubElement(urlset, "url")
+        ET.SubElement(url_elem, "loc").text = page["loc"]
+        ET.SubElement(url_elem, "changefreq").text = page["changefreq"]
+        ET.SubElement(url_elem, "priority").text = page["priority"]
 
     # Public task pages
     for task in tasks:
         task_url = f"{base_url}/tasks/@{task['username']}/{task['slug']}"
         lastmod = task["updated_at"].strftime("%Y-%m-%d")
 
-        xml += "  <url>\n"
-        xml += f"    <loc>{task_url}</loc>\n"
-        xml += f"    <lastmod>{lastmod}</lastmod>\n"
-        xml += "    <changefreq>weekly</changefreq>\n"
-        xml += "    <priority>0.8</priority>\n"
-        xml += "  </url>\n"
+        url_elem = ET.SubElement(urlset, "url")
+        ET.SubElement(url_elem, "loc").text = task_url
+        ET.SubElement(url_elem, "lastmod").text = lastmod
+        ET.SubElement(url_elem, "changefreq").text = "weekly"
+        ET.SubElement(url_elem, "priority").text = "0.8"
 
-    xml += "</urlset>"
+    # Convert to string with XML declaration
+    xml_string = ET.tostring(urlset, encoding="unicode", xml_declaration=False)
+    xml_output = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_string
 
-    return Response(content=xml, media_type="application/xml")
+    return Response(content=xml_output, media_type="application/xml")
 
 
 @router.get("/robots.txt")

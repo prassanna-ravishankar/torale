@@ -854,12 +854,6 @@ async def fork_task(
     # Allow owners to fork (duplicate) their own tasks
     # Frontend can show "Duplicate" for owners, "Fork" for others
 
-    # Increment subscriber count on original task
-    await db.execute(
-        "UPDATE tasks SET subscriber_count = subscriber_count + 1 WHERE id = $1",
-        task_id,
-    )
-
     # Determine name for forked task
     fork_name = request.name if request.name else f"{source['name']} (Copy)"
 
@@ -878,43 +872,53 @@ async def fork_task(
         webhook_secret = None
         notification_channels = []
 
-    # Create forked task (in PAUSED state, not public)
-    fork_query = """
-        INSERT INTO tasks (
-            user_id, name, schedule, executor_type, config, state,
-            search_query, condition_description, notify_behavior, notifications,
-            notification_channels, notification_email, webhook_url, webhook_secret,
-            forked_from_task_id, is_public
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-        RETURNING *
-    """
+    # Wrap fork operations in transaction for atomicity
+    # If either the subscriber count increment or task creation fails, both are rolled back
+    async with db.acquire() as conn:
+        async with conn.transaction():
+            # Increment subscriber count on original task
+            await conn.execute(
+                "UPDATE tasks SET subscriber_count = subscriber_count + 1 WHERE id = $1",
+                task_id,
+            )
 
-    forked_row = await db.fetch_one(
-        fork_query,
-        user.id,
-        fork_name,
-        source["schedule"],
-        source["executor_type"],
-        source["config"],
-        TaskState.PAUSED.value,
-        source["search_query"],
-        source["condition_description"],
-        source["notify_behavior"],
-        source["notifications"],
-        notification_channels,
-        notification_email,
-        webhook_url,
-        webhook_secret,
-        task_id,
-        False,  # Forked tasks start as private
-    )
+            # Create forked task (in PAUSED state, not public)
+            fork_query = """
+                INSERT INTO tasks (
+                    user_id, name, schedule, executor_type, config, state,
+                    search_query, condition_description, notify_behavior, notifications,
+                    notification_channels, notification_email, webhook_url, webhook_secret,
+                    forked_from_task_id, is_public
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                RETURNING *
+            """
 
-    if not forked_row:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to fork task",
-        )
+            forked_row = await conn.fetchrow(
+                fork_query,
+                user.id,
+                fork_name,
+                source["schedule"],
+                source["executor_type"],
+                source["config"],
+                TaskState.PAUSED.value,
+                source["search_query"],
+                source["condition_description"],
+                source["notify_behavior"],
+                source["notifications"],
+                notification_channels,
+                notification_email,
+                webhook_url,
+                webhook_secret,
+                task_id,
+                False,  # Forked tasks start as private
+            )
+
+            if not forked_row:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Failed to fork task",
+                )
 
     return Task(**parse_task_row(forked_row))
 

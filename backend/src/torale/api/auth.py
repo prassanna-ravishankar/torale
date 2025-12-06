@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import Depends, Security
+from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from torale.api.clerk_auth import ClerkUser, get_current_user, get_current_user_or_test_user
@@ -30,8 +30,9 @@ async def get_current_user_optional(
 
     try:
         return await get_current_user(credentials)
-    except Exception:
-        # If auth fails, just return None
+    except HTTPException:
+        # If auth fails (invalid token, etc.), return None
+        # This allows public endpoints to gracefully handle missing/invalid auth
         return None
 
 
