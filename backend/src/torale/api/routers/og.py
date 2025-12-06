@@ -111,12 +111,10 @@ def _generate_og_image_sync(task_name: str, search_query: str) -> bytes:
 
     # Text overlay zones (in 1200x630 dimensions)
     # Title box: (344,217) to (950,294)
-    title_x = 344 + 10  # Add padding
     title_y = 217 + 10
     title_max_width = (950 - 344) - 20  # Box width minus padding
 
     # Description box: (368,334) to (828,421)
-    desc_x = 368 + 10  # Add padding
     desc_y = 334 + 10
     desc_max_width = (828 - 368) - 20  # Box width minus padding
 

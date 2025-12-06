@@ -325,7 +325,8 @@ class TestPublicTaskAccess:
         mock_db.fetch_one.return_value = mock_task_row
 
         # Call with no user (OptionalUser = None)
-        with pytest.raises(Exception):  # Will fail due to _parse_task_with_execution
+        # Will fail due to _parse_task_with_execution parsing incomplete mock data
+        with pytest.raises(Exception):  # noqa: B017
             await get_task(task_id, None, mock_db)
 
         # Verify view count increment was attempted

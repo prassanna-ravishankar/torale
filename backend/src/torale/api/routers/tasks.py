@@ -772,7 +772,7 @@ async def update_task_visibility(
                         task_id,
                     )
                     break  # Success, exit retry loop
-                except UniqueViolationError:
+                except UniqueViolationError as e:
                     # Slug collision - retry with new slug
                     if attempt < max_retries - 1:
                         logger.warning(f"Slug collision on attempt {attempt + 1}, retrying...")
@@ -781,7 +781,7 @@ async def update_task_visibility(
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail="Failed to generate unique slug after multiple attempts",
-                    )
+                    ) from e
                 except Exception:
                     # Other database errors - don't retry
                     raise
