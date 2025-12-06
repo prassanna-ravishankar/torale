@@ -8,7 +8,6 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from PIL import Image, ImageDraw, ImageFont
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from torale.core.database import Database, get_db
 
@@ -96,7 +95,9 @@ def _generate_og_image_sync(task_name: str, search_query: str) -> bytes:
         # Fallback to system fonts (try Linux paths first, then macOS)
         try:
             # Try Linux system fonts (common in Docker containers)
-            title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+            title_font = ImageFont.truetype(
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28
+            )
             desc_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
         except OSError:
             try:
@@ -195,9 +196,8 @@ async def generate_task_og_image(
     """
     # Get task info
     task_query = """
-        SELECT t.name, t.search_query, t.is_public, u.username
+        SELECT t.name, t.search_query, t.is_public
         FROM tasks t
-        INNER JOIN users u ON t.user_id = u.id
         WHERE t.id = $1
     """
 
@@ -212,9 +212,7 @@ async def generate_task_og_image(
     # Generate image in thread pool to avoid blocking event loop
     # This keeps the server responsive during CPU/IO intensive operations
     image_bytes = await asyncio.to_thread(
-        _generate_og_image_sync,
-        task["name"],
-        task["search_query"]
+        _generate_og_image_sync, task["name"], task["search_query"]
     )
 
     # Cache for 1 hour (social media crawlers will cache this)

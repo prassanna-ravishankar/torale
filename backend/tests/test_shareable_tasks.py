@@ -308,7 +308,6 @@ class TestPublicTaskAccess:
         user_id = uuid4()
 
         # Mock task query
-        from torale.api.routers.tasks import _parse_task_with_execution
 
         mock_task_row = {
             "id": task_id,
@@ -539,7 +538,7 @@ class TestTaskForking:
                 "is_public": True,
                 "schedule": "0 9 * * *",
                 "executor_type": "llm_grounded_search",
-                "config": '{}',
+                "config": "{}",
                 "search_query": "test",
                 "condition_description": "test",
                 "notify_behavior": "always",

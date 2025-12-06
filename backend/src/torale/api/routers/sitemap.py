@@ -1,7 +1,5 @@
 """Sitemap generation for SEO."""
 
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, Response
 
 from torale.core.config import settings

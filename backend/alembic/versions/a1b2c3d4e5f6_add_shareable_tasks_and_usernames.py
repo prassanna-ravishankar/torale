@@ -23,7 +23,7 @@ def upgrade() -> None:
     # Add username to users table
     op.execute("""
         ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS username VARCHAR(50) UNIQUE
+        ADD COLUMN IF NOT EXISTS username VARCHAR(30) UNIQUE
     """)
 
     # Create index on username
@@ -66,11 +66,13 @@ def upgrade() -> None:
     # Create reserved_usernames table (optional but recommended)
     op.execute("""
         CREATE TABLE IF NOT EXISTS reserved_usernames (
-            username VARCHAR(50) PRIMARY KEY
+            username VARCHAR(30) PRIMARY KEY
         )
     """)
 
     # Insert reserved usernames
+    # NOTE: This list must be kept in sync with RESERVED_USERNAMES in
+    # src/torale/utils/username.py
     op.execute("""
         INSERT INTO reserved_usernames (username) VALUES
             ('admin'),

@@ -42,7 +42,6 @@ interface TaskDetailProps {
   taskId: string;
   onBack: () => void;
   onDeleted: () => void;
-  isPublicView?: boolean; // True when viewing someone else's public task
   currentUserId?: string; // Current user's ID (if authenticated)
 }
 
@@ -50,7 +49,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   taskId,
   onBack,
   onDeleted,
-  isPublicView = false,
   currentUserId,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -202,6 +200,9 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
 
   // Get task status from centralized logic
   const status = getTaskStatus(task.state);
+
+  // Determine if current user is the owner
+  const isOwner = task.user_id === currentUserId;
 
   const firstExecution = executions[0];
   const isFirstExecutionComplete = firstExecution?.status === 'success';
@@ -366,7 +367,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
 
       {/* Action Buttons - Different for owner vs public viewer */}
       <div className="flex items-center gap-2">
-        {isPublicView ? (
+        {!isOwner ? (
           // Public viewer: Show fork button and stats
           <>
             <Button

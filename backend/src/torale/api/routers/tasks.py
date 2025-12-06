@@ -4,6 +4,7 @@ import secrets
 from uuid import UUID
 
 import grpc
+from asyncpg.exceptions import UniqueViolationError
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from temporalio.client import Client
@@ -771,14 +772,19 @@ async def update_task_visibility(
                         task_id,
                     )
                     break  # Success, exit retry loop
-                except Exception as e:
-                    # Check if it's a uniqueness violation
-                    if "unique constraint" in str(e).lower() and attempt < max_retries - 1:
-                        logger.warning(
-                            f"Slug collision on attempt {attempt + 1}, retrying..."
-                        )
-                        continue  # Retry with new slug
-                    raise  # Re-raise if not uniqueness error or out of retries
+                except UniqueViolationError:
+                    # Slug collision - retry with new slug
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Slug collision on attempt {attempt + 1}, retrying...")
+                        continue
+                    # Out of retries
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Failed to generate unique slug after multiple attempts",
+                    )
+                except Exception:
+                    # Other database errors - don't retry
+                    raise
         else:
             # Update only is_public
             await db.execute(
