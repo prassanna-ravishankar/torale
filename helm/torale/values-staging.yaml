@@ -74,7 +74,6 @@ docs:
 
 # Ingress configuration
 ingress:
-  enabled: true
   annotations:
     networking.gke.io/managed-certificates: "torale-staging-cert"
 
