@@ -78,7 +78,7 @@ ingress:
   className: gce
   annotations:
     kubernetes.io/ingress.class: "gce"
-    kubernetes.io/ingress.global-static-ip-name: "torale-staging-ip"
+    kubernetes.io/ingress.global-static-ip-name: "clusterkit-ingress-ip"
     networking.gke.io/managed-certificates: "torale-staging-cert"
     networking.gke.io/v1beta1.FrontendConfig: "ssl-redirect"
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
