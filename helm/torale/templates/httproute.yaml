@@ -19,17 +19,26 @@ metadata:
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
 spec:
   parentRefs:
-  - name: {{ .Values.httproute.gatewayName }}
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ .Values.httproute.gatewayName }}
     namespace: torale
   hostnames:
   - {{ .Values.domains.frontend | quote }}
   rules:
-  - backendRefs:
-    - name: {{ $fullName }}-frontend
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: {{ $fullName }}-frontend
       {{- if $isStagingRelease }}
       namespace: {{ $targetNamespace }}  # Cross-namespace reference for staging
       {{- end }}
       port: {{ .Values.frontend.service.port }}
+      weight: 1
 ---
 # API HTTPRoute
 apiVersion: gateway.networking.k8s.io/v1
@@ -44,17 +53,26 @@ metadata:
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
 spec:
   parentRefs:
-  - name: {{ .Values.httproute.gatewayName }}
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ .Values.httproute.gatewayName }}
     namespace: torale
   hostnames:
   - {{ .Values.domains.api | quote }}
   rules:
-  - backendRefs:
-    - name: {{ $fullName }}-api
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: {{ $fullName }}-api
       {{- if $isStagingRelease }}
       namespace: {{ $targetNamespace }}
       {{- end }}
       port: {{ .Values.api.service.port }}
+      weight: 1
 {{- if .Values.docs.enabled }}
 ---
 # Docs HTTPRoute
@@ -70,16 +88,25 @@ metadata:
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
 spec:
   parentRefs:
-  - name: {{ .Values.httproute.gatewayName }}
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ .Values.httproute.gatewayName }}
     namespace: torale
   hostnames:
   - {{ .Values.domains.docs | quote }}
   rules:
-  - backendRefs:
-    - name: {{ $fullName }}-docs
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: {{ $fullName }}-docs
       {{- if $isStagingRelease }}
       namespace: {{ $targetNamespace }}
       {{- end }}
       port: {{ .Values.docs.service.port }}
+      weight: 1
 {{- end }}
 {{- end }}
