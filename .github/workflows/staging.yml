@@ -86,6 +86,15 @@ jobs:
           cluster_name: ${{ env.GKE_CLUSTER }}
           location: ${{ env.GKE_REGION }}
 
+      - name: Verify Gateway API infrastructure
+        run: |
+          echo "🔍 Verifying ClusterKit Gateway API infrastructure..."
+          kubectl get gateway clusterkit-gateway -n torale || \
+            (echo "❌ Gateway 'clusterkit-gateway' not found in torale namespace" && \
+             echo "Gateway is managed by ClusterKit Terraform - check clusterkit repo" && \
+             exit 1)
+          echo "✅ Gateway infrastructure verified"
+
       - name: Deploy via Helmfile
         uses: helmfile/helmfile-action@v2.0.5
         env:
