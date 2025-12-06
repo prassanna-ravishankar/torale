@@ -59,12 +59,3 @@ frontend:
 # Disable docs for staging
 docs:
   enabled: false
-
-# Ingress configuration
-ingress:
-  annotations:
-    networking.gke.io/managed-certificates: "torale-staging-cert"
-
-# GKE Managed Certificate
-certificate:
-  name: torale-staging-cert
