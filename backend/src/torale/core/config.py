@@ -1,4 +1,9 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Project root directory (used for locating static files, templates, etc.)
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 
 class Settings(BaseSettings):
@@ -39,6 +44,9 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     api_reload: bool = False
+
+    # Frontend URL for SEO (sitemap, OpenGraph, etc.)
+    frontend_url: str = "https://torale.ai"
 
     # Development/testing mode - disable authentication
     torale_noauth: bool = False

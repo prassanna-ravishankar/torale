@@ -5,6 +5,7 @@ import { NoAuthProvider } from './NoAuthProvider'
 export interface User {
   id: string
   email: string
+  username?: string | null
   firstName?: string
   lastName?: string
   imageUrl?: string

@@ -33,7 +33,11 @@ import {
   RotateCcw,
   Calendar,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Globe,
+  Lock,
+  Copy,
+  Users
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
@@ -41,6 +45,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { CustomScheduleDialog } from "@/components/ui/CustomScheduleDialog";
 import cronstrue from "cronstrue";
 import { localTimeToUTC, cronUTCToLocal } from "@/lib/timezoneUtils";
+import { Switch } from "@/components/ui/switch";
+import { UsernamePickerModal } from "@/components/UsernamePickerModal";
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TaskEditDialogProps {
   open: boolean;
@@ -111,6 +118,12 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   // Custom Schedule Dialog state
   const [isCustomScheduleOpen, setIsCustomScheduleOpen] = useState(false);
 
+  // Sharing state
+  const [isPublic, setIsPublic] = useState(false);
+  const [isTogglingVisibility, setIsTogglingVisibility] = useState(false);
+  const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const { user } = useAuth();
+
   // Load task data when task changes
   useEffect(() => {
     if (task && open) {
@@ -119,6 +132,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       setConditionDescription(task.condition_description || '');
       setSchedule(task.schedule);
       setNotifyBehavior(task.notify_behavior as NotifyBehavior);
+      setIsPublic(task.is_public);
     }
   }, [task, open]);
 
@@ -162,6 +176,68 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       toast.error("Failed to generate task configuration");
     } finally {
       setIsMagicLoading(false);
+    }
+  };
+
+  const handleVisibilityToggle = async (checked: boolean) => {
+    if (!task) return;
+
+    // If trying to make public but no username, show username picker
+    if (checked && !user?.username) {
+      setShowUsernameModal(true);
+      return;
+    }
+
+    setIsTogglingVisibility(true);
+    try {
+      const result = await api.updateTaskVisibility(task.id, checked);
+      setIsPublic(result.is_public);
+
+      if (result.is_public && result.slug) {
+        const vanityUrl = `torale.ai/@${user?.username}/${result.slug}`;
+        toast.success(`Task is now public: ${vanityUrl}`);
+      } else {
+        toast.success('Task is now private');
+      }
+
+      // Refresh task data
+      onSuccess({ ...task, is_public: result.is_public, slug: result.slug });
+    } catch (error) {
+      console.error('Failed to toggle visibility:', error);
+      toast.error('Failed to update task visibility');
+    } finally {
+      setIsTogglingVisibility(false);
+    }
+  };
+
+  const handleUsernameSet = async (username: string) => {
+    // After username is set, try to make the task public again
+    if (task) {
+      setIsTogglingVisibility(true);
+      try {
+        const result = await api.updateTaskVisibility(task.id, true);
+        setIsPublic(result.is_public);
+
+        if (result.is_public && result.slug) {
+          const vanityUrl = `torale.ai/@${username}/${result.slug}`;
+          toast.success(`Task is now public: ${vanityUrl}`);
+        }
+
+        onSuccess({ ...task, is_public: result.is_public, slug: result.slug });
+      } catch (error) {
+        console.error('Failed to make task public:', error);
+        toast.error('Failed to make task public');
+      } finally {
+        setIsTogglingVisibility(false);
+      }
+    }
+  };
+
+  const copyVanityUrl = () => {
+    if (task?.slug && user?.username) {
+      const vanityUrl = `https://torale.ai/@${user.username}/${task.slug}`;
+      navigator.clipboard.writeText(vanityUrl);
+      toast.success('Link copied to clipboard!');
     }
   };
 
@@ -470,6 +546,73 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
             </CollapsibleContent>
           </Collapsible>
 
+          {/* Sharing Section */}
+          <div className="space-y-4 p-4 bg-zinc-50 border-2 border-zinc-200">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  {isPublic ? (
+                    <Globe className="h-4 w-4 text-blue-600" />
+                  ) : (
+                    <Lock className="h-4 w-4 text-zinc-500" />
+                  )}
+                  <Label className="text-sm font-medium">
+                    {isPublic ? 'Public Task' : 'Private Task'}
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {isPublic
+                    ? 'Anyone can view and copy this task'
+                    : 'Only you can see this task'}
+                </p>
+              </div>
+              <Switch
+                checked={isPublic}
+                onCheckedChange={handleVisibilityToggle}
+                disabled={isTogglingVisibility}
+              />
+            </div>
+
+            {/* Public task details */}
+            {isPublic && task?.slug && user?.username && (
+              <div className="space-y-3 pt-2 border-t border-zinc-200">
+                <div className="space-y-2">
+                  <Label className="text-xs text-zinc-500">Public Link</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={`https://torale.ai/@${user.username}/${task.slug}`}
+                      readOnly
+                      className="font-mono text-sm bg-background"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={copyVanityUrl}
+                      className="shrink-0"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Stats */}
+                {(task.view_count > 0 || task.subscriber_count > 0) && (
+                  <div className="flex items-center gap-4 text-sm text-zinc-600">
+                    <div className="flex items-center gap-1.5">
+                      <Eye className="h-4 w-4" />
+                      <span>{task.view_count} views</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Users className="h-4 w-4" />
+                      <span>{task.subscriber_count} forks</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -488,6 +631,13 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Username Picker Modal */}
+      <UsernamePickerModal
+        isOpen={showUsernameModal}
+        onClose={() => setShowUsernameModal(false)}
+        onSuccess={handleUsernameSet}
+      />
     </Dialog>
   );
 };

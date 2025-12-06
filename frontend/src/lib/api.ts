@@ -446,6 +446,72 @@ class ApiClient {
     })
     return this.handleResponse(response)
   }
+
+  // Username endpoints
+  async checkUsernameAvailability(username: string): Promise<{ available: boolean; error: string | null }> {
+    const response = await fetch(
+      `${this.baseUrl}/api/v1/users/username/available?username=${encodeURIComponent(username)}`
+    )
+    return this.handleResponse(response)
+  }
+
+  async setUsername(username: string): Promise<{ username: string; updated: boolean }> {
+    const response = await fetch(`${this.baseUrl}/api/v1/users/me/username`, {
+      method: 'PATCH',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ username }),
+    })
+    return this.handleResponse(response)
+  }
+
+  // Task visibility endpoints
+  async updateTaskVisibility(
+    taskId: string,
+    isPublic: boolean
+  ): Promise<{ is_public: boolean; slug: string | null; username_required: boolean }> {
+    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/visibility`, {
+      method: 'PATCH',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ is_public: isPublic }),
+    })
+    return this.handleResponse(response)
+  }
+
+  // Task forking
+  async forkTask(taskId: string, name?: string): Promise<Task> {
+    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/fork`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ name }),
+    })
+    return this.handleResponse(response)
+  }
+
+  // Public task discovery
+  async getPublicTasks(params?: {
+    offset?: number
+    limit?: number
+    sort_by?: 'recent' | 'popular'
+  }): Promise<{ tasks: Task[]; total: number; offset: number; limit: number }> {
+    const queryParams = new URLSearchParams()
+    if (params?.offset !== undefined) queryParams.set('offset', params.offset.toString())
+    if (params?.limit) queryParams.set('limit', params.limit.toString())
+    if (params?.sort_by) queryParams.set('sort_by', params.sort_by)
+
+    const url = `${this.baseUrl}/api/v1/public/tasks${queryParams.toString() ? `?${queryParams}` : ''}`
+    const response = await fetch(url)
+    return this.handleResponse(response)
+  }
+
+  async getPublicTaskByVanityUrl(username: string, slug: string): Promise<Task> {
+    const response = await fetch(`${this.baseUrl}/api/v1/public/tasks/@${username}/${slug}`)
+    return this.handleResponse(response)
+  }
+
+  async getPublicTaskById(taskId: string): Promise<Task> {
+    const response = await fetch(`${this.baseUrl}/api/v1/public/tasks/id/${taskId}`)
+    return this.handleResponse(response)
+  }
 }
 
 export const api = new ApiClient()
