@@ -6,6 +6,8 @@ metadata:
   labels:
     {{- include "torale.labels" . | nindent 4 }}
     app.kubernetes.io/component: docs
+  annotations:
+    cloud.google.com/backend-config: '{"ports": {"80":"{{ include "torale.fullname" . }}-docs"}}'
 spec:
   type: {{ .Values.docs.service.type }}
   ports:

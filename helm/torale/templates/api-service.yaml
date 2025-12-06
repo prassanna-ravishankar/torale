@@ -5,6 +5,8 @@ metadata:
   name: {{ include "torale.fullname" . }}-api
   labels:
     {{- include "torale.api.labels" . | nindent 4 }}
+  annotations:
+    cloud.google.com/backend-config: '{"ports": {"80":"{{ include "torale.fullname" . }}-api"}}'
 spec:
   type: {{ .Values.api.service.type }}
   ports:
