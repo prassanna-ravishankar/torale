@@ -861,12 +861,14 @@ async def fork_task(
     # Owner duplicating their own task can keep their settings
     if is_owner:
         # Keep all notification settings when duplicating own task
+        notifications = source["notifications"]
         notification_email = source["notification_email"]
         webhook_url = source["webhook_url"]
         webhook_secret = source["webhook_secret"]
         notification_channels = source["notification_channels"]
     else:
         # Scrub sensitive fields when forking someone else's task
+        notifications = "[]"  # Reset notifications list
         notification_email = None
         webhook_url = None
         webhook_secret = None
@@ -905,7 +907,7 @@ async def fork_task(
                 source["search_query"],
                 source["condition_description"],
                 source["notify_behavior"],
-                source["notifications"],
+                notifications,
                 notification_channels,
                 notification_email,
                 webhook_url,

@@ -705,6 +705,7 @@ class TestTaskForking:
         # Args order: query_string(0), user_id(1), name(2), schedule(3), executor_type(4), config(5), state(6),
         #             search_query(7), condition_description(8), notify_behavior(9), notifications(10),
         #             notification_channels(11), notification_email(12), webhook_url(13), webhook_secret(14)
+        assert insert_args[10] == "[]"  # notifications should be empty list JSON
         assert insert_args[11] == []  # notification_channels should be empty list
         assert insert_args[12] is None  # notification_email should be None
         assert insert_args[13] is None  # webhook_url should be None
