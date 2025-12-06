@@ -21,15 +21,10 @@ def upgrade() -> None:
     """Upgrade schema - add shareable tasks and username support."""
 
     # Add username to users table
+    # UNIQUE constraint already creates an index, so no separate index needed
     op.execute("""
         ALTER TABLE users
         ADD COLUMN IF NOT EXISTS username VARCHAR(30) UNIQUE
-    """)
-
-    # Create index on username
-    op.execute("""
-        CREATE INDEX IF NOT EXISTS idx_users_username
-        ON users(username)
     """)
 
     # Add shareable task fields to tasks table
@@ -116,10 +111,7 @@ def downgrade() -> None:
         DROP COLUMN IF EXISTS is_public
     """)
 
-    # Remove index from users
-    op.execute("DROP INDEX IF EXISTS idx_users_username")
-
-    # Remove column from users
+    # Remove column from users (UNIQUE constraint will drop its index automatically)
     op.execute("""
         ALTER TABLE users
         DROP COLUMN IF EXISTS username

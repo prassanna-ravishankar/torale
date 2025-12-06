@@ -43,12 +43,6 @@ async def list_public_tasks(
     - recent: Most recently created tasks
     - popular: Most viewed tasks
     """
-    # Build query based on sort order
-    if sort_by == "popular":
-        order_clause = "ORDER BY t.view_count DESC, t.created_at DESC"
-    else:  # recent
-        order_clause = "ORDER BY t.created_at DESC"
-
     # Get total count
     count_query = """
         SELECT COUNT(*) as total
@@ -58,25 +52,45 @@ async def list_public_tasks(
     count_row = await db.fetch_one(count_query)
     total = count_row["total"] if count_row else 0
 
-    # Get paginated tasks with user info for display
-    tasks_query = f"""
-        SELECT t.*,
-               u.username as creator_username,
-               e.id as exec_id,
-               e.condition_met as exec_condition_met,
-               e.started_at as exec_started_at,
-               e.completed_at as exec_completed_at,
-               e.status as exec_status,
-               e.result as exec_result,
-               e.change_summary as exec_change_summary,
-               e.grounding_sources as exec_grounding_sources
-        FROM tasks t
-        INNER JOIN users u ON t.user_id = u.id
-        LEFT JOIN task_executions e ON t.last_execution_id = e.id
-        WHERE t.is_public = true
-        {order_clause}
-        LIMIT $1 OFFSET $2
-    """
+    # Build full query based on sort order (avoid SQL injection via f-string)
+    if sort_by == "popular":
+        tasks_query = """
+            SELECT t.*,
+                   u.username as creator_username,
+                   e.id as exec_id,
+                   e.condition_met as exec_condition_met,
+                   e.started_at as exec_started_at,
+                   e.completed_at as exec_completed_at,
+                   e.status as exec_status,
+                   e.result as exec_result,
+                   e.change_summary as exec_change_summary,
+                   e.grounding_sources as exec_grounding_sources
+            FROM tasks t
+            INNER JOIN users u ON t.user_id = u.id
+            LEFT JOIN task_executions e ON t.last_execution_id = e.id
+            WHERE t.is_public = true
+            ORDER BY t.view_count DESC, t.created_at DESC
+            LIMIT $1 OFFSET $2
+        """
+    else:  # recent
+        tasks_query = """
+            SELECT t.*,
+                   u.username as creator_username,
+                   e.id as exec_id,
+                   e.condition_met as exec_condition_met,
+                   e.started_at as exec_started_at,
+                   e.completed_at as exec_completed_at,
+                   e.status as exec_status,
+                   e.result as exec_result,
+                   e.change_summary as exec_change_summary,
+                   e.grounding_sources as exec_grounding_sources
+            FROM tasks t
+            INNER JOIN users u ON t.user_id = u.id
+            LEFT JOIN task_executions e ON t.last_execution_id = e.id
+            WHERE t.is_public = true
+            ORDER BY t.created_at DESC
+            LIMIT $1 OFFSET $2
+        """
 
     rows = await db.fetch_all(tasks_query, limit, offset)
 

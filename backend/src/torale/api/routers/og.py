@@ -2,13 +2,13 @@
 
 import asyncio
 import io
-from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from PIL import Image, ImageDraw, ImageFont
 from slowapi import Limiter
 
+from torale.core.config import PROJECT_ROOT
 from torale.core.database import Database, get_db
 
 router = APIRouter(prefix="/api/v1/og", tags=["opengraph"])
@@ -17,8 +17,8 @@ router = APIRouter(prefix="/api/v1/og", tags=["opengraph"])
 # Global limit: 10 requests per minute across all IPs (cost control)
 limiter = Limiter(key_func=lambda request: "global")
 
-# Paths to assets
-STATIC_DIR = Path(__file__).parent.parent.parent.parent.parent / "static"
+# Paths to assets (using PROJECT_ROOT for robustness)
+STATIC_DIR = PROJECT_ROOT / "static"
 TEMPLATE_PATH = STATIC_DIR / "og-template.jpeg"
 FONT_DIR = STATIC_DIR / "fonts"
 TITLE_FONT_PATH = FONT_DIR / "SpaceGrotesk-Bold.ttf"

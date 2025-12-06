@@ -1,4 +1,9 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Project root directory (used for locating static files, templates, etc.)
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 
 class Settings(BaseSettings):
