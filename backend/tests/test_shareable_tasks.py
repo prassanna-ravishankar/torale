@@ -585,8 +585,8 @@ class TestTaskForking:
         # Should succeed and create a duplicate
         assert result.name == "My Duplicate"
         assert result.forked_from_task_id == task_id
-        # Owner duplicating their own task - subscriber count should still increment
-        assert mock_conn.execute.call_count >= 1
+        # Owner duplicating their own task - subscriber count should NOT increment
+        assert mock_conn.execute.call_count == 0
 
     @pytest.mark.asyncio
     async def test_fork_uses_default_name(self, mock_user, mock_db):
