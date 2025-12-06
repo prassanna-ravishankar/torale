@@ -59,9 +59,8 @@ async def generate_sitemap(db: Database = Depends(get_db)):
         ET.SubElement(url_elem, "changefreq").text = "weekly"
         ET.SubElement(url_elem, "priority").text = "0.8"
 
-    # Convert to string with XML declaration
-    xml_string = ET.tostring(urlset, encoding="unicode", xml_declaration=False)
-    xml_output = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_string
+    # Convert to XML with declaration
+    xml_output = ET.tostring(urlset, encoding="utf-8", xml_declaration=True)
 
     return Response(content=xml_output, media_type="application/xml")
 
