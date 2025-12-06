@@ -641,9 +641,6 @@ class VisibilityUpdateResponse(BaseModel):
 
     is_public: bool
     slug: str | None = None
-    username_required: bool = Field(
-        False, description="True if user needs to set username before making task public"
-    )
 
 
 @router.patch("/{task_id}/visibility", response_model=VisibilityUpdateResponse)
