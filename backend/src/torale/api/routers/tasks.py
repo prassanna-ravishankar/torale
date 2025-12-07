@@ -222,6 +222,7 @@ async def list_tasks(
     # Embed latest execution via LEFT JOIN for efficient status calculation
     base_query = """
         SELECT t.*,
+               u.username as creator_username,
                e.id as exec_id,
                e.condition_met as exec_condition_met,
                e.started_at as exec_started_at,
@@ -231,6 +232,7 @@ async def list_tasks(
                e.change_summary as exec_change_summary,
                e.grounding_sources as exec_grounding_sources
         FROM tasks t
+        INNER JOIN users u ON t.user_id = u.id
         LEFT JOIN task_executions e ON t.last_execution_id = e.id
         WHERE t.user_id = $1
     """
@@ -589,6 +591,7 @@ async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get
     # Embed latest execution via LEFT JOIN
     query = """
         SELECT t.*,
+               u.username as creator_username,
                e.id as exec_id,
                e.condition_met as exec_condition_met,
                e.started_at as exec_started_at,
@@ -598,6 +601,7 @@ async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get
                e.change_summary as exec_change_summary,
                e.grounding_sources as exec_grounding_sources
         FROM tasks t
+        INNER JOIN users u ON t.user_id = u.id
         LEFT JOIN task_executions e ON t.last_execution_id = e.id
         WHERE t.id = $1
     """
