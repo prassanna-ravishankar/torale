@@ -8,6 +8,23 @@ interface ClerkAuthProviderProps {
   children: ReactNode
 }
 
+/**
+ * Helper function to construct a User object from backend data and Clerk user.
+ * Reduces duplication between initial fetch, fallback, and sync operations.
+ */
+const createUserFromData = (
+  backendData: { id: string; email: string; username: string | null },
+  clerkUser: any
+): User => ({
+  id: backendData.id,
+  email: backendData.email,
+  username: backendData.username,
+  firstName: clerkUser.firstName || undefined,
+  lastName: clerkUser.lastName || undefined,
+  imageUrl: clerkUser.imageUrl,
+  publicMetadata: clerkUser.publicMetadata as { role?: string; [key: string]: any } | undefined,
+})
+
 const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { isLoaded: clerkIsLoaded, userId, getToken: clerkGetToken, signOut } = useClerkAuth()
   const { user: clerkUser } = useUser()
@@ -23,27 +40,15 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
       try {
         const { api } = await import('@/lib/api')
         const userData = await api.getCurrentUser()
-        setBackendUser({
-          id: userData.id,
-          email: userData.email,
-          username: userData.username,
-          firstName: clerkUser.firstName || undefined,
-          lastName: clerkUser.lastName || undefined,
-          imageUrl: clerkUser.imageUrl,
-          publicMetadata: clerkUser.publicMetadata as { role?: string; [key: string]: any } | undefined,
-        })
+        setBackendUser(createUserFromData(userData, clerkUser))
       } catch (error) {
         console.error('Failed to fetch user from backend:', error)
         // Fallback to Clerk user data without username
-        setBackendUser({
+        setBackendUser(createUserFromData({
           id: clerkUser.id,
           email: clerkUser.primaryEmailAddress?.emailAddress || '',
           username: null,
-          firstName: clerkUser.firstName || undefined,
-          lastName: clerkUser.lastName || undefined,
-          imageUrl: clerkUser.imageUrl,
-          publicMetadata: clerkUser.publicMetadata as { role?: string; [key: string]: any } | undefined,
-        })
+        }, clerkUser))
       } finally {
         setIsFetchingUser(false)
       }
@@ -75,15 +80,7 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
         // Refresh user data from backend after sync
         if (clerkUser) {
           const userData = await api.getCurrentUser()
-          setBackendUser({
-            id: userData.id,
-            email: userData.email,
-            username: userData.username,
-            firstName: clerkUser.firstName || undefined,
-            lastName: clerkUser.lastName || undefined,
-            imageUrl: clerkUser.imageUrl,
-            publicMetadata: clerkUser.publicMetadata as { role?: string; [key: string]: any } | undefined,
-          })
+          setBackendUser(createUserFromData(userData, clerkUser))
         }
       },
       signOut: async () => {

@@ -49,9 +49,8 @@ export function VanityTaskRedirect() {
   }
 
   // Generate OpenGraph metadata
-  // Use same baseUrl pattern as api client
-  const apiBaseUrl = window.CONFIG?.apiUrl || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-  const ogImage = `${apiBaseUrl}/api/v1/og/tasks/${task.id}.jpg`;
+  // Use centralized API base URL from api client
+  const ogImage = `${api.getBaseUrl()}/api/v1/og/tasks/${task.id}.jpg`;
 
   // For ogUrl, use the frontend URL (not API URL)
   const ogUrl = `${window.location.origin}/@${username}/${slug}`;

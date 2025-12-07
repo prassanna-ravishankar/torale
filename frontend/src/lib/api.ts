@@ -25,6 +25,11 @@ class ApiClient {
     return window.CONFIG?.apiUrl || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
   }
 
+  // Public getter for API base URL (for use in components that need direct API URL access)
+  getBaseUrl(): string {
+    return this.baseUrl
+  }
+
   // Set the token getter function (called from components with Clerk's getToken)
   setTokenGetter(getter: () => Promise<string | null>) {
     this.tokenGetter = getter

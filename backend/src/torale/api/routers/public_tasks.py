@@ -181,7 +181,5 @@ async def get_public_task_by_id(
     This is a fallback for sharing direct task IDs instead of vanity URLs.
     """
     # This is identical to GET /api/v1/tasks/{task_id} but under /public prefix
-    # Import and delegate to the existing endpoint logic
-    from torale.api.routers.tasks import get_task
-
+    # Delegate to the existing endpoint logic (imported at top of file)
     return await get_task(task_id, user, db)
