@@ -1,6 +1,6 @@
 """Slug generation utilities for shareable tasks."""
 
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from slugify import slugify
 
@@ -51,6 +51,4 @@ async def generate_unique_slug(name: str, user_id: UUID, db: Database) -> str:
         # Safety check to prevent infinite loop (shouldn't happen in practice)
         if counter > 1000:
             # Fallback to UUID-based slug
-            import uuid
-
-            return f"{base_slug}-{uuid.uuid4().hex[:8]}"
+            return f"{base_slug}-{uuid4().hex[:8]}"

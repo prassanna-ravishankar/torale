@@ -131,11 +131,11 @@ export function Explore() {
                         <Users className="h-4 w-4" />
                         <span>{task.subscriber_count}</span>
                       </div>
-                      {task.slug && (
+                      {task.slug && task.creator_username && (
                         <div className="flex items-center gap-1.5 ml-auto">
                           <Copy className="h-4 w-4" />
                           <span className="font-mono text-xs truncate max-w-[200px]">
-                            @{task.slug.split('/')[0]}/{task.slug.split('/').slice(1).join('/')}
+                            @{task.creator_username}/{task.slug}
                           </span>
                         </div>
                       )}

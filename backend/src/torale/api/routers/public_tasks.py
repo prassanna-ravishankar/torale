@@ -8,6 +8,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from torale.api.auth import OptionalUser
+from torale.api.routers.tasks import get_task
 from torale.api.utils.task_parsers import parse_task_with_execution
 from torale.core.database import Database, get_db
 from torale.core.models import Task

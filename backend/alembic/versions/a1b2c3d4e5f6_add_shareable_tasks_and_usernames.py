@@ -66,8 +66,8 @@ def upgrade() -> None:
     """)
 
     # Insert reserved usernames
-    # NOTE: This list must be kept in sync with RESERVED_USERNAMES in
-    # src/torale/utils/username.py
+    # NOTE: The application's username validation logic relies on this table
+    # being populated with all reserved names.
     op.execute("""
         INSERT INTO reserved_usernames (username) VALUES
             ('admin'),

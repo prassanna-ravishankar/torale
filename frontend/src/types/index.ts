@@ -55,6 +55,7 @@ export interface Task {
   view_count: number;
   subscriber_count: number;
   forked_from_task_id: string | null;
+  creator_username: string | null;
 }
 
 /**
