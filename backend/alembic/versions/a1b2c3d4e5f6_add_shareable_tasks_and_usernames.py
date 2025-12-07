@@ -65,9 +65,10 @@ def upgrade() -> None:
         )
     """)
 
-    # Insert reserved usernames
-    # NOTE: The application's username validation logic relies on this table
-    # being populated with all reserved names.
+    # Insert reserved usernames (initial seed data)
+    # NOTE: The database is the single source of truth for reserved usernames.
+    # The application's username validation queries this table directly - no sync needed.
+    # To add/remove reserved names in the future, simply INSERT/DELETE from this table.
     op.execute("""
         INSERT INTO reserved_usernames (username) VALUES
             ('admin'),
