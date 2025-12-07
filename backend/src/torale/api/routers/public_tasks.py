@@ -55,11 +55,13 @@ async def list_public_tasks(
     total = count_row["total"] if count_row else 0
 
     # Build query with dynamic ORDER BY clause (validated by FastAPI enum)
-    order_clause = (
-        "ORDER BY t.view_count DESC, t.created_at DESC"
-        if sort_by == "popular"
-        else "ORDER BY t.created_at DESC"
-    )
+    # Use dictionary mapping to prevent any possibility of SQL injection
+    order_clauses = {
+        "popular": "ORDER BY t.view_count DESC, t.created_at DESC",
+        "recent": "ORDER BY t.created_at DESC",
+    }
+    order_clause = order_clauses[sort_by]
+
     tasks_query = f"""
         SELECT t.*,
                u.username as creator_username,
