@@ -9,7 +9,7 @@ echo ""
 # Configuration
 PROJECT_ID="${GCP_PROJECT_ID:-baldmaninc}"
 REGION="${CLOUD_RUN_REGION:-us-central1}"
-INSTANCE_NAME="torale-db"
+INSTANCE_NAME="clusterkit-db"
 DATABASE_NAME="torale"
 DB_USER="torale"
 SA_NAME="cloudsql-proxy"
