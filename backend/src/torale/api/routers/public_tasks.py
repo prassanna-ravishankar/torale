@@ -94,7 +94,7 @@ async def list_public_tasks(
     )
 
 
-@router.get("/tasks/@{username}/{slug}", response_model=Task)
+@router.get("/tasks/{username}/{slug}", response_model=Task)
 @limiter.limit("20/minute")
 async def get_public_task_by_vanity_url(
     request: Request,
@@ -104,10 +104,10 @@ async def get_public_task_by_vanity_url(
     db: Database = Depends(get_db),
 ):
     """
-    Get a task by vanity URL: @username/slug (NO AUTH REQUIRED).
+    Get a task by vanity URL: username/slug (NO AUTH REQUIRED).
 
     This endpoint allows accessing tasks via pretty URLs like:
-    /public/tasks/@alice/iphone-release-tracker
+    /public/tasks/alice/iphone-release-tracker
     """
     # Find user by username
     user_query = "SELECT id FROM users WHERE username = $1"

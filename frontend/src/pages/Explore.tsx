@@ -135,7 +135,7 @@ export function Explore() {
                         <div className="flex items-center gap-1.5 ml-auto">
                           <Copy className="h-4 w-4" />
                           <span className="font-mono text-xs truncate max-w-[200px]">
-                            @{task.creator_username}/{task.slug}
+                            /t/{task.creator_username}/{task.slug}
                           </span>
                         </div>
                       )}

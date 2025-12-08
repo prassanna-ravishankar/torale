@@ -185,7 +185,7 @@ export default function App() {
           }
         />
         <Route
-          path="/@:username/:slug"
+          path="/t/:username/:slug"
           element={
             <OptionalAuthRoute>
               <VanityTaskRedirect />

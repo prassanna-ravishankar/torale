@@ -509,7 +509,7 @@ class ApiClient {
   }
 
   async getPublicTaskByVanityUrl(username: string, slug: string): Promise<Task> {
-    const response = await fetch(`${this.baseUrl}/api/v1/public/tasks/@${username}/${slug}`)
+    const response = await fetch(`${this.baseUrl}/api/v1/public/tasks/${username}/${slug}`)
     return this.handleResponse(response)
   }
 

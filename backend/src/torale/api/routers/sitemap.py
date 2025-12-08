@@ -54,7 +54,7 @@ async def generate_sitemap(db: Database = Depends(get_db)):
 
     # Public task pages
     for task in tasks:
-        task_url = f"{base_url}/@{task['username']}/{task['slug']}"
+        task_url = f"{base_url}/t/{task['username']}/{task['slug']}"
         lastmod = task["updated_at"].strftime("%Y-%m-%d")
 
         url_elem = ET.SubElement(urlset, "url")

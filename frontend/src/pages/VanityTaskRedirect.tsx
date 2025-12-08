@@ -53,7 +53,7 @@ export function VanityTaskRedirect() {
   const ogImage = `${api.getBaseUrl()}/api/v1/og/tasks/${task.id}.jpg`;
 
   // For ogUrl, use the frontend URL (not API URL)
-  const ogUrl = `${window.location.origin}/@${username}/${slug}`;
+  const ogUrl = `${window.location.origin}/t/${username}/${slug}`;
   const ogTitle = `${task.name} - Torale`;
   const ogDescription = task.condition_description || 'Monitor the web with AI';
 

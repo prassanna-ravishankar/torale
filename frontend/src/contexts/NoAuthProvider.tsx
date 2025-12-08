@@ -5,8 +5,11 @@ interface NoAuthProviderProps {
   children: ReactNode
 }
 
+// Must match backend NOAUTH_TEST_USER_ID in clerk_auth.py
+const NOAUTH_TEST_USER_ID = '00000000-0000-0000-0000-000000000001'
+
 const MOCK_USER: User = {
-  id: 'dev-user-id',
+  id: NOAUTH_TEST_USER_ID,
   email: 'dev@torale.local',
   firstName: 'Dev',
   lastName: 'User',

@@ -1,8 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useDebounce } from 'use-debounce'
-import { X, Check, AlertCircle, Loader2 } from 'lucide-react'
+import { Check, AlertCircle, Loader2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
 interface UsernamePickerModalProps {
   isOpen: boolean
@@ -20,6 +29,14 @@ export function UsernamePickerModal({ isOpen, onClose, onSuccess }: UsernamePick
     available: boolean
     error: string | null
   } | null>(null)
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setUsername('')
+      setAvailability(null)
+    }
+  }, [isOpen])
 
   // Check username availability when debounced value changes
   useEffect(() => {
@@ -69,109 +86,110 @@ export function UsernamePickerModal({ isOpen, onClose, onSuccess }: UsernamePick
     }
   }
 
-  if (!isOpen) return null
-
   const canSubmit = availability?.available && !isChecking && !isSubmitting
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 m-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-slate-900">Choose Your Username</h2>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition-colors"
-            disabled={isSubmitting}
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md border-2 border-zinc-900 shadow-brutalist rounded-none p-0">
+        <DialogHeader className="p-6 pb-4 border-b-2 border-zinc-200">
+          <DialogTitle className="text-xl font-bold font-grotesk text-zinc-900">
+            Choose Your Username
+          </DialogTitle>
+          <DialogDescription className="text-zinc-600">
+            You need a username to share tasks publicly. This will be part of your task URLs:{' '}
+            <code className="text-sm bg-zinc-100 border border-zinc-200 px-1.5 py-0.5 font-mono">
+              torale.ai/t/{username || 'username'}/task-name
+            </code>
+          </DialogDescription>
+        </DialogHeader>
 
-        <p className="text-slate-600 mb-6">
-          You need a username to share tasks publicly. This will be part of your task URLs:{' '}
-          <code className="text-sm bg-slate-100 px-1 py-0.5 rounded">
-            torale.ai/@{username || 'username'}/task-name
-          </code>
-        </p>
-
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="p-6 pt-4">
           <div className="mb-4">
-            <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-2">
+            <label htmlFor="username-input" className="block text-sm font-medium text-zinc-700 mb-2">
               Username
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="text-slate-500">@</span>
+                <span className="text-zinc-500 font-mono">@</span>
               </div>
               <input
-                id="username"
+                id="username-input"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value.toLowerCase())}
-                className="w-full pl-8 pr-10 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full pl-8 pr-10 py-2.5 border-2 border-zinc-300 bg-white focus:outline-none focus:border-zinc-900 focus:ring-0 font-mono transition-colors"
                 placeholder="yourname"
                 pattern="[a-z][a-z0-9_-]*"
                 minLength={3}
                 maxLength={30}
                 required
                 disabled={isSubmitting}
+                autoFocus
               />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                {isChecking && <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />}
+                {isChecking && <Loader2 className="w-5 h-5 text-zinc-400 animate-spin" />}
                 {!isChecking && availability?.available && (
-                  <Check className="w-5 h-5 text-green-500" />
+                  <Check className="w-5 h-5 text-green-600" />
                 )}
                 {!isChecking && availability && !availability.available && (
-                  <AlertCircle className="w-5 h-5 text-red-500" />
+                  <AlertCircle className="w-5 h-5 text-red-600" />
                 )}
               </div>
             </div>
 
             {/* Validation feedback */}
             {username.length > 0 && username.length < 3 && (
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-zinc-500">
                 Username must be at least 3 characters
               </p>
             )}
             {availability && !availability.available && availability.error && (
-              <p className="mt-2 text-sm text-red-600">{availability.error}</p>
+              <p className="mt-2 text-sm text-red-600 font-medium">{availability.error}</p>
             )}
             {availability?.available && (
-              <p className="mt-2 text-sm text-green-600">Username is available!</p>
+              <p className="mt-2 text-sm text-green-600 font-medium">Username is available!</p>
             )}
           </div>
 
-          <div className="mb-6 p-3 bg-slate-50 rounded-md">
-            <p className="text-sm text-slate-600">
-              <strong>Requirements:</strong>
-            </p>
-            <ul className="text-sm text-slate-600 mt-2 space-y-1 ml-4">
-              <li>• 3-30 characters</li>
-              <li>• Start with a letter</li>
-              <li>• Only lowercase letters, numbers, hyphens, and underscores</li>
+          <div className="mb-6 p-4 bg-zinc-50 border-2 border-zinc-200">
+            <p className="text-sm font-medium text-zinc-700 mb-2">Requirements:</p>
+            <ul className="text-sm text-zinc-600 space-y-1">
+              <li className="flex items-center gap-2">
+                <span className="w-1 h-1 bg-zinc-400 rounded-full"></span>
+                3-30 characters
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1 h-1 bg-zinc-400 rounded-full"></span>
+                Start with a letter
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1 h-1 bg-zinc-400 rounded-full"></span>
+                Only lowercase letters, numbers, hyphens, and underscores
+              </li>
             </ul>
           </div>
 
-          <div className="flex gap-3">
-            <button
+          <DialogFooter className="gap-3 sm:gap-3">
+            <Button
               type="button"
+              variant="outline"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition-colors"
               disabled={isSubmitting}
+              className="flex-1 border-2 border-zinc-300 hover:border-zinc-900 rounded-none"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={!canSubmit}
-              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 bg-zinc-900 text-white border-2 border-zinc-900 hover:bg-zinc-800 rounded-none"
             >
-              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
               {isSubmitting ? 'Setting...' : 'Set Username'}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

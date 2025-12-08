@@ -194,7 +194,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       setIsPublic(result.is_public);
 
       if (result.is_public && result.slug) {
-        const vanityUrl = `${window.location.origin}/@${user?.username}/${result.slug}`;
+        const vanityUrl = `${window.location.origin}/t/${user?.username}/${result.slug}`;
         toast.success(`Task is now public: ${vanityUrl}`);
       } else {
         toast.success('Task is now private');
@@ -219,7 +219,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
         setIsPublic(result.is_public);
 
         if (result.is_public && result.slug) {
-          const vanityUrl = `${window.location.origin}/@${username}/${result.slug}`;
+          const vanityUrl = `${window.location.origin}/t/${username}/${result.slug}`;
           toast.success(`Task is now public: ${vanityUrl}`);
         }
 
@@ -235,7 +235,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
 
   const copyVanityUrl = () => {
     if (task?.slug && user?.username) {
-      const vanityUrl = `${window.location.origin}/@${user.username}/${task.slug}`;
+      const vanityUrl = `${window.location.origin}/t/${user.username}/${task.slug}`;
       navigator.clipboard.writeText(vanityUrl);
       toast.success('Link copied to clipboard!');
     }
@@ -580,7 +580,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
                   <Label className="text-xs text-zinc-500">Public Link</Label>
                   <div className="flex gap-2">
                     <Input
-                      value={`${window.location.origin}/@${user.username}/${task.slug}`}
+                      value={`${window.location.origin}/t/${user.username}/${task.slug}`}
                       readOnly
                       className="font-mono text-sm bg-background"
                     />
