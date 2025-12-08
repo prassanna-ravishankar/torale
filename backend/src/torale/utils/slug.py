@@ -14,6 +14,9 @@ async def generate_unique_slug(name: str, user_id: UUID, db: Database) -> str:
     Slugs are unique per user (not globally). If a collision occurs,
     appends -2, -3, etc. until a unique slug is found.
 
+    Optimized to fetch all matching slugs in a single query instead of
+    multiple database round-trips.
+
     Args:
         name: Task name to slugify
         user_id: User ID who owns the task
@@ -29,26 +32,23 @@ async def generate_unique_slug(name: str, user_id: UUID, db: Database) -> str:
     if not base_slug:
         base_slug = "task"
 
+    # Fetch all existing slugs that start with the base slug for this user in one query
+    query = "SELECT slug FROM tasks WHERE user_id = $1 AND slug LIKE $2"
+    existing_slugs_rows = await db.fetch_all(query, user_id, f"{base_slug}%")
+    existing_slugs = {row["slug"] for row in existing_slugs_rows}
+
+    # Find a unique slug in memory (avoids multiple DB round-trips)
     slug = base_slug
+    if slug not in existing_slugs:
+        return slug
+
+    # Base slug exists, try numbered suffixes
     counter = 2
-
-    # Keep trying until we find a unique slug for this user
-    while True:
-        # Check if slug exists for this user
-        result = await db.fetch_one(
-            "SELECT id FROM tasks WHERE user_id = $1 AND slug = $2",
-            user_id,
-            slug,
-        )
-
-        if not result:
-            return slug
-
-        # Collision detected, try next number
+    while counter <= 1000:
         slug = f"{base_slug}-{counter}"
+        if slug not in existing_slugs:
+            return slug
         counter += 1
 
-        # Safety check to prevent infinite loop (shouldn't happen in practice)
-        if counter > 1000:
-            # Fallback to UUID-based slug
-            return f"{base_slug}-{uuid4().hex[:8]}"
+    # Safety fallback if counter exceeds 1000 (shouldn't happen in practice)
+    return f"{base_slug}-{uuid4().hex[:8]}"

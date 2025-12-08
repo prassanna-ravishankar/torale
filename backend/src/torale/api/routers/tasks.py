@@ -799,7 +799,7 @@ async def fork_task(
         notification_channels = source["notification_channels"]
     else:
         # Scrub sensitive fields when forking someone else's task
-        notifications = []  # Reset notifications list
+        notifications = json.dumps([])  # Reset notifications list (JSON string for consistency)
         notification_email = None
         webhook_url = None
         webhook_secret = None
