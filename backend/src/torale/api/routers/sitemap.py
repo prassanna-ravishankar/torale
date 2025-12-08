@@ -87,7 +87,7 @@ async def robots_txt():
     robots = f"""User-agent: *
 Allow: /
 Allow: /explore
-Allow: /@
+Allow: /t/
 
 Disallow: /api/
 Disallow: /auth/

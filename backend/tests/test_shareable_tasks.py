@@ -1,5 +1,6 @@
 """Tests for shareable tasks functionality."""
 
+import json
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -588,46 +589,70 @@ class TestTaskForking:
     @pytest.mark.asyncio
     async def test_fork_uses_default_name(self, mock_user, mock_db):
         """Test forking without custom name uses default."""
+        from datetime import UTC, datetime
+
         source_task_id = uuid4()
         other_user_id = uuid4()
         request = ForkTaskRequest()  # No custom name
+        now = datetime.now(UTC)
 
-        mock_db.fetch_one.side_effect = [
-            {
-                "id": source_task_id,
-                "user_id": other_user_id,
-                "name": "Original Task",
-                "is_public": True,
-                "schedule": "0 9 * * *",
-                "executor_type": "llm_grounded_search",
-                "config": "{}",
-                "search_query": "test",
-                "condition_description": "test",
-                "notify_behavior": "always",
-                "notifications": "[]",
-                "notification_channels": [],
-                "notification_email": None,
-                "webhook_url": None,
-                "webhook_secret": None,
-            },
-            {
-                "id": uuid4(),
-                "name": "Original Task (Copy)",
-                "config": "{}",
-                "notifications": "[]",
-            },
-        ]
+        # Mock source task query
+        mock_db.fetch_one.return_value = {
+            "id": source_task_id,
+            "user_id": other_user_id,
+            "name": "Original Task",
+            "is_public": True,
+            "schedule": "0 9 * * *",
+            "executor_type": "llm_grounded_search",
+            "config": "{}",
+            "search_query": "test",
+            "condition_description": "test",
+            "notify_behavior": "always",
+            "notifications": "[]",
+            "notification_channels": [],
+            "notification_email": None,
+            "webhook_url": None,
+            "webhook_secret": None,
+        }
 
-        # Will fail due to parse_task_row, but verify the INSERT was attempted
-        # with the default name pattern
-        try:
-            await fork_task(source_task_id, request, mock_user, mock_db)
-        except Exception:
-            pass
+        # Mock forked task returned from INSERT
+        mock_conn = await mock_db.acquire().__aenter__()
+        mock_conn.fetchrow.return_value = {
+            "id": uuid4(),
+            "user_id": mock_user.id,
+            "name": "Original Task (Copy)",
+            "config": "{}",
+            "notifications": "[]",
+            "schedule": "0 9 * * *",
+            "executor_type": "llm_grounded_search",
+            "state": "paused",
+            "search_query": "test",
+            "condition_description": "test",
+            "notify_behavior": "always",
+            "notification_channels": [],
+            "notification_email": None,
+            "webhook_url": None,
+            "webhook_secret": None,
+            "is_public": False,
+            "slug": None,
+            "view_count": 0,
+            "subscriber_count": 0,
+            "forked_from_task_id": source_task_id,
+            "created_at": now,
+            "updated_at": now,
+            "state_changed_at": now,
+            "last_execution_id": None,
+            "last_known_state": None,
+        }
+
+        result = await fork_task(source_task_id, request, mock_user, mock_db)
+
+        assert result.name == "Original Task (Copy)"
 
         # Verify the INSERT call includes the default name
-        insert_call = [call for call in mock_db.fetch_one.call_args_list if call]
-        assert len(insert_call) > 0
+        mock_conn.fetchrow.assert_called_once()
+        insert_args = mock_conn.fetchrow.call_args[0]
+        assert insert_args[2] == "Original Task (Copy)"
 
     @pytest.mark.asyncio
     async def test_fork_scrubs_sensitive_fields(self, mock_user, mock_db):
@@ -699,10 +724,13 @@ class TestTaskForking:
         insert_call = mock_conn.fetchrow.call_args_list[0]
         insert_args = insert_call[0]  # Positional args
 
-        # Args order: query_string(0), user_id(1), name(2), schedule(3), executor_type(4), config(5), state(6),
-        #             search_query(7), condition_description(8), notify_behavior(9), notifications(10),
-        #             notification_channels(11), notification_email(12), webhook_url(13), webhook_secret(14)
-        assert insert_args[10] == "[]"  # notifications should be JSON string
+        # The first arg is the query string. The subsequent args are the values.
+        # Positional args to fetchrow after query: user_id(1), name(2), schedule(3), executor_type(4),
+        # config(5), state(6), search_query(7), condition_description(8), notify_behavior(9),
+        # notifications(10), notification_channels(11), notification_email(12), webhook_url(13), webhook_secret(14)
+        assert insert_args[10] == json.dumps(
+            []
+        )  # notifications should be an empty JSON array string
         assert insert_args[11] == []  # notification_channels should be empty list
         assert insert_args[12] is None  # notification_email should be None
         assert insert_args[13] is None  # webhook_url should be None
