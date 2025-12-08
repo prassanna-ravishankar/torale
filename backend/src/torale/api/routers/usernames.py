@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from torale.api.auth import CurrentUserOrTestUser
+from torale.api.auth import CurrentUserOrTestUser, OptionalUser
 from torale.core.database import Database, get_db
 from torale.utils.username import check_username_available, validate_username
 
@@ -33,10 +33,14 @@ class SetUsernameResponse(BaseModel):
 @router.get("/username/available", response_model=UsernameAvailabilityResponse)
 async def check_username_availability(
     username: str = Query(..., min_length=3, max_length=30),
+    user: OptionalUser,
     db: Database = Depends(get_db),
 ):
     """
     Check if a username is available (NO AUTH REQUIRED for public check).
+
+    If authenticated, excludes the current user's username from the check,
+    allowing them to keep their existing username.
 
     Args:
         username: The username to check
@@ -49,8 +53,9 @@ async def check_username_availability(
     if not is_valid:
         return UsernameAvailabilityResponse(available=False, error=error)
 
-    # Check availability in database
-    available = await check_username_available(username, db)
+    # Check availability in database, excluding current user if authenticated
+    exclude_user_id = user.id if user else None
+    available = await check_username_available(username, db, exclude_user_id=exclude_user_id)
 
     return UsernameAvailabilityResponse(available=available)
 
