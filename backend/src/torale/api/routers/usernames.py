@@ -32,8 +32,8 @@ class SetUsernameResponse(BaseModel):
 
 @router.get("/username/available", response_model=UsernameAvailabilityResponse)
 async def check_username_availability(
-    username: str = Query(..., min_length=3, max_length=30),
     user: OptionalUser,
+    username: str = Query(..., min_length=3, max_length=30),
     db: Database = Depends(get_db),
 ):
     """
