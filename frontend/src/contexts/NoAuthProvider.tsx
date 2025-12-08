@@ -25,9 +25,9 @@ export const NoAuthProvider: React.FC<NoAuthProviderProps> = ({ children }) => {
       setUser({
         id: backendUser.id,
         email: backendUser.email,
-        firstName: backendUser.firstName,
-        lastName: backendUser.lastName,
-        username: backendUser.username,
+        firstName: 'Dev',
+        lastName: 'User',
+        username: backendUser.username || undefined,
       })
     } catch (error) {
       console.error('Failed to sync user in noauth mode:', error)

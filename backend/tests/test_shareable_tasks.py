@@ -171,7 +171,7 @@ class TestUsernameEndpoints:
         # Second call: availability check (None = available)
         mock_db.fetch_one.side_effect = [None, None]
 
-        result = await check_username_availability("newuser", mock_db)
+        result = await check_username_availability(None, "newuser", mock_db)
 
         assert result.available is True
         assert result.error is None
@@ -179,7 +179,7 @@ class TestUsernameEndpoints:
     @pytest.mark.asyncio
     async def test_check_availability_invalid_format(self, mock_db):
         """Test availability check with invalid username format."""
-        result = await check_username_availability("ab", mock_db)
+        result = await check_username_availability(None, "ab", mock_db)
 
         assert result.available is False
         assert "at least 3 characters" in result.error
@@ -231,7 +231,7 @@ class TestSlugGeneration:
     @pytest.mark.asyncio
     async def test_generate_unique_slug_simple(self, mock_db):
         """Test generating slug from task name."""
-        mock_db.fetch_one.return_value = None  # No collision
+        mock_db.fetch_all.return_value = []  # No existing slugs
 
         slug = await generate_unique_slug("My Cool Task", uuid4(), mock_db)
 
@@ -242,11 +242,8 @@ class TestSlugGeneration:
         """Test slug generation with collision handling."""
         user_id = uuid4()
 
-        # First call returns existing task, second returns None
-        mock_db.fetch_one.side_effect = [
-            {"id": uuid4()},  # First slug exists
-            None,  # Second slug (with -2) is available
-        ]
+        # Return existing slug "my-task", so next available is "my-task-2"
+        mock_db.fetch_all.return_value = [{"slug": "my-task"}]
 
         slug = await generate_unique_slug("My Task", user_id, mock_db)
 
@@ -255,7 +252,7 @@ class TestSlugGeneration:
     @pytest.mark.asyncio
     async def test_generate_slug_from_special_characters(self, mock_db):
         """Test slug generation with special characters."""
-        mock_db.fetch_one.return_value = None
+        mock_db.fetch_all.return_value = []  # No existing slugs
 
         slug = await generate_unique_slug("Task: #1 @home!", uuid4(), mock_db)
 
@@ -705,7 +702,7 @@ class TestTaskForking:
         # Args order: query_string(0), user_id(1), name(2), schedule(3), executor_type(4), config(5), state(6),
         #             search_query(7), condition_description(8), notify_behavior(9), notifications(10),
         #             notification_channels(11), notification_email(12), webhook_url(13), webhook_secret(14)
-        assert insert_args[10] == []  # notifications should be empty list
+        assert insert_args[10] == "[]"  # notifications should be JSON string
         assert insert_args[11] == []  # notification_channels should be empty list
         assert insert_args[12] is None  # notification_email should be None
         assert insert_args[13] is None  # webhook_url should be None

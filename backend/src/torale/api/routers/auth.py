@@ -11,7 +11,12 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from torale.api.clerk_auth import ClerkUser, get_current_user, get_current_user_or_test_user, require_developer
+from torale.api.clerk_auth import (
+    ClerkUser,
+    get_current_user,
+    get_current_user_or_test_user,
+    require_developer,
+)
 from torale.api.users import User, UserRead, get_async_session
 
 router = APIRouter()
