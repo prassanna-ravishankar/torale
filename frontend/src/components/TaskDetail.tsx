@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
+import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import type { Task, TaskExecution } from '@/types'
 import api from '@/lib/api'
 import { toast } from 'sonner'
@@ -51,6 +51,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   onDeleted,
   currentUserId,
 }) => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isJustCreated = searchParams.get('justCreated') === 'true';
   const tabFromUrl = searchParams.get('tab') as 'executions' | 'notifications' | 'changes' | null;
@@ -168,8 +169,8 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
     try {
       const forkedTask = await api.forkTask(taskId);
       toast.success('Task copied to your dashboard!');
-      // Redirect to the new task
-      window.location.href = `/dashboard?task=${forkedTask.id}`;
+      // Redirect to the new task's detail page for a smoother SPA experience
+      navigate(`/tasks/${forkedTask.id}?justCreated=true`);
     } catch (error) {
       console.error("Failed to fork task:", error);
       toast.error('Failed to copy task');

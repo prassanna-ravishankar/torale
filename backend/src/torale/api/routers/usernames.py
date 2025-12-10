@@ -1,5 +1,6 @@
 """Username management API endpoints."""
 
+from asyncpg.exceptions import UniqueViolationError
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
@@ -96,11 +97,18 @@ async def set_username(
             detail="Username already taken",
         )
 
-    # Update username in database
-    await db.execute(
-        "UPDATE users SET username = $1, updated_at = NOW() WHERE id = $2",
-        username,
-        user.id,
-    )
+    # Update username in database with race condition handling
+    try:
+        await db.execute(
+            "UPDATE users SET username = $1, updated_at = NOW() WHERE id = $2",
+            username,
+            user.id,
+        )
+    except UniqueViolationError:
+        # Handle race condition where username was taken between check and update
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already taken",
+        ) from None
 
     return SetUsernameResponse(username=username, updated=True)

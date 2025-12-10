@@ -13,7 +13,7 @@ interface ClerkAuthProviderProps {
  * Reduces duplication between initial fetch, fallback, and sync operations.
  */
 const createUserFromData = (
-  backendData: { id: string; email: string; username: string | null },
+  backendData: { id: string | null; email: string; username: string | null },
   clerkUser: any
 ): User => ({
   id: backendData.id,
@@ -43,9 +43,10 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
         setBackendUser(createUserFromData(userData, clerkUser))
       } catch (error) {
         console.error('Failed to fetch user from backend:', error)
-        // Fallback to Clerk user data without username
+        // Fallback to Clerk user data without database UUID
+        // Set id to null to ensure ownership checks fail safely
         setBackendUser(createUserFromData({
-          id: clerkUser.id,
+          id: null,
           email: clerkUser.primaryEmailAddress?.emailAddress || '',
           username: null,
         }, clerkUser))
