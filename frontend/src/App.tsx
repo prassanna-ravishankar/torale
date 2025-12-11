@@ -209,11 +209,11 @@ export default function App() {
         <Route
           path="/tasks/:taskId"
           element={
-            <ProtectedRoute>
+            <OptionalAuthRoute>
               <AppLayout>
                 <TaskDetailRoute onBack={handleBackToDashboard} onDeleted={handleBackToDashboard} />
               </AppLayout>
-            </ProtectedRoute>
+            </OptionalAuthRoute>
           }
         />
         <Route

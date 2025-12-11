@@ -1116,17 +1116,27 @@ async def execute_task(
 
 @router.get("/{task_id}/executions", response_model=list[TaskExecution])
 async def get_task_executions(
-    task_id: UUID, user: CurrentUser, limit: int = 100, db: Database = Depends(get_db)
+    task_id: UUID, user: OptionalUser, limit: int = 100, db: Database = Depends(get_db)
 ):
-    # Verify task belongs to user
+    # Verify task exists and check permissions
     task_query = """
-        SELECT id FROM tasks
-        WHERE id = $1 AND user_id = $2
+        SELECT id, user_id, is_public FROM tasks
+        WHERE id = $1
     """
 
-    task = await db.fetch_one(task_query, task_id, user.id)
+    task = await db.fetch_one(task_query, task_id)
 
     if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    # Check permissions: owner has access, others only if public
+    is_owner = user is not None and task["user_id"] == user.id
+    is_public = task["is_public"]
+
+    if not is_owner and not is_public:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",
@@ -1148,21 +1158,31 @@ async def get_task_executions(
 
 @router.get("/{task_id}/notifications", response_model=list[TaskExecution])
 async def get_task_notifications(
-    task_id: UUID, user: CurrentUser, limit: int = 100, db: Database = Depends(get_db)
+    task_id: UUID, user: OptionalUser, limit: int = 100, db: Database = Depends(get_db)
 ):
     """
     Get task executions where the condition was met (notifications).
     This filters executions to only show when the monitoring condition triggered.
     """
-    # Verify task belongs to user
+    # Verify task exists and check permissions
     task_query = """
-        SELECT id FROM tasks
-        WHERE id = $1 AND user_id = $2
+        SELECT id, user_id, is_public FROM tasks
+        WHERE id = $1
     """
 
-    task = await db.fetch_one(task_query, task_id, user.id)
+    task = await db.fetch_one(task_query, task_id)
 
     if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    # Check permissions: owner has access, others only if public
+    is_owner = user is not None and task["user_id"] == user.id
+    is_public = task["is_public"]
+
+    if not is_owner and not is_public:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",

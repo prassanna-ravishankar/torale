@@ -88,7 +88,7 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
         await signOut()
       },
     }),
-    [clerkIsLoaded, userId, user, clerkGetToken, signOut, clerkUser]
+    [clerkIsLoaded, userId, clerkGetToken, signOut, clerkUser]
   )
 
   return <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>

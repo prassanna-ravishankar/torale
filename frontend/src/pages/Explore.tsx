@@ -135,12 +135,21 @@ export function Explore() {
                     {task.name}
                   </h3>
                   {task.slug && task.creator_username && (
-                    <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-400">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const vanityUrl = `${window.location.origin}/t/${task.creator_username}/${task.slug}`;
+                        navigator.clipboard.writeText(vanityUrl);
+                        toast.success('Vanity URL copied to clipboard');
+                      }}
+                      className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-400 hover:text-zinc-900 transition-colors"
+                      title="Copy vanity URL"
+                    >
                       <Copy className="h-3 w-3" />
                       <span className="truncate">
                         /t/{task.creator_username}/{task.slug}
                       </span>
-                    </div>
+                    </button>
                   )}
                 </div>
 

@@ -45,7 +45,7 @@ export const NoAuthProvider: React.FC<NoAuthProviderProps> = ({ children }) => {
         console.log('Sign out called in no-auth mode (no-op)')
       },
     }),
-    [user, syncUser]
+    [syncUser]
   )
 
   return <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>
