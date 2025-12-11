@@ -3,8 +3,9 @@ import { ClerkAuthProvider } from './ClerkAuthProvider'
 import { NoAuthProvider } from './NoAuthProvider'
 
 export interface User {
-  id: string
+  id: string | null // Nullable to handle cases where backend UUID is unavailable
   email: string
+  username?: string | null
   firstName?: string
   lastName?: string
   imageUrl?: string

@@ -4,13 +4,19 @@ import secrets
 from uuid import UUID
 
 import grpc
+from asyncpg.exceptions import UniqueViolationError
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from temporalio.client import Client
 from temporalio.service import RPCError
 
-from torale.api.auth import CurrentUserOrTestUser
+from torale.api.auth import CurrentUserOrTestUser, OptionalUser
 from torale.api.dependencies import get_genai_client
+from torale.api.utils.task_parsers import (
+    parse_execution_row,
+    parse_task_row,
+    parse_task_with_execution,
+)
 from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.core.models import (
@@ -26,6 +32,7 @@ from torale.core.models import (
 from torale.core.task_state import TaskStateManager
 from torale.core.task_state_machine import InvalidTransitionError, TaskStateMachine
 from torale.notifications import NotificationValidationError, validate_notification
+from torale.utils.slug import generate_unique_slug
 from torale.workers.workflows import TaskExecutionWorkflow
 
 logger = logging.getLogger(__name__)
@@ -109,25 +116,6 @@ async def _validate_and_extract_notifications(
     return validated_notifications, extracted
 
 
-def parse_task_row(row) -> dict:
-    """Parse a task row from the database, converting JSON strings to dicts"""
-    task_dict = dict(row)
-    # Parse config if it's a string
-    if isinstance(task_dict.get("config"), str):
-        task_dict["config"] = json.loads(task_dict["config"])
-    # Parse last_known_state if it's a string
-    if isinstance(task_dict.get("last_known_state"), str):
-        task_dict["last_known_state"] = (
-            json.loads(task_dict["last_known_state"]) if task_dict["last_known_state"] else None
-        )
-    # Parse notifications if it's a string
-    if isinstance(task_dict.get("notifications"), str):
-        task_dict["notifications"] = (
-            json.loads(task_dict["notifications"]) if task_dict["notifications"] else []
-        )
-    return task_dict
-
-
 async def get_temporal_client() -> Client:
     """Get a Temporal client with proper authentication for Temporal Cloud or local dev."""
     if settings.temporal_api_key:
@@ -142,62 +130,6 @@ async def get_temporal_client() -> Client:
             settings.temporal_host,
             namespace=settings.temporal_namespace,
         )
-
-
-def parse_execution_row(row) -> dict:
-    """Parse an execution row from the database, converting JSON strings to dicts"""
-    exec_dict = dict(row)
-    # Parse result if it's a string
-    if isinstance(exec_dict.get("result"), str):
-        exec_dict["result"] = json.loads(exec_dict["result"]) if exec_dict["result"] else None
-    # Parse grounding_sources if it's a string
-    if isinstance(exec_dict.get("grounding_sources"), str):
-        exec_dict["grounding_sources"] = (
-            json.loads(exec_dict["grounding_sources"]) if exec_dict["grounding_sources"] else None
-        )
-    return exec_dict
-
-
-def _parse_task_with_execution(row) -> Task:
-    """
-    Parse a task row with embedded execution data from LEFT JOIN query.
-
-    This helper extracts duplicate logic from list_tasks and get_task endpoints.
-    Expects row from query that joins tasks with task_executions, using aliases:
-    - exec_id, exec_condition_met, exec_started_at, etc.
-
-    Args:
-        row: Database row with task fields and optional execution fields (prefixed with exec_)
-
-    Returns:
-        Task object with embedded last_execution if execution data exists
-    """
-    task_dict = parse_task_row(row)
-
-    # Embed execution if exists
-    if row["exec_id"]:
-        # Parse JSONB fields - asyncpg may return them as dicts or strings depending on context
-        exec_result = row["exec_result"]
-        if isinstance(exec_result, str):
-            exec_result = json.loads(exec_result) if exec_result else None
-
-        exec_sources = row["exec_grounding_sources"]
-        if isinstance(exec_sources, str):
-            exec_sources = json.loads(exec_sources) if exec_sources else None
-
-        task_dict["last_execution"] = {
-            "id": row["exec_id"],
-            "task_id": task_dict["id"],
-            "condition_met": row["exec_condition_met"],
-            "started_at": row["exec_started_at"],
-            "completed_at": row["exec_completed_at"],
-            "status": row["exec_status"],
-            "result": exec_result,
-            "change_summary": row["exec_change_summary"],
-            "grounding_sources": exec_sources,
-        }
-
-    return Task(**task_dict)
 
 
 @router.post("/", response_model=Task)
@@ -290,6 +222,7 @@ async def list_tasks(
     # Embed latest execution via LEFT JOIN for efficient status calculation
     base_query = """
         SELECT t.*,
+               u.username as creator_username,
                e.id as exec_id,
                e.condition_met as exec_condition_met,
                e.started_at as exec_started_at,
@@ -299,6 +232,7 @@ async def list_tasks(
                e.change_summary as exec_change_summary,
                e.grounding_sources as exec_grounding_sources
         FROM tasks t
+        INNER JOIN users u ON t.user_id = u.id
         LEFT JOIN task_executions e ON t.last_execution_id = e.id
         WHERE t.user_id = $1
     """
@@ -310,7 +244,7 @@ async def list_tasks(
         query = base_query + " ORDER BY t.created_at DESC"
         rows = await db.fetch_all(query, user.id)
 
-    return [_parse_task_with_execution(row) for row in rows]
+    return [parse_task_with_execution(row) for row in rows]
 
 
 class PreviewSearchRequest(BaseModel):
@@ -646,10 +580,18 @@ Examples:
 
 
 @router.get("/{task_id}", response_model=Task)
-async def get_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
+async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get_db)):
+    """
+    Get a task by ID. Supports both authenticated and unauthenticated access.
+
+    - If user is authenticated and owns the task: full task details
+    - If task is public: read-only access for anyone
+    - Otherwise: 404
+    """
     # Embed latest execution via LEFT JOIN
     query = """
         SELECT t.*,
+               u.username as creator_username,
                e.id as exec_id,
                e.condition_met as exec_condition_met,
                e.started_at as exec_started_at,
@@ -659,11 +601,12 @@ async def get_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_
                e.change_summary as exec_change_summary,
                e.grounding_sources as exec_grounding_sources
         FROM tasks t
+        INNER JOIN users u ON t.user_id = u.id
         LEFT JOIN task_executions e ON t.last_execution_id = e.id
-        WHERE t.id = $1 AND t.user_id = $2
+        WHERE t.id = $1
     """
 
-    row = await db.fetch_one(query, task_id, user.id)
+    row = await db.fetch_one(query, task_id)
 
     if not row:
         raise HTTPException(
@@ -671,7 +614,325 @@ async def get_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_
             detail="Task not found",
         )
 
-    return _parse_task_with_execution(row)
+    # Check permissions: owner has full access, others only if public
+    is_owner = user is not None and row["user_id"] == user.id
+    is_public = row["is_public"]
+
+    if not is_owner and not is_public:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    task = parse_task_with_execution(row)
+
+    # TODO: Implement async view counting (see public_tasks.py)
+    if is_public and not is_owner:
+        # await db.execute(
+        #     "UPDATE tasks SET view_count = view_count + 1 WHERE id = $1",
+        #     task_id,
+        # )
+        # Scrub sensitive fields for public viewers
+        task = task.model_copy(
+            update={"notification_email": None, "webhook_url": None, "notifications": []}
+        )
+
+    return task
+
+
+class VisibilityUpdateRequest(BaseModel):
+    """Request to toggle task visibility."""
+
+    is_public: bool = Field(..., description="Whether the task should be public")
+
+
+class VisibilityUpdateResponse(BaseModel):
+    """Response after updating visibility."""
+
+    is_public: bool
+    slug: str | None = None
+
+
+@router.patch("/{task_id}/visibility", response_model=VisibilityUpdateResponse)
+async def update_task_visibility(
+    task_id: UUID,
+    request: VisibilityUpdateRequest,
+    user: CurrentUser,
+    db: Database = Depends(get_db),
+):
+    """
+    Toggle task visibility between public and private.
+
+    When making a task public:
+    - User must have a username set
+    - A slug will be auto-generated from the task name if not already set
+    """
+    # Verify task belongs to user
+    task_query = """
+        SELECT id, name, slug, is_public
+        FROM tasks
+        WHERE id = $1 AND user_id = $2
+    """
+
+    task = await db.fetch_one(task_query, task_id, user.id)
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    # If making public, check user has username
+    if request.is_public:
+        user_query = "SELECT username FROM users WHERE id = $1"
+        user_row = await db.fetch_one(user_query, user.id)
+
+        if not user_row or not user_row["username"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You must set a username before making tasks public",
+            )
+
+        # Generate slug if not already set
+        slug = task["slug"]
+        if not slug:
+            # Retry loop to handle race condition on slug uniqueness
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    slug = await generate_unique_slug(task["name"], user.id, db)
+                    # Update both is_public and slug
+                    await db.execute(
+                        "UPDATE tasks SET is_public = $1, slug = $2 WHERE id = $3",
+                        request.is_public,
+                        slug,
+                        task_id,
+                    )
+                    break  # Success, exit retry loop
+                except UniqueViolationError as e:
+                    # Slug collision - retry with new slug
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Slug collision on attempt {attempt + 1}, retrying...")
+                        continue
+                    # Out of retries
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Failed to generate unique slug after multiple attempts",
+                    ) from e
+                except Exception:
+                    # Other database errors - don't retry
+                    raise
+        else:
+            # Update only is_public
+            await db.execute(
+                "UPDATE tasks SET is_public = $1 WHERE id = $2",
+                request.is_public,
+                task_id,
+            )
+
+        return VisibilityUpdateResponse(is_public=True, slug=slug)
+
+    # Making private - just update is_public
+    await db.execute(
+        "UPDATE tasks SET is_public = $1 WHERE id = $2",
+        request.is_public,
+        task_id,
+    )
+
+    return VisibilityUpdateResponse(is_public=False)
+
+
+class ForkTaskRequest(BaseModel):
+    """Request to fork a public task."""
+
+    name: str | None = Field(None, description="Optional new name for the forked task")
+
+
+def _prepare_fork_data(
+    source: dict, request: ForkTaskRequest, is_owner: bool
+) -> tuple[str, dict, str | None, str | None, str | None, list]:
+    """
+    Prepare fork data by determining name and scrubbing sensitive fields.
+
+    Args:
+        source: Source task database row
+        request: Fork request with optional custom name
+        is_owner: Whether the user forking is the task owner
+
+    Returns:
+        Tuple of (base_fork_name, notifications, notification_email, webhook_url, webhook_secret, notification_channels)
+    """
+    # Determine base name for forked task
+    base_fork_name = request.name if request.name else f"{source['name']} (Copy)"
+
+    # Scrub sensitive fields when forking another user's task
+    # Owner duplicating their own task can keep their settings
+    if is_owner:
+        # Keep all notification settings when duplicating own task
+        notifications = source["notifications"]
+        notification_email = source["notification_email"]
+        webhook_url = source["webhook_url"]
+        webhook_secret = source["webhook_secret"]
+        notification_channels = source["notification_channels"]
+    else:
+        # Scrub sensitive fields when forking someone else's task
+        # Database JSONB column expects JSON string. Using json.dumps([]) instead of []
+        # for explicit type clarity, though asyncpg would handle both.
+        notifications = json.dumps([])
+        notification_email = None
+        webhook_url = None
+        webhook_secret = None
+        notification_channels = []
+
+    return (
+        base_fork_name,
+        notifications,
+        notification_email,
+        webhook_url,
+        webhook_secret,
+        notification_channels,
+    )
+
+
+@router.post("/{task_id}/fork", response_model=Task)
+async def fork_task(
+    task_id: UUID,
+    request: ForkTaskRequest,
+    user: CurrentUser,
+    db: Database = Depends(get_db),
+):
+    """
+    Fork a public task. Creates a copy of the task configuration for the current user.
+
+    - Task must be public to fork
+    - Forked task starts in PAUSED state
+    - Tracks original task via forked_from_task_id
+    - User can optionally provide a new name
+    """
+    # Get the source task
+    source_query = """
+        SELECT t.*
+        FROM tasks t
+        WHERE t.id = $1
+    """
+
+    source = await db.fetch_one(source_query, task_id)
+
+    if not source:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    # Check if task is public or user owns it
+    is_owner = source["user_id"] == user.id
+    is_public = source["is_public"]
+
+    if not is_public and not is_owner:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    # Allow owners to fork (duplicate) their own tasks
+    # Frontend can show "Duplicate" for owners, "Fork" for others
+
+    # Prepare fork data: determine name and scrub sensitive fields
+    (
+        base_fork_name,
+        notifications,
+        notification_email,
+        webhook_url,
+        webhook_secret,
+        notification_channels,
+    ) = _prepare_fork_data(source, request, is_owner)
+
+    # Retry loop to handle race condition on task name uniqueness
+    # Similar to slug generation logic - try up to 3 times with incremented counter
+    max_retries = 3
+    forked_row = None
+
+    for attempt in range(max_retries):
+        try:
+            # Generate name with counter suffix if retry is needed
+            if request.name:
+                # User provided custom name - use it directly
+                fork_name = base_fork_name
+            else:
+                # Auto-generated name - add counter on retry attempts
+                fork_name = (
+                    base_fork_name if attempt == 0 else f"{source['name']} (Copy {attempt + 1})"
+                )
+
+            # Wrap fork operations in transaction for atomicity
+            # If either the subscriber count increment or task creation fails, both are rolled back
+            async with db.acquire() as conn:
+                async with conn.transaction():
+                    # Increment subscriber count on original task only if forked by another user
+                    if not is_owner:
+                        await conn.execute(
+                            "UPDATE tasks SET subscriber_count = subscriber_count + 1 WHERE id = $1",
+                            task_id,
+                        )
+
+                    # Create forked task (in PAUSED state, not public)
+                    fork_query = """
+                        INSERT INTO tasks (
+                            user_id, name, schedule, executor_type, config, state,
+                            search_query, condition_description, notify_behavior, notifications,
+                            notification_channels, notification_email, webhook_url, webhook_secret,
+                            forked_from_task_id, is_public
+                        )
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                        RETURNING *
+                    """
+
+                    forked_row = await conn.fetchrow(
+                        fork_query,
+                        user.id,
+                        fork_name,
+                        source["schedule"],
+                        source["executor_type"],
+                        source["config"],
+                        TaskState.PAUSED.value,
+                        source["search_query"],
+                        source["condition_description"],
+                        source["notify_behavior"],
+                        notifications,
+                        notification_channels,
+                        notification_email,
+                        webhook_url,
+                        webhook_secret,
+                        task_id,
+                        False,  # Forked tasks start as private
+                    )
+
+            # Success - break out of retry loop
+            break
+
+        except UniqueViolationError as e:
+            # Name collision - retry with incremented counter
+            if attempt < max_retries - 1:
+                logger.warning(
+                    f"Task name collision on attempt {attempt + 1}, retrying with incremented name..."
+                )
+                continue
+            # Out of retries
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Failed to generate unique task name after multiple attempts. Please provide a custom name.",
+            ) from e
+        except Exception:
+            # Other database errors - don't retry
+            raise
+
+    if not forked_row:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to fork task",
+        )
+
+    return Task(**parse_task_row(forked_row))
 
 
 @router.put("/{task_id}", response_model=Task)
@@ -913,17 +1174,27 @@ async def execute_task(
 
 @router.get("/{task_id}/executions", response_model=list[TaskExecution])
 async def get_task_executions(
-    task_id: UUID, user: CurrentUser, limit: int = 100, db: Database = Depends(get_db)
+    task_id: UUID, user: OptionalUser, limit: int = 100, db: Database = Depends(get_db)
 ):
-    # Verify task belongs to user
+    # Verify task exists and check permissions
     task_query = """
-        SELECT id FROM tasks
-        WHERE id = $1 AND user_id = $2
+        SELECT id, user_id, is_public FROM tasks
+        WHERE id = $1
     """
 
-    task = await db.fetch_one(task_query, task_id, user.id)
+    task = await db.fetch_one(task_query, task_id)
 
     if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    # Check permissions: owner has access, others only if public
+    is_owner = user is not None and task["user_id"] == user.id
+    is_public = task["is_public"]
+
+    if not is_owner and not is_public:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",
@@ -945,21 +1216,31 @@ async def get_task_executions(
 
 @router.get("/{task_id}/notifications", response_model=list[TaskExecution])
 async def get_task_notifications(
-    task_id: UUID, user: CurrentUser, limit: int = 100, db: Database = Depends(get_db)
+    task_id: UUID, user: OptionalUser, limit: int = 100, db: Database = Depends(get_db)
 ):
     """
     Get task executions where the condition was met (notifications).
     This filters executions to only show when the monitoring condition triggered.
     """
-    # Verify task belongs to user
+    # Verify task exists and check permissions
     task_query = """
-        SELECT id FROM tasks
-        WHERE id = $1 AND user_id = $2
+        SELECT id, user_id, is_public FROM tasks
+        WHERE id = $1
     """
 
-    task = await db.fetch_one(task_query, task_id, user.id)
+    task = await db.fetch_one(task_query, task_id)
 
     if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    # Check permissions: owner has access, others only if public
+    is_owner = user is not None and task["user_id"] == user.id
+    is_public = task["is_public"]
+
+    if not is_owner and not is_public:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",

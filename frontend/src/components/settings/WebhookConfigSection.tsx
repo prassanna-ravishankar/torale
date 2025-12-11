@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Switch } from '@/components/ui/switch';
 import {
   Loader2,
   Copy,
@@ -11,7 +10,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { SectionLabel, BrutalistCard, CollapsibleSection } from '@/components/torale';
+import { SectionLabel, BrutalistCard, CollapsibleSection, BrutalistSwitch } from '@/components/torale';
 import { toast } from 'sonner';
 import type { WebhookConfig } from '@/types';
 
@@ -242,11 +241,10 @@ export const WebhookConfigSection: React.FC = () => {
               <p className="text-sm font-mono text-zinc-900">Enable Webhook</p>
               <p className="text-[10px] text-zinc-500">Receive notifications at this URL</p>
             </div>
-            <Switch
+            <BrutalistSwitch
               checked={config.enabled}
               onCheckedChange={handleToggleEnabled}
               disabled={isSaving}
-              className="data-[state=checked]:bg-zinc-900 data-[state=unchecked]:bg-zinc-200 border-2 border-zinc-900"
             />
           </div>
         )}

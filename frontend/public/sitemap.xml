@@ -13,17 +13,10 @@
     <priority>0.8</priority>
     <changefreq>weekly</changefreq>
   </url>
-
-  <!-- Authentication pages -->
   <url>
-    <loc>https://torale.ai/sign-in</loc>
-    <priority>0.6</priority>
-    <changefreq>monthly</changefreq>
-  </url>
-  <url>
-    <loc>https://torale.ai/sign-up</loc>
-    <priority>0.6</priority>
-    <changefreq>monthly</changefreq>
+    <loc>https://torale.ai/explore</loc>
+    <priority>0.9</priority>
+    <changefreq>daily</changefreq>
   </url>
 
   <!-- Legal pages -->

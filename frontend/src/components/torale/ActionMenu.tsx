@@ -55,7 +55,10 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
             <React.Fragment key={action.id}>
               {action.separator && index > 0 && <DropdownMenuSeparator />}
               <DropdownMenuItem
-                onClick={action.onClick}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  action.onClick();
+                }}
                 className={action.variant === 'destructive' ? 'text-destructive' : ''}
               >
                 <Icon className="mr-2 h-4 w-4" />

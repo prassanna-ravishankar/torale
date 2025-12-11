@@ -11,7 +11,12 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from torale.api.clerk_auth import ClerkUser, get_current_user, require_developer
+from torale.api.clerk_auth import (
+    ClerkUser,
+    get_current_user,
+    get_current_user_or_test_user,
+    require_developer,
+)
 from torale.api.users import User, UserRead, get_async_session
 
 router = APIRouter()
@@ -334,10 +339,10 @@ async def revoke_api_key(
 
 @router.get("/me", response_model=UserRead)
 async def get_current_user_info(
-    clerk_user: ClerkUser = Depends(get_current_user),
+    clerk_user: ClerkUser = Depends(get_current_user_or_test_user),
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Get current user information."""
+    """Get current user information (supports noauth mode for testing)."""
     result = await session.execute(
         select(User).where(User.clerk_user_id == clerk_user.clerk_user_id)
     )

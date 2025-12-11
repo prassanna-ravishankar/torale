@@ -1,4 +1,4 @@
-import React, { ReactNode, useMemo } from 'react'
+import React, { ReactNode, useMemo, useEffect, useState } from 'react'
 import { ClerkProvider, useAuth as useClerkAuth, useUser } from '@clerk/clerk-react'
 import { AuthContext, AuthContextType, User } from './AuthContext'
 
@@ -8,21 +8,57 @@ interface ClerkAuthProviderProps {
   children: ReactNode
 }
 
+/**
+ * Helper function to construct a User object from backend data and Clerk user.
+ * Reduces duplication between initial fetch, fallback, and sync operations.
+ */
+const createUserFromData = (
+  backendData: { id: string | null; email: string; username: string | null },
+  clerkUser: any
+): User => ({
+  id: backendData.id,
+  email: backendData.email,
+  username: backendData.username,
+  firstName: clerkUser.firstName || undefined,
+  lastName: clerkUser.lastName || undefined,
+  imageUrl: clerkUser.imageUrl,
+  publicMetadata: clerkUser.publicMetadata as { role?: string; [key: string]: any } | undefined,
+})
+
 const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { isLoaded: clerkIsLoaded, userId, getToken: clerkGetToken, signOut } = useClerkAuth()
   const { user: clerkUser } = useUser()
+  const [backendUser, setBackendUser] = useState<User | null>(null)
+  const [isFetchingUser, setIsFetchingUser] = useState(false)
 
-  const user: User | null = useMemo(() => {
-    if (!clerkUser) return null
-    return {
-      id: clerkUser.id,
-      email: clerkUser.primaryEmailAddress?.emailAddress || '',
-      firstName: clerkUser.firstName || undefined,
-      lastName: clerkUser.lastName || undefined,
-      imageUrl: clerkUser.imageUrl,
-      publicMetadata: clerkUser.publicMetadata as { role?: string; [key: string]: any } | undefined,
+  // Fetch user data from backend when Clerk user is available
+  useEffect(() => {
+    if (!clerkUser || isFetchingUser) return
+
+    const fetchBackendUser = async () => {
+      setIsFetchingUser(true)
+      try {
+        const { api } = await import('@/lib/api')
+        const userData = await api.getCurrentUser()
+        setBackendUser(createUserFromData(userData, clerkUser))
+      } catch (error) {
+        console.error('Failed to fetch user from backend:', error)
+        // Fallback to Clerk user data without database UUID
+        // Set id to null to ensure ownership checks fail safely
+        setBackendUser(createUserFromData({
+          id: null,
+          email: clerkUser.primaryEmailAddress?.emailAddress || '',
+          username: null,
+        }, clerkUser))
+      } finally {
+        setIsFetchingUser(false)
+      }
     }
-  }, [clerkUser])
+
+    fetchBackendUser()
+  }, [clerkUser, isFetchingUser])
+
+  const user: User | null = backendUser
 
   const authValue: AuthContextType = useMemo(
     () => ({
@@ -41,12 +77,18 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
         // Import api client lazily to avoid circular dependency
         const { api } = await import('@/lib/api')
         await api.syncUser()
+
+        // Refresh user data from backend after sync
+        if (clerkUser) {
+          const userData = await api.getCurrentUser()
+          setBackendUser(createUserFromData(userData, clerkUser))
+        }
       },
       signOut: async () => {
         await signOut()
       },
     }),
-    [clerkIsLoaded, userId, user, clerkGetToken, signOut]
+    [clerkIsLoaded, userId, clerkGetToken, signOut, clerkUser]
   )
 
   return <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>

@@ -22,6 +22,7 @@ export interface TaskExecutionSummary {
 
 export interface Task {
   id: string;
+  user_id: string;
   name: string;
   schedule: string;
   executor_type: ExecutorType;
@@ -47,6 +48,14 @@ export interface Task {
   notification_channels: NotificationChannelType[];
   notification_email: string | null;
   webhook_url: string | null;
+
+  // Shareable tasks fields
+  is_public: boolean;
+  slug: string | null;
+  view_count: number;
+  subscriber_count: number;
+  forked_from_task_id: string | null;
+  creator_username: string | null;
 }
 
 /**
@@ -90,6 +99,7 @@ export interface TaskExecution {
 export interface User {
   id: string;
   email: string;
+  username: string | null;
   created_at: string;
 }
 

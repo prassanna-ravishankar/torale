@@ -1,6 +1,6 @@
 import React from "react";
 import { UserButton } from "@clerk/clerk-react";
-import { Shield, Bell, BookOpen } from "lucide-react";
+import { Shield, Bell, BookOpen, Compass } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,6 +27,17 @@ export const Header: React.FC = () => {
 
         {/* Navigation Links */}
         <div className="flex items-center gap-1 md:gap-2">
+          <Link to="/explore">
+            <Button
+              variant={location.pathname === "/explore" ? "default" : "ghost"}
+              size="sm"
+              className="gap-1 md:gap-2 font-mono text-xs h-8 px-2 md:px-3"
+            >
+              <Compass className="h-4 w-4" />
+              <span className="hidden sm:inline">Explore</span>
+            </Button>
+          </Link>
+
           {isAdmin && (
             <Link to="/admin">
               <Button

@@ -43,6 +43,7 @@ env/
 *.swo
 *~
 .DS_Store
+.playwright-mcp/
 
 # Testing
 .coverage

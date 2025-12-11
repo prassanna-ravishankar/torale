@@ -115,6 +115,14 @@ class Task(TaskBase):
     last_execution_id: UUID | None = None
     last_execution: "TaskExecution | None" = None  # Embedded from API query
 
+    # Shareable tasks fields
+    is_public: bool = False
+    slug: str | None = None
+    view_count: int = 0
+    subscriber_count: int = 0
+    forked_from_task_id: UUID | None = None
+    creator_username: str | None = None  # Username of the task creator
+
 
 class TaskExecutionBase(BaseModel):
     task_id: UUID

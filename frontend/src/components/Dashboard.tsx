@@ -106,7 +106,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   };
 
   const handleTaskUpdated = (task: Task) => {
-    loadTasks();
+    // Update the task in local state immediately for instant UI feedback
+    setTasks(prevTasks => prevTasks.map(t => t.id === task.id ? task : t));
   };
 
   // Filter and search tasks

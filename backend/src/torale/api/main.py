@@ -3,6 +3,9 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,8 +14,12 @@ from torale.api.routers import (
     auth,
     email_verification,
     notifications,
+    og,
+    public_tasks,
+    sitemap,
     tasks,
     templates,
+    usernames,
     waitlist,
     webhooks,
 )
@@ -60,6 +67,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add SlowAPI rate limiting middleware
+app.state.limiter = public_tasks.limiter  # Share limiter instance from public_tasks
+app.add_middleware(SlowAPIMiddleware)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 
 # Exception handler to ensure CORS headers are added to all responses, including errors
 @app.exception_handler(HTTPException)
@@ -86,12 +98,18 @@ app.include_router(admin.router)
 # Waitlist routes
 app.include_router(waitlist.router, tags=["waitlist"])
 
+# SEO routes (at root level for standard locations)
+app.include_router(sitemap.router)
+
 # API routes
 app.include_router(tasks.router, prefix="/api/v1")
 app.include_router(templates.router, prefix="/api/v1")
 app.include_router(email_verification.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
+app.include_router(usernames.router, prefix="/api/v1")
+app.include_router(public_tasks.router, prefix="/api/v1")
+app.include_router(og.router, prefix="/api/v1")
 
 
 @app.get("/health")

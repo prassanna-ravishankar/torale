@@ -259,6 +259,24 @@ async def get_current_user(
 # Alias for compatibility with existing code that uses current_active_user
 current_active_user = get_current_user
 
+# Fixed UUID for noauth test user - must match the user seeded in local dev DB
+NOAUTH_TEST_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
+def _get_noauth_test_user() -> ClerkUser:
+    """
+    Get the test user for TORALE_NOAUTH mode.
+
+    Single source of truth for the test user - used by both
+    get_current_user_or_test_user and get_current_user_optional.
+    """
+    return ClerkUser(
+        clerk_user_id="test_user_noauth",
+        email=settings.torale_noauth_email,
+        email_verified=True,
+        db_user_id=NOAUTH_TEST_USER_ID,
+    )
+
 
 async def get_current_user_or_test_user(
     credentials: HTTPAuthorizationCredentials | None = Security(HTTPBearer(auto_error=False)),
@@ -279,13 +297,7 @@ async def get_current_user_or_test_user(
     # If noauth mode is enabled, return test user
     if settings.torale_noauth:
         print("⚠️  WARNING: TORALE_NOAUTH mode enabled - authentication bypassed!")
-        # Return a test user with a fixed UUID
-        return ClerkUser(
-            clerk_user_id="test_user_noauth",
-            email=settings.torale_noauth_email,
-            email_verified=True,
-            db_user_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
-        )
+        return _get_noauth_test_user()
 
     # In production mode, require authentication
     if credentials is None:

@@ -2,7 +2,6 @@
 name = "torale"
 version = "0.1.0"
 description = "Grounded search monitoring platform for AI-powered conditional automation"
-readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
@@ -60,6 +59,8 @@ dependencies = [
     "novu-py>=1.3.0",
     "markdown>=3.10",
     "cron-descriptor>=1.4.0",
+    "python-slugify>=8.0.0",
+    "slowapi>=0.1.9",
 ]
 
 [project.urls]

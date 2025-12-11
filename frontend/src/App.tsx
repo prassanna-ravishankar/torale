@@ -13,6 +13,8 @@ import { TermsOfService } from '@/pages/TermsOfService'
 import { PrivacyPolicy } from '@/pages/PrivacyPolicy'
 import { CapacityGate } from '@/components/CapacityGate'
 import { WaitlistPage } from '@/components/WaitlistPage'
+import { Explore } from '@/pages/Explore'
+import { VanityTaskRedirect } from '@/pages/VanityTaskRedirect'
 import { Toaster } from '@/components/ui/sonner'
 import { Loader2 } from 'lucide-react'
 import { useApiSetup } from '@/hooks/useApi'
@@ -69,6 +71,20 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />
+  }
+
+  return <>{children}</>
+}
+
+function OptionalAuthRoute({ children }: { children: React.ReactNode }) {
+  const { isLoaded } = useAuth()
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   return <>{children}</>
@@ -159,6 +175,24 @@ export default function App() {
           element={<PrivacyPolicy />}
         />
         <Route
+          path="/explore"
+          element={
+            <OptionalAuthRoute>
+              <AppLayout>
+                <Explore />
+              </AppLayout>
+            </OptionalAuthRoute>
+          }
+        />
+        <Route
+          path="/t/:username/:slug"
+          element={
+            <OptionalAuthRoute>
+              <VanityTaskRedirect />
+            </OptionalAuthRoute>
+          }
+        />
+        <Route
           path="/"
           element={<HomeRoute onTaskClick={handleTaskClick} />}
         />
@@ -175,11 +209,11 @@ export default function App() {
         <Route
           path="/tasks/:taskId"
           element={
-            <ProtectedRoute>
+            <OptionalAuthRoute>
               <AppLayout>
                 <TaskDetailRoute onBack={handleBackToDashboard} onDeleted={handleBackToDashboard} />
               </AppLayout>
-            </ProtectedRoute>
+            </OptionalAuthRoute>
           }
         />
         <Route
@@ -210,10 +244,20 @@ export default function App() {
 
 function TaskDetailRoute({ onBack, onDeleted }: { onBack: () => void; onDeleted: () => void }) {
   const { taskId } = useParams()
+  const { user } = useAuth()
+
   if (!taskId) {
     return <Navigate to="/" replace />
   }
-  return <TaskDetail taskId={taskId} onBack={onBack} onDeleted={onDeleted} />
+
+  return (
+    <TaskDetail
+      taskId={taskId}
+      onBack={onBack}
+      onDeleted={onDeleted}
+      currentUserId={user?.id}
+    />
+  )
 }
 
 function HomeRoute({ onTaskClick }: { onTaskClick: (taskId: string) => void }) {
