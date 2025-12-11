@@ -1,5 +1,14 @@
 [
   {
+    "id": "2025-12-11-public-task-sharing",
+    "date": "2025-12-11",
+    "title": "Public Task Sharing & Explore Page",
+    "description": "Share your monitoring tasks with the world. New Explore page lets anyone discover public tasks without signing in. Users can view full task details, execution history, and results, then copy tasks to their own dashboard with one click. Public tasks get vanity URLs like /t/username/task-slug for easy sharing. Perfect for sharing monitoring templates, building a community library, or showing off interesting use cases.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": null
+  },
+  {
     "id": "2025-12-05-design-system-components",
     "date": "2025-12-05",
     "title": "Reusable Design System Components",
