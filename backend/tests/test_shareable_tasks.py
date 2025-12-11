@@ -414,23 +414,58 @@ class TestPublicTaskAccess:
     @pytest.mark.asyncio
     async def test_get_own_private_task_authenticated(self, mock_user, mock_db):
         """Test owner can access their own private task."""
-        task_id = uuid4()
+        from datetime import UTC, datetime
 
+        task_id = uuid4()
+        now = datetime.now(UTC)
+
+        # Complete mock task with all required fields for _parse_task_with_execution
         mock_task_row = {
             "id": task_id,
             "user_id": mock_user.id,  # Owner
             "name": "Private Task",
             "is_public": False,
+            "slug": None,
+            "view_count": 0,
+            "subscriber_count": 0,
             "config": "{}",
             "last_known_state": None,
             "notifications": "[]",
+            "schedule": "0 9 * * *",
+            "executor_type": "llm_grounded_search",
+            "search_query": "test query",
+            "condition_description": "test condition",
+            "notify_behavior": "always",
+            "notification_channels": [],
+            "notification_email": None,
+            "webhook_url": None,
+            "webhook_secret": None,
+            "state": "active",
+            "forked_from_task_id": None,
+            "created_at": now,
+            "updated_at": now,
+            "state_changed_at": now,
+            "last_execution_id": None,
+            # Execution fields (LEFT JOIN result - no execution)
             "exec_id": None,
+            "exec_condition_met": None,
+            "exec_started_at": None,
+            "exec_completed_at": None,
+            "exec_status": None,
+            "exec_result": None,
+            "exec_change_summary": None,
+            "exec_grounding_sources": None,
         }
 
         mock_db.fetch_one.return_value = mock_task_row
 
         # Should not raise exception (owner can access own private tasks)
-        # Will raise due to _parse_task_with_execution parsing, but permissions pass
+        result = await get_task(task_id, mock_user, mock_db)
+
+        # Verify owner can access their own private task
+        assert result.id == task_id
+        assert result.name == "Private Task"
+        assert result.is_public is False
 
 
 class TestTaskForking:
