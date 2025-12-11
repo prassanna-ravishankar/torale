@@ -748,6 +748,52 @@ class ForkTaskRequest(BaseModel):
     name: str | None = Field(None, description="Optional new name for the forked task")
 
 
+def _prepare_fork_data(
+    source: dict, request: ForkTaskRequest, is_owner: bool
+) -> tuple[str, dict, str | None, str | None, str | None, list]:
+    """
+    Prepare fork data by determining name and scrubbing sensitive fields.
+
+    Args:
+        source: Source task database row
+        request: Fork request with optional custom name
+        is_owner: Whether the user forking is the task owner
+
+    Returns:
+        Tuple of (base_fork_name, notifications, notification_email, webhook_url, webhook_secret, notification_channels)
+    """
+    # Determine base name for forked task
+    base_fork_name = request.name if request.name else f"{source['name']} (Copy)"
+
+    # Scrub sensitive fields when forking another user's task
+    # Owner duplicating their own task can keep their settings
+    if is_owner:
+        # Keep all notification settings when duplicating own task
+        notifications = source["notifications"]
+        notification_email = source["notification_email"]
+        webhook_url = source["webhook_url"]
+        webhook_secret = source["webhook_secret"]
+        notification_channels = source["notification_channels"]
+    else:
+        # Scrub sensitive fields when forking someone else's task
+        # Database JSONB column expects JSON string. Using json.dumps([]) instead of []
+        # for explicit type clarity, though asyncpg would handle both.
+        notifications = json.dumps([])
+        notification_email = None
+        webhook_url = None
+        webhook_secret = None
+        notification_channels = []
+
+    return (
+        base_fork_name,
+        notifications,
+        notification_email,
+        webhook_url,
+        webhook_secret,
+        notification_channels,
+    )
+
+
 @router.post("/{task_id}/fork", response_model=Task)
 async def fork_task(
     task_id: UUID,
@@ -791,28 +837,15 @@ async def fork_task(
     # Allow owners to fork (duplicate) their own tasks
     # Frontend can show "Duplicate" for owners, "Fork" for others
 
-    # Determine base name for forked task
-    # If user provides custom name, use it directly. Otherwise generate unique name with retry loop.
-    base_fork_name = request.name if request.name else f"{source['name']} (Copy)"
-
-    # Scrub sensitive fields when forking another user's task
-    # Owner duplicating their own task can keep their settings
-    if is_owner:
-        # Keep all notification settings when duplicating own task
-        notifications = source["notifications"]
-        notification_email = source["notification_email"]
-        webhook_url = source["webhook_url"]
-        webhook_secret = source["webhook_secret"]
-        notification_channels = source["notification_channels"]
-    else:
-        # Scrub sensitive fields when forking someone else's task
-        # Database JSONB column expects JSON string. Using json.dumps([]) instead of []
-        # for explicit type clarity, though asyncpg would handle both.
-        notifications = json.dumps([])
-        notification_email = None
-        webhook_url = None
-        webhook_secret = None
-        notification_channels = []
+    # Prepare fork data: determine name and scrub sensitive fields
+    (
+        base_fork_name,
+        notifications,
+        notification_email,
+        webhook_url,
+        webhook_secret,
+        notification_channels,
+    ) = _prepare_fork_data(source, request, is_owner)
 
     # Retry loop to handle race condition on task name uniqueness
     # Similar to slug generation logic - try up to 3 times with incremented counter
