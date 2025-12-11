@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useDebounce } from 'use-debounce'
-import { Check, AlertCircle, Loader2 } from 'lucide-react'
+import { Check, AlertCircle, Loader2, AlertTriangle } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import {
@@ -102,6 +102,19 @@ export function UsernamePickerModal({ isOpen, onClose, onSuccess }: UsernamePick
             </code>
           </DialogDescription>
         </DialogHeader>
+
+        {/* Permanent username warning */}
+        <div className="mx-6 mt-4 p-4 bg-amber-50 border-2 border-amber-400">
+          <div className="flex gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-bold text-amber-900 mb-1">Username is permanent</p>
+              <p className="text-amber-800">
+                Choose carefully! You cannot change your username after setting it. This prevents your public task links from breaking.
+              </p>
+            </div>
+          </div>
+        </div>
 
         <form onSubmit={handleSubmit} className="p-6 pt-4">
           <div className="mb-4">

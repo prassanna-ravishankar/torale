@@ -68,7 +68,10 @@ async def set_username(
     db: Database = Depends(get_db),
 ):
     """
-    Set or update the current user's username (AUTH REQUIRED).
+    Set the current user's username (AUTH REQUIRED).
+
+    IMPORTANT: Username changes are NOT allowed after initial set to prevent
+    breaking vanity URLs (e.g., /t/username/task-slug). Users must choose carefully.
 
     Args:
         request: SetUsernameRequest with desired username
@@ -79,8 +82,18 @@ async def set_username(
         SetUsernameResponse with the new username
 
     Raises:
-        HTTPException: If username is invalid or already taken
+        HTTPException: If username is invalid, already taken, or already set
     """
+    # Check if user already has a username
+    existing_username_query = "SELECT username FROM users WHERE id = $1"
+    existing_user = await db.fetch_one(existing_username_query, user.id)
+
+    if existing_user and existing_user["username"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username cannot be changed once set. This protects your public task URLs from breaking.",
+        )
+
     username = request.username.lower().strip()
 
     # Validate username format
@@ -88,8 +101,8 @@ async def set_username(
     if not is_valid:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
 
-    # Check availability (exclude current user's existing username)
-    available = await check_username_available(username, db, exclude_user_id=user.id)
+    # Check availability (no need to exclude current user since we prevent changes)
+    available = await check_username_available(username, db, exclude_user_id=None)
 
     if not available:
         raise HTTPException(

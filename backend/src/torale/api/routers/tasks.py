@@ -785,26 +785,9 @@ async def fork_task(
     # Allow owners to fork (duplicate) their own tasks
     # Frontend can show "Duplicate" for owners, "Fork" for others
 
-    # Determine name for forked task
-    # If user provides custom name, use it. Otherwise generate unique name.
-    if request.name:
-        fork_name = request.name
-    else:
-        # Generate unique name similar to slug generation to avoid duplicate names
-        base_name = source["name"]
-
-        # Fetch all existing names matching pattern "base_name (Copy%)"
-        name_query = "SELECT name FROM tasks WHERE user_id = $1 AND name LIKE $2"
-        existing_names_rows = await db.fetch_all(name_query, user.id, f"{base_name} (Copy%)")
-        existing_names = {row["name"] for row in existing_names_rows}
-
-        # Find unique name in memory (avoids multiple DB round-trips)
-        fork_name = f"{base_name} (Copy)"
-        if fork_name in existing_names:
-            counter = 2
-            while f"{base_name} (Copy {counter})" in existing_names:
-                counter += 1
-            fork_name = f"{base_name} (Copy {counter})"
+    # Determine base name for forked task
+    # If user provides custom name, use it directly. Otherwise generate unique name with retry loop.
+    base_fork_name = request.name if request.name else f"{source['name']} (Copy)"
 
     # Scrub sensitive fields when forking another user's task
     # Owner duplicating their own task can keep their settings
@@ -825,54 +808,90 @@ async def fork_task(
         webhook_secret = None
         notification_channels = []
 
-    # Wrap fork operations in transaction for atomicity
-    # If either the subscriber count increment or task creation fails, both are rolled back
-    async with db.acquire() as conn:
-        async with conn.transaction():
-            # Increment subscriber count on original task only if forked by another user
-            if not is_owner:
-                await conn.execute(
-                    "UPDATE tasks SET subscriber_count = subscriber_count + 1 WHERE id = $1",
-                    task_id,
+    # Retry loop to handle race condition on task name uniqueness
+    # Similar to slug generation logic - try up to 3 times with incremented counter
+    max_retries = 3
+    forked_row = None
+
+    for attempt in range(max_retries):
+        try:
+            # Generate name with counter suffix if retry is needed
+            if request.name:
+                # User provided custom name - use it directly
+                fork_name = base_fork_name
+            else:
+                # Auto-generated name - add counter on retry attempts
+                fork_name = (
+                    base_fork_name if attempt == 0 else f"{source['name']} (Copy {attempt + 1})"
                 )
 
-            # Create forked task (in PAUSED state, not public)
-            fork_query = """
-                INSERT INTO tasks (
-                    user_id, name, schedule, executor_type, config, state,
-                    search_query, condition_description, notify_behavior, notifications,
-                    notification_channels, notification_email, webhook_url, webhook_secret,
-                    forked_from_task_id, is_public
-                )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-                RETURNING *
-            """
+            # Wrap fork operations in transaction for atomicity
+            # If either the subscriber count increment or task creation fails, both are rolled back
+            async with db.acquire() as conn:
+                async with conn.transaction():
+                    # Increment subscriber count on original task only if forked by another user
+                    if not is_owner:
+                        await conn.execute(
+                            "UPDATE tasks SET subscriber_count = subscriber_count + 1 WHERE id = $1",
+                            task_id,
+                        )
 
-            forked_row = await conn.fetchrow(
-                fork_query,
-                user.id,
-                fork_name,
-                source["schedule"],
-                source["executor_type"],
-                source["config"],
-                TaskState.PAUSED.value,
-                source["search_query"],
-                source["condition_description"],
-                source["notify_behavior"],
-                notifications,
-                notification_channels,
-                notification_email,
-                webhook_url,
-                webhook_secret,
-                task_id,
-                False,  # Forked tasks start as private
-            )
+                    # Create forked task (in PAUSED state, not public)
+                    fork_query = """
+                        INSERT INTO tasks (
+                            user_id, name, schedule, executor_type, config, state,
+                            search_query, condition_description, notify_behavior, notifications,
+                            notification_channels, notification_email, webhook_url, webhook_secret,
+                            forked_from_task_id, is_public
+                        )
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                        RETURNING *
+                    """
 
-            if not forked_row:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Failed to fork task",
+                    forked_row = await conn.fetchrow(
+                        fork_query,
+                        user.id,
+                        fork_name,
+                        source["schedule"],
+                        source["executor_type"],
+                        source["config"],
+                        TaskState.PAUSED.value,
+                        source["search_query"],
+                        source["condition_description"],
+                        source["notify_behavior"],
+                        notifications,
+                        notification_channels,
+                        notification_email,
+                        webhook_url,
+                        webhook_secret,
+                        task_id,
+                        False,  # Forked tasks start as private
+                    )
+
+            # Success - break out of retry loop
+            break
+
+        except UniqueViolationError as e:
+            # Name collision - retry with incremented counter
+            if attempt < max_retries - 1:
+                logger.warning(
+                    f"Task name collision on attempt {attempt + 1}, retrying with incremented name..."
                 )
+                continue
+            # Out of retries
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Failed to generate unique task name after multiple attempts. Please provide a custom name.",
+            ) from e
+        except Exception:
+            # Other database errors - don't retry
+            raise
+
+    if not forked_row:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to fork task",
+        )
 
     return Task(**parse_task_row(forked_row))
 
