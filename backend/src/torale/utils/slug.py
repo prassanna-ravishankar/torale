@@ -1,10 +1,17 @@
 """Slug generation utilities for shareable tasks."""
 
+import logging
 from uuid import UUID, uuid4
 
 from slugify import slugify
 
 from torale.core.database import Database
+
+logger = logging.getLogger(__name__)
+
+# Maximum number of numbered suffixes to try before falling back to random hex
+# e.g., task-slug, task-slug-2, task-slug-3, ... , task-slug-1000
+MAX_SLUG_SUFFIX_RETRIES = 1000
 
 
 async def generate_unique_slug(name: str, user_id: UUID, db: Database) -> str:
@@ -48,11 +55,19 @@ async def generate_unique_slug(name: str, user_id: UUID, db: Database) -> str:
 
     # Base slug exists, try numbered suffixes
     counter = 2
-    while counter <= 1000:
+    while counter <= MAX_SLUG_SUFFIX_RETRIES:
         slug = f"{base_slug}-{counter}"
         if slug not in existing_slugs:
             return slug
         counter += 1
 
-    # Safety fallback if counter exceeds 1000 (shouldn't happen in practice)
+    # Safety fallback if counter exceeds limit (shouldn't happen in practice)
+    # This indicates an unusual number of tasks with very similar names
+    logger.warning(
+        "Slug generation exceeded %d retries for base_slug=%s, user_id=%s. "
+        "Falling back to random hex suffix.",
+        MAX_SLUG_SUFFIX_RETRIES,
+        base_slug,
+        user_id,
+    )
     return f"{base_slug}-{uuid4().hex[:8]}"
