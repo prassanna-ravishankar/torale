@@ -633,9 +633,9 @@ async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get
         #     task_id,
         # )
         # Scrub sensitive fields for public viewers
-        task.notification_email = None
-        task.webhook_url = None
-        task.notifications = []
+        task = task.model_copy(
+            update={"notification_email": None, "webhook_url": None, "notifications": []}
+        )
 
     return task
 

@@ -88,15 +88,17 @@ async def list_public_tasks(
     tasks = [parse_task_with_execution(row) for row in rows]
 
     # Scrub sensitive fields for public viewers (non-owners)
+    scrubbed_tasks = []
     for task in tasks:
         is_owner = user is not None and task.user_id == user.id
         if not is_owner:
-            task.notification_email = None
-            task.webhook_url = None
-            task.notifications = []
+            task = task.model_copy(
+                update={"notification_email": None, "webhook_url": None, "notifications": []}
+            )
+        scrubbed_tasks.append(task)
 
     return PublicTasksResponse(
-        tasks=tasks,
+        tasks=scrubbed_tasks,
         total=total,
         offset=offset,
         limit=limit,
@@ -177,9 +179,9 @@ async def get_public_task_by_vanity_url(
 
     # Scrub sensitive fields for public viewers
     if is_public and not is_owner:
-        task.notification_email = None
-        task.webhook_url = None
-        task.notifications = []
+        task = task.model_copy(
+            update={"notification_email": None, "webhook_url": None, "notifications": []}
+        )
 
     return task
 

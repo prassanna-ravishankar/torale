@@ -189,9 +189,10 @@ class TestUsernameEndpoints:
     async def test_set_username_success(self, mock_user, mock_db):
         """Test PATCH /api/v1/users/me/username - successful update."""
         request = SetUsernameRequest(username="newusername")
-        # First call: reserved check (None = not reserved)
-        # Second call: availability check (None = available)
-        mock_db.fetch_one.side_effect = [None, None]
+        # First call: existing username check (None = no username set yet)
+        # Second call: reserved check (None = not reserved)
+        # Third call: availability check (None = available)
+        mock_db.fetch_one.side_effect = [None, None, None]
 
         result = await set_username(request, mock_user, mock_db)
 
@@ -203,9 +204,10 @@ class TestUsernameEndpoints:
     async def test_set_username_taken(self, mock_user, mock_db):
         """Test setting username that's already taken."""
         request = SetUsernameRequest(username="takenname")
-        # First call: reserved check (None = not reserved)
-        # Second call: availability check (user found = taken)
-        mock_db.fetch_one.side_effect = [None, {"id": uuid4()}]
+        # First call: existing username check (None = no username set yet)
+        # Second call: reserved check (None = not reserved)
+        # Third call: availability check (user found = taken)
+        mock_db.fetch_one.side_effect = [None, None, {"id": uuid4()}]
 
         with pytest.raises(HTTPException) as exc_info:
             await set_username(request, mock_user, mock_db)
@@ -347,6 +349,7 @@ class TestPublicTaskAccess:
         now = datetime.now(UTC)
 
         # Complete mock task with all required fields for _parse_task_with_execution
+        # Note: For public viewers, sensitive fields should be None (scrubbed)
         mock_task_row = {
             "id": task_id,
             "user_id": user_id,
@@ -364,7 +367,7 @@ class TestPublicTaskAccess:
             "condition_description": "test condition",
             "notify_behavior": "always",
             "notification_channels": [],
-            "notification_email": None,
+            "notification_email": None,  # These will be scrubbed for public viewers
             "webhook_url": None,
             "webhook_secret": None,
             "state": "active",
@@ -373,6 +376,7 @@ class TestPublicTaskAccess:
             "updated_at": now,
             "state_changed_at": now,
             "last_execution_id": None,
+            "creator_username": "testuser",  # Add missing creator_username field
             # Execution fields (LEFT JOIN result - no execution)
             "exec_id": None,
             "exec_condition_met": None,
@@ -393,6 +397,10 @@ class TestPublicTaskAccess:
         assert result.id == task_id
         assert result.name == "Public Task"
         assert result.is_public is True
+        # Verify sensitive fields are scrubbed for public viewers
+        assert result.notification_email is None
+        assert result.webhook_url is None
+        assert result.notifications == []
 
     @pytest.mark.asyncio
     async def test_get_private_task_unauthenticated(self, mock_db):
@@ -446,6 +454,7 @@ class TestPublicTaskAccess:
             "updated_at": now,
             "state_changed_at": now,
             "last_execution_id": None,
+            "creator_username": "testuser",  # Add missing creator_username field
             # Execution fields (LEFT JOIN result - no execution)
             "exec_id": None,
             "exec_condition_met": None,
