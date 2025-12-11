@@ -45,7 +45,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { CustomScheduleDialog } from "@/components/ui/CustomScheduleDialog";
 import cronstrue from "cronstrue";
 import { localTimeToUTC, cronUTCToLocal } from "@/lib/timezoneUtils";
-import { Switch } from "@/components/ui/switch";
+import { BrutalistSwitch } from "@/components/torale";
 import { UsernamePickerModal } from "@/components/UsernamePickerModal";
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -566,7 +566,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
                     : 'Only you can see this task'}
                 </p>
               </div>
-              <Switch
+              <BrutalistSwitch
                 checked={isPublic}
                 onCheckedChange={handleVisibilityToggle}
                 disabled={isTogglingVisibility}

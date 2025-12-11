@@ -2,8 +2,7 @@ import React from 'react';
 import { Clock, Search, Bell, Mail, Webhook, CheckCircle } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { InfoCard, CollapsibleSection } from "@/components/torale";
+import { InfoCard, CollapsibleSection, BrutalistSwitch } from "@/components/torale";
 import { CronDisplay } from "@/components/ui/CronDisplay";
 import { NotificationChannelBadges } from "@/components/notifications/NotificationChannelBadges";
 import type { Task } from '@/types';
@@ -48,10 +47,9 @@ const renderTaskStatus = (task: Task, onToggle: () => void) => {
     badge: null,
     button: (
       <div className="flex items-center gap-1.5">
-        <Switch
+        <BrutalistSwitch
           checked={task.state === 'active'}
           onCheckedChange={onToggle}
-          className="data-[state=checked]:bg-zinc-900 data-[state=unchecked]:bg-zinc-200 border-2 border-zinc-900 h-4 w-7"
         />
         <span className={`text-xs font-mono ${task.state === 'active' ? 'text-zinc-700' : 'text-zinc-900 font-bold'}`}>
           {task.state === 'active' ? "Active" : "Paused"}

@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Switch } from '@/components/ui/switch'
 import { api } from '@/lib/api'
 import { QueryCard } from './cards/QueryCard'
 import { CronDisplay } from '@/components/ui/CronDisplay'
 import { Loader2, Search, Zap } from 'lucide-react'
-import { SectionLabel, BrutalistCard, StatusBadge } from '@/components/torale'
+import { SectionLabel, BrutalistCard, StatusBadge, BrutalistSwitch } from '@/components/torale'
 
 interface Query {
   id: string
@@ -83,13 +82,11 @@ export function QueriesTable() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Switch
-            id="active-only"
+          <BrutalistSwitch
             checked={activeOnly}
             onCheckedChange={setActiveOnly}
-            className="data-[state=checked]:bg-zinc-900 data-[state=unchecked]:bg-zinc-200 border-2 border-zinc-900"
           />
-          <label htmlFor="active-only" className="text-xs font-mono text-zinc-600 whitespace-nowrap">
+          <label className="text-xs font-mono text-zinc-600 whitespace-nowrap">
             Active only
           </label>
         </div>

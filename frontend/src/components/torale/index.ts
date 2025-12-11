@@ -3,6 +3,8 @@ export type { StatusVariant } from './StatusBadge';
 
 export { BrutalistCard } from './BrutalistCard';
 
+export { BrutalistSwitch } from './BrutalistSwitch';
+
 export { SectionLabel } from './SectionLabel';
 
 export { CollapsibleSection } from './CollapsibleSection';
