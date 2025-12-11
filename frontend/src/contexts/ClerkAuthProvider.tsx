@@ -1,4 +1,4 @@
-import React, { ReactNode, useMemo, useEffect, useState } from 'react'
+import React, { ReactNode, useMemo, useEffect, useState, useCallback } from 'react'
 import { ClerkProvider, useAuth as useClerkAuth, useUser } from '@clerk/clerk-react'
 import { AuthContext, AuthContextType, User } from './AuthContext'
 
@@ -22,7 +22,7 @@ const createUserFromData = (
   firstName: clerkUser.firstName || undefined,
   lastName: clerkUser.lastName || undefined,
   imageUrl: clerkUser.imageUrl,
-  publicMetadata: clerkUser.publicMetadata as { role?: string; [key: string]: any } | undefined,
+  publicMetadata: clerkUser.publicMetadata as { role?: string;[key: string]: any } | undefined,
 })
 
 const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -32,6 +32,7 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isFetchingUser, setIsFetchingUser] = useState(false)
 
   // Fetch user data from backend when Clerk user is available
+  // Automatically syncs user if not found in database
   useEffect(() => {
     if (!clerkUser || isFetchingUser) return
 
@@ -42,53 +43,65 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
         const userData = await api.getCurrentUser()
         setBackendUser(createUserFromData(userData, clerkUser))
       } catch (error) {
-        console.error('Failed to fetch user from backend:', error)
-        // Fallback to Clerk user data without database UUID
-        // Set id to null to ensure ownership checks fail safely
-        setBackendUser(createUserFromData({
-          id: null,
-          email: clerkUser.primaryEmailAddress?.emailAddress || '',
-          username: null,
-        }, clerkUser))
+        // User doesn't exist in backend - sync automatically
+        console.warn('User not found in backend, syncing automatically...', error)
+        try {
+          const { api } = await import('@/lib/api')
+          await api.syncUser()
+          const userData = await api.getCurrentUser()
+          setBackendUser(createUserFromData(userData, clerkUser))
+        } catch (syncError) {
+          console.error('Failed to sync user:', syncError)
+          // Last resort fallback to Clerk data without database UUID
+          // Set id to null to ensure ownership checks fail safely
+          setBackendUser(createUserFromData({
+            id: null,
+            email: clerkUser.primaryEmailAddress?.emailAddress || '',
+            username: null,
+          }, clerkUser))
+        }
       } finally {
         setIsFetchingUser(false)
       }
     }
 
     fetchBackendUser()
-  }, [clerkUser, isFetchingUser])
+  }, [clerkUser])
 
   const user: User | null = backendUser
+
+  const getToken = useCallback(async () => {
+    try {
+      return await clerkGetToken()
+    } catch (error) {
+      console.error('Failed to get Clerk token:', error)
+      return null
+    }
+  }, [clerkGetToken])
+
+  const refreshUser = useCallback(async () => {
+    // Refresh user data from backend (used after mutations like username change)
+    if (!clerkUser) return
+
+    const { api } = await import('@/lib/api')
+    const userData = await api.getCurrentUser()
+    setBackendUser(createUserFromData(userData, clerkUser))
+  }, [clerkUser])
+
+  const handleSignOut = useCallback(async () => {
+    await signOut()
+  }, [signOut])
 
   const authValue: AuthContextType = useMemo(
     () => ({
       isLoaded: clerkIsLoaded,
       isAuthenticated: !!userId,
       user,
-      getToken: async () => {
-        try {
-          return await clerkGetToken()
-        } catch (error) {
-          console.error('Failed to get Clerk token:', error)
-          return null
-        }
-      },
-      syncUser: async () => {
-        // Import api client lazily to avoid circular dependency
-        const { api } = await import('@/lib/api')
-        await api.syncUser()
-
-        // Refresh user data from backend after sync
-        if (clerkUser) {
-          const userData = await api.getCurrentUser()
-          setBackendUser(createUserFromData(userData, clerkUser))
-        }
-      },
-      signOut: async () => {
-        await signOut()
-      },
+      getToken,
+      refreshUser,
+      signOut: handleSignOut,
     }),
-    [clerkIsLoaded, userId, clerkGetToken, signOut, clerkUser]
+    [clerkIsLoaded, userId, user, getToken, refreshUser, handleSignOut]
   )
 
   return <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>

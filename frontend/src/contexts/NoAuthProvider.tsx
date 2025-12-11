@@ -19,7 +19,7 @@ const INITIAL_MOCK_USER: User = {
 export const NoAuthProvider: React.FC<NoAuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User>(INITIAL_MOCK_USER)
 
-  const syncUser = useCallback(async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const backendUser = await api.getCurrentUser()
       setUser({
@@ -30,7 +30,7 @@ export const NoAuthProvider: React.FC<NoAuthProviderProps> = ({ children }) => {
         username: backendUser.username || undefined,
       })
     } catch (error) {
-      console.error('Failed to sync user in noauth mode:', error)
+      console.error('Failed to refresh user in noauth mode:', error)
     }
   }, [])
 
@@ -40,12 +40,12 @@ export const NoAuthProvider: React.FC<NoAuthProviderProps> = ({ children }) => {
       isAuthenticated: true,
       user,
       getToken: async () => null, // No token in dev mode
-      syncUser,
+      refreshUser,
       signOut: async () => {
         console.log('Sign out called in no-auth mode (no-op)')
       },
     }),
-    [syncUser]
+    [refreshUser]
   )
 
   return <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>

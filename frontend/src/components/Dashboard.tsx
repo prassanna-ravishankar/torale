@@ -19,7 +19,6 @@ import {
 } from '@/components/torale';
 import { Plus, Search, Loader2, Filter, LayoutGrid, List as ListIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
 import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
 
 /**
@@ -40,7 +39,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'completed' | 'paused'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
-  const { syncUser } = useAuth();
 
   const loadTasks = async () => {
     setIsLoading(true);
@@ -56,13 +54,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   };
 
   useEffect(() => {
-    if (syncUser) {
-      syncUser().catch((error) => {
-        console.error('Failed to sync user:', error);
-      });
-    }
     loadTasks();
-  }, [syncUser]);
+  }, []); // Only load on mount - user sync now happens automatically in auth provider
 
   const handleToggleTask = async (id: string, newState: 'active' | 'paused') => {
     try {

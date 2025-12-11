@@ -20,7 +20,7 @@ interface UsernamePickerModalProps {
 }
 
 export function UsernamePickerModal({ isOpen, onClose, onSuccess }: UsernamePickerModalProps) {
-  const { syncUser } = useAuth()
+  const { refreshUser } = useAuth()
   const [username, setUsername] = useState('')
   const [debouncedUsername] = useDebounce(username, 500)
   const [isChecking, setIsChecking] = useState(false)
@@ -70,8 +70,8 @@ export function UsernamePickerModal({ isOpen, onClose, onSuccess }: UsernamePick
       const result = await api.setUsername(username)
 
       // Refresh user context to get the new username
-      if (syncUser) {
-        await syncUser()
+      if (refreshUser) {
+        await refreshUser()
       }
 
       onSuccess(result.username)
