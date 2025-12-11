@@ -624,14 +624,20 @@ async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get
             detail="Task not found",
         )
 
-    # TODO: Implement async view counting (see public_tasks.py)
-    # if is_public and not is_owner:
-    #     await db.execute(
-    #         "UPDATE tasks SET view_count = view_count + 1 WHERE id = $1",
-    #         task_id,
-    #     )
+    task = parse_task_with_execution(row)
 
-    return parse_task_with_execution(row)
+    # TODO: Implement async view counting (see public_tasks.py)
+    if is_public and not is_owner:
+        # await db.execute(
+        #     "UPDATE tasks SET view_count = view_count + 1 WHERE id = $1",
+        #     task_id,
+        # )
+        # Scrub sensitive fields for public viewers
+        task.notification_email = None
+        task.webhook_url = None
+        task.notifications = []
+
+    return task
 
 
 class VisibilityUpdateRequest(BaseModel):

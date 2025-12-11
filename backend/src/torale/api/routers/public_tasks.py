@@ -33,6 +33,7 @@ class PublicTasksResponse(BaseModel):
 @limiter.limit("10/minute")
 async def list_public_tasks(
     request: Request,
+    user: OptionalUser,
     offset: int = Query(0, ge=0, description="Number of tasks to skip"),
     limit: int = Query(20, ge=1, le=100, description="Number of tasks to return"),
     sort_by: str = Query("recent", enum=["recent", "popular"], description="Sort order"),
@@ -85,6 +86,14 @@ async def list_public_tasks(
 
     # Parse tasks using shared utility
     tasks = [parse_task_with_execution(row) for row in rows]
+
+    # Scrub sensitive fields for public viewers (non-owners)
+    for task in tasks:
+        is_owner = user is not None and task.user_id == user.id
+        if not is_owner:
+            task.notification_email = None
+            task.webhook_url = None
+            task.notifications = []
 
     return PublicTasksResponse(
         tasks=tasks,
@@ -164,7 +173,15 @@ async def get_public_task_by_vanity_url(
     #         row["id"],
     #     )
 
-    return parse_task_with_execution(row)
+    task = parse_task_with_execution(row)
+
+    # Scrub sensitive fields for public viewers
+    if is_public and not is_owner:
+        task.notification_email = None
+        task.webhook_url = None
+        task.notifications = []
+
+    return task
 
 
 @router.get("/tasks/id/{task_id}", response_model=Task)
