@@ -130,6 +130,7 @@ export default function Landing() {
             </button>
 
             <div className="hidden md:flex gap-8 text-sm font-medium text-zinc-500">
+              <button onClick={() => navigate('/explore')} className="hover:text-black transition-colors">Explore</button>
               <a href="#use-cases" className="hover:text-black transition-colors">Use Cases</a>
               <a href="#pricing" className="hover:text-black transition-colors">Pricing</a>
               <button onClick={() => navigate('/changelog')} className="hover:text-black transition-colors">Changelog</button>

@@ -2,15 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import type { Task } from '@/types';
-import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Loader2, Eye, Users, ChevronLeft, ChevronRight, Globe, Copy } from 'lucide-react';
+import { BrutalistCard, SectionLabel } from '@/components/torale';
+import { Loader2, Eye, Users, ChevronLeft, ChevronRight, Compass, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function Explore() {
@@ -60,35 +53,52 @@ export function Explore() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-zinc-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <Globe className="h-8 w-8 text-blue-600" />
-            <h1 className="text-4xl font-bold font-grotesk tracking-tight">Explore Tasks</h1>
+            <div className="p-2 bg-zinc-900 text-white">
+              <Compass className="h-6 w-6" />
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold font-grotesk tracking-tight text-zinc-900">
+              Explore Tasks
+            </h1>
           </div>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-zinc-500 font-mono">
             Discover and copy public monitoring tasks from the community
           </p>
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Sort by:</span>
-            <Select value={sortBy} onValueChange={(value) => setSortBy(value as 'recent' | 'popular')}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="popular">Most Popular</SelectItem>
-                <SelectItem value="recent">Most Recent</SelectItem>
-              </SelectContent>
-            </Select>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <SectionLabel>Sort by</SectionLabel>
+            <div className="flex gap-2 border-2 border-zinc-200 bg-white">
+              <button
+                onClick={() => setSortBy('popular')}
+                className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-colors ${
+                  sortBy === 'popular'
+                    ? 'bg-zinc-900 text-white'
+                    : 'bg-white text-zinc-600 hover:bg-zinc-50'
+                }`}
+              >
+                Popular
+              </button>
+              <button
+                onClick={() => setSortBy('recent')}
+                className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-colors ${
+                  sortBy === 'recent'
+                    ? 'bg-zinc-900 text-white'
+                    : 'bg-white text-zinc-600 hover:bg-zinc-50'
+                }`}
+              >
+                Recent
+              </button>
+            </div>
           </div>
 
-          <div className="text-sm text-muted-foreground">
+          <div className="text-xs font-mono text-zinc-400">
             {total} {total === 1 ? 'task' : 'tasks'}
           </div>
         </div>
@@ -96,81 +106,89 @@ export function Explore() {
         {/* Task List */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
           </div>
         ) : tasks.length === 0 ? (
-          <div className="text-center py-12">
-            <Globe className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">No public tasks yet</h3>
-            <p className="text-muted-foreground">
-              Be the first to share a task with the community!
-            </p>
-          </div>
+          <BrutalistCard className="p-12">
+            <div className="text-center">
+              <Compass className="h-12 w-12 text-zinc-300 mx-auto mb-4" />
+              <h3 className="text-lg font-grotesk font-bold text-zinc-900 mb-2">
+                No public tasks yet
+              </h3>
+              <p className="text-sm text-zinc-500 font-mono">
+                Be the first to share a task with the community!
+              </p>
+            </div>
+          </BrutalistCard>
         ) : (
           <div className="space-y-4">
             {tasks.map((task) => (
-              <div
+              <BrutalistCard
                 key={task.id}
+                variant="clickable"
                 onClick={() => handleTaskClick(task)}
-                className="p-6 bg-white border-2 border-zinc-900 shadow-brutalist hover:shadow-brutalist-hover transition-shadow cursor-pointer"
+                className="group"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-bold font-grotesk mb-2 truncate">
-                      {task.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                      {task.condition_description}
-                    </p>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1.5">
-                        <Eye className="h-4 w-4" />
-                        <span>{task.view_count}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Users className="h-4 w-4" />
-                        <span>{task.subscriber_count}</span>
-                      </div>
-                      {task.slug && task.creator_username && (
-                        <div className="flex items-center gap-1.5 ml-auto">
-                          <Copy className="h-4 w-4" />
-                          <span className="font-mono text-xs truncate max-w-[200px]">
-                            /t/{task.creator_username}/{task.slug}
-                          </span>
-                        </div>
-                      )}
+                {/* Header */}
+                <div className="p-4 border-b border-zinc-100">
+                  <h3 className="text-lg font-bold font-grotesk text-zinc-900 mb-1 group-hover:text-zinc-700 transition-colors">
+                    {task.name}
+                  </h3>
+                  {task.slug && task.creator_username && (
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-400">
+                      <Copy className="h-3 w-3" />
+                      <span className="truncate">
+                        /t/{task.creator_username}/{task.slug}
+                      </span>
                     </div>
+                  )}
+                </div>
+
+                {/* Content */}
+                <div className="p-4">
+                  <p className="text-sm text-zinc-600 leading-relaxed line-clamp-2">
+                    {task.condition_description}
+                  </p>
+                </div>
+
+                {/* Footer with stats */}
+                <div className="bg-zinc-50 p-3 border-t border-zinc-100 flex items-center gap-4">
+                  <div className="flex items-center gap-1.5">
+                    <Eye className="h-4 w-4 text-zinc-400" />
+                    <span className="text-xs font-mono text-zinc-600">{task.view_count}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Users className="h-4 w-4 text-zinc-400" />
+                    <span className="text-xs font-mono text-zinc-600">{task.subscriber_count}</span>
                   </div>
                 </div>
-              </div>
+              </BrutalistCard>
             ))}
           </div>
         )}
 
         {/* Pagination */}
         {!isLoading && tasks.length > 0 && totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-8">
-            <Button
-              variant="outline"
-              size="sm"
+          <div className="flex items-center justify-center gap-3 mt-8">
+            <button
               onClick={handlePreviousPage}
               disabled={offset === 0}
+              className="flex items-center gap-1.5 px-4 py-2 border-2 border-zinc-200 bg-white text-sm font-mono hover:border-zinc-900 transition-colors disabled:opacity-50 disabled:hover:border-zinc-200 disabled:cursor-not-allowed"
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ChevronLeft className="h-4 w-4" />
               Previous
-            </Button>
-            <div className="text-sm text-muted-foreground">
+            </button>
+            <div className="text-sm font-mono text-zinc-500">
               Page {currentPage} of {totalPages}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={handleNextPage}
               disabled={offset + limit >= total}
+              className="flex items-center gap-1.5 px-4 py-2 border-2 border-zinc-200 bg-white text-sm font-mono hover:border-zinc-900 transition-colors disabled:opacity-50 disabled:hover:border-zinc-200 disabled:cursor-not-allowed"
             >
               Next
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         )}
       </div>
