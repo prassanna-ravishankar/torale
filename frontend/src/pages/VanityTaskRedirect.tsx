@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
@@ -11,17 +11,7 @@ export function VanityTaskRedirect() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!username || !slug) {
-      setError('Invalid URL');
-      setIsLoading(false);
-      return;
-    }
-
-    loadTask();
-  }, [username, slug]);
-
-  const loadTask = async () => {
+  const loadTask = useCallback(async () => {
     if (!username || !slug) return;
 
     setIsLoading(true);
@@ -34,7 +24,17 @@ export function VanityTaskRedirect() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [username, slug]);
+
+  useEffect(() => {
+    if (!username || !slug) {
+      setError('Invalid URL');
+      setIsLoading(false);
+      return;
+    }
+
+    loadTask();
+  }, [username, slug, loadTask]);
 
   if (isLoading) {
     return (
@@ -59,6 +59,14 @@ export function VanityTaskRedirect() {
 
   return (
     <>
+      {/*
+        TODO: DynamicMeta updates <head> client-side after React hydrates.
+        Social media crawlers (Twitter, Facebook, LinkedIn) don't execute JavaScript,
+        so they won't see these OpenGraph tags. For proper social sharing previews, we need:
+        - Server-side rendering for /t/ routes, OR
+        - Pre-rendering service (e.g., prerender.io), OR
+        - Accept this limitation (basic /api/og endpoint exists for static OG image)
+      */}
       <DynamicMeta
         title={ogTitle}
         description={ogDescription}

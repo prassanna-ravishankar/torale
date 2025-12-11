@@ -455,7 +455,10 @@ class ApiClient {
   // Username endpoints
   async checkUsernameAvailability(username: string): Promise<{ available: boolean; error: string | null }> {
     const response = await fetch(
-      `${this.baseUrl}/api/v1/users/username/available?username=${encodeURIComponent(username)}`
+      `${this.baseUrl}/api/v1/users/username/available?username=${encodeURIComponent(username)}`,
+      {
+        headers: await this.getAuthHeaders(),
+      }
     )
     return this.handleResponse(response)
   }
@@ -504,17 +507,23 @@ class ApiClient {
     if (params?.sort_by) queryParams.set('sort_by', params.sort_by)
 
     const url = `${this.baseUrl}/api/v1/public/tasks${queryParams.toString() ? `?${queryParams}` : ''}`
-    const response = await fetch(url)
+    const response = await fetch(url, {
+      headers: await this.getAuthHeaders(),
+    })
     return this.handleResponse(response)
   }
 
   async getPublicTaskByVanityUrl(username: string, slug: string): Promise<Task> {
-    const response = await fetch(`${this.baseUrl}/api/v1/public/tasks/${username}/${slug}`)
+    const response = await fetch(`${this.baseUrl}/api/v1/public/tasks/${username}/${slug}`, {
+      headers: await this.getAuthHeaders(),
+    })
     return this.handleResponse(response)
   }
 
   async getPublicTaskById(taskId: string): Promise<Task> {
-    const response = await fetch(`${this.baseUrl}/api/v1/public/tasks/id/${taskId}`)
+    const response = await fetch(`${this.baseUrl}/api/v1/public/tasks/id/${taskId}`, {
+      headers: await this.getAuthHeaders(),
+    })
     return this.handleResponse(response)
   }
 }

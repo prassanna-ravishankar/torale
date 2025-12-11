@@ -33,6 +33,10 @@ async def generate_unique_slug(name: str, user_id: UUID, db: Database) -> str:
         base_slug = "task"
 
     # Fetch all existing slugs that start with the base slug for this user in one query
+    # NOTE: TOCTOU race condition exists between fetch and INSERT. The unique index
+    # on (user_id, slug) will catch collisions, and the retry logic in
+    # update_task_visibility handles this gracefully. This trade-off avoids
+    # multiple sequential database round-trips in the common (non-collision) case.
     query = "SELECT slug FROM tasks WHERE user_id = $1 AND slug LIKE $2"
     existing_slugs_rows = await db.fetch_all(query, user_id, f"{base_slug}%")
     existing_slugs = {row["slug"] for row in existing_slugs_rows}

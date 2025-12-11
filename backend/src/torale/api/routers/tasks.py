@@ -786,7 +786,25 @@ async def fork_task(
     # Frontend can show "Duplicate" for owners, "Fork" for others
 
     # Determine name for forked task
-    fork_name = request.name if request.name else f"{source['name']} (Copy)"
+    # If user provides custom name, use it. Otherwise generate unique name.
+    if request.name:
+        fork_name = request.name
+    else:
+        # Generate unique name similar to slug generation to avoid duplicate names
+        base_name = source["name"]
+
+        # Fetch all existing names matching pattern "base_name (Copy%)"
+        name_query = "SELECT name FROM tasks WHERE user_id = $1 AND name LIKE $2"
+        existing_names_rows = await db.fetch_all(name_query, user.id, f"{base_name} (Copy%)")
+        existing_names = {row["name"] for row in existing_names_rows}
+
+        # Find unique name in memory (avoids multiple DB round-trips)
+        fork_name = f"{base_name} (Copy)"
+        if fork_name in existing_names:
+            counter = 2
+            while f"{base_name} (Copy {counter})" in existing_names:
+                counter += 1
+            fork_name = f"{base_name} (Copy {counter})"
 
     # Scrub sensitive fields when forking another user's task
     # Owner duplicating their own task can keep their settings
@@ -799,7 +817,9 @@ async def fork_task(
         notification_channels = source["notification_channels"]
     else:
         # Scrub sensitive fields when forking someone else's task
-        notifications = json.dumps([])  # Reset notifications list (JSON string for consistency)
+        # Database JSONB column expects JSON string. Using json.dumps([]) instead of []
+        # for explicit type clarity, though asyncpg would handle both.
+        notifications = json.dumps([])
         notification_email = None
         webhook_url = None
         webhook_secret = None
