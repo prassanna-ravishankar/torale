@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion } from "@/lib/motion-compat";
 import { ArrowLeft, ArrowUpRight, Github } from "lucide-react";
 import { ChangelogEntryCard } from "./ChangelogEntryCard";
 import { ChangelogEntry } from "@/types/changelog";
 import { GITHUB_REPO_URL } from "@/constants/links";
 import { Logo } from "./Logo";
+import { DynamicMeta } from "./DynamicMeta";
+import { generateChangelogStructuredData } from "@/utils/structuredData";
 
 export default function Changelog() {
   const navigate = useNavigate();
   const [entries, setEntries] = useState<ChangelogEntry[]>([]);
+  const [structuredData, setStructuredData] = useState<string>("");
 
   useEffect(() => {
     const fetchChangelog = async () => {
@@ -18,6 +21,9 @@ export default function Changelog() {
         if (response.ok) {
           const data = await response.json();
           setEntries(data);
+          // Generate structured data for SEO
+          const schema = generateChangelogStructuredData(data);
+          setStructuredData(JSON.stringify(schema));
         }
       } catch (error) {
         console.error("Failed to fetch changelog:", error);
@@ -28,7 +34,17 @@ export default function Changelog() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 font-sans selection:bg-[hsl(10,90%,55%)] selection:text-white">
+    <>
+      <DynamicMeta
+        title="Changelog - Torale Product Updates & Features"
+        description="Track every update to Torale's AI-powered web monitoring platform. New features, improvements, and fixes shipped weekly. See what's new in grounded search monitoring."
+        url="https://torale.ai/changelog"
+        image="https://torale.ai/og-image.webp"
+      />
+      {structuredData && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} />
+      )}
+      <div className="min-h-screen bg-zinc-50 text-zinc-900 font-sans selection:bg-[hsl(10,90%,55%)] selection:text-white">
       {/* Background Grid */}
       <div
         className="fixed inset-0 pointer-events-none z-0 opacity-[0.3]"
@@ -128,5 +144,6 @@ export default function Changelog() {
         </div>
       </main>
     </div>
+    </>
   );
 }

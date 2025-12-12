@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion } from "@/lib/motion-compat";
 import { GitCommit } from "lucide-react";
 import { ChangelogEntry } from "@/types/changelog";
 import { getCategoryIcon, getCategoryLabel, formatChangelogDate } from "@/utils/changelog";

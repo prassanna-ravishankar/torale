@@ -30,12 +30,19 @@
     <meta name="twitter:image" content="https://torale.ai/og-image.webp">
 
     <!-- Neo-Brutalist Fonts: Space Grotesk (Structure) + JetBrains Mono (Data) -->
+    <!-- Optimized async font loading for better LCP -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
 
-    <!-- Load runtime config before app bundle -->
-    <script src="/config.js"></script>
+    <!-- Resource hints for performance -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+
+    <!-- Load runtime config (deferred for better performance) -->
+    <script src="/config.js" defer></script>
   </head>
   <body>
     <div id="root"></div>

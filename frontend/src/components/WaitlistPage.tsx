@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion } from "@/lib/motion-compat";
 import { Mail, CheckCircle2, AlertCircle, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
