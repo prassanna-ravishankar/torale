@@ -19,7 +19,7 @@ from torale.core.database import Database, get_db
 from torale.core.models import TaskState
 from torale.core.task_state_machine import TaskStateMachine
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/admin", tags=["admin"], include_in_schema=False)
 
 
 # Request models for role management

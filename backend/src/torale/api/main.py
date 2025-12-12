@@ -8,7 +8,9 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.middleware.base import BaseHTTPMiddleware
 
+from torale.api.rate_limiter import limiter
 from torale.api.routers import (
     admin,
     auth,
@@ -26,6 +28,33 @@ from torale.api.routers import (
 from torale.api.users import get_async_session
 from torale.core.config import settings
 from torale.core.database import db
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to all responses."""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        # Modern security headers
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains; preload"
+        )
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        # CSP - frame-ancestors replaces X-Frame-Options, CSP replaces X-XSS-Protection
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data:; "
+            "font-src 'self'; "
+            "connect-src 'self' https://*.torale.ai; "
+            "frame-ancestors 'none'; "
+            "object-src 'none'; "
+            "base-uri 'self';"
+        )
+        return response
 
 
 @asynccontextmanager
@@ -67,8 +96,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add security headers middleware
+app.add_middleware(SecurityHeadersMiddleware)
+
 # Add SlowAPI rate limiting middleware
-app.state.limiter = public_tasks.limiter  # Share limiter instance from public_tasks
+app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -114,7 +146,7 @@ app.include_router(og.router, prefix="/api/v1")
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "torale-api"}
+    return {"status": "healthy"}
 
 
 @app.get("/public/stats")

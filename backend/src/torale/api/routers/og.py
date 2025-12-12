@@ -4,19 +4,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import FileResponse
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
+from torale.api.rate_limiter import global_limiter, limiter
 from torale.core.config import PROJECT_ROOT
 from torale.core.database import Database, get_db
 
 router = APIRouter(prefix="/api/v1/og", tags=["opengraph"])
-
-# Rate limiters for OG image endpoint
-# Per-IP limit prevents abuse from single users
-limiter = Limiter(key_func=get_remote_address)
-# Global limit for overall cost control (all IPs combined)
-global_limiter = Limiter(key_func=lambda: "global")
 
 # Path to static OG image
 # NOTE: We use a static generic OG image instead of dynamic per-task generation

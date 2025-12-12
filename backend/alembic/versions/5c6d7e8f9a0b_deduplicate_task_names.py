@@ -8,8 +8,9 @@ Create Date: 2025-12-11 16:30:00.000000
 
 from collections.abc import Sequence
 
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "5c6d7e8f9a0b"
@@ -40,7 +41,7 @@ def upgrade() -> None:
             new_name = f"{name} ({idx})"
             connection.execute(
                 text("UPDATE tasks SET name = :new_name WHERE id = :task_id"),
-                {"new_name": new_name, "task_id": task_id}
+                {"new_name": new_name, "task_id": task_id},
             )
 
 

@@ -4,20 +4,15 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from torale.api.auth import OptionalUser
+from torale.api.rate_limiter import limiter
 from torale.api.routers.tasks import get_task
 from torale.api.utils.task_parsers import parse_task_with_execution
 from torale.core.database import Database, get_db
 from torale.core.models import Task
 
 router = APIRouter(prefix="/public", tags=["public"])
-
-# Rate limiter for public endpoints (based on IP)
-# At ~100 users, be conservative: 10 requests per minute per IP
-limiter = Limiter(key_func=get_remote_address)
 
 
 class PublicTasksResponse(BaseModel):
