@@ -13,7 +13,6 @@ import {
   GitBranch,
   Globe,
 } from "lucide-react";
-import { ParticleNetwork } from "./ui/ParticleNetwork";
 import { UniversalEventStream } from "./ui/UniversalEventStream";
 import { SystemTrace } from "./ui/SystemTrace";
 import { TerminalSection } from "./ui/TerminalSection";
@@ -23,17 +22,6 @@ import { Logo } from "@/components/Logo";
  * Landing Page - Based on MockLandingPage.tsx
  * Neo-brutalist design with "The Machine" philosophy
  */
-
-// Font Loader (inline style injection matching mock)
-const FontLoader = () => (
-  <style dangerouslySetInnerHTML={{
-    __html: `
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
-    .font-grotesk { font-family: 'Space Grotesk', sans-serif; }
-    .font-mono { font-family: 'JetBrains Mono', monospace; }
-  `}} />
-);
 
 // Background Pattern (Dotted)
 const BackgroundPattern = () => (
@@ -108,7 +96,9 @@ export default function Landing() {
           }
         }
       } catch (error) {
-        console.error("Failed to fetch capacity:", error);
+        if (import.meta.env.DEV) {
+          console.error("Failed to fetch capacity:", error);
+        }
       }
     };
 
@@ -118,7 +108,6 @@ export default function Landing() {
   return (
     <div className={`min-h-screen bg-[#fafafa] text-zinc-900 font-sans selection:bg-[hsl(10,90%,55%)] selection:text-white transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
 
-      <FontLoader />
       <BackgroundPattern />
 
       {/* Navigation */}
@@ -150,8 +139,6 @@ export default function Landing() {
 
         {/* Hero Section */}
         <section className="relative pt-32 pb-24 px-6 border-b border-zinc-200 overflow-hidden">
-          <ParticleNetwork />
-
           <div className="container mx-auto max-w-6xl grid lg:grid-cols-2 gap-20 items-center relative z-10">
 
             {/* Left Content */}
