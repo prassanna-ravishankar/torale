@@ -22,6 +22,7 @@ const WaitlistPage = lazy(() => import('@/components/WaitlistPage').then(m => ({
 const Explore = lazy(() => import('@/pages/Explore').then(m => ({ default: m.Explore })))
 const VanityTaskRedirect = lazy(() => import('@/pages/VanityTaskRedirect').then(m => ({ default: m.VanityTaskRedirect })))
 const ComparePage = lazy(() => import('@/pages/ComparePage').then(m => ({ default: m.ComparePage })))
+const UseCasePage = lazy(() => import('@/pages/UseCasePage').then(m => ({ default: m.UseCasePage })))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoaded, isAuthenticated } = useAuth()
@@ -197,6 +198,14 @@ export default function App() {
           element={
             <OptionalAuthRoute>
               <ComparePage />
+            </OptionalAuthRoute>
+          }
+        />
+        <Route
+          path="/use-cases/:usecase"
+          element={
+            <OptionalAuthRoute>
+              <UseCasePage />
             </OptionalAuthRoute>
           }
         />

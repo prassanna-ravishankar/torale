@@ -78,12 +78,9 @@ const FeatureCard = ({ icon: Icon, title, desc, delay }: { icon: any; title: str
 
 export default function Landing() {
   const navigate = useNavigate();
-  const [mounted, setMounted] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<number | null>(null);
 
   useEffect(() => {
-    setMounted(true);
-
     // Fetch available user slots
     const fetchCapacity = async () => {
       try {
@@ -106,7 +103,7 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className={`min-h-screen bg-[#fafafa] text-zinc-900 font-sans selection:bg-[hsl(10,90%,55%)] selection:text-white transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+    <div className="min-h-screen bg-[#fafafa] text-zinc-900 font-sans selection:bg-[hsl(10,90%,55%)] selection:text-white">
 
       <BackgroundPattern />
 
@@ -142,15 +139,17 @@ export default function Landing() {
           <div className="container mx-auto max-w-6xl grid lg:grid-cols-2 gap-20 items-center relative z-10">
 
             {/* Left Content */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-            >
-              <Badge>
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                System: Nominal
-              </Badge>
+            <div>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+              >
+                <Badge>
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                  System: Nominal
+                </Badge>
+              </motion.div>
 
               <h1 className="text-6xl md:text-7xl font-bold font-grotesk tracking-tight mb-8 mt-8 leading-[0.95] text-zinc-900">
                 Make the internet<br />
@@ -161,7 +160,12 @@ export default function Landing() {
                 Don't just browse the web—subscribe to it. Torale turns any website change into a notification, webhook, or structured data stream.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.2, ease: "easeOut" }}
+                className="flex flex-col sm:flex-row gap-4"
+              >
                 <button
                   onClick={() => navigate('/dashboard')}
                   className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-[hsl(10,90%,55%)] text-white text-lg font-bold hover:bg-[hsl(10,90%,50%)] transition-all shadow-[6px_6px_0px_0px_rgba(24,24,27,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(24,24,27,1)] border-2 border-zinc-900"
@@ -179,8 +183,8 @@ export default function Landing() {
                   <Terminal className="h-4 w-4 text-zinc-400 group-hover:text-black" />
                   Documentation
                 </a>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
 
             {/* Right Content: Universal Feed */}
             <motion.div
