@@ -10,6 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from torale.api.rate_limiter import limiter
 from torale.api.routers import (
     admin,
     auth,
@@ -97,7 +98,7 @@ app.add_middleware(
 app.add_middleware(SecurityHeadersMiddleware)
 
 # Add SlowAPI rate limiting middleware
-app.state.limiter = public_tasks.limiter  # Share limiter instance from public_tasks
+app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 

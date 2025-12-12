@@ -2,11 +2,12 @@
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from torale.api.rate_limiter import limiter
 from torale.api.users import get_async_session
 
 router = APIRouter()
@@ -26,8 +27,10 @@ class JoinWaitlistResponse(BaseModel):
 
 
 @router.post("/public/waitlist", response_model=JoinWaitlistResponse)
+@limiter.limit("5/minute")
 async def join_waitlist(
-    request: JoinWaitlistRequest,
+    request_data: JoinWaitlistRequest,
+    request: Request,
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -44,7 +47,7 @@ async def join_waitlist(
             RETURNING id
             """),
             {
-                "email": request.email.lower(),
+                "email": request_data.email.lower(),
                 "created_at": datetime.now(UTC),
             },
         )
@@ -59,7 +62,7 @@ async def join_waitlist(
                 SELECT created_at FROM waitlist WHERE email = :email
             )
             """),
-            {"email": request.email.lower()},
+            {"email": request_data.email.lower()},
         )
         position = position_result.scalar()
 
