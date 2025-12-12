@@ -1,5 +1,6 @@
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { motion } from '@/lib/motion-compat';
 import { CheckCircle2, ArrowRight, Zap, Shield, Clock } from 'lucide-react';
 
 /**
@@ -325,34 +326,54 @@ export function UseCasePage() {
         <link rel="canonical" href={`https://torale.ai/use-cases/${usecase}`} />
       </Helmet>
 
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-[#fafafa]">
         {/* Hero Section */}
-        <section className="pt-20 pb-16 px-4 bg-gradient-to-b from-yellow-50 to-white">
-          <div className="max-w-5xl mx-auto text-center">
-            <div className="inline-block mb-4 px-4 py-1.5 bg-white border-2 border-zinc-900 text-zinc-900 text-xs font-mono font-bold uppercase tracking-wider shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">
-              {data.tagline}
-            </div>
-            <h1 className="text-5xl md:text-6xl font-bold text-zinc-900 mb-6 leading-tight font-['Space_Grotesk']">
+        <section className="pt-32 pb-24 px-6 border-b border-zinc-200">
+          <div className="container mx-auto max-w-6xl text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="mb-8"
+            >
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-white border-2 border-zinc-900 text-zinc-900 text-xs font-mono font-bold uppercase tracking-wider shadow-brutalist">
+                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                {data.tagline}
+              </span>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="text-5xl md:text-6xl font-bold font-grotesk tracking-tight mb-6 text-zinc-900"
+            >
               {data.heroTitle}
-            </h1>
-            <p className="text-xl text-zinc-600 mb-8 max-w-3xl mx-auto">
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              className="text-xl text-zinc-500 mb-10 max-w-2xl mx-auto font-medium"
+            >
               {data.heroSubtitle}
-            </p>
-            <div className="flex gap-4 justify-center flex-wrap">
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center"
+            >
               <button
-                onClick={() => navigate('/sign-up')}
-                className="group px-8 py-4 bg-yellow-400 text-zinc-900 font-bold border-2 border-zinc-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all duration-150 flex items-center gap-2"
+                onClick={() => navigate('/dashboard')}
+                className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-brand-orange text-white text-lg font-bold hover:bg-[hsl(10,90%,50%)] transition-all shadow-brutalist-lg hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(24,24,27,1)] border-2 border-zinc-900"
               >
                 Start Monitoring Free
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="h-5 w-5" />
               </button>
-              <button
-                onClick={() => navigate('/')}
-                className="px-8 py-4 bg-white text-zinc-900 font-bold border-2 border-zinc-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,0.2)] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all duration-150"
-              >
-                See How It Works
-              </button>
-            </div>
+            </motion.div>
           </div>
         </section>
 

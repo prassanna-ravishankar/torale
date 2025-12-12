@@ -1,7 +1,7 @@
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { motion } from '@/lib/motion-compat';
+import { CheckCircle2, XCircle, ArrowRight, Zap } from 'lucide-react';
 
 /**
  * Comparison page for Torale vs competitors
@@ -245,30 +245,50 @@ export function ComparePage() {
         {/* Hero Section */}
         <section className="relative pt-32 pb-24 px-6 border-b border-zinc-200">
           <div className="container mx-auto max-w-4xl text-center">
-            <div className="mb-8">
-              <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-white border-2 border-zinc-900 text-zinc-900 text-xs font-mono font-bold uppercase tracking-wider shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                Free Beta
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="mb-8"
+            >
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-white border-2 border-zinc-900 text-zinc-900 text-xs font-mono font-bold uppercase tracking-wider shadow-brutalist">
+                <Zap className="w-3 h-3" />
+                {data.tagline}
               </span>
-            </div>
+            </motion.div>
 
-            <h1 className="text-5xl md:text-6xl font-bold font-grotesk tracking-tight mb-6 text-zinc-900">
+            <motion.h1
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="text-5xl md:text-6xl font-bold font-grotesk tracking-tight mb-6 text-zinc-900"
+            >
               {data.heroTitle}
-            </h1>
+            </motion.h1>
 
-            <p className="text-xl text-zinc-500 mb-10 max-w-2xl mx-auto">
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              className="text-xl text-zinc-500 mb-10 max-w-2xl mx-auto font-medium"
+            >
               {data.heroSubtitle}
-            </p>
+            </motion.p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center"
+            >
               <button
                 onClick={() => navigate('/dashboard')}
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[hsl(10,90%,55%)] text-white text-lg font-bold hover:bg-[hsl(10,90%,50%)] transition-all shadow-[6px_6px_0px_0px_rgba(24,24,27,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(24,24,27,1)] border-2 border-zinc-900"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-brand-orange text-white text-lg font-bold hover:bg-[hsl(10,90%,50%)] transition-all shadow-brutalist-lg hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(24,24,27,1)] border-2 border-zinc-900"
               >
                 Try Torale Free
                 <ArrowRight className="h-5 w-5" />
               </button>
-            </div>
+            </motion.div>
           </div>
         </section>
 
