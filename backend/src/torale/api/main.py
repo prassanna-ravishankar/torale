@@ -35,17 +35,17 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        # Modern security headers
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        # CSP - frame-ancestors replaces X-Frame-Options, CSP replaces X-XSS-Protection
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self'; "
             "style-src 'self'; "
-            "img-src 'self' data: https:; "
+            "img-src 'self' data:; "
             "font-src 'self'; "
             "connect-src 'self' https://*.torale.ai; "
             "frame-ancestors 'none'; "
