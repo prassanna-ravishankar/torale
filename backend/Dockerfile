@@ -47,4 +47,4 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 
 # Default command (can be overridden)
-CMD ["uvicorn", "torale.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "torale.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header"]

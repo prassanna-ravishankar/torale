@@ -1,0 +1,8 @@
+Contact: mailto:security@torale.ai
+Expires: 2026-12-31T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://torale.ai/.well-known/security.txt
+
+# Security Disclosure
+# Please report security vulnerabilities to security@torale.ai
+# We appreciate responsible disclosure and will respond promptly.
