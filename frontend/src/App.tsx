@@ -21,6 +21,7 @@ const CapacityGate = lazy(() => import('@/components/CapacityGate').then(m => ({
 const WaitlistPage = lazy(() => import('@/components/WaitlistPage').then(m => ({ default: m.WaitlistPage })))
 const Explore = lazy(() => import('@/pages/Explore').then(m => ({ default: m.Explore })))
 const VanityTaskRedirect = lazy(() => import('@/pages/VanityTaskRedirect').then(m => ({ default: m.VanityTaskRedirect })))
+const ComparePage = lazy(() => import('@/pages/ComparePage').then(m => ({ default: m.ComparePage })))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoaded, isAuthenticated } = useAuth()
@@ -188,6 +189,14 @@ export default function App() {
               <AppLayout>
                 <Explore />
               </AppLayout>
+            </OptionalAuthRoute>
+          }
+        />
+        <Route
+          path="/compare/:tool"
+          element={
+            <OptionalAuthRoute>
+              <ComparePage />
             </OptionalAuthRoute>
           }
         />
