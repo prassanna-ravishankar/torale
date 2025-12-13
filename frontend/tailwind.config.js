@@ -17,7 +17,7 @@ export default {
     extend: {
       // Tri-font stack (from mock designs)
       fontFamily: {
-        grotesk: ['Space Grotesk', 'sans-serif'],
+        grotesk: ['Space Grotesk', 'Space Grotesk Fallback', 'Arial', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },

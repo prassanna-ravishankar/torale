@@ -1,24 +1,28 @@
-import React, { useEffect } from 'react'
+import React, { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { SignIn, SignUp } from '@clerk/clerk-react'
-import { Dashboard } from '@/components/Dashboard'
-import { TaskDetail } from '@/components/TaskDetail'
-import Landing from '@/components/Landing'
-import Changelog from '@/components/Changelog'
 import { Header } from '@/components/Header'
 import { MobileNav } from '@/components/MobileNav'
-import { Admin } from '@/pages/Admin'
-import { NotificationSettingsPage } from '@/pages/NotificationSettingsPage'
-import { TermsOfService } from '@/pages/TermsOfService'
-import { PrivacyPolicy } from '@/pages/PrivacyPolicy'
-import { CapacityGate } from '@/components/CapacityGate'
-import { WaitlistPage } from '@/components/WaitlistPage'
-import { Explore } from '@/pages/Explore'
-import { VanityTaskRedirect } from '@/pages/VanityTaskRedirect'
 import { Toaster } from '@/components/ui/sonner'
 import { Loader2 } from 'lucide-react'
 import { useApiSetup } from '@/hooks/useApi'
 import { useAuth } from '@/contexts/AuthContext'
+
+// Lazy load heavy components for better performance
+const Dashboard = lazy(() => import('@/components/Dashboard').then(m => ({ default: m.Dashboard })))
+const TaskDetail = lazy(() => import('@/components/TaskDetail').then(m => ({ default: m.TaskDetail })))
+const Landing = lazy(() => import('@/components/Landing'))
+const Changelog = lazy(() => import('@/components/Changelog'))
+const Admin = lazy(() => import('@/pages/Admin').then(m => ({ default: m.Admin })))
+const NotificationSettingsPage = lazy(() => import('@/pages/NotificationSettingsPage').then(m => ({ default: m.NotificationSettingsPage })))
+const TermsOfService = lazy(() => import('@/pages/TermsOfService').then(m => ({ default: m.TermsOfService })))
+const PrivacyPolicy = lazy(() => import('@/pages/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })))
+const CapacityGate = lazy(() => import('@/components/CapacityGate').then(m => ({ default: m.CapacityGate })))
+const WaitlistPage = lazy(() => import('@/components/WaitlistPage').then(m => ({ default: m.WaitlistPage })))
+const Explore = lazy(() => import('@/pages/Explore').then(m => ({ default: m.Explore })))
+const VanityTaskRedirect = lazy(() => import('@/pages/VanityTaskRedirect').then(m => ({ default: m.VanityTaskRedirect })))
+const ComparePage = lazy(() => import('@/pages/ComparePage').then(m => ({ default: m.ComparePage })))
+const UseCasePage = lazy(() => import('@/pages/UseCasePage').then(m => ({ default: m.UseCasePage })))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoaded, isAuthenticated } = useAuth()
@@ -117,7 +121,12 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
-      <Routes>
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }>
+        <Routes>
         <Route
           path="/sign-in/*"
           element={
@@ -185,6 +194,22 @@ export default function App() {
           }
         />
         <Route
+          path="/compare/:tool"
+          element={
+            <OptionalAuthRoute>
+              <ComparePage />
+            </OptionalAuthRoute>
+          }
+        />
+        <Route
+          path="/use-cases/:usecase"
+          element={
+            <OptionalAuthRoute>
+              <UseCasePage />
+            </OptionalAuthRoute>
+          }
+        />
+        <Route
           path="/t/:username/:slug"
           element={
             <OptionalAuthRoute>
@@ -236,7 +261,8 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-      </Routes>
+        </Routes>
+      </Suspense>
       <Toaster />
     </>
   )

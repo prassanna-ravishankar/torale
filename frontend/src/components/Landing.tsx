@@ -13,7 +13,6 @@ import {
   GitBranch,
   Globe,
 } from "lucide-react";
-import { ParticleNetwork } from "./ui/ParticleNetwork";
 import { UniversalEventStream } from "./ui/UniversalEventStream";
 import { SystemTrace } from "./ui/SystemTrace";
 import { TerminalSection } from "./ui/TerminalSection";
@@ -23,17 +22,6 @@ import { Logo } from "@/components/Logo";
  * Landing Page - Based on MockLandingPage.tsx
  * Neo-brutalist design with "The Machine" philosophy
  */
-
-// Font Loader (inline style injection matching mock)
-const FontLoader = () => (
-  <style dangerouslySetInnerHTML={{
-    __html: `
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
-    .font-grotesk { font-family: 'Space Grotesk', sans-serif; }
-    .font-mono { font-family: 'JetBrains Mono', monospace; }
-  `}} />
-);
 
 // Background Pattern (Dotted)
 const BackgroundPattern = () => (
@@ -90,12 +78,9 @@ const FeatureCard = ({ icon: Icon, title, desc, delay }: { icon: any; title: str
 
 export default function Landing() {
   const navigate = useNavigate();
-  const [mounted, setMounted] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<number | null>(null);
 
   useEffect(() => {
-    setMounted(true);
-
     // Fetch available user slots
     const fetchCapacity = async () => {
       try {
@@ -108,7 +93,9 @@ export default function Landing() {
           }
         }
       } catch (error) {
-        console.error("Failed to fetch capacity:", error);
+        if (import.meta.env.DEV) {
+          console.error("Failed to fetch capacity:", error);
+        }
       }
     };
 
@@ -116,9 +103,8 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className={`min-h-screen bg-[#fafafa] text-zinc-900 font-sans selection:bg-[hsl(10,90%,55%)] selection:text-white transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+    <div className="min-h-screen bg-[#fafafa] text-zinc-900 font-sans selection:bg-[hsl(10,90%,55%)] selection:text-white">
 
-      <FontLoader />
       <BackgroundPattern />
 
       {/* Navigation */}
@@ -150,20 +136,20 @@ export default function Landing() {
 
         {/* Hero Section */}
         <section className="relative pt-32 pb-24 px-6 border-b border-zinc-200 overflow-hidden">
-          <ParticleNetwork />
-
           <div className="container mx-auto max-w-6xl grid lg:grid-cols-2 gap-20 items-center relative z-10">
 
             {/* Left Content */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-            >
-              <Badge>
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                System: Nominal
-              </Badge>
+            <div>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+              >
+                <Badge>
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                  System: Nominal
+                </Badge>
+              </motion.div>
 
               <h1 className="text-6xl md:text-7xl font-bold font-grotesk tracking-tight mb-8 mt-8 leading-[0.95] text-zinc-900">
                 Make the internet<br />
@@ -174,7 +160,12 @@ export default function Landing() {
                 Don't just browse the web—subscribe to it. Torale turns any website change into a notification, webhook, or structured data stream.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.2, ease: "easeOut" }}
+                className="flex flex-col sm:flex-row gap-4"
+              >
                 <button
                   onClick={() => navigate('/dashboard')}
                   className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-[hsl(10,90%,55%)] text-white text-lg font-bold hover:bg-[hsl(10,90%,50%)] transition-all shadow-[6px_6px_0px_0px_rgba(24,24,27,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(24,24,27,1)] border-2 border-zinc-900"
@@ -192,8 +183,8 @@ export default function Landing() {
                   <Terminal className="h-4 w-4 text-zinc-400 group-hover:text-black" />
                   Documentation
                 </a>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
 
             {/* Right Content: Universal Feed */}
             <motion.div
@@ -229,87 +220,136 @@ export default function Landing() {
               label="USE_CASES"
             />
 
-            <div className="grid lg:grid-cols-2 gap-8">
+            <div className="grid md:grid-cols-3 gap-8">
 
-              {/* Use Case 1 */}
-              <div className="bg-white p-8 border-2 border-zinc-100 hover:border-zinc-900 transition-colors shadow-sm group">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="p-3 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
-                    <TrendingUp className="w-6 h-6" />
+              {/* Use Case 1: Steam Game Price Alerts */}
+              <Link to="/use-cases/steam-game-price-alerts" className="block">
+                <div className="bg-white p-8 border-2 border-zinc-100 hover:border-zinc-900 transition-all shadow-sm hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] group h-full flex flex-col">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="p-3 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                      <TrendingUp className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold font-grotesk text-zinc-900">Steam Game Prices</h3>
+                      <span className="font-mono text-xs text-zinc-400">#gaming #deals</span>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold font-grotesk text-zinc-900">Market Intelligence</h3>
-                    <span className="font-mono text-xs text-zinc-400">#pricing #competitors</span>
+                  <p className="text-zinc-600 mb-6 font-medium flex-grow">
+                    "Alert me when Elden Ring drops below $30 on Steam"
+                  </p>
+                  <div className="bg-zinc-50 p-4 border border-zinc-200 font-mono text-xs text-zinc-500 rounded-sm group-hover:border-zinc-400 transition-colors">
+                    &gt; Price detected: $29.99<br />
+                    &gt; Target met: <span className="text-green-600 font-bold">ALERT SENT</span>
+                  </div>
+                  <div className="mt-4 flex items-center gap-2 text-zinc-900 font-bold text-sm group-hover:text-[hsl(10,90%,55%)] transition-colors">
+                    Learn More <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
-                <p className="text-zinc-600 mb-6 font-medium">
-                  "Watch our top 3 competitors. Alert me if they change the price of their Enterprise tier or remove 'SSO' from the features list."
-                </p>
-                <div className="bg-zinc-50 p-4 border border-zinc-200 font-mono text-xs text-zinc-500 rounded-sm group-hover:border-zinc-400 transition-colors">
-                  &gt; Detected change on /pricing<br />
-                  &gt; <span className="text-red-600 line-through">$49/mo</span> &rarr; <span className="text-green-600">$59/mo</span>
-                </div>
-              </div>
+              </Link>
 
-              {/* Use Case 2 */}
-              <div className="bg-white p-8 border-2 border-zinc-100 hover:border-zinc-900 transition-colors shadow-sm group">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="p-3 bg-purple-50 text-purple-600 rounded-lg border border-purple-100">
-                    <FileText className="w-6 h-6" />
+              {/* Use Case 2: Competitor Price Monitoring */}
+              <Link to="/use-cases/competitor-price-change-monitor" className="block">
+                <div className="bg-white p-8 border-2 border-zinc-100 hover:border-zinc-900 transition-all shadow-sm hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] group h-full flex flex-col">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="p-3 bg-purple-50 text-purple-600 rounded-lg border border-purple-100 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                      <Shield className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold font-grotesk text-zinc-900">Competitor Pricing</h3>
+                      <span className="font-mono text-xs text-zinc-400">#saas #intel</span>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold font-grotesk text-zinc-900">Regulatory Watch</h3>
-                    <span className="font-mono text-xs text-zinc-400">#compliance #legal</span>
+                  <p className="text-zinc-600 mb-6 font-medium flex-grow">
+                    "Watch top 3 competitors. Alert if they change Enterprise tier pricing."
+                  </p>
+                  <div className="bg-zinc-50 p-4 border border-zinc-200 font-mono text-xs text-zinc-500 rounded-sm group-hover:border-zinc-400 transition-colors">
+                    &gt; Competitor X pricing change<br />
+                    &gt; <span className="text-red-600">$999/mo</span> → <span className="text-amber-600 font-bold">$800/mo</span>
+                  </div>
+                  <div className="mt-4 flex items-center gap-2 text-zinc-900 font-bold text-sm group-hover:text-[hsl(10,90%,55%)] transition-colors">
+                    Learn More <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
-                <p className="text-zinc-600 mb-6 font-medium">
-                  "Monitor the EU AI Act official journal. Notify legal if new amendments regarding 'General Purpose AI' are published."
-                </p>
-                <div className="bg-zinc-50 p-4 border border-zinc-200 font-mono text-xs text-zinc-500 rounded-sm group-hover:border-zinc-400 transition-colors">
-                  &gt; New document found: "Amendment 45b"<br />
-                  &gt; Context match: "High Risk AI Systems"
-                </div>
-              </div>
+              </Link>
 
-              {/* Use Case 3 */}
-              <div className="bg-white p-8 border-2 border-zinc-100 hover:border-zinc-900 transition-colors shadow-sm group">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="p-3 bg-red-50 text-red-600 rounded-lg border border-red-100">
-                    <Shield className="w-6 h-6" />
+              {/* Use Case 3: Crypto Exchange Listings */}
+              <Link to="/use-cases/crypto-exchange-listing-alert" className="block">
+                <div className="bg-white p-8 border-2 border-zinc-100 hover:border-zinc-900 transition-all shadow-sm hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] group h-full flex flex-col">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                      <Zap className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold font-grotesk text-zinc-900">Crypto Listings</h3>
+                      <span className="font-mono text-xs text-zinc-400">#crypto #trading</span>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold font-grotesk text-zinc-900">Security Ops</h3>
-                    <span className="font-mono text-xs text-zinc-400">#cve #vulnerabilities</span>
+                  <p className="text-zinc-600 mb-6 font-medium flex-grow">
+                    "Alert when [TOKEN] is listed on Binance or Coinbase"
+                  </p>
+                  <div className="bg-zinc-50 p-4 border border-zinc-200 font-mono text-xs text-zinc-500 rounded-sm group-hover:border-zinc-400 transition-colors">
+                    &gt; New listing detected<br />
+                    &gt; Exchange: <span className="text-amber-600 font-bold">BINANCE SPOT</span>
+                  </div>
+                  <div className="mt-4 flex items-center gap-2 text-zinc-900 font-bold text-sm group-hover:text-[hsl(10,90%,55%)] transition-colors">
+                    Learn More <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
-                <p className="text-zinc-600 mb-6 font-medium">
-                  "Poll the NVD feed every minute. Page the on-call engineer if a critical CVE is found for 'Log4j' or 'OpenSSL'."
-                </p>
-                <div className="bg-zinc-50 p-4 border border-zinc-200 font-mono text-xs text-zinc-500 rounded-sm group-hover:border-zinc-400 transition-colors">
-                  &gt; CVE-2025-9921 Detected<br />
-                  &gt; Severity: <span className="text-red-600 font-bold">CRITICAL (9.8)</span>
-                </div>
-              </div>
+              </Link>
 
-              {/* Use Case 4 */}
-              <div className="bg-white p-8 border-2 border-zinc-100 hover:border-zinc-900 transition-colors shadow-sm group">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100">
-                    <Wifi className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold font-grotesk text-zinc-900">Inventory & Status</h3>
-                    <span className="font-mono text-xs text-zinc-400">#infrastructure #supply</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Comparison Section */}
+        <section className="py-24 px-6 bg-zinc-50 border-t border-zinc-200">
+          <div className="container mx-auto max-w-6xl">
+            <SectionHeader
+              title="Compare Torale"
+              subtitle="See how we stack up against traditional monitoring tools"
+              label="ALTERNATIVES"
+            />
+
+            <div className="grid md:grid-cols-3 gap-8">
+
+              {/* vs VisualPing */}
+              <Link to="/compare/visualping-alternative" className="block">
+                <div className="bg-white p-8 border-2 border-zinc-100 hover:border-zinc-900 transition-all shadow-sm hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] group h-full flex flex-col">
+                  <h3 className="text-2xl font-bold font-grotesk text-zinc-900 mb-4">vs VisualPing</h3>
+                  <p className="text-zinc-600 mb-6 flex-grow">
+                    AI semantic monitoring vs pixel diffs. Get notified about meaningful changes, not CSS updates.
+                  </p>
+                  <div className="flex items-center gap-2 text-zinc-900 font-bold group-hover:text-[hsl(10,90%,55%)] transition-colors">
+                    Compare <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
-                <p className="text-zinc-600 mb-6 font-medium">
-                  "Check the AWS Health Dashboard. Trigger our internal incident response if 'us-east-1' reports degradation."
-                </p>
-                <div className="bg-zinc-50 p-4 border border-zinc-200 font-mono text-xs text-zinc-500 rounded-sm group-hover:border-zinc-400 transition-colors">
-                  &gt; Service: EC2 (us-east-1)<br />
-                  &gt; Status: <span className="text-amber-600 font-bold">DEGRADED</span>
+              </Link>
+
+              {/* vs Distill */}
+              <Link to="/compare/distill-alternative" className="block">
+                <div className="bg-white p-8 border-2 border-zinc-100 hover:border-zinc-900 transition-all shadow-sm hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] group h-full flex flex-col">
+                  <h3 className="text-2xl font-bold font-grotesk text-zinc-900 mb-4">vs Distill</h3>
+                  <p className="text-zinc-600 mb-6 flex-grow">
+                    Natural language conditions vs XPath selectors. Monitor what matters without regex hell.
+                  </p>
+                  <div className="flex items-center gap-2 text-zinc-900 font-bold group-hover:text-[hsl(10,90%,55%)] transition-colors">
+                    Compare <ArrowRight className="w-4 h-4" />
+                  </div>
                 </div>
-              </div>
+              </Link>
+
+              {/* vs ChangeTower */}
+              <Link to="/compare/changetower-alternative" className="block">
+                <div className="bg-white p-8 border-2 border-zinc-100 hover:border-zinc-900 transition-all shadow-sm hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] group h-full flex flex-col">
+                  <h3 className="text-2xl font-bold font-grotesk text-zinc-900 mb-4">vs ChangeTower</h3>
+                  <p className="text-zinc-600 mb-6 flex-grow">
+                    Conditional alerts vs basic notifications. Set precise triggers, not just "something changed".
+                  </p>
+                  <div className="flex items-center gap-2 text-zinc-900 font-bold group-hover:text-[hsl(10,90%,55%)] transition-colors">
+                    Compare <ArrowRight className="w-4 h-4" />
+                  </div>
+                </div>
+              </Link>
 
             </div>
           </div>
@@ -429,8 +469,8 @@ export default function Landing() {
         {/* Footer */}
         <footer className="bg-zinc-950 text-zinc-400 border-t border-zinc-900 pt-20 pb-10 px-6">
           <div className="container mx-auto max-w-6xl">
-            <div className="grid md:grid-cols-4 gap-12 mb-16">
-              <div className="col-span-1 md:col-span-1">
+            <div className="grid md:grid-cols-6 gap-8 mb-16">
+              <div className="col-span-2">
                 <span className="font-bold text-xl tracking-tight block mb-6 text-white font-grotesk">τorale</span>
                 <p className="text-zinc-500 text-sm leading-relaxed">
                   Reliable, intelligent monitoring for the modern stack.
@@ -446,17 +486,29 @@ export default function Landing() {
               </div>
 
               <div>
-                <h4 className="font-bold mb-6 text-white uppercase tracking-widest text-xs">Developers</h4>
+                <h4 className="font-bold mb-6 text-white uppercase tracking-widest text-xs">Solutions</h4>
                 <ul className="space-y-3 text-sm text-zinc-500 font-medium">
-                  <li><a href="https://docs.torale.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Documentation</a></li>
-                  <li><a href="https://api.torale.ai/redoc" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">API Reference</a></li>
-                  <li><a href="https://torale.openstatus.dev" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Status</a></li>
+                  <li><Link to="/use-cases/steam-game-price-alerts" className="hover:text-white transition-colors">Gaming Deals</Link></li>
+                  <li><Link to="/use-cases/competitor-price-change-monitor" className="hover:text-white transition-colors">Price Monitoring</Link></li>
+                  <li><Link to="/use-cases/crypto-exchange-listing-alert" className="hover:text-white transition-colors">Crypto Alerts</Link></li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="font-bold mb-6 text-white uppercase tracking-widest text-xs">Community</h4>
+                <h4 className="font-bold mb-6 text-white uppercase tracking-widest text-xs">Compare</h4>
                 <ul className="space-y-3 text-sm text-zinc-500 font-medium">
+                  <li><Link to="/compare/visualping-alternative" className="hover:text-white transition-colors">vs VisualPing</Link></li>
+                  <li><Link to="/compare/distill-alternative" className="hover:text-white transition-colors">vs Distill</Link></li>
+                  <li><Link to="/compare/changetower-alternative" className="hover:text-white transition-colors">vs ChangeTower</Link></li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-bold mb-6 text-white uppercase tracking-widest text-xs">Resources</h4>
+                <ul className="space-y-3 text-sm text-zinc-500 font-medium">
+                  <li><a href="https://docs.torale.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Documentation</a></li>
+                  <li><a href="https://api.torale.ai/redoc" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">API Reference</a></li>
+                  <li><a href="https://torale.openstatus.dev" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Status</a></li>
                   <li><a href="https://github.com/prassanna-ravishankar/torale" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a></li>
                 </ul>
               </div>

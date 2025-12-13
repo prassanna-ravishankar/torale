@@ -30,12 +30,28 @@
     <meta name="twitter:image" content="https://torale.ai/og-image.webp">
 
     <!-- Neo-Brutalist Fonts: Space Grotesk (Structure) + JetBrains Mono (Data) -->
+    <!-- Fastest Google Fonts loading: https://csswizardry.com/2020/05/the-fastest-google-fonts/ -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
 
-    <!-- Load runtime config before app bundle -->
-    <script src="/config.js"></script>
+    <!-- System font fallback with size adjustment to minimize CLS -->
+    <style>
+      @font-face {
+        font-family: 'Space Grotesk Fallback';
+        src: local('Arial');
+        ascent-override: 98%;
+        descent-override: 25%;
+        line-gap-override: 0%;
+        size-adjust: 103%;
+      }
+    </style>
+
+    <!-- Load runtime config (deferred for better performance) -->
+    <script src="/config.js" defer></script>
   </head>
   <body>
     <div id="root"></div>

@@ -10,13 +10,54 @@
   <!-- Public pages -->
   <url>
     <loc>https://torale.ai/changelog</loc>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
     <changefreq>weekly</changefreq>
+    <lastmod>2025-12-11</lastmod>
   </url>
   <url>
     <loc>https://torale.ai/explore</loc>
     <priority>0.9</priority>
     <changefreq>daily</changefreq>
+  </url>
+
+  <!-- Comparison pages -->
+  <url>
+    <loc>https://torale.ai/compare/visualping-alternative</loc>
+    <priority>0.8</priority>
+    <changefreq>monthly</changefreq>
+    <lastmod>2025-12-12</lastmod>
+  </url>
+  <url>
+    <loc>https://torale.ai/compare/distill-alternative</loc>
+    <priority>0.8</priority>
+    <changefreq>monthly</changefreq>
+    <lastmod>2025-12-12</lastmod>
+  </url>
+  <url>
+    <loc>https://torale.ai/compare/changetower-alternative</loc>
+    <priority>0.8</priority>
+    <changefreq>monthly</changefreq>
+    <lastmod>2025-12-12</lastmod>
+  </url>
+
+  <!-- Use case pages -->
+  <url>
+    <loc>https://torale.ai/use-cases/steam-game-price-alerts</loc>
+    <priority>0.8</priority>
+    <changefreq>monthly</changefreq>
+    <lastmod>2025-12-12</lastmod>
+  </url>
+  <url>
+    <loc>https://torale.ai/use-cases/competitor-price-change-monitor</loc>
+    <priority>0.8</priority>
+    <changefreq>monthly</changefreq>
+    <lastmod>2025-12-12</lastmod>
+  </url>
+  <url>
+    <loc>https://torale.ai/use-cases/crypto-exchange-listing-alert</loc>
+    <priority>0.8</priority>
+    <changefreq>monthly</changefreq>
+    <lastmod>2025-12-12</lastmod>
   </url>
 
   <!-- Legal pages -->
