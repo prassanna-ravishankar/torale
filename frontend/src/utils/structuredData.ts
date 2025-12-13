@@ -14,8 +14,8 @@ export function generateChangelogStructuredData(entries: ChangelogEntry[]) {
       "logo": {
         "@type": "ImageObject",
         "url": "https://torale.ai/logo.svg",
-        "width": "512",
-        "height": "512"
+        "width": 512,
+        "height": 512
       },
       "sameAs": [
         "https://github.com/prassanna-ravishankar/torale"
