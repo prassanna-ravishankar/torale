@@ -6,15 +6,13 @@ import uuid
 from clerk_backend_api import Clerk
 from clerk_backend_api.security import verify_token
 from clerk_backend_api.security.types import TokenVerificationError, VerifyTokenOptions
-from fastapi import HTTPException, Security, status
+from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from torale.api.users import get_async_session
 from torale.core.config import settings
-
-# Security scheme for Bearer token
-security = HTTPBearer()
 
 # Initialize Clerk client
 clerk_client = None
@@ -43,13 +41,15 @@ class ClerkUser:
 
 
 async def verify_clerk_token(
-    credentials: HTTPAuthorizationCredentials = Security(security),
+    credentials: HTTPAuthorizationCredentials,
+    session: AsyncSession,
 ) -> ClerkUser:
     """
     Verify Clerk session token and return user information.
 
     Args:
         credentials: HTTP Bearer token from Authorization header
+        session: Database session.
 
     Returns:
         ClerkUser object with user information
@@ -112,21 +112,15 @@ async def verify_clerk_token(
                 )
 
             # Fetch database user_id
-            from torale.api.users import get_async_session
-
             db_user_id = None
-            async for session in get_async_session():
-                try:
-                    result = await session.execute(
-                        text("SELECT id FROM users WHERE clerk_user_id = :clerk_user_id"),
-                        {"clerk_user_id": clerk_user_id},
-                    )
-                    row = result.first()
-                    if row:
-                        db_user_id = row[0]
-                    break
-                finally:
-                    await session.close()
+
+            result = await session.execute(
+                text("SELECT id FROM users WHERE clerk_user_id = :clerk_user_id"),
+                {"clerk_user_id": clerk_user_id},
+            )
+            row = result.first()
+            if row:
+                db_user_id = row[0]
 
             return ClerkUser(
                 clerk_user_id=clerk_user_id,
@@ -222,43 +216,6 @@ async def verify_api_key(
     )
 
 
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Security(security),
-) -> ClerkUser:
-    """
-    Get current authenticated user from either Clerk token or API key.
-
-    Tries authentication methods in order:
-    1. API key (if token starts with 'sk_')
-    2. Clerk JWT token
-
-    This is a dependency that can be used in FastAPI routes to require authentication.
-
-    Example:
-        @app.get("/protected")
-        async def protected_route(user: ClerkUser = Depends(get_current_user)):
-            return {"user_id": user.clerk_user_id, "email": user.email}
-    """
-    token = credentials.credentials
-
-    # Check if it's an API key (starts with 'sk_')
-    if token.startswith("sk_"):
-        # Need session for API key verification
-        from torale.api.users import get_async_session
-
-        async for session in get_async_session():
-            try:
-                return await verify_api_key(credentials, session)
-            finally:
-                await session.close()
-
-    # Otherwise try Clerk JWT
-    return await verify_clerk_token(credentials)
-
-
-# Alias for compatibility with existing code that uses current_active_user
-current_active_user = get_current_user
-
 # Fixed UUID for noauth test user - must match the user seeded in local dev DB
 NOAUTH_TEST_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
@@ -267,8 +224,7 @@ def _get_noauth_test_user() -> ClerkUser:
     """
     Get the test user for TORALE_NOAUTH mode.
 
-    Single source of truth for the test user - used by both
-    get_current_user_or_test_user and get_current_user_optional.
+    Single source of truth for the test user - used by NoAuthProvider.
     """
     return ClerkUser(
         clerk_user_id="test_user_noauth",
@@ -278,52 +234,9 @@ def _get_noauth_test_user() -> ClerkUser:
     )
 
 
-async def get_current_user_or_test_user(
-    credentials: HTTPAuthorizationCredentials | None = Security(HTTPBearer(auto_error=False)),
-) -> ClerkUser:
-    """
-    Get current user with support for TORALE_NOAUTH test mode.
-
-    SECURITY WARNING: Only use this in test/development routes!
-    Production routes MUST use get_current_user() instead.
-
-    When TORALE_NOAUTH=1:
-    - Returns a test user without authentication
-    - Should ONLY be used in local development/testing
-
-    When TORALE_NOAUTH=0 (default):
-    - Requires proper authentication (same as get_current_user)
-    """
-    # If noauth mode is enabled, return test user
-    if settings.torale_noauth:
-        print("⚠️  WARNING: TORALE_NOAUTH mode enabled - authentication bypassed!")
-        return _get_noauth_test_user()
-
-    # In production mode, require authentication
-    if credentials is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    # Use normal authentication
-    token = credentials.credentials
-
-    if token.startswith("sk_"):
-        from torale.api.users import get_async_session
-
-        async for session in get_async_session():
-            try:
-                return await verify_api_key(credentials, session)
-            finally:
-                await session.close()
-
-    return await verify_clerk_token(credentials)
-
-
 async def require_admin(
-    credentials: HTTPAuthorizationCredentials = Security(security),
+    credentials: HTTPAuthorizationCredentials = Security(HTTPBearer()),
+    session: AsyncSession = Depends(get_async_session),
 ) -> ClerkUser:
     """
     Require admin role for accessing admin endpoints.
@@ -341,8 +254,11 @@ async def require_admin(
         async def get_stats(admin: ClerkUser = Depends(require_admin)):
             return {"message": "Admin access granted"}
     """
+    # Import here to avoid circular dependency
+    from torale.api.auth import get_current_user
+
     # First authenticate the user
-    user = await get_current_user(credentials)
+    user = await get_current_user(credentials, session)
 
     # Fetch user's public metadata from Clerk to check role
     if not clerk_client:
@@ -375,7 +291,8 @@ async def require_admin(
 
 
 async def require_developer(
-    credentials: HTTPAuthorizationCredentials = Security(security),
+    credentials: HTTPAuthorizationCredentials = Security(HTTPBearer()),
+    session: AsyncSession = Depends(get_async_session),
 ) -> ClerkUser:
     """
     Require developer or admin role for accessing developer endpoints.
@@ -393,8 +310,11 @@ async def require_developer(
         async def create_api_key(developer: ClerkUser = Depends(require_developer)):
             return {"message": "Developer access granted"}
     """
+    # Import here to avoid circular dependency
+    from torale.api.auth import get_current_user
+
     # First authenticate the user
-    user = await get_current_user(credentials)
+    user = await get_current_user(credentials, session)
 
     # Fetch user's public metadata from Clerk to check role
     if not clerk_client:

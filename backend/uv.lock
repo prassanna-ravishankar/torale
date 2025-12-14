@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11"
 
 [[package]]
@@ -1788,6 +1788,7 @@ research = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "httpx" },
     { name = "ruff" },
 ]
 
@@ -1825,7 +1826,10 @@ requires-dist = [
 provides-extras = ["dev", "research"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.14.4" }]
+dev = [
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "ruff", specifier = ">=0.14.4" },
+]
 
 [[package]]
 name = "tqdm"

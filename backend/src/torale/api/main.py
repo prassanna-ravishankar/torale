@@ -10,6 +10,11 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from torale.api.auth_provider import (
+    NoAuthProvider,
+    ProductionAuthProvider,
+    set_auth_provider,
+)
 from torale.api.rate_limiter import limiter
 from torale.api.routers import (
     admin,
@@ -63,9 +68,12 @@ async def lifespan(app: FastAPI):
     await db.connect()
     print("Database connection pool established")
 
-    # Create test user for TORALE_NOAUTH mode
+    # Initialize Auth Provider
     if settings.torale_noauth:
-        print("⚠️  TORALE_NOAUTH mode enabled - creating test user")
+        print("⚠️  TORALE_NOAUTH mode enabled - using NoAuthProvider")
+        set_auth_provider(NoAuthProvider())
+
+        # Create test user in DB
         await db.execute(
             """
             INSERT INTO users (id, clerk_user_id, email, is_active)
@@ -75,6 +83,9 @@ async def lifespan(app: FastAPI):
             settings.torale_noauth_email,
         )
         print(f"✓ Test user ready ({settings.torale_noauth_email})")
+    else:
+        print("🔒 Using ProductionAuthProvider (Clerk + API Keys)")
+        set_auth_provider(ProductionAuthProvider())
 
     yield
     await db.disconnect()

@@ -28,7 +28,7 @@ torale/
 └── docs-site/               # Documentation (VitePress)
 ```
 
-**Tooling**: `uv` (backend), `npm` (frontend), `vite` (docs-site), `justfile` for commands (`just dev-all-noauth`, `just test`, etc.)
+**Tooling**: `uv` (backend), `npm` (frontend), `vite` (docs-site), `justfile` for commands (`just dev-noauth`, `just test`, `just test-integration`)
 
 **Architecture**: Frontend → FastAPI → Temporal (scheduling) → Workers → Gemini + Google Search → Notifications
 
@@ -40,7 +40,7 @@ See `docs-site/architecture/` for detailed docs.
 
 **Common workflow**:
 1. Create branch
-2. Build and iterate locally (`just dev-all-noauth`)
+2. Build and iterate locally (`just dev-noauth`)
 3. Push, let CI build
 4. Gemini reviews PR automatically - address feedback
 5. Merge when green
