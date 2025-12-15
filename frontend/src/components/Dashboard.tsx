@@ -211,7 +211,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded-sm transition-colors ${viewMode === 'list' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`}
+              className={`hidden md:inline-flex p-1.5 rounded-sm transition-colors ${viewMode === 'list' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`}
             >
               <ListIcon className="w-4 h-4" />
             </button>
