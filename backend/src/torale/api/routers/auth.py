@@ -11,12 +11,8 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from torale.api.clerk_auth import (
-    ClerkUser,
-    get_current_user,
-    get_current_user_or_test_user,
-    require_developer,
-)
+from torale.api.auth import CurrentUser, CurrentUserOrTestUser
+from torale.api.clerk_auth import ClerkUser, require_developer
 from torale.api.users import User, UserRead, get_async_session
 
 router = APIRouter()
@@ -31,7 +27,7 @@ class SyncUserResponse(BaseModel):
 
 @router.post("/sync-user", response_model=SyncUserResponse)
 async def sync_user(
-    clerk_user: ClerkUser = Depends(get_current_user),
+    clerk_user: CurrentUser,
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -257,7 +253,7 @@ async def create_api_key(
 
 @router.get("/api-keys", response_model=list[APIKey])
 async def list_api_keys(
-    clerk_user: ClerkUser = Depends(get_current_user),
+    clerk_user: CurrentUser,
     session: AsyncSession = Depends(get_async_session),
 ):
     """List all API keys for current user."""
@@ -301,7 +297,7 @@ async def list_api_keys(
 @router.delete("/api-keys/{key_id}")
 async def revoke_api_key(
     key_id: uuid.UUID,
-    clerk_user: ClerkUser = Depends(get_current_user),
+    clerk_user: CurrentUser,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Revoke (deactivate) an API key."""
@@ -339,7 +335,7 @@ async def revoke_api_key(
 
 @router.get("/me", response_model=UserRead)
 async def get_current_user_info(
-    clerk_user: ClerkUser = Depends(get_current_user_or_test_user),
+    clerk_user: CurrentUserOrTestUser,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Get current user information (supports noauth mode for testing)."""
