@@ -271,7 +271,9 @@ class ProductionAuthProvider(AuthProvider):
 
         user_id, key_id, clerk_user_id, email = row
 
-        # Update last_used_at timestamp (flush to DB but stay in transaction)
+        # Update last_used_at timestamp (commit immediately for audit trail)
+        # This is a self-contained audit operation that should persist regardless
+        # of whether the main request succeeds or fails
         await session.execute(
             text("""
             UPDATE api_keys
@@ -280,7 +282,7 @@ class ProductionAuthProvider(AuthProvider):
             """),
             {"key_id": key_id},
         )
-        await session.flush()
+        await session.commit()
 
         return User(
             user_id=clerk_user_id,
