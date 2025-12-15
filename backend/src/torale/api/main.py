@@ -74,18 +74,9 @@ async def lifespan(app: FastAPI):
     # Initialize Auth Provider
     if settings.torale_noauth:
         logger.info("⚠️  TORALE_NOAUTH mode enabled - using NoAuthProvider")
-        set_auth_provider(NoAuthProvider())
-
-        # Create test user in DB
-        await db.execute(
-            """
-            INSERT INTO users (id, clerk_user_id, email, is_active)
-            VALUES ('00000000-0000-0000-0000-000000000001', 'test_user_noauth', $1, true)
-            ON CONFLICT (clerk_user_id) DO UPDATE SET email = EXCLUDED.email
-        """,
-            settings.torale_noauth_email,
-        )
-        logger.info(f"✓ Test user ready ({settings.torale_noauth_email})")
+        provider = NoAuthProvider()
+        set_auth_provider(provider)
+        await provider.setup(db)
     else:
         logger.info("🔒 Using ProductionAuthProvider (Clerk + API Keys)")
         set_auth_provider(ProductionAuthProvider())

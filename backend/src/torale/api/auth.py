@@ -6,8 +6,7 @@ from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from torale.api.auth_provider import get_auth_provider
-from torale.api.clerk_auth import ClerkUser
+from torale.api.auth_provider import User, get_auth_provider
 from torale.core.database_alchemy import get_async_session
 
 # Security scheme for Bearer token
@@ -20,7 +19,7 @@ security_optional = HTTPBearer(auto_error=False)
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Security(security_optional),
     session: AsyncSession = Depends(get_async_session),
-) -> ClerkUser:
+) -> User:
     """
     Get current authenticated user.
     Delegates to the configured AuthProvider.
@@ -32,7 +31,7 @@ async def get_current_user(
 async def get_current_user_optional(
     credentials: HTTPAuthorizationCredentials | None = Security(security_optional),
     session: AsyncSession = Depends(get_async_session),
-) -> ClerkUser | None:
+) -> User | None:
     """
     Get current user if authenticated, otherwise return None.
     Used for endpoints that work both authenticated and unauthenticated.
@@ -48,16 +47,16 @@ async def get_current_user_optional(
 
 
 # Type alias for production routes - requires authentication
-CurrentUser = Annotated[ClerkUser, Depends(get_current_user)]
+CurrentUser = Annotated[User, Depends(get_current_user)]
 
 # Type alias for optional auth
-OptionalUser = Annotated[ClerkUser | None, Depends(get_current_user_optional)]
+OptionalUser = Annotated[User | None, Depends(get_current_user_optional)]
 
 
 async def require_admin(
     credentials: HTTPAuthorizationCredentials = Security(security),
     session: AsyncSession = Depends(get_async_session),
-) -> ClerkUser:
+) -> User:
     """
     Require admin role for accessing admin endpoints.
 
@@ -81,7 +80,7 @@ async def require_admin(
 async def require_developer(
     credentials: HTTPAuthorizationCredentials = Security(security),
     session: AsyncSession = Depends(get_async_session),
-) -> ClerkUser:
+) -> User:
     """
     Require developer or admin role for accessing developer endpoints.
 
