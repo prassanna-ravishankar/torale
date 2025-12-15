@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import logging
 
 from fastapi import HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
@@ -10,6 +11,8 @@ from torale.api.clerk_auth import (
     verify_api_key,
     verify_clerk_token,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AuthProvider(ABC):
@@ -130,7 +133,7 @@ class ProductionAuthProvider(AuthProvider):
         except HTTPException:
             raise
         except Exception as e:
-            print(f"Failed to verify {required_role} role: {e}")
+            logger.error(f"Failed to verify {required_role} role: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to verify {required_role} role",

@@ -1,6 +1,7 @@
 """Clerk authentication integration for FastAPI."""
 
 import hashlib
+import logging
 import uuid
 
 from clerk_backend_api import Clerk
@@ -12,6 +13,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # Initialize Clerk client
 clerk_client = None
@@ -130,14 +133,14 @@ async def verify_clerk_token(
         except HTTPException:
             raise
         except Exception as e:
-            print(f"Failed to fetch user from Clerk API: {e}")
+            logger.error(f"Failed to fetch user from Clerk API: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to fetch user data: {str(e)}",
             ) from e
 
     except TokenVerificationError as e:
-        print(f"Clerk token verification failed: {e}")
+        logger.warning(f"Clerk token verification failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Token verification failed: {str(e)}",
@@ -147,7 +150,7 @@ async def verify_clerk_token(
         raise
     except Exception as e:
         # Log the error in production
-        print(f"Clerk token verification error: {e}")
+        logger.error(f"Clerk token verification error: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",

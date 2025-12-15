@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 from uuid import UUID
@@ -21,6 +22,8 @@ from torale.core.models import TaskState
 from torale.core.task_state_machine import TaskStateMachine
 
 router = APIRouter(prefix="/admin", tags=["admin"], include_in_schema=False)
+
+logger = logging.getLogger(__name__)
 
 
 # Request models for role management
@@ -560,7 +563,7 @@ async def list_users(
                 offset += limit
 
         except Exception as e:
-            print(f"Failed to batch-fetch users from Clerk: {e}")
+            logger.error(f"Failed to batch-fetch users from Clerk: {e}")
             # Continue with a partially populated or empty role_map
 
     users = []
@@ -829,7 +832,7 @@ async def bulk_update_user_roles(
                 clerk_users_map = {user.id: user for user in clerk_users_response.data}
             except Exception as e:
                 # Log warning but continue - will handle missing users individually
-                print(f"Warning: Clerk batch fetch failed: {e}")
+                logger.warning(f"Clerk batch fetch failed: {e}")
 
     # Prepare all update tasks for parallel execution
     update_tasks = []

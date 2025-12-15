@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -34,6 +35,8 @@ from torale.core.config import settings
 from torale.core.database import db
 from torale.core.database_alchemy import get_async_session
 
+logger = logging.getLogger(__name__)
+
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses."""
@@ -64,13 +67,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print(f"Starting Torale API on {settings.api_host}:{settings.api_port}")
+    logger.info(f"Starting Torale API on {settings.api_host}:{settings.api_port}")
     await db.connect()
-    print("Database connection pool established")
+    logger.info("Database connection pool established")
 
     # Initialize Auth Provider
     if settings.torale_noauth:
-        print("⚠️  TORALE_NOAUTH mode enabled - using NoAuthProvider")
+        logger.info("⚠️  TORALE_NOAUTH mode enabled - using NoAuthProvider")
         set_auth_provider(NoAuthProvider())
 
         # Create test user in DB
@@ -82,14 +85,14 @@ async def lifespan(app: FastAPI):
         """,
             settings.torale_noauth_email,
         )
-        print(f"✓ Test user ready ({settings.torale_noauth_email})")
+        logger.info(f"✓ Test user ready ({settings.torale_noauth_email})")
     else:
-        print("🔒 Using ProductionAuthProvider (Clerk + API Keys)")
+        logger.info("🔒 Using ProductionAuthProvider (Clerk + API Keys)")
         set_auth_provider(ProductionAuthProvider())
 
     yield
     await db.disconnect()
-    print("Shutting down Torale API")
+    logger.info("Shutting down Torale API")
 
 
 app = FastAPI(
