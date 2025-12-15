@@ -255,7 +255,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
             </BrutalistTableBody>
           </BrutalistTable>
         ) : (
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             <AnimatePresence>
               {filteredTasks.map((task) => (
                 <TaskCard

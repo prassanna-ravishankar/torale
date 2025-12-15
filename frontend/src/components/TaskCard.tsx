@@ -119,7 +119,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       </div>
 
       {/* Middle: Metrics */}
-      <div className="p-4 grid grid-cols-2 gap-4 flex-1">
+      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
         <div>
           <SectionLabel className="mb-1">Schedule</SectionLabel>
           <div className="flex items-center gap-1.5 text-xs font-mono text-zinc-600">
