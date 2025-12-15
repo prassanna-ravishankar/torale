@@ -30,9 +30,9 @@ from torale.api.routers import (
     waitlist,
     webhooks,
 )
-from torale.api.users import get_async_session
 from torale.core.config import settings
 from torale.core.database import db
+from torale.core.database_alchemy import get_async_session
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

@@ -95,7 +95,6 @@ class ProductionAuthProvider(AuthProvider):
         Raises:
             HTTPException: If Clerk client not available or role verification fails.
         """
-        from torale.core.config import settings
 
         # Import clerk_client
         from torale.api.clerk_auth import clerk_client

@@ -6,14 +6,8 @@ from datetime import UTC, datetime
 from pydantic import BaseModel
 from sqlalchemy import Boolean, Column, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase
 
-from torale.core.config import settings
-
-
-class Base(DeclarativeBase):
-    pass
+from torale.core.database_alchemy import Base
 
 
 class User(Base):
@@ -34,19 +28,6 @@ class User(Base):
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
     )
-
-
-# Create async engine for SQLAlchemy
-engine = create_async_engine(
-    settings.database_url.replace("postgresql://", "postgresql+asyncpg://")
-)
-async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
-
-
-async def get_async_session():
-    """Get async database session."""
-    async with async_session_maker() as session:
-        yield session
 
 
 # Pydantic schemas for API

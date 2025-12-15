@@ -12,10 +12,11 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from temporalio.client import Client
 
-from torale.api.clerk_auth import ClerkUser, clerk_client, require_admin
-from torale.api.users import get_async_session
+from torale.api.auth import require_admin
+from torale.api.clerk_auth import ClerkUser, clerk_client
 from torale.core.config import settings
 from torale.core.database import Database, get_db
+from torale.core.database_alchemy import get_async_session
 from torale.core.models import TaskState
 from torale.core.task_state_machine import TaskStateMachine
 

@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.api.rate_limiter import limiter
-from torale.api.users import get_async_session
+from torale.core.database_alchemy import get_async_session
 
 router = APIRouter()
 

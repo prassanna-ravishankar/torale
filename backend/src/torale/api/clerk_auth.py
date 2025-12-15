@@ -6,12 +6,11 @@ import uuid
 from clerk_backend_api import Clerk
 from clerk_backend_api.security import verify_token
 from clerk_backend_api.security.types import TokenVerificationError, VerifyTokenOptions
-from fastapi import Depends, HTTPException, Security, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from torale.api.users import get_async_session
 from torale.core.config import settings
 
 # Initialize Clerk client
@@ -232,69 +231,3 @@ def _get_noauth_test_user() -> ClerkUser:
         email_verified=True,
         db_user_id=NOAUTH_TEST_USER_ID,
     )
-
-
-async def require_admin(
-    credentials: HTTPAuthorizationCredentials = Security(HTTPBearer()),
-    session: AsyncSession = Depends(get_async_session),
-) -> ClerkUser:
-    """
-    Require admin role for accessing admin endpoints.
-
-    This dependency:
-    1. Authenticates the user (via Clerk JWT or API key)
-    2. Verifies that the user has admin role (delegates to AuthProvider)
-
-    Raises:
-        HTTPException: 403 if user is not an admin
-
-    Example:
-        @router.get("/admin/stats")
-        async def get_stats(admin: ClerkUser = Depends(require_admin)):
-            return {"message": "Admin access granted"}
-    """
-    # Import here to avoid circular dependency
-    from torale.api.auth import get_current_user
-    from torale.api.auth_provider import get_auth_provider
-
-    # First authenticate the user
-    user = await get_current_user(credentials, session)
-
-    # Delegate role verification to the auth provider
-    provider = get_auth_provider()
-    await provider.verify_role(user, "admin")
-
-    return user
-
-
-async def require_developer(
-    credentials: HTTPAuthorizationCredentials = Security(HTTPBearer()),
-    session: AsyncSession = Depends(get_async_session),
-) -> ClerkUser:
-    """
-    Require developer or admin role for accessing developer endpoints.
-
-    This dependency:
-    1. Authenticates the user (via Clerk JWT or API key)
-    2. Verifies that the user has developer or admin role (delegates to AuthProvider)
-
-    Raises:
-        HTTPException: 403 if user is not a developer or admin
-
-    Example:
-        @router.post("/auth/api-keys")
-        async def create_api_key(developer: ClerkUser = Depends(require_developer)):
-            return {"message": "Developer access granted"}
-    """
-    # Import here to avoid circular dependency
-    from torale.api.auth import get_current_user
-    from torale.api.auth_provider import get_auth_provider
-
-    # First authenticate the user
-    user = await get_current_user(credentials, session)
-
-    # Delegate role verification to the auth provider
-    provider = get_auth_provider()
-    await provider.verify_role(user, "developer")
-
-    return user
