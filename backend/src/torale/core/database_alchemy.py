@@ -1,6 +1,5 @@
 """SQLAlchemy database configuration and session management."""
 
-
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -9,6 +8,7 @@ from torale.core.config import settings
 
 class Base(DeclarativeBase):
     """Base class for SQLAlchemy models."""
+
     pass
 
 
