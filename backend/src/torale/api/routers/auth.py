@@ -4,6 +4,7 @@ import hashlib
 import secrets
 import uuid
 from datetime import UTC, datetime
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -11,13 +12,11 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from torale.api.clerk_auth import (
-    ClerkUser,
-    get_current_user,
-    get_current_user_or_test_user,
-    require_developer,
-)
-from torale.api.users import User, UserRead, get_async_session
+from torale.api.auth import CurrentUser, require_developer
+from torale.api.auth_provider import ProductionAuthProvider, get_auth_provider
+from torale.api.auth_provider import User as AuthUser
+from torale.api.users import User, UserRead
+from torale.core.database_alchemy import get_async_session
 
 router = APIRouter()
 
@@ -31,7 +30,7 @@ class SyncUserResponse(BaseModel):
 
 @router.post("/sync-user", response_model=SyncUserResponse)
 async def sync_user(
-    clerk_user: ClerkUser = Depends(get_current_user),
+    clerk_user: CurrentUser,
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -40,13 +39,12 @@ async def sync_user(
     Called automatically on first login from frontend.
     Creates user if doesn't exist, updates email and first_name if changed.
     """
-    from torale.api.clerk_auth import clerk_client
-
     # Fetch full user data from Clerk to get first_name
     first_name = None
-    if clerk_client:
+    provider = get_auth_provider()
+    if isinstance(provider, ProductionAuthProvider) and provider.clerk_client:
         try:
-            clerk_user_data = clerk_client.users.get(user_id=clerk_user.clerk_user_id)
+            clerk_user_data = provider.clerk_client.users.get(user_id=clerk_user.clerk_user_id)
             first_name = clerk_user_data.first_name if clerk_user_data else None
         except Exception:
             # Continue without first_name if Clerk API fails
@@ -187,7 +185,7 @@ class CreateAPIKeyResponse(BaseModel):
 @router.post("/api-keys", response_model=CreateAPIKeyResponse)
 async def create_api_key(
     request: CreateAPIKeyRequest,
-    clerk_user: ClerkUser = Depends(require_developer),
+    clerk_user: Annotated[AuthUser, Depends(require_developer)],
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -257,7 +255,7 @@ async def create_api_key(
 
 @router.get("/api-keys", response_model=list[APIKey])
 async def list_api_keys(
-    clerk_user: ClerkUser = Depends(get_current_user),
+    clerk_user: CurrentUser,
     session: AsyncSession = Depends(get_async_session),
 ):
     """List all API keys for current user."""
@@ -301,7 +299,7 @@ async def list_api_keys(
 @router.delete("/api-keys/{key_id}")
 async def revoke_api_key(
     key_id: uuid.UUID,
-    clerk_user: ClerkUser = Depends(get_current_user),
+    clerk_user: CurrentUser,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Revoke (deactivate) an API key."""
@@ -339,7 +337,7 @@ async def revoke_api_key(
 
 @router.get("/me", response_model=UserRead)
 async def get_current_user_info(
-    clerk_user: ClerkUser = Depends(get_current_user_or_test_user),
+    clerk_user: CurrentUser,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Get current user information (supports noauth mode for testing)."""

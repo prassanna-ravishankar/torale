@@ -505,18 +505,18 @@ just test-cov           # Run with coverage report
 just lint               # Run ruff linting
 ```
 
-### E2E Integration Tests
+### Integration Tests
 
-E2E tests require running services (PostgreSQL, Temporal, API, Workers) and support two authentication modes:
+Integration tests require running services (PostgreSQL, Temporal, API, Workers) and support two authentication modes:
 
 **Option 1: No-Auth Mode (Recommended for Development)**
 
 ```bash
 # Start services with no-auth mode
-TORALE_NOAUTH=1 just dev-bg
+just dev-noauth
 
-# Run all E2E tests
-TORALE_NOAUTH=1 just test-e2e
+# Run integration tests
+TORALE_NOAUTH=1 just test-integration
 ```
 
 This automatically creates a test user and bypasses Clerk authentication for testing.
@@ -535,13 +535,8 @@ just dev-bg
 
 # Run tests with Clerk token
 export CLERK_TEST_TOKEN='your-clerk-session-token'
-just test-e2e
+just test-integration
 ```
-
-**Available E2E Tests:**
-- `test_temporal_e2e.sh` - Tests Temporal workflow execution
-- `test_schedule.sh` - Tests automatic scheduled task execution
-- `test_grounded_search.sh` - Tests grounded search monitoring functionality
 
 See [docs-site/contributing/testing.md](https://docs.torale.ai/contributing/testing) for detailed testing guide, including debugging workflows and troubleshooting.
 
@@ -549,8 +544,10 @@ See [docs-site/contributing/testing.md](https://docs.torale.ai/contributing/test
 
 ### Local Development
 ```bash
-just dev        # Start all services via docker-compose
-just dev-all    # Include frontend dev server
+just dev         # Start all services via docker-compose
+just dev-frontend # Start frontend dev server
+just dev-full    # Start everything
+just dev-noauth  # Start everything in no-auth mode
 ```
 
 ### CI/CD (Recommended)

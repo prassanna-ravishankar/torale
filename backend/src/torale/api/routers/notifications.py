@@ -4,10 +4,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
-from torale.api.auth import CurrentUserOrTestUser
+from torale.api.auth import CurrentUser
 from torale.core.database import Database, get_db
 
-CurrentUser = CurrentUserOrTestUser
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 

@@ -4,49 +4,106 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from torale.api.clerk_auth import (
-    ClerkUser,
-    _get_noauth_test_user,
-    get_current_user,
-    get_current_user_or_test_user,
-)
-from torale.core.config import settings
+from torale.api.auth_provider import User, get_auth_provider
+from torale.core.database_alchemy import get_async_session
 
-# Type alias for production routes - requires authentication
-CurrentUser = Annotated[ClerkUser, Depends(get_current_user)]
-
-# Type alias for test/development routes - supports TORALE_NOAUTH mode
-# SECURITY WARNING: Only use CurrentUserOrTestUser for endpoints that are safe for testing!
-CurrentUserOrTestUser = Annotated[ClerkUser, Depends(get_current_user_or_test_user)]
+# Security scheme for Bearer token
+security = HTTPBearer()
 
 # Optional security for public endpoints
 security_optional = HTTPBearer(auto_error=False)
 
 
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Security(security_optional),
+    session: AsyncSession = Depends(get_async_session),
+) -> User:
+    """
+    Get current authenticated user.
+    Delegates to the configured AuthProvider.
+    """
+    provider = get_auth_provider()
+    return await provider.get_current_user(credentials, session)
+
+
 async def get_current_user_optional(
     credentials: HTTPAuthorizationCredentials | None = Security(security_optional),
-) -> ClerkUser | None:
+    session: AsyncSession = Depends(get_async_session),
+) -> User | None:
     """
     Get current user if authenticated, otherwise return None.
     Used for endpoints that work both authenticated and unauthenticated.
-
-    In TORALE_NOAUTH mode, returns the test user (simulates being logged in).
     """
-    # In noauth mode, return test user (same as get_current_user_or_test_user)
-    if settings.torale_noauth:
-        return _get_noauth_test_user()
-
-    if credentials is None:
-        return None
-
+    provider = get_auth_provider()
     try:
-        return await get_current_user(credentials)
+        return await provider.get_current_user(credentials, session)
     except HTTPException:
-        # If auth fails (invalid token, etc.), return None
-        # This allows public endpoints to gracefully handle missing/invalid auth
+        # If auth fails (invalid token, etc.) or no credentials provided for production provider,
+        # return None.
+        # Note: NoAuthProvider always returns a user, so it won't raise HTTPException usually.
         return None
 
+
+# Type alias for production routes - requires authentication
+CurrentUser = Annotated[User, Depends(get_current_user)]
 
 # Type alias for optional auth
-OptionalUser = Annotated[ClerkUser | None, Depends(get_current_user_optional)]
+OptionalUser = Annotated[User | None, Depends(get_current_user_optional)]
+
+
+async def require_admin(
+    credentials: HTTPAuthorizationCredentials | None = Security(security_optional),
+    session: AsyncSession = Depends(get_async_session),
+) -> User:
+    """
+    Require admin role for accessing admin endpoints.
+
+    This dependency:
+    1. Authenticates the user (via Clerk JWT or API key)
+    2. Verifies that the user has admin role (delegates to AuthProvider)
+
+    In NoAuth mode, credentials can be None and the NoAuthProvider will
+    return a test user. In production, ProductionAuthProvider will raise
+    401 if credentials are missing.
+
+    Raises:
+        HTTPException: 401 if not authenticated, 403 if user is not an admin
+    """
+    # First authenticate the user (provider handles missing credentials)
+    user = await get_current_user(credentials, session)
+
+    # Delegate role verification to the auth provider
+    provider = get_auth_provider()
+    await provider.verify_role(user, "admin")
+
+    return user
+
+
+async def require_developer(
+    credentials: HTTPAuthorizationCredentials | None = Security(security_optional),
+    session: AsyncSession = Depends(get_async_session),
+) -> User:
+    """
+    Require developer or admin role for accessing developer endpoints.
+
+    This dependency:
+    1. Authenticates the user (via Clerk JWT or API key)
+    2. Verifies that the user has developer or admin role (delegates to AuthProvider)
+
+    In NoAuth mode, credentials can be None and the NoAuthProvider will
+    return a test user. In production, ProductionAuthProvider will raise
+    401 if credentials are missing.
+
+    Raises:
+        HTTPException: 401 if not authenticated, 403 if user is not a developer or admin
+    """
+    # First authenticate the user (provider handles missing credentials)
+    user = await get_current_user(credentials, session)
+
+    # Delegate role verification to the auth provider
+    provider = get_auth_provider()
+    await provider.verify_role(user, "developer")
+
+    return user

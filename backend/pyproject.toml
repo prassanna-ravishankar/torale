@@ -110,9 +110,10 @@ ignore = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-norecursedirs = ["src", ".git", ".venv", "node_modules", "dist", "build"]
+norecursedirs = ["src", ".git", ".venv", "node_modules", "dist", "build", "tests/integration"]
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "ruff>=0.14.4",
 ]

@@ -3,12 +3,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 
-from torale.api.auth import CurrentUserOrTestUser
+from torale.api.auth import CurrentUser
 from torale.core.database import Database, get_db
 from torale.core.email_verification import EmailVerificationService
 from torale.notifications.novu_service import novu_service
 
-CurrentUser = CurrentUserOrTestUser
 router = APIRouter(prefix="/email-verification", tags=["email-verification"])
 
 

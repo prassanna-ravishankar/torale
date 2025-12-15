@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -10,6 +11,11 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from torale.api.auth_provider import (
+    NoAuthProvider,
+    ProductionAuthProvider,
+    set_auth_provider,
+)
 from torale.api.rate_limiter import limiter
 from torale.api.routers import (
     admin,
@@ -25,9 +31,11 @@ from torale.api.routers import (
     waitlist,
     webhooks,
 )
-from torale.api.users import get_async_session
 from torale.core.config import settings
 from torale.core.database import db
+from torale.core.database_alchemy import get_async_session
+
+logger = logging.getLogger(__name__)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -59,26 +67,23 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print(f"Starting Torale API on {settings.api_host}:{settings.api_port}")
+    logger.info(f"Starting Torale API on {settings.api_host}:{settings.api_port}")
     await db.connect()
-    print("Database connection pool established")
+    logger.info("Database connection pool established")
 
-    # Create test user for TORALE_NOAUTH mode
+    # Initialize Auth Provider
     if settings.torale_noauth:
-        print("⚠️  TORALE_NOAUTH mode enabled - creating test user")
-        await db.execute(
-            """
-            INSERT INTO users (id, clerk_user_id, email, is_active)
-            VALUES ('00000000-0000-0000-0000-000000000001', 'test_user_noauth', $1, true)
-            ON CONFLICT (clerk_user_id) DO UPDATE SET email = EXCLUDED.email
-        """,
-            settings.torale_noauth_email,
-        )
-        print(f"✓ Test user ready ({settings.torale_noauth_email})")
+        logger.info("⚠️  TORALE_NOAUTH mode enabled - using NoAuthProvider")
+        provider = NoAuthProvider()
+        set_auth_provider(provider)
+        await provider.setup(db)
+    else:
+        logger.info("🔒 Using ProductionAuthProvider (Clerk + API Keys)")
+        set_auth_provider(ProductionAuthProvider())
 
     yield
     await db.disconnect()
-    print("Shutting down Torale API")
+    logger.info("Shutting down Torale API")
 
 
 app = FastAPI(
