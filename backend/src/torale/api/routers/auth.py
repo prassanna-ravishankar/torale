@@ -11,7 +11,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from torale.api.auth import CurrentUser, CurrentUserOrTestUser, require_developer
+from torale.api.auth import CurrentUser, require_developer
 from torale.api.clerk_auth import ClerkUser
 from torale.api.users import User, UserRead
 from torale.core.database_alchemy import get_async_session
@@ -336,7 +336,7 @@ async def revoke_api_key(
 
 @router.get("/me", response_model=UserRead)
 async def get_current_user_info(
-    clerk_user: CurrentUserOrTestUser,
+    clerk_user: CurrentUser,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Get current user information (supports noauth mode for testing)."""

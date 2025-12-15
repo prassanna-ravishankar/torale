@@ -4,7 +4,7 @@ from asyncpg.exceptions import UniqueViolationError
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from torale.api.auth import CurrentUserOrTestUser, OptionalUser
+from torale.api.auth import CurrentUser, OptionalUser
 from torale.core.database import Database, get_db
 from torale.utils.username import check_username_available, validate_username
 
@@ -64,7 +64,7 @@ async def check_username_availability(
 @router.patch("/me/username", response_model=SetUsernameResponse)
 async def set_username(
     request: SetUsernameRequest,
-    user: CurrentUserOrTestUser,
+    user: CurrentUser,
     db: Database = Depends(get_db),
 ):
     """

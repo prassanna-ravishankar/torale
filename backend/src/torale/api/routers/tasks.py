@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from temporalio.client import Client
 from temporalio.service import RPCError
 
-from torale.api.auth import CurrentUserOrTestUser, OptionalUser
+from torale.api.auth import CurrentUser, OptionalUser
 from torale.api.dependencies import get_genai_client
 from torale.api.utils.task_parsers import (
     parse_execution_row,
@@ -36,10 +36,6 @@ from torale.utils.slug import generate_unique_slug
 from torale.workers.workflows import TaskExecutionWorkflow
 
 logger = logging.getLogger(__name__)
-
-# Use CurrentUserOrTestUser for all endpoints to support TORALE_NOAUTH testing mode
-# This is safe since all operations are user-scoped anyway
-CurrentUser = CurrentUserOrTestUser
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 

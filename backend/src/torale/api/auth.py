@@ -50,11 +50,6 @@ async def get_current_user_optional(
 # Type alias for production routes - requires authentication
 CurrentUser = Annotated[ClerkUser, Depends(get_current_user)]
 
-# For backward compatibility or if we want to distinguish, but with the new provider pattern,
-# get_current_user handles both cases based on configuration.
-# We map CurrentUserOrTestUser to CurrentUser as the underlying logic is now in the provider.
-CurrentUserOrTestUser = CurrentUser
-
 # Type alias for optional auth
 OptionalUser = Annotated[ClerkUser | None, Depends(get_current_user_optional)]
 
