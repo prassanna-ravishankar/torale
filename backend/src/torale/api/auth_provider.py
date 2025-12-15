@@ -182,7 +182,6 @@ class ProductionAuthProvider(AuthProvider):
                             # Check if verification exists and status is "verified"
                             email_verified = (
                                 email_obj.verification is not None
-                                and hasattr(email_obj.verification, "status")
                                 and email_obj.verification.status == "verified"
                             )
                             break
