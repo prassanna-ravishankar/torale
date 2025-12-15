@@ -27,14 +27,22 @@ def get_clerk_client():
 
 # Lazy property for backwards compatibility
 # This allows `from torale.api.clerk_auth import clerk_client` to work
-clerk_client = None
 
 
 def __getattr__(name):
-    """Provide lazy access to clerk_client for backwards compatibility."""
+    """
+    Provide lazy access to clerk_client for backwards compatibility.
+
+    This is called when clerk_client is accessed as a module attribute.
+    Returns None if the auth provider isn't initialized yet (during imports),
+    otherwise returns the Clerk client from ProductionAuthProvider.
+    """
     if name == "clerk_client":
-        global clerk_client
-        if clerk_client is None:
-            clerk_client = get_clerk_client()
-        return clerk_client
+        try:
+            return get_clerk_client()
+        except RuntimeError:
+            # Auth provider not initialized yet (during module imports)
+            # Return None for backwards compatibility with code that checks
+            # `if clerk_client:` before using it
+            return None
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

@@ -54,7 +54,7 @@ OptionalUser = Annotated[User | None, Depends(get_current_user_optional)]
 
 
 async def require_admin(
-    credentials: HTTPAuthorizationCredentials = Security(security),
+    credentials: HTTPAuthorizationCredentials | None = Security(security_optional),
     session: AsyncSession = Depends(get_async_session),
 ) -> User:
     """
@@ -64,10 +64,14 @@ async def require_admin(
     1. Authenticates the user (via Clerk JWT or API key)
     2. Verifies that the user has admin role (delegates to AuthProvider)
 
+    In NoAuth mode, credentials can be None and the NoAuthProvider will
+    return a test user. In production, ProductionAuthProvider will raise
+    401 if credentials are missing.
+
     Raises:
-        HTTPException: 403 if user is not an admin
+        HTTPException: 401 if not authenticated, 403 if user is not an admin
     """
-    # First authenticate the user
+    # First authenticate the user (provider handles missing credentials)
     user = await get_current_user(credentials, session)
 
     # Delegate role verification to the auth provider
@@ -78,7 +82,7 @@ async def require_admin(
 
 
 async def require_developer(
-    credentials: HTTPAuthorizationCredentials = Security(security),
+    credentials: HTTPAuthorizationCredentials | None = Security(security_optional),
     session: AsyncSession = Depends(get_async_session),
 ) -> User:
     """
@@ -88,10 +92,14 @@ async def require_developer(
     1. Authenticates the user (via Clerk JWT or API key)
     2. Verifies that the user has developer or admin role (delegates to AuthProvider)
 
+    In NoAuth mode, credentials can be None and the NoAuthProvider will
+    return a test user. In production, ProductionAuthProvider will raise
+    401 if credentials are missing.
+
     Raises:
-        HTTPException: 403 if user is not a developer or admin
+        HTTPException: 401 if not authenticated, 403 if user is not a developer or admin
     """
-    # First authenticate the user
+    # First authenticate the user (provider handles missing credentials)
     user = await get_current_user(credentials, session)
 
     # Delegate role verification to the auth provider
