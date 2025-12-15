@@ -243,8 +243,7 @@ async def require_admin(
 
     This dependency:
     1. Authenticates the user (via Clerk JWT or API key)
-    2. Fetches the user's public metadata from Clerk
-    3. Verifies that publicMetadata.role === "admin"
+    2. Verifies that the user has admin role (delegates to AuthProvider)
 
     Raises:
         HTTPException: 403 if user is not an admin
@@ -256,38 +255,16 @@ async def require_admin(
     """
     # Import here to avoid circular dependency
     from torale.api.auth import get_current_user
+    from torale.api.auth_provider import get_auth_provider
 
     # First authenticate the user
     user = await get_current_user(credentials, session)
 
-    # Fetch user's public metadata from Clerk to check role
-    if not clerk_client:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Clerk client not initialized",
-        )
+    # Delegate role verification to the auth provider
+    provider = get_auth_provider()
+    await provider.verify_role(user, "admin")
 
-    try:
-        clerk_user = clerk_client.users.get(user_id=user.clerk_user_id)
-
-        # Check if user has admin role in publicMetadata
-        public_metadata = clerk_user.public_metadata or {}
-        if public_metadata.get("role") != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Admin access required",
-            )
-
-        return user
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Failed to verify admin role: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to verify admin role",
-        ) from e
+    return user
 
 
 async def require_developer(
@@ -299,8 +276,7 @@ async def require_developer(
 
     This dependency:
     1. Authenticates the user (via Clerk JWT or API key)
-    2. Fetches the user's public metadata from Clerk
-    3. Verifies that publicMetadata.role === "developer" or "admin"
+    2. Verifies that the user has developer or admin role (delegates to AuthProvider)
 
     Raises:
         HTTPException: 403 if user is not a developer or admin
@@ -312,36 +288,13 @@ async def require_developer(
     """
     # Import here to avoid circular dependency
     from torale.api.auth import get_current_user
+    from torale.api.auth_provider import get_auth_provider
 
     # First authenticate the user
     user = await get_current_user(credentials, session)
 
-    # Fetch user's public metadata from Clerk to check role
-    if not clerk_client:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Clerk client not initialized",
-        )
+    # Delegate role verification to the auth provider
+    provider = get_auth_provider()
+    await provider.verify_role(user, "developer")
 
-    try:
-        clerk_user = clerk_client.users.get(user_id=user.clerk_user_id)
-
-        # Check if user has developer or admin role in publicMetadata
-        public_metadata = clerk_user.public_metadata or {}
-        role = public_metadata.get("role")
-        if role not in ["developer", "admin"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Developer access required. Please contact support to enable API access.",
-            )
-
-        return user
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Failed to verify developer role: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to verify developer role",
-        ) from e
+    return user
