@@ -179,8 +179,12 @@ class ProductionAuthProvider(AuthProvider):
                     for email_obj in clerk_user.email_addresses:
                         if email_obj.id == clerk_user.primary_email_address_id:
                             primary_email = email_obj.email_address
-                            # Check if verification exists and has status
-                            email_verified = bool(email_obj.verification)
+                            # Check if verification exists and status is "verified"
+                            email_verified = (
+                                email_obj.verification is not None
+                                and hasattr(email_obj.verification, "status")
+                                and email_obj.verification.status == "verified"
+                            )
                             break
 
                 if not primary_email:
@@ -268,7 +272,7 @@ class ProductionAuthProvider(AuthProvider):
 
         user_id, key_id, clerk_user_id, email = row
 
-        # Update last_used_at timestamp (don't wait for commit)
+        # Update last_used_at timestamp (flush to DB but stay in transaction)
         await session.execute(
             text("""
             UPDATE api_keys
@@ -277,7 +281,7 @@ class ProductionAuthProvider(AuthProvider):
             """),
             {"key_id": key_id},
         )
-        await session.commit()
+        await session.flush()
 
         return User(
             user_id=clerk_user_id,
