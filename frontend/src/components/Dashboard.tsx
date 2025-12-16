@@ -211,7 +211,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`hidden md:inline-flex p-1.5 rounded-sm transition-colors ${viewMode === 'list' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`}
+              className={`inline-flex p-1.5 rounded-sm transition-colors ${viewMode === 'list' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`}
             >
               <ListIcon className="w-4 h-4" />
             </button>
@@ -229,16 +229,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
             }}
           />
         ) : viewMode === 'list' ? (
-          <BrutalistTable>
-            <BrutalistTableHeader>
-              <BrutalistTableRow>
-                <BrutalistTableHead>Monitor</BrutalistTableHead>
-                <BrutalistTableHead>Status</BrutalistTableHead>
-                <BrutalistTableHead className="hidden md:table-cell">Schedule</BrutalistTableHead>
-                <BrutalistTableHead className="hidden lg:table-cell">Last Run</BrutalistTableHead>
-              </BrutalistTableRow>
-            </BrutalistTableHeader>
-            <BrutalistTableBody>
+          <div className="flex flex-col gap-2 md:bg-white md:border-2 md:border-zinc-200">
+            {/* Desktop-only table header */}
+            <div className="hidden md:block md:border-b-2 md:border-zinc-200 md:bg-zinc-50">
+              <div className="md:table w-full">
+                <div className="md:table-row">
+                  <div className="md:table-cell p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Monitor</div>
+                  <div className="md:table-cell p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Status</div>
+                  <div className="md:table-cell p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Schedule</div>
+                  <div className="md:table-cell p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Last Run</div>
+                </div>
+              </div>
+            </div>
+            {/* Rows: cards on mobile, table rows on desktop */}
+            <div className="flex flex-col gap-2 md:table w-full">
               <AnimatePresence>
                 {filteredTasks.map((task) => (
                   <TaskListRow
@@ -252,8 +256,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
                   />
                 ))}
               </AnimatePresence>
-            </BrutalistTableBody>
-          </BrutalistTable>
+            </div>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             <AnimatePresence>
