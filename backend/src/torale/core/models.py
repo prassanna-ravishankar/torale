@@ -201,17 +201,6 @@ class ConditionEvaluation(BaseModel):
     )
 
 
-class StateComparison(BaseModel):
-    """LLM response for comparing previous and current states."""
-
-    changed: bool = Field(
-        description="Whether factual information has meaningfully changed between states"
-    )
-    summary: str | None = Field(
-        description="1-2 sentence summary of what changed, or null if nothing changed"
-    )
-
-
 # Provider/Pipeline Models
 
 
