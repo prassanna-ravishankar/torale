@@ -94,7 +94,7 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
             <div className="flex items-center gap-1.5">
               <span className="flex-shrink-0">🕐</span>
               <span className="truncate">
-                {lastExecution ? formatTimeAgo(new Date(lastExecution.started_at)) : 'Never'}
+                {lastExecution ? formatTimeAgo(lastExecution.started_at) : 'Never'}
               </span>
             </div>
           </div>
