@@ -432,11 +432,14 @@ async def preview_search(
             comparison_provider=GeminiComparisonProvider(),
         )
 
+        # Construct task dict matching MonitoringPipeline.execute() signature
+        task_config = {
+            "search_query": request.search_query,
+            "condition_description": condition_description
+        }
         monitoring_result = await pipeline.execute(
-            search_query=request.search_query,
-            condition_description=condition_description,
-            search_results=search_result["answer"],
-            sources=search_result.get("grounding_sources", []),
+            task=task_config,
+            search_result=search_result,
             previous_state=None,  # Preview is always first execution
         )
 
