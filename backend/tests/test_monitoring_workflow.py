@@ -110,35 +110,39 @@ class TestWorkflowActivities:
     async def test_get_task_data_structure(self):
         """Test get_task_data returns correct structure"""
         from torale.workers.activities import get_task_data
+        from uuid import UUID
 
-        # Mock database
-        with patch("torale.workers.activities.get_async_session") as mock_session:
-            mock_db = AsyncMock()
-            mock_session.return_value.__aenter__.return_value = mock_db
+        # Mock database connection
+        mock_conn = AsyncMock()
 
-            # Mock task query
-            mock_result = MagicMock()
-            mock_task = MagicMock()
-            mock_task.id = "test-id"
-            mock_task.name = "Test Task"
-            mock_task.search_query = "test query"
-            mock_task.condition_description = "test condition"
-            mock_task.config = {}
-            mock_result.scalar_one.return_value = mock_task
-            mock_db.execute.return_value = mock_result
+        # Mock fetchrow to return different values for task and execution queries
+        task_row = {
+            "id": UUID("12345678-1234-1234-1234-123456789012"),
+            "name": "Test Task",
+            "search_query": "test query",
+            "condition_description": "test condition",
+            "config": {},
+            "state": "active",
+            "last_known_state": None,
+        }
 
-            # Mock previous state query (none)
-            mock_state_result = MagicMock()
-            mock_state_result.scalar_one_or_none.return_value = None
-            mock_db.execute.return_value = mock_state_result
+        # First call: task query, second call: last execution query (returns None)
+        mock_conn.fetchrow.side_effect = [task_row, None]
 
-            result = await get_task_data("test-id")
+        with patch("torale.workers.activities.get_db_connection", return_value=mock_conn):
+            result = await get_task_data("12345678-1234-1234-1234-123456789012")
 
             # Verify structure
             assert "task" in result
             assert "previous_state" in result
+            assert "config" in result
+            assert "last_execution_datetime" in result
             assert result["task"]["name"] == "Test Task"
             assert result["previous_state"] is None
+            assert result["config"] == {}
+
+            # Verify database was closed
+            mock_conn.close.assert_called_once()
 
 
 if __name__ == "__main__":
