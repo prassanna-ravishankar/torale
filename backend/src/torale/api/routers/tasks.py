@@ -435,7 +435,7 @@ async def preview_search(
         # Construct task dict matching MonitoringPipeline.execute() signature
         task_config = {
             "search_query": request.search_query,
-            "condition_description": condition_description
+            "condition_description": condition_description,
         }
         monitoring_result = await pipeline.execute(
             task=task_config,
