@@ -2,7 +2,6 @@ from datetime import timedelta
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
-from temporalio.exceptions import ActivityError
 
 from torale.core.models import EnrichedMonitoringResult, TaskExecutionRequest
 
@@ -73,13 +72,13 @@ class TaskExecutionWorkflow:
         should_notify = changed and not request.suppress_notifications
 
         # Step 6: Send notifications if needed (orchestrated via focused activities)
-        # Configure notification-specific retry policy (fewer attempts, non-retryable errors)
+        # Notifications should not fail the workflow, so wrap in try-except
+        # Configure minimal retry policy for notifications
         notification_retry_policy = RetryPolicy(
-            maximum_attempts=2,  # Don't retry notifications too many times
-            initial_interval=timedelta(seconds=1),
-            maximum_interval=timedelta(seconds=5),
+            maximum_attempts=2,  # Try once more for transient failures
+            initial_interval=timedelta(seconds=2),
             backoff_coefficient=2,
-            non_retryable_error_types=["ApplicationError"],  # Spam limits, missing config
+            non_retryable_error_types=["ApplicationError"],  # Skip spam limits, missing config
         )
 
         if should_notify:
@@ -94,35 +93,29 @@ class TaskExecutionWorkflow:
 
                 # 6b: Send email notification if channel is enabled
                 if "email" in notification_context.get("notification_channels", ["email"]):
-                    try:
-                        await workflow.execute_activity(
-                            "send_email_notification",
-                            args=[
-                                request.user_id,
-                                request.task_name,
-                                notification_context,
-                                enriched_result,
-                            ],
-                            start_to_close_timeout=timedelta(minutes=1),
-                            retry_policy=notification_retry_policy,
-                        )
-                    except ActivityError as e:
-                        workflow.logger.warning(f"Email notification failed after retries: {e}")
+                    await workflow.execute_activity(
+                        "send_email_notification",
+                        args=[
+                            request.user_id,
+                            request.task_name,
+                            notification_context,
+                            enriched_result,
+                        ],
+                        start_to_close_timeout=timedelta(minutes=1),
+                        retry_policy=notification_retry_policy,
+                    )
 
                 # 6c: Send webhook notification if channel is enabled
                 if "webhook" in notification_context.get("notification_channels", []):
-                    try:
-                        await workflow.execute_activity(
-                            "send_webhook_notification",
-                            args=[notification_context, enriched_result],
-                            start_to_close_timeout=timedelta(minutes=1),
-                            retry_policy=notification_retry_policy,
-                        )
-                    except ActivityError as e:
-                        workflow.logger.warning(f"Webhook notification failed after retries: {e}")
-
-            except ActivityError as e:
-                workflow.logger.warning(f"Failed to fetch notification context: {e}")
+                    await workflow.execute_activity(
+                        "send_webhook_notification",
+                        args=[notification_context, enriched_result],
+                        start_to_close_timeout=timedelta(minutes=1),
+                        retry_policy=notification_retry_policy,
+                    )
+            except Exception as e:
+                # Log but don't fail workflow for notification failures
+                workflow.logger.warning(f"Notification failed: {e}")
 
         # Step 7: Persist execution result
         await workflow.execute_activity(
