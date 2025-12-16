@@ -12,7 +12,6 @@ import {
   Settings,
   Trash2,
   ChevronRight,
-  ChevronDown,
   Clock,
 } from 'lucide-react';
 import {

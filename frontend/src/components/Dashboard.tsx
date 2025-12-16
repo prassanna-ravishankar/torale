@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from '@/lib/motion-compat';
+import { AnimatePresence } from '@/lib/motion-compat';
 import api from '@/lib/api';
 import type { Task } from '@/types';
 import { TaskCard } from '@/components/TaskCard';
@@ -11,11 +11,6 @@ import { StatCard } from '@/components/ui/StatCard';
 import {
   FilterGroup,
   EmptyState,
-  BrutalistTable,
-  BrutalistTableHeader,
-  BrutalistTableBody,
-  BrutalistTableRow,
-  BrutalistTableHead,
 } from '@/components/torale';
 import { Plus, Search, Loader2, Filter, LayoutGrid, List as ListIcon } from 'lucide-react';
 import { toast } from 'sonner';
