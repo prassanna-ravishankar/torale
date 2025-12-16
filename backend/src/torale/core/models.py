@@ -264,3 +264,30 @@ class ExecutionContext(BaseModel):
         description="Task configuration",
         default_factory=dict,
     )
+
+
+# Activity Models (for Temporal activity signatures)
+
+
+class TaskData(BaseModel):
+    """Data returned by get_task_data activity."""
+
+    task: dict = Field(description="Task record from database")
+    config: dict = Field(description="Parsed task configuration")
+    previous_state: dict | None = Field(description="Previous monitoring state", default=None)
+    last_execution_datetime: datetime | None = Field(
+        description="Timestamp of last successful execution", default=None
+    )
+
+
+class EnrichedMonitoringResult(MonitoringResult):
+    """
+    Monitoring result enriched with execution context.
+
+    Extends MonitoringResult with task/execution metadata needed for notifications.
+    """
+
+    task_id: str = Field(description="Task ID")
+    execution_id: str = Field(description="Execution ID")
+    search_query: str = Field(description="Search query used")
+    is_first_execution: bool = Field(description="Whether this is the first execution")

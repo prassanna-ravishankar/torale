@@ -3,7 +3,7 @@ from datetime import timedelta
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-from torale.core.models import TaskExecutionRequest
+from torale.core.models import EnrichedMonitoringResult, TaskExecutionRequest
 
 
 @workflow.defn
@@ -56,15 +56,16 @@ class TaskExecutionWorkflow:
         )
 
         # Step 4: Enrich result with metadata for notifications
-        # Create new enriched result instead of mutating
+        # Create typed enriched result
         is_first_execution = task_data.get("previous_state") is None
-        enriched_result = {
+        enriched_result_model = EnrichedMonitoringResult(
             **monitoring_result,
-            "task_id": request.task_id,
-            "execution_id": request.execution_id,
-            "search_query": task_data["task"]["search_query"],
-            "is_first_execution": is_first_execution,
-        }
+            task_id=request.task_id,
+            execution_id=request.execution_id,
+            search_query=task_data["task"]["search_query"],
+            is_first_execution=is_first_execution,
+        )
+        enriched_result = enriched_result_model.model_dump()
 
         # Step 5: Decide notification (VISIBLE orchestration logic!)
         changed = enriched_result.get("metadata", {}).get("changed", False)

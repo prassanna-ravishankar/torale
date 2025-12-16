@@ -263,6 +263,8 @@ async def get_task_data(task_id: str) -> dict:
     - Previous state
     - Last execution timestamp
     """
+    from torale.core.models import TaskData
+
     conn = await get_db_connection()
 
     try:
@@ -304,12 +306,15 @@ async def get_task_data(task_id: str) -> dict:
         if last_execution_row and last_execution_row["completed_at"]:
             last_execution_datetime = last_execution_row["completed_at"]
 
-        return {
-            "task": dict(task),
-            "config": config,
-            "previous_state": last_known_state,
-            "last_execution_datetime": last_execution_datetime,
-        }
+        task_data = TaskData(
+            task=dict(task),
+            config=config,
+            previous_state=last_known_state,
+            last_execution_datetime=last_execution_datetime,
+        )
+
+        # Return as dict for Temporal serialization
+        return task_data.model_dump()
 
     finally:
         await conn.close()
@@ -321,6 +326,7 @@ async def perform_grounded_search(task_data: dict) -> dict:
     Perform grounded search using Gemini.
 
     Thin wrapper around GeminiSearchProvider.
+    Returns SearchResult model serialized as dict.
     """
     from torale.providers.gemini import GeminiSearchProvider
 
@@ -333,7 +339,9 @@ async def perform_grounded_search(task_data: dict) -> dict:
         model=task_data["config"].get("model", "gemini-2.5-flash"),
     )
 
-    return result
+    # SearchResult is returned from provider, already typed
+    # Convert to dict for Temporal serialization
+    return result if isinstance(result, dict) else result.model_dump()
 
 
 @activity.defn
