@@ -60,22 +60,12 @@ jobs:
           tags: |
             gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:${{ env.IMAGE_TAG }}
             gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:staging
+            ${{ matrix.component == 'api' && format('gcr.io/{0}/torale-worker:{1}', env.GCP_PROJECT_ID, env.IMAGE_TAG) || '' }}
+            ${{ matrix.component == 'api' && format('gcr.io/{0}/torale-worker:staging', env.GCP_PROJECT_ID) || '' }}
           cache-from: |
             type=gha
             type=registry,ref=gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:staging
           cache-to: type=gha,mode=max
-
-      # Tag worker image (same build as api)
-      - name: Tag and push worker
-        if: matrix.component == 'api'
-        run: |
-          docker pull gcr.io/${{ env.GCP_PROJECT_ID }}/torale-api:${{ env.IMAGE_TAG }}
-          docker tag gcr.io/${{ env.GCP_PROJECT_ID }}/torale-api:${{ env.IMAGE_TAG }} \
-            gcr.io/${{ env.GCP_PROJECT_ID }}/torale-worker:${{ env.IMAGE_TAG }}
-          docker tag gcr.io/${{ env.GCP_PROJECT_ID }}/torale-api:${{ env.IMAGE_TAG }} \
-            gcr.io/${{ env.GCP_PROJECT_ID }}/torale-worker:staging
-          docker push gcr.io/${{ env.GCP_PROJECT_ID }}/torale-worker:${{ env.IMAGE_TAG }}
-          docker push gcr.io/${{ env.GCP_PROJECT_ID }}/torale-worker:staging
 
   deploy:
     name: Deploy to Staging
