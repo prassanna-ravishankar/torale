@@ -229,34 +229,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
             }}
           />
         ) : viewMode === 'list' ? (
-          <div className="flex flex-col gap-2 md:bg-white md:border-2 md:border-zinc-200">
-            {/* Desktop-only table header */}
-            <div className="hidden md:block md:border-b-2 md:border-zinc-200 md:bg-zinc-50">
-              <div className="md:table w-full">
-                <div className="md:table-row">
-                  <div className="md:table-cell p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Monitor</div>
-                  <div className="md:table-cell p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Status</div>
-                  <div className="md:table-cell p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Schedule</div>
-                  <div className="md:table-cell p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Last Run</div>
-                </div>
-              </div>
-            </div>
-            {/* Rows: cards on mobile, table rows on desktop */}
-            <div className="flex flex-col gap-2 md:table w-full">
-              <AnimatePresence>
-                {filteredTasks.map((task) => (
-                  <TaskListRow
-                    key={task.id}
-                    task={task}
-                    onToggle={handleToggleTask}
-                    onDelete={handleDeleteTask}
-                    onExecute={handleExecuteTask}
-                    onEdit={handleEditTask}
-                    onClick={onTaskClick}
-                  />
-                ))}
-              </AnimatePresence>
-            </div>
+          <div className="md:bg-white md:border-2 md:border-zinc-200">
+            <table className="w-full">
+              <thead className="hidden md:table-header-group border-b-2 border-zinc-200 bg-zinc-50">
+                <tr>
+                  <th className="p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider text-left">Monitor</th>
+                  <th className="p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider text-left">Status</th>
+                  <th className="p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider text-left">Schedule</th>
+                  <th className="p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider text-left">Last Run</th>
+                </tr>
+              </thead>
+              <tbody>
+                <AnimatePresence>
+                  {filteredTasks.map((task) => (
+                    <TaskListRow
+                      key={task.id}
+                      task={task}
+                      onToggle={handleToggleTask}
+                      onDelete={handleDeleteTask}
+                      onExecute={handleExecuteTask}
+                      onEdit={handleEditTask}
+                      onClick={onTaskClick}
+                    />
+                  ))}
+                </AnimatePresence>
+              </tbody>
+            </table>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">

@@ -61,161 +61,48 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
 
   return (
     <>
-      {/* Mobile Card Layout (< 768px) */}
-      <motion.div
-        onClick={handleRowClick}
-        className="bg-white border-2 border-zinc-200 rounded-sm p-4 cursor-pointer hover:bg-zinc-50 transition-colors md:hidden"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        {/* Row 1: Chevron + Name + Status */}
-        <div className="flex justify-between items-start gap-3 mb-2">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <motion.div
-              animate={{ rotate: expanded ? 90 : 0 }}
-              transition={{ duration: 0.2 }}
-              className="text-zinc-400 flex-shrink-0"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </motion.div>
-            <span className="font-grotesk font-bold text-sm truncate">{task.name}</span>
-          </div>
-          <StatusBadge variant={status.activityState} />
-        </div>
-
-        {/* Row 2: Search Query */}
-        <div className="text-xs text-zinc-500 truncate pl-6 mb-2">
-          {task.search_query}
-        </div>
-
-        {/* Row 3: Schedule + Last Run (iconified, inline) */}
-        <div className="flex gap-4 text-xs text-zinc-600 pl-6">
-          <div className="flex items-center gap-1.5">
-            <Clock className="w-3 h-3 flex-shrink-0" />
-            <CronDisplay cron={task.schedule} className="truncate" showRaw={false} />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="flex-shrink-0">🕐</span>
-            <span className="truncate">
-              {lastExecution ? formatTimeAgo(new Date(lastExecution.started_at)) : 'Never'}
-            </span>
-          </div>
-        </div>
-
-        {/* Mobile Expanded Content */}
-        <AnimatePresence>
-          {expanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="mt-4 pt-4 border-t border-zinc-200">
-                {/* Latest Result */}
-                {lastExecution?.result?.answer ? (
-                  <div className="mb-4">
-                    <p className="text-sm text-zinc-700 leading-relaxed line-clamp-3">
-                      {lastExecution.result.answer}
-                    </p>
-                    <div className="flex items-center gap-3 mt-2">
-                      <span className="text-xs font-mono text-zinc-500">Condition:</span>
-                      <StatusBadge
-                        variant={lastExecution.condition_met ? 'met' : 'not_met'}
-                        size="sm"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-zinc-500 mb-4">No results yet</p>
-                )}
-
-                {/* Actions */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onExecute(task.id);
-                    }}
-                  >
-                    <Play className="w-3 h-3 mr-1.5" />
-                    Run Now
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggle(task.id, isTaskActive ? 'paused' : 'active');
-                    }}
-                  >
-                    {isTaskActive ? (
-                      <>
-                        <Pause className="w-3 h-3 mr-1.5" />
-                        Pause
-                      </>
-                    ) : (
-                      <>
-                        <Play className="w-3 h-3 mr-1.5" />
-                        Resume
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(task.id);
-                    }}
-                  >
-                    <Settings className="w-3 h-3 mr-1.5" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowDeleteDialog(true);
-                    }}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-3 h-3 mr-1.5" />
-                    Delete
-                  </Button>
-                  <div className="flex-1" />
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onClick(task.id);
-                    }}
-                  >
-                    View Details
-                    <ChevronRight className="w-3 h-3 ml-1.5" />
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-
-      {/* Desktop Table Layout (≥ 768px) */}
+      {/* Collapsed Row - renders as card on mobile, table row on desktop */}
       <motion.tr
         onClick={handleRowClick}
-        className="hidden md:table-row border-b border-zinc-200 last:border-0 cursor-pointer hover:bg-zinc-50 transition-colors"
+        className="block md:table-row bg-white md:bg-transparent border-2 md:border-b md:border-zinc-200 border-zinc-200 md:last:border-0 rounded-sm md:rounded-none p-4 md:p-0 mb-2 md:mb-0 cursor-pointer hover:bg-zinc-50 transition-colors"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
-        <td className="p-4">
+        {/* Mobile Layout (block on < 768px) */}
+        <td className="block md:hidden p-0">
+          <div className="flex justify-between items-start gap-3 mb-2">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <motion.div
+                animate={{ rotate: expanded ? 90 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-zinc-400 flex-shrink-0"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </motion.div>
+              <span className="font-grotesk font-bold text-sm truncate">{task.name}</span>
+            </div>
+            <StatusBadge variant={status.activityState} />
+          </div>
+          <div className="text-xs text-zinc-500 truncate pl-6 mb-2">
+            {task.search_query}
+          </div>
+          <div className="flex gap-4 text-xs text-zinc-600 pl-6">
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3 h-3 flex-shrink-0" />
+              <CronDisplay cron={task.schedule} className="truncate" showRaw={false} />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="flex-shrink-0">🕐</span>
+              <span className="truncate">
+                {lastExecution ? formatTimeAgo(new Date(lastExecution.started_at)) : 'Never'}
+              </span>
+            </div>
+          </div>
+        </td>
+
+        {/* Desktop Table Cells (hidden on mobile) */}
+        <td className="hidden md:table-cell p-4">
           <div className="flex items-center gap-3">
             <motion.div
               animate={{ rotate: expanded ? 90 : 0 }}
@@ -230,13 +117,13 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
             </div>
           </div>
         </td>
-        <td className="p-4">
+        <td className="hidden md:table-cell p-4">
           <StatusBadge variant={status.activityState} />
         </td>
-        <td className="p-4">
+        <td className="hidden md:table-cell p-4">
           <CronDisplay cron={task.schedule} className="text-sm font-mono text-zinc-600" showRaw={false} />
         </td>
-        <td className="p-4">
+        <td className="hidden md:table-cell p-4">
           {lastExecution ? (
             <span className="text-sm text-zinc-600">
               {new Date(lastExecution.started_at).toLocaleDateString('en-US', {
@@ -251,6 +138,118 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
           )}
         </td>
       </motion.tr>
+
+      {/* Mobile Expanded Content */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.tr
+            className="block md:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <td className="block p-0">
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="bg-white border-2 border-zinc-200 rounded-sm p-4 mb-2 mt-[-8px]">
+                  {/* Latest Result */}
+                  {lastExecution?.result?.answer ? (
+                    <div className="mb-4">
+                      <p className="text-sm text-zinc-700 leading-relaxed line-clamp-3">
+                        {lastExecution.result.answer}
+                      </p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="text-xs font-mono text-zinc-500">Condition:</span>
+                        <StatusBadge
+                          variant={lastExecution.condition_met ? 'met' : 'not_met'}
+                          size="sm"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-zinc-500 mb-4">No results yet</p>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onExecute(task.id);
+                      }}
+                    >
+                      <Play className="w-3 h-3 mr-1.5" />
+                      Run Now
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggle(task.id, isTaskActive ? 'paused' : 'active');
+                      }}
+                    >
+                      {isTaskActive ? (
+                        <>
+                          <Pause className="w-3 h-3 mr-1.5" />
+                          Pause
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3 h-3 mr-1.5" />
+                          Resume
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(task.id);
+                      }}
+                    >
+                      <Settings className="w-3 h-3 mr-1.5" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowDeleteDialog(true);
+                      }}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-3 h-3 mr-1.5" />
+                      Delete
+                    </Button>
+                    <div className="flex-1" />
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClick(task.id);
+                      }}
+                    >
+                      View Details
+                      <ChevronRight className="w-3 h-3 ml-1.5" />
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </td>
+          </motion.tr>
+        )}
+      </AnimatePresence>
 
       {/* Desktop Expanded Content */}
       <AnimatePresence>
