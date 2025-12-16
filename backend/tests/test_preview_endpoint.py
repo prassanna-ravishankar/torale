@@ -66,9 +66,9 @@ class TestPreviewEndpoint:
         mock_genai_client = MagicMock()
 
         with patch(
-            "torale.api.routers.tasks.GeminiSearchProvider", return_value=mock_search_provider
+            "torale.providers.gemini.search.GeminiSearchProvider", return_value=mock_search_provider
         ):
-            with patch("torale.api.routers.tasks.MonitoringPipeline", return_value=mock_pipeline):
+            with patch("torale.pipelines.monitoring_pipeline.MonitoringPipeline", return_value=mock_pipeline):
                 result = await preview_search(request, mock_user, mock_genai_client)
 
         # Verify pipeline.execute was called with correct signature
@@ -145,9 +145,9 @@ class TestPreviewEndpoint:
         mock_pipeline.execute.return_value = mock_pipeline_result
 
         with patch(
-            "torale.api.routers.tasks.GeminiSearchProvider", return_value=mock_search_provider
+            "torale.providers.gemini.search.GeminiSearchProvider", return_value=mock_search_provider
         ):
-            with patch("torale.api.routers.tasks.MonitoringPipeline", return_value=mock_pipeline):
+            with patch("torale.pipelines.monitoring_pipeline.MonitoringPipeline", return_value=mock_pipeline):
                 result = await preview_search(request, mock_user, mock_genai_client)
 
         # Verify pipeline.execute was called with correct signature (inferred condition)
