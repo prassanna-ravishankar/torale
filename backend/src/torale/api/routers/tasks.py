@@ -392,9 +392,9 @@ async def preview_search(
         }
     """
     from torale.pipelines.monitoring_pipeline import MonitoringPipeline
-    from torale.providers.gemini.schema import GeminiSchemaProvider
-    from torale.providers.gemini.extraction import GeminiExtractionProvider
     from torale.providers.gemini.comparison import GeminiComparisonProvider
+    from torale.providers.gemini.extraction import GeminiExtractionProvider
+    from torale.providers.gemini.schema import GeminiSchemaProvider
     from torale.providers.gemini.search import GeminiSearchProvider
 
     try:
@@ -416,9 +416,7 @@ async def preview_search(
         # Execute grounded search
         search_provider = GeminiSearchProvider()
         search_result = await search_provider.search(
-            request.search_query,
-            condition_description,
-            model=request.model
+            request.search_query, condition_description, model=request.model
         )
 
         if not search_result.get("success"):
@@ -443,9 +441,10 @@ async def preview_search(
         )
 
         # Return response matching expected format
+        # Note: For preview (first execution), changed=True is expected since there's no previous state
         response = {
             "summary": monitoring_result["summary"],
-            "condition_met": monitoring_result["metadata"]["changed"],  # First execution = changed
+            "condition_met": monitoring_result["metadata"]["changed"],
             "sources": monitoring_result["sources"],
             "current_state": monitoring_result["metadata"]["current_state"],
         }
