@@ -53,8 +53,8 @@ class TestPreviewEndpoint:
             "metadata": {
                 "changed": True,
                 "change_explanation": "First execution",
-                "current_state": {"date": "September 2024"}
-            }
+                "current_state": {"date": "September 2024"},
+            },
         }
 
         mock_search_provider = AsyncMock()
@@ -65,7 +65,9 @@ class TestPreviewEndpoint:
 
         mock_genai_client = MagicMock()
 
-        with patch("torale.api.routers.tasks.GeminiSearchProvider", return_value=mock_search_provider):
+        with patch(
+            "torale.api.routers.tasks.GeminiSearchProvider", return_value=mock_search_provider
+        ):
             with patch("torale.api.routers.tasks.MonitoringPipeline", return_value=mock_pipeline):
                 result = await preview_search(request, mock_user, mock_genai_client)
 
@@ -119,7 +121,11 @@ class TestPreviewEndpoint:
         mock_pipeline_result = {
             "summary": "iPhone 16 will be released in September 2024",
             "sources": [],
-            "metadata": {"changed": True, "change_explanation": "First execution", "current_state": {}}
+            "metadata": {
+                "changed": True,
+                "change_explanation": "First execution",
+                "current_state": {},
+            },
         }
 
         mock_search_provider = AsyncMock()
@@ -128,7 +134,9 @@ class TestPreviewEndpoint:
         mock_pipeline = AsyncMock()
         mock_pipeline.execute.return_value = mock_pipeline_result
 
-        with patch("torale.api.routers.tasks.GeminiSearchProvider", return_value=mock_search_provider):
+        with patch(
+            "torale.api.routers.tasks.GeminiSearchProvider", return_value=mock_search_provider
+        ):
             with patch("torale.api.routers.tasks.MonitoringPipeline", return_value=mock_pipeline):
                 result = await preview_search(request, mock_user, mock_genai_client)
 

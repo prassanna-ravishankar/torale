@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """Tests for monitoring pipeline orchestration"""
 
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from torale.pipelines.monitoring_pipeline import MonitoringPipeline
 from torale.core.state_utils import compute_state_hash
+from torale.pipelines.monitoring_pipeline import MonitoringPipeline
 
 
 class TestMonitoringPipeline:
@@ -30,16 +29,16 @@ class TestMonitoringPipeline:
     async def test_first_execution_no_comparison(self, mock_providers):
         """Test first execution (no previous state) still calls comparison with None"""
         # Setup mocks
-        mock_providers["schema"].get_or_create_schema = AsyncMock(return_value={
-            "is_released": {"type": "boolean"}
-        })
-        mock_providers["extraction"].extract = AsyncMock(return_value={
-            "is_released": False
-        })
-        mock_providers["comparison"].compare = AsyncMock(return_value={
-            "changed": False,
-            "explanation": "First check - no previous state to compare"
-        })
+        mock_providers["schema"].get_or_create_schema = AsyncMock(
+            return_value={"is_released": {"type": "boolean"}}
+        )
+        mock_providers["extraction"].extract = AsyncMock(return_value={"is_released": False})
+        mock_providers["comparison"].compare = AsyncMock(
+            return_value={
+                "changed": False,
+                "explanation": "First check - no previous state to compare",
+            }
+        )
 
         pipeline = MonitoringPipeline(
             schema_provider=mock_providers["schema"],
@@ -77,10 +76,9 @@ class TestMonitoringPipeline:
         previous_state = current_state.copy()
 
         # Setup mocks
-        mock_providers["schema"].get_or_create_schema = AsyncMock(return_value={
-            "is_released": {"type": "boolean"},
-            "release_date": {"type": "string"}
-        })
+        mock_providers["schema"].get_or_create_schema = AsyncMock(
+            return_value={"is_released": {"type": "boolean"}, "release_date": {"type": "string"}}
+        )
         mock_providers["extraction"].extract = AsyncMock(return_value=current_state)
 
         pipeline = MonitoringPipeline(
@@ -116,15 +114,16 @@ class TestMonitoringPipeline:
         current_state = {"is_released": True, "release_date": "September 2024"}
 
         # Setup mocks
-        mock_providers["schema"].get_or_create_schema = AsyncMock(return_value={
-            "is_released": {"type": "boolean"},
-            "release_date": {"type": "string"}
-        })
+        mock_providers["schema"].get_or_create_schema = AsyncMock(
+            return_value={"is_released": {"type": "boolean"}, "release_date": {"type": "string"}}
+        )
         mock_providers["extraction"].extract = AsyncMock(return_value=current_state)
-        mock_providers["comparison"].compare = AsyncMock(return_value={
-            "changed": True,
-            "explanation": "Product officially released with date announced"
-        })
+        mock_providers["comparison"].compare = AsyncMock(
+            return_value={
+                "changed": True,
+                "explanation": "Product officially released with date announced",
+            }
+        )
 
         pipeline = MonitoringPipeline(
             schema_provider=mock_providers["schema"],
@@ -147,7 +146,9 @@ class TestMonitoringPipeline:
         # Should call comparison (hash changed) - now takes 3 args: previous, current, schema
         schema = {"is_released": {"type": "boolean"}, "release_date": {"type": "string"}}
         mock_providers["comparison"].compare.assert_called_once()
-        mock_providers["comparison"].compare.assert_called_with(previous_state, current_state, schema)
+        mock_providers["comparison"].compare.assert_called_with(
+            previous_state, current_state, schema
+        )
 
         # Result should reflect semantic change
         assert result.metadata["changed"] is True
@@ -164,15 +165,16 @@ class TestMonitoringPipeline:
         current_state = {"status": "In stock now", "price": "$999"}
 
         # Setup mocks
-        mock_providers["schema"].get_or_create_schema = AsyncMock(return_value={
-            "status": {"type": "string"},
-            "price": {"type": "string"}
-        })
+        mock_providers["schema"].get_or_create_schema = AsyncMock(
+            return_value={"status": {"type": "string"}, "price": {"type": "string"}}
+        )
         mock_providers["extraction"].extract = AsyncMock(return_value=current_state)
-        mock_providers["comparison"].compare = AsyncMock(return_value={
-            "changed": False,
-            "explanation": "Only minor wording changes, no semantic difference"
-        })
+        mock_providers["comparison"].compare = AsyncMock(
+            return_value={
+                "changed": False,
+                "explanation": "Only minor wording changes, no semantic difference",
+            }
+        )
 
         pipeline = MonitoringPipeline(
             schema_provider=mock_providers["schema"],
@@ -202,16 +204,13 @@ class TestMonitoringPipeline:
     @pytest.mark.asyncio
     async def test_result_format(self, mock_providers):
         """Test result has correct MonitoringResult format"""
-        mock_providers["schema"].get_or_create_schema = AsyncMock(return_value={
-            "is_released": {"type": "boolean"}
-        })
-        mock_providers["extraction"].extract = AsyncMock(return_value={
-            "is_released": False
-        })
-        mock_providers["comparison"].compare = AsyncMock(return_value={
-            "changed": False,
-            "explanation": "First check"
-        })
+        mock_providers["schema"].get_or_create_schema = AsyncMock(
+            return_value={"is_released": {"type": "boolean"}}
+        )
+        mock_providers["extraction"].extract = AsyncMock(return_value={"is_released": False})
+        mock_providers["comparison"].compare = AsyncMock(
+            return_value={"changed": False, "explanation": "First check"}
+        )
 
         pipeline = MonitoringPipeline(
             schema_provider=mock_providers["schema"],
@@ -221,7 +220,7 @@ class TestMonitoringPipeline:
 
         sources = [
             {"uri": "https://example.com", "title": "Test Source"},
-            {"uri": "https://example2.com", "title": "Test Source 2"}
+            {"uri": "https://example2.com", "title": "Test Source 2"},
         ]
 
         result = await pipeline.execute(
@@ -286,12 +285,7 @@ class TestStateHashing:
 
     def test_hash_handles_nested_dicts(self):
         """Test hash handles nested dictionaries"""
-        state = {
-            "product": {
-                "name": "iPhone 16",
-                "specs": {"ram": "8GB", "storage": "256GB"}
-            }
-        }
+        state = {"product": {"name": "iPhone 16", "specs": {"ram": "8GB", "storage": "256GB"}}}
 
         hash_result = compute_state_hash(state)
         assert isinstance(hash_result, str)

@@ -7,16 +7,15 @@ import pytest
 from dotenv import load_dotenv
 
 from torale.pipelines.monitoring_pipeline import MonitoringPipeline
-from torale.providers.gemini.schema import GeminiSchemaProvider
-from torale.providers.gemini.extraction import GeminiExtractionProvider
 from torale.providers.gemini.comparison import GeminiComparisonProvider
+from torale.providers.gemini.extraction import GeminiExtractionProvider
+from torale.providers.gemini.schema import GeminiSchemaProvider
 from torale.providers.gemini.search import GeminiSearchProvider
 
 load_dotenv()
 
 pytestmark = pytest.mark.skipif(
-    not os.getenv("GOOGLE_API_KEY"),
-    reason="Integration tests require GOOGLE_API_KEY"
+    not os.getenv("GOOGLE_API_KEY"), reason="Integration tests require GOOGLE_API_KEY"
 )
 
 
@@ -39,7 +38,7 @@ class TestMonitoringPipelineE2E:
         search_provider = GeminiSearchProvider()
         search_result = await search_provider.search(
             "iPhone 18 release date official announcement",
-            "Check if iPhone 18 is officially announced"
+            "Check if iPhone 18 is officially announced",
         )
 
         assert search_result["success"] is True
@@ -77,8 +76,7 @@ class TestMonitoringPipelineE2E:
 
         # First execution
         search_result1 = await search_provider.search(
-            "What is 2+2?",
-            "A numerical answer is provided"
+            "What is 2+2?", "A numerical answer is provided"
         )
 
         result1 = await pipeline.execute(
@@ -93,8 +91,7 @@ class TestMonitoringPipelineE2E:
 
         # Second execution (immediately after, should be same)
         search_result2 = await search_provider.search(
-            "What is 2+2?",
-            "A numerical answer is provided"
+            "What is 2+2?", "A numerical answer is provided"
         )
 
         result2 = await pipeline.execute(
@@ -108,7 +105,9 @@ class TestMonitoringPipelineE2E:
         # Should detect no change (hash pre-filter should work)
         # Note: This might fail if search results vary, but for stable queries like "2+2" should work
         assert result2["metadata"]["changed"] is False
-        assert "no update" in result2["summary"].lower() or "no change" in result2["summary"].lower()
+        assert (
+            "no update" in result2["summary"].lower() or "no change" in result2["summary"].lower()
+        )
 
     @pytest.mark.asyncio
     async def test_released_product_with_change_detection(self, pipeline):
@@ -117,8 +116,7 @@ class TestMonitoringPipelineE2E:
 
         # First execution - check iPhone 16 status
         search_result1 = await search_provider.search(
-            "iPhone 16 release date official",
-            "Check if iPhone 16 is released"
+            "iPhone 16 release date official", "Check if iPhone 16 is released"
         )
 
         result1 = await pipeline.execute(
@@ -139,8 +137,7 @@ class TestMonitoringPipelineE2E:
 
         # Second execution with different query (simulate checking price now)
         search_result2 = await search_provider.search(
-            "iPhone 16 Pro Max pricing official",
-            "Check iPhone 16 pricing"
+            "iPhone 16 Pro Max pricing official", "Check iPhone 16 pricing"
         )
 
         # Use simulated "old state" where price wasn't known
@@ -165,8 +162,7 @@ class TestMonitoringPipelineE2E:
         search_provider = GeminiSearchProvider()
 
         search_result = await search_provider.search(
-            "Python programming language latest version",
-            "What is the latest Python version?"
+            "Python programming language latest version", "What is the latest Python version?"
         )
 
         result = await pipeline.execute(
@@ -191,8 +187,7 @@ class TestMonitoringPipelineE2E:
         search_provider = GeminiSearchProvider()
 
         search_result = await search_provider.search(
-            "What is the capital of France?",
-            "Provide the capital city name"
+            "What is the capital of France?", "Provide the capital city name"
         )
 
         result = await pipeline.execute(

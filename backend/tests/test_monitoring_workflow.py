@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """Tests for monitoring workflow orchestration logic"""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import timedelta
+from unittest.mock import AsyncMock, patch
 
-from torale.workers.workflows import TaskExecutionWorkflow
+import pytest
 
 
 class TestTaskExecutionWorkflow:
@@ -18,40 +16,49 @@ class TestTaskExecutionWorkflow:
 
         # Create mock request
         from torale.core.models import TaskExecutionRequest
-        request = TaskExecutionRequest(
+
+        _request = TaskExecutionRequest(
             task_id="test-id",
             execution_id="exec-id",
             user_id="user-id",
             task_name="Test Task",
-            suppress_notifications=False
+            suppress_notifications=False,
         )
+        # Note: request object created for structure verification,
+        # actual execution requires Temporal worker
 
         # Mock all activities
-        mock_get_task = AsyncMock(return_value={
-            "task": {
-                "name": "Test",
-                "search_query": "test query",
-                "condition_description": "test",
-                "config": {}
-            },
-            "previous_state": None
-        })
-
-        mock_search = AsyncMock(return_value={
-            "success": True,
-            "answer": "Test answer",
-            "grounding_sources": [{"uri": "https://example.com"}]
-        })
-
-        mock_pipeline = AsyncMock(return_value={
-            "summary": "Test summary",
-            "sources": [{"uri": "https://example.com"}],
-            "metadata": {
-                "changed": True,
-                "change_explanation": "First execution",
-                "current_state": {"test": "value"}
+        mock_get_task = AsyncMock(
+            return_value={
+                "task": {
+                    "name": "Test",
+                    "search_query": "test query",
+                    "condition_description": "test",
+                    "config": {},
+                },
+                "previous_state": None,
             }
-        })
+        )
+
+        mock_search = AsyncMock(
+            return_value={
+                "success": True,
+                "answer": "Test answer",
+                "grounding_sources": [{"uri": "https://example.com"}],
+            }
+        )
+
+        mock_pipeline = AsyncMock(
+            return_value={
+                "summary": "Test summary",
+                "sources": [{"uri": "https://example.com"}],
+                "metadata": {
+                    "changed": True,
+                    "change_explanation": "First execution",
+                    "current_state": {"test": "value"},
+                },
+            }
+        )
 
         mock_send_notification = AsyncMock(return_value=None)
         mock_persist = AsyncMock(return_value=None)
@@ -81,7 +88,6 @@ class TestTaskExecutionWorkflow:
         # (actual execution requires Temporal worker)
         assert True  # Placeholder for workflow structure verification
 
-
     def test_notification_decision_logic(self):
         """Test the workflow's notification decision logic"""
         # Test: changed=True, suppress=False → should notify
@@ -109,8 +115,9 @@ class TestWorkflowActivities:
     @pytest.mark.asyncio
     async def test_get_task_data_structure(self):
         """Test get_task_data returns correct structure"""
-        from torale.workers.activities import get_task_data
         from uuid import UUID
+
+        from torale.workers.activities import get_task_data
 
         # Mock database connection
         mock_conn = AsyncMock()
