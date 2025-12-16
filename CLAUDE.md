@@ -28,7 +28,11 @@ torale/
 └── docs-site/               # Documentation (VitePress)
 ```
 
-**Tooling**: `uv` (backend), `npm` (frontend), `vite` (docs-site), `justfile` for commands (`just dev-noauth`, `just test`, `just test-integration`)
+**Tooling**: `uv` (backend), `npm` (frontend), `vite` (docs-site), `justfile` for commands:
+- `just dev-noauth` - Run local dev without auth
+- `just test` - Run tests
+- `just test-integration` - Run integration tests
+- `just lint` - Run all linting (backend + frontend + TypeScript)
 
 **Architecture**: Frontend → FastAPI → Temporal (scheduling) → Workers → Gemini + Google Search → Notifications
 
@@ -41,9 +45,10 @@ See `docs-site/architecture/` for detailed docs.
 **Common workflow**:
 1. Create branch
 2. Build and iterate locally (`just dev-noauth`)
-3. Push, let CI build
-4. Gemini reviews PR automatically - address feedback
-5. Merge when green
+3. **Always run `just lint` before committing** - catches errors CI will catch
+4. Push, let CI build
+5. Gemini reviews PR automatically - address feedback
+6. Merge when green
 
 **Workflows**: `.github/workflows/` - `backend-pr.yml` + `frontend-pr.yml` (checks), `production.yml` (prod), `staging.yml` (staging)
 

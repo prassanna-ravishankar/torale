@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from '@/lib/motion-compat';
+import { AnimatePresence } from '@/lib/motion-compat';
 import api from '@/lib/api';
 import type { Task } from '@/types';
 import { TaskCard } from '@/components/TaskCard';
@@ -11,11 +11,6 @@ import { StatCard } from '@/components/ui/StatCard';
 import {
   FilterGroup,
   EmptyState,
-  BrutalistTable,
-  BrutalistTableHeader,
-  BrutalistTableBody,
-  BrutalistTableRow,
-  BrutalistTableHead,
 } from '@/components/torale';
 import { Plus, Search, Loader2, Filter, LayoutGrid, List as ListIcon } from 'lucide-react';
 import { toast } from 'sonner';
@@ -37,7 +32,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   const [previewTask, setPreviewTask] = useState<Task | null>(null);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'completed' | 'paused'>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  // Default to list on mobile (< 768px), grid on desktop
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'list' : 'grid'
+  );
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadTasks = async () => {
@@ -173,7 +171,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
         </header>
 
         {/* Stats Row - Now clickable to filter */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+        <div className="hidden md:grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
           <button onClick={() => setActiveFilter('active')} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
             <StatCard label="Active Monitors" value={activeCount.toString()} />
           </button>
@@ -211,7 +209,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded-sm transition-colors ${viewMode === 'list' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`}
+              className={`inline-flex p-1.5 rounded-sm transition-colors ${viewMode === 'list' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`}
             >
               <ListIcon className="w-4 h-4" />
             </button>
@@ -229,33 +227,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
             }}
           />
         ) : viewMode === 'list' ? (
-          <BrutalistTable>
-            <BrutalistTableHeader>
-              <BrutalistTableRow>
-                <BrutalistTableHead>Monitor</BrutalistTableHead>
-                <BrutalistTableHead>Status</BrutalistTableHead>
-                <BrutalistTableHead className="hidden md:table-cell">Schedule</BrutalistTableHead>
-                <BrutalistTableHead className="hidden lg:table-cell">Last Run</BrutalistTableHead>
-              </BrutalistTableRow>
-            </BrutalistTableHeader>
-            <BrutalistTableBody>
-              <AnimatePresence>
-                {filteredTasks.map((task) => (
-                  <TaskListRow
-                    key={task.id}
-                    task={task}
-                    onToggle={handleToggleTask}
-                    onDelete={handleDeleteTask}
-                    onExecute={handleExecuteTask}
-                    onEdit={handleEditTask}
-                    onClick={onTaskClick}
-                  />
-                ))}
-              </AnimatePresence>
-            </BrutalistTableBody>
-          </BrutalistTable>
+          <div className="md:bg-white md:border-2 md:border-zinc-200">
+            <table className="w-full table-fixed">
+              <thead className="hidden md:table-header-group border-b-2 border-zinc-200 bg-zinc-50">
+                <tr>
+                  <th className="p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider text-left">Monitor</th>
+                  <th className="p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider text-left">Status</th>
+                  <th className="p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider text-left">Schedule</th>
+                  <th className="p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider text-left">Last Run</th>
+                </tr>
+              </thead>
+              <tbody>
+                <AnimatePresence>
+                  {filteredTasks.map((task) => (
+                    <TaskListRow
+                      key={task.id}
+                      task={task}
+                      onToggle={handleToggleTask}
+                      onDelete={handleDeleteTask}
+                      onExecute={handleExecuteTask}
+                      onEdit={handleEditTask}
+                      onClick={onTaskClick}
+                    />
+                  ))}
+                </AnimatePresence>
+              </tbody>
+            </table>
+          </div>
         ) : (
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             <AnimatePresence>
               {filteredTasks.map((task) => (
                 <TaskCard
