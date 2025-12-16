@@ -73,7 +73,15 @@ class TaskExecutionWorkflow:
         should_notify = changed and not request.suppress_notifications
 
         # Step 6: Send notifications if needed (orchestrated via focused activities)
-        # Notification failures should not fail the workflow
+        # Configure notification-specific retry policy (fewer attempts, non-retryable errors)
+        notification_retry_policy = RetryPolicy(
+            maximum_attempts=2,  # Don't retry notifications too many times
+            initial_interval=timedelta(seconds=1),
+            maximum_interval=timedelta(seconds=5),
+            backoff_coefficient=2,
+            non_retryable_error_types=["ApplicationError"],  # Spam limits, missing config
+        )
+
         if should_notify:
             try:
                 # 6a: Fetch notification context (task, user, execution details)
@@ -81,7 +89,7 @@ class TaskExecutionWorkflow:
                     "fetch_notification_context",
                     args=[request.task_id, request.execution_id, request.user_id],
                     start_to_close_timeout=timedelta(seconds=30),
-                    retry_policy=retry_policy,
+                    retry_policy=retry_policy,  # Use default retry for fetching context
                 )
 
                 # 6b: Send email notification if channel is enabled
@@ -96,10 +104,10 @@ class TaskExecutionWorkflow:
                                 enriched_result,
                             ],
                             start_to_close_timeout=timedelta(minutes=1),
-                            retry_policy=retry_policy,
+                            retry_policy=notification_retry_policy,
                         )
                     except ActivityError as e:
-                        workflow.logger.warning(f"Email notification failed: {e}")
+                        workflow.logger.warning(f"Email notification failed after retries: {e}")
 
                 # 6c: Send webhook notification if channel is enabled
                 if "webhook" in notification_context.get("notification_channels", []):
@@ -108,10 +116,10 @@ class TaskExecutionWorkflow:
                             "send_webhook_notification",
                             args=[notification_context, enriched_result],
                             start_to_close_timeout=timedelta(minutes=1),
-                            retry_policy=retry_policy,
+                            retry_policy=notification_retry_policy,
                         )
                     except ActivityError as e:
-                        workflow.logger.warning(f"Webhook notification failed: {e}")
+                        workflow.logger.warning(f"Webhook notification failed after retries: {e}")
 
             except ActivityError as e:
                 workflow.logger.warning(f"Failed to fetch notification context: {e}")
