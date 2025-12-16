@@ -56,24 +56,25 @@ class TaskExecutionWorkflow:
         )
 
         # Step 4: Enrich result with metadata for notifications
-        # Add task/execution context needed by send_notification
-        monitoring_result["task_id"] = request.task_id
-        monitoring_result["execution_id"] = request.execution_id
-        monitoring_result["search_query"] = task_data["task"]["search_query"]
-
-        # Check if first execution (no previous state)
+        # Create new enriched result instead of mutating
         is_first_execution = task_data.get("previous_state") is None
-        monitoring_result["is_first_execution"] = is_first_execution
+        enriched_result = {
+            **monitoring_result,
+            "task_id": request.task_id,
+            "execution_id": request.execution_id,
+            "search_query": task_data["task"]["search_query"],
+            "is_first_execution": is_first_execution,
+        }
 
         # Step 5: Decide notification (VISIBLE orchestration logic!)
-        changed = monitoring_result.get("metadata", {}).get("changed", False)
+        changed = enriched_result.get("metadata", {}).get("changed", False)
         should_notify = changed and not request.suppress_notifications
 
         # Step 6: Send notification if needed
         if should_notify:
             await workflow.execute_activity(
                 "send_notification",
-                args=[request.user_id, request.task_name, monitoring_result],
+                args=[request.user_id, request.task_name, enriched_result],
                 start_to_close_timeout=timedelta(minutes=1),
                 retry_policy=retry_policy,
             )
@@ -81,9 +82,9 @@ class TaskExecutionWorkflow:
         # Step 7: Persist execution result
         await workflow.execute_activity(
             "persist_execution_result",
-            args=[request.task_id, request.execution_id, monitoring_result],
+            args=[request.task_id, request.execution_id, enriched_result],
             start_to_close_timeout=timedelta(seconds=30),
             retry_policy=retry_policy,
         )
 
-        return monitoring_result
+        return enriched_result
