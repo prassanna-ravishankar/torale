@@ -32,7 +32,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   const [previewTask, setPreviewTask] = useState<Task | null>(null);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'completed' | 'paused'>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  // Default to list on mobile (< 768px), grid on desktop
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'list' : 'grid'
+  );
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadTasks = async () => {

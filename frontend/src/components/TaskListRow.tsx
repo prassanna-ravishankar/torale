@@ -183,9 +183,9 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                         e.stopPropagation();
                         onExecute(task.id);
                       }}
+                      title="Run Now"
                     >
-                      <Play className="w-3 h-3 mr-1.5" />
-                      Run Now
+                      <Play className="w-4 h-4" />
                     </Button>
                     <Button
                       variant="outline"
@@ -194,17 +194,12 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                         e.stopPropagation();
                         onToggle(task.id, isTaskActive ? 'paused' : 'active');
                       }}
+                      title={isTaskActive ? 'Pause' : 'Resume'}
                     >
                       {isTaskActive ? (
-                        <>
-                          <Pause className="w-3 h-3 mr-1.5" />
-                          Pause
-                        </>
+                        <Pause className="w-4 h-4" />
                       ) : (
-                        <>
-                          <Play className="w-3 h-3 mr-1.5" />
-                          Resume
-                        </>
+                        <Play className="w-4 h-4" />
                       )}
                     </Button>
                     <Button
@@ -214,9 +209,9 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                         e.stopPropagation();
                         onEdit(task.id);
                       }}
+                      title="Edit"
                     >
-                      <Settings className="w-3 h-3 mr-1.5" />
-                      Edit
+                      <Settings className="w-4 h-4" />
                     </Button>
                     <Button
                       variant="outline"
@@ -226,9 +221,9 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                         setShowDeleteDialog(true);
                       }}
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      title="Delete"
                     >
-                      <Trash2 className="w-3 h-3 mr-1.5" />
-                      Delete
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                     <div className="flex-1" />
                     <Button
@@ -238,9 +233,9 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                         e.stopPropagation();
                         onClick(task.id);
                       }}
+                      title="View Details"
                     >
-                      View Details
-                      <ChevronRight className="w-3 h-3 ml-1.5" />
+                      <ChevronRight className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
