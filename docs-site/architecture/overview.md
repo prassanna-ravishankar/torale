@@ -61,16 +61,26 @@ Temporal workers executing scheduled tasks:
 
 **Location:** `backend/src/torale/workers/`
 
-### 3. Executors
-Task execution engine:
-- `GroundedSearchExecutor` - Google Search + Gemini evaluation
-- Condition evaluation logic
-- Source attribution and filtering
-- State tracking
+### 3. Providers & Pipeline
+Monitoring execution architecture:
+- **Providers** - Pluggable implementations (Gemini, OpenAI, Claude)
+  - `SchemaProvider` - Generates task-specific schemas
+  - `ExtractionProvider` - Extracts structured data
+  - `ComparisonProvider` - Semantic state comparison
+  - `SearchProvider` - Grounded search
+- **Pipeline** - Coordinates execution flow
+  - Schema generation → Extraction → Hash pre-filter → Semantic comparison
+- **Structured Agency** - Agents design schemas, extract semantically
+
+**Locations:** `backend/src/torale/providers/`, `backend/src/torale/pipelines/`
+
+### 4. Legacy Executors
+Deprecated execution engine (being migrated to providers):
+- `GroundedSearchExecutor` - Monolithic executor
 
 **Location:** `backend/src/torale/executors/`
 
-### 4. Frontend
+### 5. Frontend
 React SPA with:
 - Clerk authentication
 - Task creation wizard
@@ -79,7 +89,7 @@ React SPA with:
 
 **Location:** `frontend/src/`
 
-### 5. CLI
+### 6. CLI
 Python CLI using Typer:
 - API key authentication
 - Task management commands
@@ -172,7 +182,8 @@ All services use Spot VMs:
 
 ## Next Steps
 
-- Learn about [Grounded Search](/architecture/grounded-search)
+- Learn about [Providers & Pipelines](/architecture/providers-and-pipelines)
 - Understand [Temporal Workflows](/architecture/temporal-workflows)
+- Learn about [Grounded Search](/architecture/grounded-search)
 - Explore [State Tracking](/architecture/state-tracking)
 - View [Database Schema](/architecture/database-schema)
