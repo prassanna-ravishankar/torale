@@ -294,6 +294,16 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
             activity.logger.info(f"First execution for task {task_id}")
 
             if "email" in notification_channels:
+                # Support both new MonitoringResult format and legacy format
+                answer = result.get("summary") or result.get("answer") or ""
+                sources = result.get("sources") or result.get("grounding_sources") or []
+
+                # For new format, use changed flag; for legacy, use condition_met
+                if "metadata" in result:
+                    condition_met = result.get("metadata", {}).get("changed", False)
+                else:
+                    condition_met = result.get("condition_met", False)
+
                 await novu_service.send_welcome_email(
                     subscriber_id=clerk_email,
                     task_name=task["name"],
@@ -302,9 +312,9 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
                     notify_behavior=task["notify_behavior"],
                     schedule=task["schedule"],
                     first_execution_result={
-                        "answer": result.get("answer"),
-                        "condition_met": result.get("condition_met"),
-                        "grounding_sources": result.get("grounding_sources", []),
+                        "answer": answer,
+                        "condition_met": condition_met,
+                        "grounding_sources": sources,
                     },
                     task_id=task_id,
                 )
@@ -341,13 +351,23 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
                 return
 
             # Send email via Novu
+            # Support both new MonitoringResult format and legacy format
+            answer = result.get("summary") or result.get("answer") or ""
+            sources = result.get("sources") or result.get("grounding_sources") or []
+
+            # For new format, use change_explanation; for legacy, use change_summary
+            if "metadata" in result:
+                change_summary = result.get("metadata", {}).get("change_explanation") or ""
+            else:
+                change_summary = result.get("change_summary") or ""
+
             novu_result = await novu_service.send_condition_met_notification(
                 subscriber_id=recipient_email,
                 task_name=task_name,
                 search_query=task.get("search_query", ""),
-                answer=result.get("answer", ""),
-                change_summary=result.get("change_summary"),
-                grounding_sources=result.get("grounding_sources", []),
+                answer=answer,
+                change_summary=change_summary,
+                grounding_sources=sources,
                 task_id=task_id,
                 execution_id=execution_id,
             )

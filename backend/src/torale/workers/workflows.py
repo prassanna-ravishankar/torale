@@ -55,11 +55,21 @@ class TaskExecutionWorkflow:
             retry_policy=retry_policy,
         )
 
-        # Step 4: Decide notification (VISIBLE orchestration logic!)
+        # Step 4: Enrich result with metadata for notifications
+        # Add task/execution context needed by send_notification
+        monitoring_result["task_id"] = request.task_id
+        monitoring_result["execution_id"] = request.execution_id
+        monitoring_result["search_query"] = task_data["task"]["search_query"]
+
+        # Check if first execution (no previous state)
+        is_first_execution = task_data.get("previous_state") is None
+        monitoring_result["is_first_execution"] = is_first_execution
+
+        # Step 5: Decide notification (VISIBLE orchestration logic!)
         changed = monitoring_result.get("metadata", {}).get("changed", False)
         should_notify = changed and not request.suppress_notifications
 
-        # Step 5: Send notification if needed
+        # Step 6: Send notification if needed
         if should_notify:
             await workflow.execute_activity(
                 "send_notification",
@@ -68,7 +78,7 @@ class TaskExecutionWorkflow:
                 retry_policy=retry_policy,
             )
 
-        # Step 6: Persist execution result
+        # Step 7: Persist execution result
         await workflow.execute_activity(
             "persist_execution_result",
             args=[request.task_id, request.execution_id, monitoring_result],
