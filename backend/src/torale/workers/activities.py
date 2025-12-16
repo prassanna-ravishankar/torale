@@ -453,3 +453,199 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
 
     finally:
         await conn.close()
+
+
+# New pipeline-based activities
+
+
+@activity.defn
+async def get_task_data(task_id: str) -> dict:
+    """
+    Fetch task configuration and execution context.
+
+    Returns all data needed for monitoring execution:
+    - Task configuration
+    - Previous state
+    - Last execution timestamp
+    """
+    conn = await get_db_connection()
+
+    try:
+        # Get task details
+        task = await conn.fetchrow("SELECT * FROM tasks WHERE id = $1", UUID(task_id))
+
+        if not task:
+            logger.warning(f"Task {task_id} not found")
+            raise ValueError(f"Task {task_id} not found")
+
+        # Check if task is active
+        if task["state"] != "active":
+            logger.info(f"Task {task_id} is not active (state={task['state']})")
+            raise ValueError(f"Task {task_id} is not active")
+
+        # Parse JSON fields
+        config = task["config"]
+        if isinstance(config, str):
+            config = json.loads(config)
+
+        last_known_state = task.get("last_known_state")
+        if isinstance(last_known_state, str):
+            last_known_state = json.loads(last_known_state) if last_known_state else None
+
+        # Get last execution datetime
+        last_execution_row = await conn.fetchrow(
+            """
+            SELECT completed_at
+            FROM task_executions
+            WHERE task_id = $1 AND status = $2
+            ORDER BY completed_at DESC
+            LIMIT 1
+            """,
+            UUID(task_id),
+            TaskStatus.SUCCESS.value,
+        )
+
+        last_execution_datetime = None
+        if last_execution_row and last_execution_row["completed_at"]:
+            last_execution_datetime = last_execution_row["completed_at"]
+
+        return {
+            "task": dict(task),
+            "config": config,
+            "previous_state": last_known_state,
+            "last_execution_datetime": last_execution_datetime,
+        }
+
+    finally:
+        await conn.close()
+
+
+@activity.defn
+async def perform_grounded_search(task_data: dict) -> dict:
+    """
+    Perform grounded search using Gemini.
+
+    Thin wrapper around GeminiSearchProvider.
+    """
+    from torale.providers.gemini import GeminiSearchProvider
+
+    task = task_data["task"]
+    search_provider = GeminiSearchProvider()
+
+    result = await search_provider.search(
+        query=task["search_query"],
+        temporal_context={"last_execution_datetime": task_data.get("last_execution_datetime")},
+        model=task_data["config"].get("model", "gemini-2.5-flash"),
+    )
+
+    return result
+
+
+@activity.defn
+async def execute_monitoring_pipeline(task_data: dict, search_result: dict) -> dict:
+    """
+    Execute monitoring pipeline: schema generation, extraction, comparison.
+
+    This is where the provider + pipeline magic happens.
+    """
+    from torale.pipelines import MonitoringPipeline
+    from torale.providers.gemini import (
+        GeminiComparisonProvider,
+        GeminiExtractionProvider,
+        GeminiSchemaProvider,
+    )
+
+    # Initialize pipeline with Gemini providers
+    pipeline = MonitoringPipeline(
+        schema_provider=GeminiSchemaProvider(),
+        extraction_provider=GeminiExtractionProvider(),
+        comparison_provider=GeminiComparisonProvider(),
+    )
+
+    # Execute pipeline
+    result = await pipeline.execute(
+        task=task_data["task"],
+        search_result=search_result,
+        previous_state=task_data.get("previous_state"),
+    )
+
+    # Convert to dict for Temporal serialization
+    return result.model_dump()
+
+
+@activity.defn
+async def persist_execution_result(
+    task_id: str, execution_id: str, monitoring_result: dict
+) -> None:
+    """
+    Persist execution result to database.
+
+    Updates both task_executions and tasks tables.
+    """
+    conn = await get_db_connection()
+
+    try:
+        # Extract metadata
+        metadata = monitoring_result.get("metadata", {})
+        current_state = metadata.get("current_state", {})
+        changed = metadata.get("changed", False)
+
+        # Update execution record
+        await conn.execute(
+            """
+            UPDATE task_executions
+            SET status = $1, result = $2, completed_at = $3
+            WHERE id = $4
+            """,
+            TaskStatus.SUCCESS.value,
+            json.dumps(monitoring_result),
+            datetime.utcnow(),
+            UUID(execution_id),
+        )
+
+        # Update task's last_known_state
+        await conn.execute(
+            """
+            UPDATE tasks
+            SET last_known_state = $1, updated_at = $2, last_execution_id = $3
+            WHERE id = $4
+            """,
+            json.dumps(current_state),
+            datetime.utcnow(),
+            UUID(execution_id),
+            UUID(task_id),
+        )
+
+        # Handle notify behavior logic if changed
+        if changed:
+            task = await conn.fetchrow("SELECT * FROM tasks WHERE id = $1", UUID(task_id))
+            notify_behavior = task.get("notify_behavior", "once")
+
+            # Update last_notified_at
+            await conn.execute(
+                """
+                UPDATE tasks
+                SET last_notified_at = $1
+                WHERE id = $2
+                """,
+                datetime.utcnow(),
+                UUID(task_id),
+            )
+
+            # Auto-complete task if notify_behavior is "once"
+            if notify_behavior == NotifyBehavior.ONCE.value:
+                try:
+                    state_machine = TaskStateMachine(db_conn=conn)
+                    result = await state_machine.complete(
+                        task_id=UUID(task_id),
+                        current_state=TaskState.ACTIVE,
+                    )
+                    logger.info(f"Task {task_id} completed - schedule {result['schedule_action']}")
+                except Exception as e:
+                    logger.error(
+                        f"Failed to complete task {task_id}: {str(e)}. "
+                        f"State machine transition failed."
+                    )
+
+    finally:
+        await conn.close()
