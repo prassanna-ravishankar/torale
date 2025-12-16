@@ -374,8 +374,8 @@ async def preview_search(
     Preview a search query without creating a task.
 
     This endpoint allows users to test their search query and see results before
-    committing to creating a monitoring task. It executes the grounded search
-    executor but doesn't save anything to the database.
+    committing to creating a monitoring task. Uses the new monitoring pipeline
+    for consistent behavior with actual task executions.
 
     Args:
         search_query: The search query to test
@@ -384,18 +384,20 @@ async def preview_search(
 
     Returns:
         {
-            "answer": "The search result answer",
-            "condition_met": bool,
+            "summary": "Natural language summary of findings",
+            "condition_met": bool (whether monitoring condition was met),
             "inferred_condition": "LLM-inferred condition" (if condition_description not provided),
-            "grounding_sources": [{url, title}, ...],
-            "current_state": {...}
+            "sources": [{uri, title}, ...],
+            "current_state": {...} (structured extracted data)
         }
     """
-    from torale.executors.grounded_search import GroundedSearchExecutor
+    from torale.pipelines.monitoring_pipeline import MonitoringPipeline
+    from torale.providers.gemini.schema import GeminiSchemaProvider
+    from torale.providers.gemini.extraction import GeminiExtractionProvider
+    from torale.providers.gemini.comparison import GeminiComparisonProvider
+    from torale.providers.gemini.search import GeminiSearchProvider
 
     try:
-        executor = GroundedSearchExecutor()
-
         # If no condition provided, have LLM infer it from the query
         condition_description = request.condition_description
         inferred = not condition_description
@@ -411,27 +413,41 @@ async def preview_search(
                     detail="Failed to automatically determine what to look for in the search. Please provide a specific condition description.",
                 ) from e
 
-        # Execute the search
-        config = {
-            "search_query": request.search_query,
-            "condition_description": condition_description,
-            "model": request.model,
-        }
+        # Execute grounded search
+        search_provider = GeminiSearchProvider()
+        search_result = await search_provider.search(
+            request.search_query,
+            condition_description,
+            model=request.model
+        )
 
-        result = await executor.execute(config)
-
-        if not result.get("success"):
+        if not search_result.get("success"):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=result.get("error", "Search execution failed"),
+                detail=search_result.get("error", "Search execution failed"),
             )
 
-        # Return results with inferred condition if applicable
+        # Run monitoring pipeline (first execution, no previous state)
+        pipeline = MonitoringPipeline(
+            schema_provider=GeminiSchemaProvider(),
+            extraction_provider=GeminiExtractionProvider(),
+            comparison_provider=GeminiComparisonProvider(),
+        )
+
+        monitoring_result = await pipeline.execute(
+            search_query=request.search_query,
+            condition_description=condition_description,
+            search_results=search_result["answer"],
+            sources=search_result.get("grounding_sources", []),
+            previous_state=None,  # Preview is always first execution
+        )
+
+        # Return response matching expected format
         response = {
-            "answer": result["answer"],
-            "condition_met": result["condition_met"],
-            "grounding_sources": result["grounding_sources"],
-            "current_state": result["current_state"],
+            "summary": monitoring_result["summary"],
+            "condition_met": monitoring_result["metadata"]["changed"],  # First execution = changed
+            "sources": monitoring_result["sources"],
+            "current_state": monitoring_result["metadata"]["current_state"],
         }
 
         if inferred:
