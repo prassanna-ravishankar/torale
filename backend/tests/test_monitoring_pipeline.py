@@ -30,7 +30,7 @@ class TestMonitoringPipeline:
     async def test_first_execution_no_comparison(self, mock_providers):
         """Test first execution (no previous state) skips comparison"""
         # Setup mocks
-        mock_providers["schema"].generate_schema = AsyncMock(return_value={
+        mock_providers["schema"].get_or_create_schema = AsyncMock(return_value={
             "is_released": {"type": "boolean"}
         })
         mock_providers["extraction"].extract = AsyncMock(return_value={
@@ -44,24 +44,28 @@ class TestMonitoringPipeline:
         )
 
         result = await pipeline.execute(
-            search_query="iPhone 18 release date",
-            condition_description="Check if released",
-            search_results="No official announcement yet",
-            sources=[{"uri": "https://example.com"}],
+            task={
+                "search_query": "iPhone 18 release date",
+                "condition_description": "Check if released",
+            },
+            search_result={
+                "answer": "No official announcement yet",
+                "grounding_sources": [{"uri": "https://example.com"}],
+            },
             previous_state=None,  # First execution
         )
 
         # Should generate schema and extract
-        mock_providers["schema"].generate_schema.assert_called_once()
+        mock_providers["schema"].get_or_create_schema.assert_called_once()
         mock_providers["extraction"].extract.assert_called_once()
 
         # Should NOT call comparison (first execution)
         mock_providers["comparison"].compare.assert_not_called()
 
         # Result should indicate first execution
-        assert result["metadata"]["changed"] is True
-        assert "first execution" in result["summary"].lower()
-        assert result["metadata"]["current_state"] == {"is_released": False}
+        assert result.metadata.changed is True
+        assert "first execution" in result.summary.lower()
+        assert result.metadata.current_state == {"is_released": False}
 
     @pytest.mark.asyncio
     async def test_hash_prefilter_blocks_comparison(self, mock_providers):
@@ -70,7 +74,7 @@ class TestMonitoringPipeline:
         previous_state = current_state.copy()
 
         # Setup mocks
-        mock_providers["schema"].generate_schema = AsyncMock(return_value={
+        mock_providers["schema"].get_or_create_schema = AsyncMock(return_value={
             "is_released": {"type": "boolean"},
             "release_date": {"type": "string"}
         })
@@ -83,10 +87,14 @@ class TestMonitoringPipeline:
         )
 
         result = await pipeline.execute(
-            search_query="iPhone 16 release",
-            condition_description="Check for changes",
-            search_results="iPhone 16 released September 2024",
-            sources=[{"uri": "https://apple.com"}],
+            task={
+                "search_query": "iPhone 16 release",
+                "condition_description": "Check for changes",
+            },
+            search_result={
+                "answer": "iPhone 16 released September 2024",
+                "grounding_sources": [{"uri": "https://apple.com"}],
+            },
             previous_state=previous_state,
         )
 
@@ -95,8 +103,8 @@ class TestMonitoringPipeline:
         mock_providers["comparison"].compare.assert_not_called()
 
         # Result should indicate no change
-        assert result["metadata"]["changed"] is False
-        assert "no updates" in result["summary"].lower()
+        assert result.metadata.changed is False
+        assert "no updates" in result.summary.lower()
 
     @pytest.mark.asyncio
     async def test_semantic_comparison_after_hash_diff(self, mock_providers):
@@ -105,7 +113,7 @@ class TestMonitoringPipeline:
         current_state = {"is_released": True, "release_date": "September 2024"}
 
         # Setup mocks
-        mock_providers["schema"].generate_schema = AsyncMock(return_value={
+        mock_providers["schema"].get_or_create_schema = AsyncMock(return_value={
             "is_released": {"type": "boolean"},
             "release_date": {"type": "string"}
         })
@@ -122,10 +130,14 @@ class TestMonitoringPipeline:
         )
 
         result = await pipeline.execute(
-            search_query="iPhone 16 release",
-            condition_description="Track release status",
-            search_results="iPhone 16 released September 2024",
-            sources=[{"uri": "https://apple.com"}],
+            task={
+                "search_query": "iPhone 16 release",
+                "condition_description": "Track release status",
+            },
+            search_result={
+                "answer": "iPhone 16 released September 2024",
+                "grounding_sources": [{"uri": "https://apple.com"}],
+            },
             previous_state=previous_state,
         )
 
@@ -134,9 +146,9 @@ class TestMonitoringPipeline:
         mock_providers["comparison"].compare.assert_called_with(previous_state, current_state)
 
         # Result should reflect semantic change
-        assert result["metadata"]["changed"] is True
-        assert "released" in result["summary"].lower()
-        assert result["metadata"]["change_explanation"] == "Product officially released with date announced"
+        assert result.metadata.changed is True
+        assert "released" in result.summary.lower()
+        assert result.metadata.change_explanation == "Product officially released with date announced"
 
     @pytest.mark.asyncio
     async def test_hash_diff_but_no_semantic_change(self, mock_providers):
@@ -146,7 +158,7 @@ class TestMonitoringPipeline:
         current_state = {"status": "In stock now", "price": "$999"}
 
         # Setup mocks
-        mock_providers["schema"].generate_schema = AsyncMock(return_value={
+        mock_providers["schema"].get_or_create_schema = AsyncMock(return_value={
             "status": {"type": "string"},
             "price": {"type": "string"}
         })
@@ -163,10 +175,14 @@ class TestMonitoringPipeline:
         )
 
         result = await pipeline.execute(
-            search_query="Product availability",
-            condition_description="Track meaningful changes",
-            search_results="Product in stock now for $999",
-            sources=[{"uri": "https://example.com"}],
+            task={
+                "search_query": "Product availability",
+                "condition_description": "Track meaningful changes",
+            },
+            search_result={
+                "answer": "Product in stock now for $999",
+                "grounding_sources": [{"uri": "https://example.com"}],
+            },
             previous_state=previous_state,
         )
 
@@ -174,13 +190,13 @@ class TestMonitoringPipeline:
         mock_providers["comparison"].compare.assert_called_once()
 
         # But result should indicate no meaningful change
-        assert result["metadata"]["changed"] is False
-        assert "no updates" in result["summary"].lower() or "no meaningful" in result["summary"].lower()
+        assert result.metadata.changed is False
+        assert "no updates" in result.summary.lower() or "no meaningful" in result.summary.lower()
 
     @pytest.mark.asyncio
     async def test_result_format(self, mock_providers):
         """Test result has correct MonitoringResult format"""
-        mock_providers["schema"].generate_schema = AsyncMock(return_value={
+        mock_providers["schema"].get_or_create_schema = AsyncMock(return_value={
             "is_released": {"type": "boolean"}
         })
         mock_providers["extraction"].extract = AsyncMock(return_value={
@@ -199,26 +215,30 @@ class TestMonitoringPipeline:
         ]
 
         result = await pipeline.execute(
-            search_query="Test query",
-            condition_description="Test condition",
-            search_results="Test content",
-            sources=sources,
+            task={
+                "search_query": "Test query",
+                "condition_description": "Test condition",
+            },
+            search_result={
+                "answer": "Test content",
+                "grounding_sources": sources,
+            },
             previous_state=None,
         )
 
         # Verify MonitoringResult structure
-        assert "summary" in result
-        assert isinstance(result["summary"], str)
-        assert len(result["summary"]) > 0
+        assert hasattr(result, "summary")
+        assert isinstance(result.summary, str)
+        assert len(result.summary) > 0
 
-        assert "sources" in result
-        assert result["sources"] == sources
+        assert hasattr(result, "sources")
+        assert result.sources == sources
 
-        assert "metadata" in result
-        assert "changed" in result["metadata"]
-        assert isinstance(result["metadata"]["changed"], bool)
-        assert "current_state" in result["metadata"]
-        assert "change_explanation" in result["metadata"]
+        assert hasattr(result, "metadata")
+        assert hasattr(result.metadata, "changed")
+        assert isinstance(result.metadata.changed, bool)
+        assert hasattr(result.metadata, "current_state")
+        assert hasattr(result.metadata, "change_explanation")
 
 
 class TestStateHashing:
