@@ -210,3 +210,68 @@ class StateComparison(BaseModel):
     summary: str | None = Field(
         description="1-2 sentence summary of what changed, or null if nothing changed"
     )
+
+
+# Provider/Pipeline Models
+
+
+class MonitoringResult(BaseModel):
+    """
+    Result from monitoring execution - minimal schema approach.
+
+    This is the contract that all monitoring providers must return.
+    Emphasizes natural language summary over rigid boolean fields.
+    """
+
+    summary: str = Field(
+        description="Agent's natural language summary for the user. Should explain what was found and what changed."
+    )
+    sources: list[dict] = Field(
+        description="Grounding sources with url and title",
+        default_factory=list,
+    )
+    actions: list[str] = Field(
+        description="Actions taken during execution (e.g., ['searched', 'extracted', 'compared'])",
+        default_factory=list,
+    )
+    metadata: dict = Field(
+        description="Optional provider-specific metadata (changed, current_state, schema, etc.)",
+        default_factory=dict,
+    )
+
+
+class StateChange(BaseModel):
+    """Result of semantic state comparison."""
+
+    changed: bool = Field(description="Whether meaningful change occurred between states")
+    explanation: str = Field(
+        description="Human-readable explanation of what changed or why nothing changed"
+    )
+
+
+class SearchResult(BaseModel):
+    """Result from grounded search execution."""
+
+    answer: str = Field(description="Answer from search")
+    sources: list[dict] = Field(description="Grounding sources", default_factory=list)
+    temporal_note: str | None = Field(
+        description="Note about temporal context (e.g., 'No new updates since last check')",
+        default=None,
+    )
+
+
+class ExecutionContext(BaseModel):
+    """Context passed to monitoring providers."""
+
+    previous_state: dict | None = Field(
+        description="Previous extracted state (None if first execution)",
+        default=None,
+    )
+    last_execution_datetime: datetime | None = Field(
+        description="Timestamp of last successful execution",
+        default=None,
+    )
+    task_config: dict = Field(
+        description="Task configuration",
+        default_factory=dict,
+    )
