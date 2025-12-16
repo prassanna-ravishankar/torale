@@ -23,7 +23,8 @@ class GeminiSchemaProvider(SchemaProvider):
             raise ValueError("Google API key required for Gemini schema provider")
 
         self.client = genai.Client(api_key=settings.google_api_key)
-        self._schema_cache = {}  # In-memory cache (could move to Redis/DB later)
+        # Note: Caching removed as providers are instantiated per-execution in distributed workers.
+        # Consider adding Redis caching or singleton pattern if schema generation becomes a bottleneck.
 
     async def generate_schema(self, task: dict) -> dict:
         """
@@ -82,19 +83,12 @@ Design the schema for this task. Return ONLY the JSON schema, no other text."""
 
     async def get_or_create_schema(self, task: dict) -> dict:
         """
-        Get cached schema or generate new one.
+        Get or generate schema for task.
 
-        Cache key is based on search_query + condition_description.
+        In the future, this could check for persisted schemas in the database
+        (task.extraction_schema field) before generating new ones.
         """
-        cache_key = f"{task.get('search_query', '')}::{task.get('condition_description', '')}"
-
-        if cache_key in self._schema_cache:
-            logger.debug(f"Using cached schema for: {cache_key}")
-            return self._schema_cache[cache_key]
-
         # TODO: Check database for persisted schema (task.extraction_schema)
-        # For now, generate fresh
+        # For now, generate fresh each time
         schema = await self.generate_schema(task)
-        self._schema_cache[cache_key] = schema
-
         return schema
