@@ -171,7 +171,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
         </header>
 
         {/* Stats Row - Now clickable to filter */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+        <div className="hidden md:grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
           <button onClick={() => setActiveFilter('active')} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
             <StatCard label="Active Monitors" value={activeCount.toString()} />
           </button>
