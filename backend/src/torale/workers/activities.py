@@ -5,6 +5,7 @@ from uuid import UUID
 
 import asyncpg
 from temporalio import activity
+from temporalio.exceptions import ApplicationError
 
 from torale.core.config import settings
 from torale.core.email_verification import EmailVerificationService
@@ -295,6 +296,8 @@ async def send_email_notification(
     Send email notification (welcome or condition met).
 
     Handles email verification, spam limits, and delivery tracking.
+    Raises ApplicationError for non-retryable failures (spam limits).
+    Other exceptions propagate for Temporal retry handling.
     """
     conn = await get_db_connection()
 
@@ -339,7 +342,7 @@ async def send_email_notification(
         custom_email = task.get("notification_email")
         if custom_email and custom_email != clerk_email:
             if custom_email not in verified_emails:
-                logger.error(
+                logger.warning(
                     f"Email {custom_email} not verified for user {user_id}. "
                     f"Using Clerk email instead: {clerk_email}"
                 )
@@ -347,14 +350,18 @@ async def send_email_notification(
             else:
                 recipient_email = custom_email
 
-        # Check spam limits
+        # Check spam limits (non-retryable error)
         allowed, error = await EmailVerificationService.check_spam_limits(
             conn, user_id, recipient_email
         )
 
         if not allowed:
-            logger.error(f"Spam limit hit: {error}")
-            return
+            logger.warning(f"Spam limit hit for {recipient_email}: {error}")
+            # Don't retry spam limit violations
+            raise ApplicationError(
+                f"Spam limit exceeded: {error}",
+                non_retryable=True,
+            )
 
         # Send email via Novu
         answer = result.get("summary", "")
@@ -401,10 +408,6 @@ async def send_email_notification(
             email_error,
         )
 
-    except Exception:
-        # Never fail the workflow due to notification errors
-        logger.error("Email notification error", exc_info=True)
-
     finally:
         await conn.close()
 
@@ -415,6 +418,8 @@ async def send_webhook_notification(notification_context: dict, result: dict) ->
     Send webhook notification.
 
     Handles webhook delivery, retry scheduling, and delivery tracking.
+    Raises ApplicationError for non-retryable failures (missing config).
+    Other exceptions propagate for Temporal retry handling.
     """
     conn = await get_db_connection()
 
@@ -429,7 +434,11 @@ async def send_webhook_notification(notification_context: dict, result: dict) ->
 
         if not webhook_url or not webhook_secret:
             logger.warning("Webhook enabled but no URL/secret configured")
-            return
+            # Don't retry missing configuration
+            raise ApplicationError(
+                "Webhook URL or secret not configured",
+                non_retryable=True,
+            )
 
         # Build payload
         payload = build_webhook_payload(execution_id, task, execution, result)
@@ -464,7 +473,7 @@ async def send_webhook_notification(notification_context: dict, result: dict) ->
             )
             logger.info(f"Webhook delivered to {webhook_url}")
         else:
-            # Schedule retry
+            # Record failed delivery attempt
             next_retry = WebhookDeliveryService.get_next_retry_time(1)
             await conn.execute(
                 """
@@ -485,10 +494,8 @@ async def send_webhook_notification(notification_context: dict, result: dict) ->
                 next_retry,
             )
             logger.error(f"Webhook delivery failed: {error}")
-
-    except Exception:
-        # Never fail the workflow due to notification errors
-        logger.error("Webhook notification error", exc_info=True)
+            # Let Temporal retry the activity
+            raise Exception(f"Webhook delivery failed: {error}")
 
     finally:
         await conn.close()
