@@ -78,10 +78,12 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
                 </span>
               </div>
 
-              {/* Layer 2: PRIMARY INFO - Answer & Sources (Always Visible) */}
-              {execution.result?.answer && (
+              {/* Layer 2: PRIMARY INFO - Answer/Summary & Sources (Always Visible) */}
+              {(execution.result?.summary || execution.result?.answer) && (
                 <div className="mb-3 p-4 bg-white border-2 border-zinc-200">
-                  <SectionLabel className="mb-3">Answer</SectionLabel>
+                  <SectionLabel className="mb-3">
+                    {execution.result?.summary ? "Summary" : "Answer"}
+                  </SectionLabel>
                   <div className="text-sm prose prose-sm max-w-none">
                     <ReactMarkdown
                       components={{
@@ -95,17 +97,18 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
                         h3: ({ children }) => <h3 className="text-base font-grotesk font-bold mb-2 mt-2 text-zinc-900">{children}</h3>,
                       }}
                     >
-                      {execution.result.answer}
+                      {execution.result.summary || execution.result.answer}
                     </ReactMarkdown>
                   </div>
                 </div>
               )}
 
-              {execution.grounding_sources && execution.grounding_sources.length > 0 && (
+              {((execution.result?.sources && execution.result.sources.length > 0) ||
+                (execution.grounding_sources && execution.grounding_sources.length > 0)) && (
                 <div className="p-4 bg-white border-2 border-zinc-200 mb-3">
                   <SectionLabel className="mb-3">Sources</SectionLabel>
                   <GroundingSourceList
-                    sources={execution.grounding_sources}
+                    sources={execution.result?.sources || execution.grounding_sources}
                     title=""
                   />
                 </div>
@@ -119,20 +122,21 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
                 variant="default"
               >
                 <div className="space-y-3">
-                  {execution.change_summary && (
+                  {/* Support both old and new formats */}
+                  {(execution.result?.metadata?.change_explanation || execution.change_summary) && (
                     <div className="p-3 bg-emerald-50 border border-emerald-200">
                       <p className="text-sm text-emerald-900 font-medium">
                         <span className="font-mono text-[10px] uppercase text-emerald-600 tracking-wider block mb-1">What Changed</span>
-                        {execution.change_summary}
+                        {execution.result?.metadata?.change_explanation || execution.change_summary}
                       </p>
                     </div>
                   )}
 
-                  {execution.result?.current_state && (
+                  {(execution.result?.metadata?.current_state || execution.result?.current_state) && (
                     <div className="p-3 bg-zinc-900 border border-zinc-800">
                       <p className="text-[10px] font-mono uppercase text-zinc-500 tracking-wider mb-3">Current State (Dev)</p>
                       <div className="text-xs font-mono space-y-2">
-                        {Object.entries(execution.result.current_state).map(
+                        {Object.entries(execution.result?.metadata?.current_state || execution.result.current_state).map(
                           ([key, value]) => (
                             <div key={key} className="flex flex-col gap-1">
                               <span className="text-zinc-400">
