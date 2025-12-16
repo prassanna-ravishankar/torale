@@ -8,7 +8,7 @@ from temporalio import activity
 
 from torale.core.config import settings
 from torale.core.email_verification import EmailVerificationService
-from torale.core.models import NotifyBehavior, TaskState, TaskStatus
+from torale.core.models import TaskState, TaskStatus
 from torale.core.task_state_machine import TaskStateMachine
 from torale.core.webhook import WebhookDeliveryService, build_webhook_payload
 from torale.notifications.novu_service import novu_service
@@ -397,49 +397,58 @@ async def persist_execution_result(
             UUID(execution_id),
         )
 
-        # Update task's last_known_state
-        await conn.execute(
-            """
-            UPDATE tasks
-            SET last_known_state = $1, updated_at = $2, last_execution_id = $3
-            WHERE id = $4
-            """,
-            json.dumps(current_state),
-            datetime.utcnow(),
-            UUID(execution_id),
-            UUID(task_id),
-        )
-
-        # Handle notify behavior logic if changed
+        # Update task's last_known_state and last_notified_at if changed
         if changed:
-            task = await conn.fetchrow("SELECT * FROM tasks WHERE id = $1", UUID(task_id))
-            notify_behavior = task.get("notify_behavior", "once")
-
-            # Update last_notified_at
             await conn.execute(
                 """
                 UPDATE tasks
-                SET last_notified_at = $1
-                WHERE id = $2
+                SET last_known_state = $1, updated_at = $2, last_execution_id = $3, last_notified_at = $4
+                WHERE id = $5
                 """,
+                json.dumps(current_state),
+                datetime.utcnow(),
+                UUID(execution_id),
                 datetime.utcnow(),
                 UUID(task_id),
             )
+        else:
+            await conn.execute(
+                """
+                UPDATE tasks
+                SET last_known_state = $1, updated_at = $2, last_execution_id = $3
+                WHERE id = $4
+                """,
+                json.dumps(current_state),
+                datetime.utcnow(),
+                UUID(execution_id),
+                UUID(task_id),
+            )
 
-            # Auto-complete task if notify_behavior is "once"
-            if notify_behavior == NotifyBehavior.ONCE.value:
-                try:
-                    state_machine = TaskStateMachine(db_conn=conn)
-                    result = await state_machine.complete(
-                        task_id=UUID(task_id),
-                        current_state=TaskState.ACTIVE,
-                    )
-                    logger.info(f"Task {task_id} completed - schedule {result['schedule_action']}")
-                except Exception as e:
-                    logger.error(
-                        f"Failed to complete task {task_id}: {str(e)}. "
-                        f"State machine transition failed."
-                    )
+    finally:
+        await conn.close()
 
+
+@activity.defn
+async def complete_task(task_id: str) -> None:
+    """
+    Mark task as completed via TaskStateMachine.
+
+    This activity handles the state transition when a task with notify_behavior="once"
+    has successfully detected a condition change and sent notification.
+    """
+    conn = await get_db_connection()
+
+    try:
+        state_machine = TaskStateMachine(db_conn=conn)
+        result = await state_machine.complete(
+            task_id=UUID(task_id),
+            current_state=TaskState.ACTIVE,
+        )
+        logger.info(f"Task {task_id} completed - schedule {result['schedule_action']}")
+    except Exception as e:
+        logger.error(
+            f"Failed to complete task {task_id}: {str(e)}. State machine transition failed."
+        )
+        raise  # Re-raise to let workflow handle the failure
     finally:
         await conn.close()

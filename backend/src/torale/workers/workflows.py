@@ -87,4 +87,13 @@ class TaskExecutionWorkflow:
             retry_policy=retry_policy,
         )
 
+        # Step 8: Handle task completion if notify_behavior is "once" and condition changed
+        if changed and task_data["task"]["notify_behavior"] == "once":
+            await workflow.execute_activity(
+                "complete_task",
+                args=[request.task_id],
+                start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=retry_policy,
+            )
+
         return enriched_result
