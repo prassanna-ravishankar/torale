@@ -71,14 +71,38 @@ class TaskExecutionWorkflow:
         changed = enriched_result.get("metadata", {}).get("changed", False)
         should_notify = changed and not request.suppress_notifications
 
-        # Step 6: Send notification if needed
+        # Step 6: Send notifications if needed (orchestrated via focused activities)
         if should_notify:
-            await workflow.execute_activity(
-                "send_notification",
-                args=[request.user_id, request.task_name, enriched_result],
-                start_to_close_timeout=timedelta(minutes=1),
+            # 6a: Fetch notification context (task, user, execution details)
+            notification_context = await workflow.execute_activity(
+                "fetch_notification_context",
+                args=[request.task_id, request.execution_id, request.user_id],
+                start_to_close_timeout=timedelta(seconds=30),
                 retry_policy=retry_policy,
             )
+
+            # 6b: Send email notification if channel is enabled
+            if "email" in notification_context.get("notification_channels", ["email"]):
+                await workflow.execute_activity(
+                    "send_email_notification",
+                    args=[
+                        request.user_id,
+                        request.task_name,
+                        notification_context,
+                        enriched_result,
+                    ],
+                    start_to_close_timeout=timedelta(minutes=1),
+                    retry_policy=retry_policy,
+                )
+
+            # 6c: Send webhook notification if channel is enabled
+            if "webhook" in notification_context.get("notification_channels", []):
+                await workflow.execute_activity(
+                    "send_webhook_notification",
+                    args=[notification_context, enriched_result],
+                    start_to_close_timeout=timedelta(minutes=1),
+                    retry_policy=retry_policy,
+                )
 
         # Step 7: Persist execution result
         await workflow.execute_activity(

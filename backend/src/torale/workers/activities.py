@@ -21,236 +21,7 @@ async def get_db_connection():
     return await asyncpg.connect(settings.database_url)
 
 
-@activity.defn
-async def send_notification(user_id: str, task_name: str, result: dict) -> None:
-    """
-    Send notifications based on task configuration.
-
-    Entry point for all notification logic:
-    - First execution: sends welcome email with execution results
-    - Subsequent executions: sends condition met email (if condition met)
-
-    Supports multiple channels: email (via Novu), webhook, or both.
-    Never fails the workflow - all errors are caught and logged.
-    """
-    conn = await get_db_connection()
-
-    try:
-        # Extract task and execution IDs from result
-        task_id = result.get("task_id")
-        execution_id = result.get("execution_id")
-
-        if not task_id or not execution_id:
-            activity.logger.error("Missing task_id or execution_id in result")
-            return
-
-        # Get task details including notification channels
-        task = await conn.fetchrow(
-            """
-            SELECT t.*, u.email as clerk_email,
-                   u.verified_notification_emails,
-                   u.webhook_url as user_webhook_url,
-                   u.webhook_secret as user_webhook_secret
-            FROM tasks t
-            JOIN users u ON t.user_id = u.id
-            WHERE t.id = $1
-            """,
-            UUID(task_id),
-        )
-
-        if not task:
-            activity.logger.warning(f"Task {task_id} not found")
-            return
-
-        # Get execution details
-        execution = await conn.fetchrow(
-            "SELECT * FROM task_executions WHERE id = $1", UUID(execution_id)
-        )
-
-        if not execution:
-            activity.logger.warning(f"Execution {execution_id} not found")
-            return
-
-        clerk_email = task["clerk_email"]
-        verified_emails = task["verified_notification_emails"] or []
-        notification_channels = task.get("notification_channels") or ["email"]
-
-        # FIRST EXECUTION: Send welcome email and/or webhook
-        if result.get("is_first_execution"):
-            activity.logger.info(f"First execution for task {task_id}")
-
-            if "email" in notification_channels:
-                # Use new MonitoringResult format
-                answer = result.get("summary", "")
-                sources = result.get("sources", [])
-                condition_met = result.get("metadata", {}).get("changed", False)
-
-                await novu_service.send_welcome_email(
-                    subscriber_id=clerk_email,
-                    task_name=task["name"],
-                    search_query=task["search_query"],
-                    condition_description=task["condition_description"],
-                    notify_behavior=task["notify_behavior"],
-                    schedule=task["schedule"],
-                    first_execution_result={
-                        "answer": answer,
-                        "condition_met": condition_met,
-                        "grounding_sources": sources,
-                    },
-                    task_id=task_id,
-                )
-                activity.logger.info(f"Welcome email sent to {clerk_email}")
-
-            # Continue to webhook processing for first execution
-            # (Skip regular email notification logic below)
-
-        # EMAIL NOTIFICATION (non-first execution)
-        if "email" in notification_channels and not result.get("is_first_execution"):
-            # Determine recipient email (Clerk email is always verified)
-            recipient_email = clerk_email  # Default to Clerk email
-
-            # If task has custom notification email, verify it's validated
-            custom_email = task.get("notification_email")
-            if custom_email and custom_email != clerk_email:
-                # Check if verified
-                if custom_email not in verified_emails:
-                    activity.logger.error(
-                        f"Email {custom_email} not verified for user {user_id}. "
-                        f"Using Clerk email instead: {clerk_email}"
-                    )
-                    recipient_email = clerk_email
-                else:
-                    recipient_email = custom_email
-
-            # Check spam limits
-            allowed, error = await EmailVerificationService.check_spam_limits(
-                conn, user_id, recipient_email
-            )
-
-            if not allowed:
-                activity.logger.error(f"Spam limit hit: {error}")
-                return
-
-            # Send email via Novu - use new MonitoringResult format
-            answer = result.get("summary", "")
-            sources = result.get("sources", [])
-            change_summary = result.get("metadata", {}).get("change_explanation", "")
-
-            novu_result = await novu_service.send_condition_met_notification(
-                subscriber_id=recipient_email,
-                task_name=task_name,
-                search_query=task.get("search_query", ""),
-                answer=answer,
-                change_summary=change_summary,
-                grounding_sources=sources,
-                task_id=task_id,
-                execution_id=execution_id,
-            )
-
-            # Determine status and error message
-            email_status = "success"
-            email_error = None
-
-            if novu_result["success"]:
-                activity.logger.info(
-                    f"Email sent to {recipient_email}: {novu_result.get('transaction_id')}"
-                )
-            elif novu_result.get("skipped"):
-                activity.logger.info("Email notification skipped (Novu not configured)")
-                email_status = "skipped"
-            else:
-                activity.logger.error(f"Failed to send email: {novu_result.get('error')}")
-                email_status = "failed"
-                email_error = str(novu_result.get("error"))
-
-            # Track notification send with status
-            await conn.execute(
-                """
-                INSERT INTO notification_sends
-                (user_id, task_id, execution_id, recipient_email, notification_type, status, error_message)
-                VALUES ($1, $2, $3, $4, 'email', $5, $6)
-                """,
-                UUID(user_id),
-                UUID(task_id),
-                UUID(execution_id),
-                recipient_email,
-                email_status,
-                email_error,
-            )
-
-        # WEBHOOK NOTIFICATION
-        if "webhook" in notification_channels:
-            # Determine webhook URL and secret (task-level overrides user-level)
-            webhook_url = task.get("webhook_url") or task.get("user_webhook_url")
-            webhook_secret = task.get("webhook_secret") or task.get("user_webhook_secret")
-
-            if webhook_url and webhook_secret:
-                # Build payload
-                payload = build_webhook_payload(execution_id, dict(task), dict(execution), result)
-
-                # Attempt delivery with proper resource cleanup
-                service = WebhookDeliveryService()
-                signature: str | None = None
-                try:
-                    success, http_status, error, signature = await service.deliver(
-                        webhook_url, payload, webhook_secret, attempt=1
-                    )
-                finally:
-                    await service.close()
-
-                # Record delivery attempt
-                if success:
-                    await conn.execute(
-                        """
-                        INSERT INTO webhook_deliveries (
-                            task_id, execution_id, webhook_url, payload, signature,
-                            http_status, attempt_number, delivered_at
-                        )
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-                        """,
-                        UUID(task_id),
-                        UUID(execution_id),
-                        webhook_url,
-                        payload.model_dump_json(),
-                        signature,
-                        http_status,
-                        1,
-                    )
-                    activity.logger.info(f"Webhook delivered to {webhook_url}")
-                else:
-                    # Schedule retry
-                    next_retry = WebhookDeliveryService.get_next_retry_time(1)
-                    await conn.execute(
-                        """
-                        INSERT INTO webhook_deliveries (
-                            task_id, execution_id, webhook_url, payload, signature,
-                            http_status, error_message, attempt_number, next_retry_at
-                        )
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                        """,
-                        UUID(task_id),
-                        UUID(execution_id),
-                        webhook_url,
-                        payload.model_dump_json(),
-                        signature,
-                        http_status,
-                        error,
-                        1,
-                        next_retry,
-                    )
-                    activity.logger.error(f"Webhook delivery failed: {error}")
-            else:
-                activity.logger.warning("Webhook enabled but no URL/secret configured")
-
-    except Exception:
-        # Never fail the workflow due to notification errors
-        activity.logger.error("Notification activity error", exc_info=True)
-
-    finally:
-        await conn.close()
-
-
-# New pipeline-based activities
+# Pipeline-based activities
 
 
 @activity.defn
@@ -458,5 +229,266 @@ async def complete_task(task_id: str) -> None:
             f"Failed to complete task {task_id}: {str(e)}. State machine transition failed."
         )
         raise  # Re-raise to let workflow handle the failure
+    finally:
+        await conn.close()
+
+
+# Notification activities (split from god activity)
+
+
+@activity.defn
+async def fetch_notification_context(task_id: str, execution_id: str, user_id: str) -> dict:
+    """
+    Fetch notification context: task, user, execution details.
+
+    Returns all data needed for notification delivery.
+    """
+    conn = await get_db_connection()
+
+    try:
+        # Get task details including notification channels
+        task = await conn.fetchrow(
+            """
+            SELECT t.*, u.email as clerk_email,
+                   u.verified_notification_emails,
+                   u.webhook_url as user_webhook_url,
+                   u.webhook_secret as user_webhook_secret
+            FROM tasks t
+            JOIN users u ON t.user_id = u.id
+            WHERE t.id = $1
+            """,
+            UUID(task_id),
+        )
+
+        if not task:
+            logger.warning(f"Task {task_id} not found")
+            raise ValueError(f"Task {task_id} not found")
+
+        # Get execution details
+        execution = await conn.fetchrow(
+            "SELECT * FROM task_executions WHERE id = $1", UUID(execution_id)
+        )
+
+        if not execution:
+            logger.warning(f"Execution {execution_id} not found")
+            raise ValueError(f"Execution {execution_id} not found")
+
+        return {
+            "task": dict(task),
+            "execution": dict(execution),
+            "clerk_email": task["clerk_email"],
+            "verified_emails": task["verified_notification_emails"] or [],
+            "notification_channels": task.get("notification_channels") or ["email"],
+            "webhook_url": task.get("webhook_url") or task.get("user_webhook_url"),
+            "webhook_secret": task.get("webhook_secret") or task.get("user_webhook_secret"),
+        }
+
+    finally:
+        await conn.close()
+
+
+@activity.defn
+async def send_email_notification(
+    user_id: str, task_name: str, notification_context: dict, result: dict
+) -> None:
+    """
+    Send email notification (welcome or condition met).
+
+    Handles email verification, spam limits, and delivery tracking.
+    """
+    conn = await get_db_connection()
+
+    try:
+        task = notification_context["task"]
+        task_id = task["id"]
+        execution_id = result.get("execution_id")
+        clerk_email = notification_context["clerk_email"]
+        verified_emails = notification_context["verified_emails"]
+        is_first_execution = result.get("is_first_execution", False)
+
+        # FIRST EXECUTION: Send welcome email
+        if is_first_execution:
+            logger.info(f"Sending welcome email for task {task_id}")
+
+            answer = result.get("summary", "")
+            sources = result.get("sources", [])
+            condition_met = result.get("metadata", {}).get("changed", False)
+
+            await novu_service.send_welcome_email(
+                subscriber_id=clerk_email,
+                task_name=task["name"],
+                search_query=task["search_query"],
+                condition_description=task["condition_description"],
+                notify_behavior=task["notify_behavior"],
+                schedule=task["schedule"],
+                first_execution_result={
+                    "answer": answer,
+                    "condition_met": condition_met,
+                    "grounding_sources": sources,
+                },
+                task_id=str(task_id),
+            )
+            logger.info(f"Welcome email sent to {clerk_email}")
+            return
+
+        # CONDITION MET EMAIL (non-first execution)
+        # Determine recipient email (Clerk email is always verified)
+        recipient_email = clerk_email
+
+        # If task has custom notification email, verify it's validated
+        custom_email = task.get("notification_email")
+        if custom_email and custom_email != clerk_email:
+            if custom_email not in verified_emails:
+                logger.error(
+                    f"Email {custom_email} not verified for user {user_id}. "
+                    f"Using Clerk email instead: {clerk_email}"
+                )
+                recipient_email = clerk_email
+            else:
+                recipient_email = custom_email
+
+        # Check spam limits
+        allowed, error = await EmailVerificationService.check_spam_limits(
+            conn, user_id, recipient_email
+        )
+
+        if not allowed:
+            logger.error(f"Spam limit hit: {error}")
+            return
+
+        # Send email via Novu
+        answer = result.get("summary", "")
+        sources = result.get("sources", [])
+        change_summary = result.get("metadata", {}).get("change_explanation", "")
+
+        novu_result = await novu_service.send_condition_met_notification(
+            subscriber_id=recipient_email,
+            task_name=task_name,
+            search_query=task.get("search_query", ""),
+            answer=answer,
+            change_summary=change_summary,
+            grounding_sources=sources,
+            task_id=str(task_id),
+            execution_id=execution_id,
+        )
+
+        # Determine status and error message
+        email_status = "success"
+        email_error = None
+
+        if novu_result["success"]:
+            logger.info(f"Email sent to {recipient_email}: {novu_result.get('transaction_id')}")
+        elif novu_result.get("skipped"):
+            logger.info("Email notification skipped (Novu not configured)")
+            email_status = "skipped"
+        else:
+            logger.error(f"Failed to send email: {novu_result.get('error')}")
+            email_status = "failed"
+            email_error = str(novu_result.get("error"))
+
+        # Track notification send with status
+        await conn.execute(
+            """
+            INSERT INTO notification_sends
+            (user_id, task_id, execution_id, recipient_email, notification_type, status, error_message)
+            VALUES ($1, $2, $3, $4, 'email', $5, $6)
+            """,
+            UUID(user_id),
+            UUID(task_id),
+            UUID(execution_id),
+            recipient_email,
+            email_status,
+            email_error,
+        )
+
+    except Exception:
+        # Never fail the workflow due to notification errors
+        logger.error("Email notification error", exc_info=True)
+
+    finally:
+        await conn.close()
+
+
+@activity.defn
+async def send_webhook_notification(notification_context: dict, result: dict) -> None:
+    """
+    Send webhook notification.
+
+    Handles webhook delivery, retry scheduling, and delivery tracking.
+    """
+    conn = await get_db_connection()
+
+    try:
+        task = notification_context["task"]
+        execution = notification_context["execution"]
+        task_id = task["id"]
+        execution_id = result.get("execution_id")
+
+        webhook_url = notification_context.get("webhook_url")
+        webhook_secret = notification_context.get("webhook_secret")
+
+        if not webhook_url or not webhook_secret:
+            logger.warning("Webhook enabled but no URL/secret configured")
+            return
+
+        # Build payload
+        payload = build_webhook_payload(execution_id, task, execution, result)
+
+        # Attempt delivery with proper resource cleanup
+        service = WebhookDeliveryService()
+        signature: str | None = None
+        try:
+            success, http_status, error, signature = await service.deliver(
+                webhook_url, payload, webhook_secret, attempt=1
+            )
+        finally:
+            await service.close()
+
+        # Record delivery attempt
+        if success:
+            await conn.execute(
+                """
+                INSERT INTO webhook_deliveries (
+                    task_id, execution_id, webhook_url, payload, signature,
+                    http_status, attempt_number, delivered_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+                """,
+                UUID(task_id),
+                UUID(execution_id),
+                webhook_url,
+                payload.model_dump_json(),
+                signature,
+                http_status,
+                1,
+            )
+            logger.info(f"Webhook delivered to {webhook_url}")
+        else:
+            # Schedule retry
+            next_retry = WebhookDeliveryService.get_next_retry_time(1)
+            await conn.execute(
+                """
+                INSERT INTO webhook_deliveries (
+                    task_id, execution_id, webhook_url, payload, signature,
+                    http_status, error_message, attempt_number, next_retry_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                """,
+                UUID(task_id),
+                UUID(execution_id),
+                webhook_url,
+                payload.model_dump_json(),
+                signature,
+                http_status,
+                error,
+                1,
+                next_retry,
+            )
+            logger.error(f"Webhook delivery failed: {error}")
+
+    except Exception:
+        # Never fail the workflow due to notification errors
+        logger.error("Webhook notification error", exc_info=True)
+
     finally:
         await conn.close()
