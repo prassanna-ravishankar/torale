@@ -80,15 +80,10 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
             activity.logger.info(f"First execution for task {task_id}")
 
             if "email" in notification_channels:
-                # Support both new MonitoringResult format and legacy format
-                answer = result.get("summary") or result.get("answer") or ""
-                sources = result.get("sources") or result.get("grounding_sources") or []
-
-                # For new format, use changed flag; for legacy, use condition_met
-                if "metadata" in result:
-                    condition_met = result.get("metadata", {}).get("changed", False)
-                else:
-                    condition_met = result.get("condition_met", False)
+                # Use new MonitoringResult format
+                answer = result.get("summary", "")
+                sources = result.get("sources", [])
+                condition_met = result.get("metadata", {}).get("changed", False)
 
                 await novu_service.send_welcome_email(
                     subscriber_id=clerk_email,
@@ -136,16 +131,10 @@ async def send_notification(user_id: str, task_name: str, result: dict) -> None:
                 activity.logger.error(f"Spam limit hit: {error}")
                 return
 
-            # Send email via Novu
-            # Support both new MonitoringResult format and legacy format
-            answer = result.get("summary") or result.get("answer") or ""
-            sources = result.get("sources") or result.get("grounding_sources") or []
-
-            # For new format, use change_explanation; for legacy, use change_summary
-            if "metadata" in result:
-                change_summary = result.get("metadata", {}).get("change_explanation") or ""
-            else:
-                change_summary = result.get("change_summary") or ""
+            # Send email via Novu - use new MonitoringResult format
+            answer = result.get("summary", "")
+            sources = result.get("sources", [])
+            change_summary = result.get("metadata", {}).get("change_explanation", "")
 
             novu_result = await novu_service.send_condition_met_notification(
                 subscriber_id=recipient_email,
@@ -352,20 +341,19 @@ async def execute_monitoring_pipeline(task_data: dict, search_result: dict) -> d
     """
     Execute monitoring pipeline: schema generation, extraction, comparison.
 
-    This is where the provider + pipeline magic happens.
+    Uses ProviderFactory for dynamic provider selection based on configuration.
     """
     from torale.pipelines import MonitoringPipeline
-    from torale.providers.gemini import (
-        GeminiComparisonProvider,
-        GeminiExtractionProvider,
-        GeminiSchemaProvider,
-    )
+    from torale.providers import ProviderFactory
 
-    # Initialize pipeline with Gemini providers
+    # Get provider type from config (defaults to gemini)
+    provider_type = task_data["config"].get("provider", "gemini")
+
+    # Initialize pipeline with providers from factory
     pipeline = MonitoringPipeline(
-        schema_provider=GeminiSchemaProvider(),
-        extraction_provider=GeminiExtractionProvider(),
-        comparison_provider=GeminiComparisonProvider(),
+        schema_provider=ProviderFactory.create_schema_provider(provider_type),
+        extraction_provider=ProviderFactory.create_extraction_provider(provider_type),
+        comparison_provider=ProviderFactory.create_comparison_provider(provider_type),
     )
 
     # Execute pipeline
