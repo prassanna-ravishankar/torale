@@ -9,13 +9,12 @@ from temporalio.worker import Worker
 from torale.core.config import settings
 from torale.workers.activities import (
     execute_monitoring_pipeline,
-    execute_task,
     get_task_data,
     perform_grounded_search,
     persist_execution_result,
     send_notification,
 )
-from torale.workers.workflows import LegacyTaskExecutionWorkflow, TaskExecutionWorkflow
+from torale.workers.workflows import TaskExecutionWorkflow
 
 # Configure logging
 logging.basicConfig(
@@ -43,16 +42,12 @@ async def main():
     worker = Worker(
         client,
         task_queue=settings.temporal_task_queue,
-        workflows=[TaskExecutionWorkflow, LegacyTaskExecutionWorkflow],
+        workflows=[TaskExecutionWorkflow],
         activities=[
-            # New pipeline activities
             get_task_data,
             perform_grounded_search,
             execute_monitoring_pipeline,
             persist_execution_result,
-            # Legacy activities (for backward compatibility)
-            execute_task,
-            # Shared activities
             send_notification,
         ],
     )
