@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import react from '@vitejs/plugin-react-swc'
 import path from 'path'
 import { visualizer } from 'rollup-plugin-visualizer'
 
@@ -19,6 +19,20 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      '@radix-ui/react-accordion',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-select',
+      '@radix-ui/react-tooltip',
+      'framer-motion',
+      'recharts',
+    ],
   },
   build: {
     rollupOptions: {

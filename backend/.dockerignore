@@ -1,0 +1,39 @@
+# Tests and development
+tests/
+research/
+examples/
+scripts/
+
+# Documentation (except README needed for PyPI metadata)
+*.md
+!README.md
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Other
+.DS_Store
+*.log
