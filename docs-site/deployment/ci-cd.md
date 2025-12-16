@@ -25,7 +25,7 @@ Files      Frontend                     Sync     Checks
 
 - **Production**: `.github/workflows/production.yml`
 - **Staging**: `.github/workflows/staging.yml`
-- **Runtime**: ~5-10 minutes
+- **Runtime**: ~2-4 minutes (optimized with parallel builds and Docker cache)
 
 ## Setup
 
@@ -235,11 +235,18 @@ git commit -m "docs: update README [skip ci]"
 **GitHub Actions:**
 - Public repos: **Unlimited** free minutes
 - Private repos: 2,000 minutes/month free
-- Typical build: ~10 minutes
+- Typical build: ~3-4 minutes (optimized)
 
 **GKE Resources:**
 - Production: ~$12-19/month with Spot pods
 - Staging: ~$12-19/month with Spot pods (same resources)
+
+**Docker Build Optimizations:**
+1. **Cache mounts**: npm and uv package caches persist across builds
+2. **Registry cache**: Falls back to GCR when GitHub Actions cache misses
+3. **Parallel builds**: API and frontend build simultaneously via matrix strategy
+4. **.dockerignore**: Reduces build context by excluding tests/, research/, etc.
+5. **Multi-stage builds**: Frontend and docs use minimal nginx runtime images
 
 **Tips:**
 1. Use Spot pods (already configured)
