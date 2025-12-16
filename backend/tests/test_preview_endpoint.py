@@ -26,7 +26,7 @@ class TestPreviewEndpoint:
 
         from torale.api.routers.tasks import PreviewSearchRequest, preview_search
 
-        # Skip test if GOOGLE_API_KEY not configured (GroundedSearchExecutor requires it)
+        # Skip test if GOOGLE_API_KEY not configured (pipeline requires it)
         if not os.getenv("GOOGLE_API_KEY"):
             pytest.skip("GOOGLE_API_KEY not configured")
 
@@ -39,29 +39,41 @@ class TestPreviewEndpoint:
             model="gemini-2.0-flash-exp",
         )
 
-        mock_executor_result = {
+        # Mock search result
+        mock_search_result = {
             "success": True,
             "answer": "September 2024",
-            "condition_met": True,
-            "grounding_sources": [{"url": "https://apple.com", "title": "Apple"}],
-            "current_state": {"date": "September 2024"},
+            "grounding_sources": [{"uri": "https://apple.com", "title": "Apple"}],
         }
 
-        mock_executor = AsyncMock()
-        mock_executor.execute.return_value = mock_executor_result
+        # Mock pipeline result (new MonitoringResult format)
+        mock_pipeline_result = {
+            "summary": "iPhone 16 will be released in September 2024",
+            "sources": [{"uri": "https://apple.com", "title": "Apple"}],
+            "metadata": {
+                "changed": True,
+                "change_explanation": "First execution",
+                "current_state": {"date": "September 2024"}
+            }
+        }
+
+        mock_search_provider = AsyncMock()
+        mock_search_provider.search.return_value = mock_search_result
+
+        mock_pipeline = AsyncMock()
+        mock_pipeline.execute.return_value = mock_pipeline_result
 
         mock_genai_client = MagicMock()
 
-        with patch(
-            "torale.executors.grounded_search.GroundedSearchExecutor", return_value=mock_executor
-        ):
-            result = await preview_search(request, mock_user, mock_genai_client)
+        with patch("torale.api.routers.tasks.GeminiSearchProvider", return_value=mock_search_provider):
+            with patch("torale.api.routers.tasks.MonitoringPipeline", return_value=mock_pipeline):
+                result = await preview_search(request, mock_user, mock_genai_client)
 
-        # Should return executor results
-        assert result["answer"] == "September 2024"
+        # Should return new format with summary
+        assert result["summary"] == "iPhone 16 will be released in September 2024"
         assert result["condition_met"] is True
         assert "inferred_condition" not in result  # Condition was provided, not inferred
-        assert "grounding_sources" in result
+        assert "sources" in result
 
     @pytest.mark.asyncio
     async def test_preview_with_condition_inference(self):
@@ -75,7 +87,7 @@ class TestPreviewEndpoint:
 
         from torale.api.routers.tasks import PreviewSearchRequest, preview_search
 
-        # Skip test if GOOGLE_API_KEY not configured (GroundedSearchExecutor requires it)
+        # Skip test if GOOGLE_API_KEY not configured (pipeline requires it)
         if not os.getenv("GOOGLE_API_KEY"):
             pytest.skip("GOOGLE_API_KEY not configured")
 
@@ -97,22 +109,28 @@ class TestPreviewEndpoint:
         mock_genai_client = MagicMock()
         mock_genai_client.aio.models.generate_content = mock_generate
 
-        # Mock executor
-        mock_executor_result = {
+        # Mock search and pipeline
+        mock_search_result = {
             "success": True,
             "answer": "September 2024",
-            "condition_met": True,
             "grounding_sources": [],
-            "current_state": {},
         }
 
-        mock_executor = AsyncMock()
-        mock_executor.execute.return_value = mock_executor_result
+        mock_pipeline_result = {
+            "summary": "iPhone 16 will be released in September 2024",
+            "sources": [],
+            "metadata": {"changed": True, "change_explanation": "First execution", "current_state": {}}
+        }
 
-        with patch(
-            "torale.executors.grounded_search.GroundedSearchExecutor", return_value=mock_executor
-        ):
-            result = await preview_search(request, mock_user, mock_genai_client)
+        mock_search_provider = AsyncMock()
+        mock_search_provider.search.return_value = mock_search_result
+
+        mock_pipeline = AsyncMock()
+        mock_pipeline.execute.return_value = mock_pipeline_result
+
+        with patch("torale.api.routers.tasks.GeminiSearchProvider", return_value=mock_search_provider):
+            with patch("torale.api.routers.tasks.MonitoringPipeline", return_value=mock_pipeline):
+                result = await preview_search(request, mock_user, mock_genai_client)
 
         # Should indicate condition was inferred
         assert "inferred_condition" in result
@@ -132,7 +150,7 @@ class TestPreviewEndpoint:
 
         from torale.api.routers.tasks import PreviewSearchRequest, preview_search
 
-        # Skip test if GOOGLE_API_KEY not configured (GroundedSearchExecutor requires it)
+        # Skip test if GOOGLE_API_KEY not configured (pipeline requires it)
         if not os.getenv("GOOGLE_API_KEY"):
             pytest.skip("GOOGLE_API_KEY not configured")
 
