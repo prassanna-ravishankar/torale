@@ -87,11 +87,11 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
             {task.search_query}
           </div>
           <div className="flex gap-4 text-xs text-zinc-600 pl-6">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <Clock className="w-3 h-3 flex-shrink-0" />
               <CronDisplay cron={task.schedule} className="truncate" showRaw={false} />
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <span className="flex-shrink-0">🕐</span>
               <span className="truncate">
                 {lastExecution ? formatTimeAgo(lastExecution.started_at) : 'Never'}
