@@ -10,7 +10,9 @@ COPY package*.json ./
 
 # Install ALL dependencies (including devDependencies for build)
 # Use npm ci for reproducible builds that respect package-lock.json
-RUN npm ci
+# Cache mount speeds up rebuilds by persisting npm's download cache
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 # Copy source code
 COPY . .
