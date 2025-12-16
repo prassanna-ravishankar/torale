@@ -24,11 +24,14 @@ class TaskExecutionWorkflow:
 
     @workflow.run
     async def run(self, request: TaskExecutionRequest) -> dict:
+        # Main retry policy for core activities
+        # ApplicationError is non-retryable (deleted tasks, inactive tasks)
         retry_policy = RetryPolicy(
             maximum_attempts=3,
             initial_interval=timedelta(seconds=1),
             maximum_interval=timedelta(seconds=10),
             backoff_coefficient=2,
+            non_retryable_error_types=["ApplicationError"],
         )
 
         # Step 1: Fetch task configuration and context

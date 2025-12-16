@@ -44,13 +44,21 @@ async def get_task_data(task_id: str) -> dict:
         task = await conn.fetchrow("SELECT * FROM tasks WHERE id = $1", UUID(task_id))
 
         if not task:
-            logger.warning(f"Task {task_id} not found")
-            raise ValueError(f"Task {task_id} not found")
+            logger.warning(f"Task {task_id} not found - likely deleted")
+            # Non-retryable error for deleted tasks
+            raise ApplicationError(
+                f"Task {task_id} not found",
+                non_retryable=True,
+            )
 
         # Check if task is active
         if task["state"] != "active":
             logger.info(f"Task {task_id} is not active (state={task['state']})")
-            raise ValueError(f"Task {task_id} is not active")
+            # Non-retryable error for inactive tasks
+            raise ApplicationError(
+                f"Task {task_id} is not active",
+                non_retryable=True,
+            )
 
         # Parse JSON fields
         config = task["config"]
