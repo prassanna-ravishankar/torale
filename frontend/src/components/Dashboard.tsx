@@ -225,7 +225,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
           />
         ) : viewMode === 'list' ? (
           <div className="md:bg-white md:border-2 md:border-zinc-200">
-            <table className="w-full">
+            <table className="w-full table-fixed">
               <thead className="hidden md:table-header-group border-b-2 border-zinc-200 bg-zinc-50">
                 <tr>
                   <th className="p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider text-left">Monitor</th>
