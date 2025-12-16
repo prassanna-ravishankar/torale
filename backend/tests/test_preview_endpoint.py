@@ -71,6 +71,16 @@ class TestPreviewEndpoint:
             with patch("torale.api.routers.tasks.MonitoringPipeline", return_value=mock_pipeline):
                 result = await preview_search(request, mock_user, mock_genai_client)
 
+        # Verify pipeline.execute was called with correct signature
+        mock_pipeline.execute.assert_called_once_with(
+            task={
+                "search_query": "When is iPhone 16 being released?",
+                "condition_description": "A specific date is announced",
+            },
+            search_result=mock_search_result,
+            previous_state=None,
+        )
+
         # Should return new format with summary
         assert result["summary"] == "iPhone 16 will be released in September 2024"
         assert result["condition_met"] is True
@@ -139,6 +149,16 @@ class TestPreviewEndpoint:
         ):
             with patch("torale.api.routers.tasks.MonitoringPipeline", return_value=mock_pipeline):
                 result = await preview_search(request, mock_user, mock_genai_client)
+
+        # Verify pipeline.execute was called with correct signature (inferred condition)
+        mock_pipeline.execute.assert_called_once_with(
+            task={
+                "search_query": "When is iPhone 16 being released?",
+                "condition_description": "A specific release date is announced",
+            },
+            search_result=mock_search_result,
+            previous_state=None,
+        )
 
         # Should indicate condition was inferred
         assert "inferred_condition" in result
