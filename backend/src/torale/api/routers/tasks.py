@@ -392,9 +392,7 @@ async def preview_search(
         }
     """
     from torale.pipelines.monitoring_pipeline import MonitoringPipeline
-    from torale.providers.gemini.comparison import GeminiComparisonProvider
-    from torale.providers.gemini.extraction import GeminiExtractionProvider
-    from torale.providers.gemini.schema import GeminiSchemaProvider
+    from torale.providers import ProviderFactory
     from torale.providers.gemini.search import GeminiSearchProvider
 
     try:
@@ -426,10 +424,12 @@ async def preview_search(
             )
 
         # Run monitoring pipeline (first execution, no previous state)
+        # Use ProviderFactory for consistency with worker activities
+        provider_type = "gemini"  # Could be configurable in the future
         pipeline = MonitoringPipeline(
-            schema_provider=GeminiSchemaProvider(),
-            extraction_provider=GeminiExtractionProvider(),
-            comparison_provider=GeminiComparisonProvider(),
+            schema_provider=ProviderFactory.create_schema_provider(provider_type),
+            extraction_provider=ProviderFactory.create_extraction_provider(provider_type),
+            comparison_provider=ProviderFactory.create_comparison_provider(provider_type),
         )
 
         # Construct task dict matching MonitoringPipeline.execute() signature
