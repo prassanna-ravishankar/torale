@@ -416,14 +416,8 @@ async def preview_search(
         # Execute grounded search
         search_provider = GeminiSearchProvider()
         search_result = await search_provider.search(
-            request.search_query, condition_description, model=request.model
+            query=request.search_query, temporal_context=None, model=request.model
         )
-
-        if not search_result.get("success"):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=search_result.get("error", "Search execution failed"),
-            )
 
         # Run monitoring pipeline (first execution, no previous state)
         # Use ProviderFactory for consistency with worker activities

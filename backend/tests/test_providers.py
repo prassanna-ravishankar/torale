@@ -203,18 +203,18 @@ class TestSearchProvider:
         """Integration test for grounded search (requires API key)"""
         provider = GeminiSearchProvider()
 
-        result = await provider.search("What is 2+2?", "A numerical answer is provided")
+        result = await provider.search("What is 2+2?")
 
-        assert result["success"] is True
         assert "answer" in result
-        assert len(result.get("grounding_sources", [])) > 0
+        assert "sources" in result
+        assert len(result.get("sources", [])) > 0
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
         not os.getenv("GOOGLE_API_KEY"), reason="Integration test - requires GOOGLE_API_KEY"
     )
     async def test_search_handles_error(self):
-        """Test search handles API errors gracefully (integration test)"""
+        """Test search handles API errors by raising exceptions"""
         provider = GeminiSearchProvider()
 
         # Mock the client to raise an error
@@ -222,10 +222,8 @@ class TestSearchProvider:
         mock_client.aio.models.generate_content = AsyncMock(side_effect=Exception("API Error"))
         provider.client = mock_client
 
-        result = await provider.search("test query")
-
-        assert result["success"] is False
-        assert "error" in result
+        with pytest.raises(Exception, match="API Error"):
+            await provider.search("test query")
 
 
 if __name__ == "__main__":

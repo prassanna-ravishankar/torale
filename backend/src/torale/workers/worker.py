@@ -8,11 +8,14 @@ from temporalio.worker import Worker
 
 from torale.core.config import settings
 from torale.workers.activities import (
+    complete_task,
     execute_monitoring_pipeline,
+    fetch_notification_context,
     get_task_data,
     perform_grounded_search,
     persist_execution_result,
-    send_notification,
+    send_email_notification,
+    send_webhook_notification,
 )
 from torale.workers.workflows import TaskExecutionWorkflow
 
@@ -48,7 +51,10 @@ async def main():
             perform_grounded_search,
             execute_monitoring_pipeline,
             persist_execution_result,
-            send_notification,
+            complete_task,
+            fetch_notification_context,
+            send_email_notification,
+            send_webhook_notification,
         ],
     )
 
