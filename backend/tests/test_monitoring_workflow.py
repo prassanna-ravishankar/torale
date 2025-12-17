@@ -11,82 +11,133 @@ class TestTaskExecutionWorkflow:
 
     @pytest.mark.asyncio
     async def test_workflow_structure(self):
-        """Test that workflow calls activities in correct order"""
-        # This test verifies the 7-step orchestration pattern
+        """Test that workflow calls activities in correct order with correct arguments"""
+        # This test verifies the orchestration pattern and argument passing
 
         # Create mock request
         from torale.core.models import TaskExecutionRequest
 
-        _request = TaskExecutionRequest(
+        request = TaskExecutionRequest(
             task_id="test-id",
             execution_id="exec-id",
             user_id="user-id",
             task_name="Test Task",
             suppress_notifications=False,
         )
-        # Note: request object created for structure verification,
-        # actual execution requires Temporal worker
 
-        # Mock all activities
-        mock_get_task = AsyncMock(
-            return_value={
-                "task": {
-                    "name": "Test",
-                    "search_query": "test query",
-                    "condition_description": "test",
-                    "config": {},
-                },
-                "previous_state": None,
-            }
-        )
-
-        mock_search = AsyncMock(
-            return_value={
-                "success": True,
-                "answer": "Test answer",
-                "grounding_sources": [{"uri": "https://example.com"}],
-            }
-        )
-
-        mock_pipeline = AsyncMock(
-            return_value={
-                "summary": "Test summary",
-                "sources": [{"uri": "https://example.com"}],
-                "metadata": {
-                    "changed": True,
-                    "change_explanation": "First execution",
-                    "current_state": {"test": "value"},
-                },
-            }
-        )
-
-        mock_send_notification = AsyncMock(return_value=None)
-        mock_persist = AsyncMock(return_value=None)
-
-        # Patch workflow.execute_activity to intercept activity calls
+        # Track activity calls and their arguments
         activity_calls = []
 
+        # Mock task data response
+        task_data = {
+            "task": {
+                "name": "Test",
+                "search_query": "test query",
+                "condition_description": "test",
+                "config": {},
+                "notify_behavior": "always",
+            },
+            "previous_state": None,
+        }
+
+        # Mock search result
+        search_result = {
+            "answer": "Test answer",
+            "sources": [{"uri": "https://example.com"}],
+        }
+
+        # Mock pipeline result
+        pipeline_result = {
+            "summary": "Test summary",
+            "sources": [{"uri": "https://example.com"}],
+            "metadata": {
+                "changed": True,
+                "change_explanation": "First execution",
+                "current_state": {"test": "value"},
+            },
+        }
+
+        # Mock notification context
+        notification_context = {
+            "notification_channels": ["email"],
+        }
+
         async def track_activity(activity_name, *args, **kwargs):
-            activity_calls.append(activity_name)
+            # Store call details for verification
+            activity_calls.append(
+                {"name": activity_name, "args": args, "kwargs": kwargs}
+            )
+
+            # Return appropriate mocks
             if activity_name == "get_task_data":
-                return await mock_get_task(*args[0] if args else [])
+                return task_data
             elif activity_name == "perform_grounded_search":
-                return await mock_search(*args[0] if args else [])
+                return search_result
             elif activity_name == "execute_monitoring_pipeline":
-                return await mock_pipeline(*args[0] if args else [])
-            elif activity_name == "send_notification":
-                return await mock_send_notification(*args[0] if args else [])
+                return pipeline_result
+            elif activity_name == "fetch_notification_context":
+                return notification_context
+            elif activity_name == "send_email_notification":
+                return None
             elif activity_name == "persist_execution_result":
-                return await mock_persist(*args[0] if args else [])
+                return None
+            return None
 
         with patch("temporalio.workflow.execute_activity", side_effect=track_activity):
-            # Note: Can't actually run workflow outside Temporal, but we can test the logic
-            # This test verifies the orchestration pattern is correct
-            pass
+            from torale.workers.workflows import TaskExecutionWorkflow
 
-        # Verify we understand the workflow structure
-        # (actual execution requires Temporal worker)
-        assert True  # Placeholder for workflow structure verification
+            wf = TaskExecutionWorkflow()
+            result = await wf.run(request)
+
+            # Verify activity call order (6 activities: get, search, pipeline, context, email, persist)
+            assert len(activity_calls) == 6  # No complete_task since notify_behavior is "always"
+            assert activity_calls[0]["name"] == "get_task_data"
+            assert activity_calls[1]["name"] == "perform_grounded_search"
+            assert activity_calls[2]["name"] == "execute_monitoring_pipeline"
+            assert activity_calls[3]["name"] == "fetch_notification_context"
+            assert activity_calls[4]["name"] == "send_email_notification"
+            assert activity_calls[5]["name"] == "persist_execution_result"
+
+            # Verify arguments passed to each activity
+            # Step 1: get_task_data receives task_id
+            assert activity_calls[0]["kwargs"]["args"][0] == request.task_id
+
+            # Step 2: perform_grounded_search receives task_data
+            assert activity_calls[1]["kwargs"]["args"][0] == task_data
+
+            # Step 3: execute_monitoring_pipeline receives task_data and search_result
+            pipeline_args = activity_calls[2]["kwargs"]["args"]
+            assert pipeline_args[0] == task_data
+            assert pipeline_args[1] == search_result
+
+            # Step 4: fetch_notification_context receives task_id, execution_id, user_id
+            context_args = activity_calls[3]["kwargs"]["args"]
+            assert context_args[0] == request.task_id
+            assert context_args[1] == request.execution_id
+            assert context_args[2] == request.user_id
+
+            # Step 5: send_email_notification receives user_id, task_name, context, enriched_result
+            email_args = activity_calls[4]["kwargs"]["args"]
+            assert email_args[0] == request.user_id
+            assert email_args[1] == request.task_name
+            assert email_args[2] == notification_context
+            # Fourth arg is enriched result
+            assert email_args[3]["summary"] == "Test summary"
+            assert email_args[3]["task_id"] == request.task_id
+
+            # Step 6: persist_execution_result receives task_id, execution_id, enriched_result
+            persist_args = activity_calls[5]["kwargs"]["args"]
+            assert persist_args[0] == request.task_id
+            assert persist_args[1] == request.execution_id
+            # Third arg is enriched_result with additional metadata
+            enriched = persist_args[2]
+            assert enriched["summary"] == "Test summary"
+            assert enriched["task_id"] == request.task_id
+            assert enriched["is_first_execution"] is True
+
+            # Verify workflow returns enriched result
+            assert result["summary"] == "Test summary"
+            assert result["task_id"] == request.task_id
 
     def test_notification_decision_logic(self):
         """Test the workflow's notification decision logic"""

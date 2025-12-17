@@ -163,6 +163,7 @@ async def persist_execution_result(
     Persist execution result to database.
 
     Updates both task_executions and tasks tables.
+    Also persists extraction_schema if it was generated for the first time.
     """
     conn = await get_db_connection()
 
@@ -171,6 +172,7 @@ async def persist_execution_result(
         metadata = monitoring_result.get("metadata", {})
         current_state = metadata.get("current_state", {})
         changed = metadata.get("changed", False)
+        schema = metadata.get("schema")
 
         # Update execution record
         await conn.execute(
@@ -185,32 +187,68 @@ async def persist_execution_result(
             UUID(execution_id),
         )
 
-        # Update task's last_known_state and last_notified_at if changed
-        if changed:
-            await conn.execute(
-                """
-                UPDATE tasks
-                SET last_known_state = $1, updated_at = $2, last_execution_id = $3, last_notified_at = $4
-                WHERE id = $5
-                """,
-                json.dumps(current_state),
-                datetime.now(UTC),
-                UUID(execution_id),
-                datetime.now(UTC),
-                UUID(task_id),
-            )
+        # Check if task has extraction_schema - if not, persist it
+        task_row = await conn.fetchrow(
+            "SELECT extraction_schema FROM tasks WHERE id = $1", UUID(task_id)
+        )
+
+        # Update task's last_known_state and extraction_schema (if needed)
+        if task_row and not task_row["extraction_schema"] and schema:
+            # First execution - persist schema
+            if changed:
+                await conn.execute(
+                    """
+                    UPDATE tasks
+                    SET last_known_state = $1, updated_at = $2, last_execution_id = $3, last_notified_at = $4, extraction_schema = $5
+                    WHERE id = $6
+                    """,
+                    json.dumps(current_state),
+                    datetime.now(UTC),
+                    UUID(execution_id),
+                    datetime.now(UTC),
+                    json.dumps(schema),
+                    UUID(task_id),
+                )
+            else:
+                await conn.execute(
+                    """
+                    UPDATE tasks
+                    SET last_known_state = $1, updated_at = $2, last_execution_id = $3, extraction_schema = $4
+                    WHERE id = $5
+                    """,
+                    json.dumps(current_state),
+                    datetime.now(UTC),
+                    UUID(execution_id),
+                    json.dumps(schema),
+                    UUID(task_id),
+                )
         else:
-            await conn.execute(
-                """
-                UPDATE tasks
-                SET last_known_state = $1, updated_at = $2, last_execution_id = $3
-                WHERE id = $4
-                """,
-                json.dumps(current_state),
-                datetime.now(UTC),
-                UUID(execution_id),
-                UUID(task_id),
-            )
+            # Schema already exists - just update state
+            if changed:
+                await conn.execute(
+                    """
+                    UPDATE tasks
+                    SET last_known_state = $1, updated_at = $2, last_execution_id = $3, last_notified_at = $4
+                    WHERE id = $5
+                    """,
+                    json.dumps(current_state),
+                    datetime.now(UTC),
+                    UUID(execution_id),
+                    datetime.now(UTC),
+                    UUID(task_id),
+                )
+            else:
+                await conn.execute(
+                    """
+                    UPDATE tasks
+                    SET last_known_state = $1, updated_at = $2, last_execution_id = $3
+                    WHERE id = $4
+                    """,
+                    json.dumps(current_state),
+                    datetime.now(UTC),
+                    UUID(execution_id),
+                    UUID(task_id),
+                )
 
     finally:
         await conn.close()

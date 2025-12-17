@@ -49,6 +49,20 @@ def sample_execution(sample_task):
     return execution
 
 
+@pytest.fixture
+def sample_monitoring_result():
+    """Create MonitoringResult dict (new structure)."""
+    return {
+        "summary": "Test answer",
+        "sources": [{"uri": "https://example.com", "title": "Example"}],
+        "metadata": {
+            "changed": True,
+            "change_explanation": "Test change",
+            "current_state": {"test_field": "test_value"},
+        },
+    }
+
+
 class TestWebhookSignature:
     """Tests for WebhookSignature class."""
 
@@ -167,7 +181,7 @@ class TestWebhookSignature:
 class TestBuildWebhookPayload:
     """Tests for build_webhook_payload function."""
 
-    def test_payload_structure(self, sample_task, sample_execution):
+    def test_payload_structure(self, sample_task, sample_execution, sample_monitoring_result):
         """Test that payload has correct structure."""
         task_dict = {
             "id": sample_task.id,
@@ -176,17 +190,11 @@ class TestBuildWebhookPayload:
             "condition_description": sample_task.condition_description,
         }
         execution_dict = {
-            "condition_met": sample_execution.condition_met,
-            "change_summary": sample_execution.change_summary,
             "completed_at": sample_execution.completed_at,
-        }
-        result_dict = {
-            "answer": "Test answer",
-            "grounding_sources": sample_execution.grounding_sources,
         }
 
         payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, result_dict
+            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
         )
 
         assert payload.event_type == "task.condition_met"
@@ -195,7 +203,7 @@ class TestBuildWebhookPayload:
         assert "result" in payload.data
         assert payload.created_at > 0
 
-    def test_event_type(self, sample_task, sample_execution):
+    def test_event_type(self, sample_task, sample_execution, sample_monitoring_result):
         """Test event type is correct."""
         task_dict = {
             "id": sample_task.id,
@@ -204,22 +212,14 @@ class TestBuildWebhookPayload:
             "condition_description": sample_task.condition_description,
         }
         execution_dict = {
-            "condition_met": sample_execution.condition_met,
-            "change_summary": sample_execution.change_summary,
             "completed_at": sample_execution.completed_at,
         }
-        result_dict = {
-            "answer": "Test answer",
-            "grounding_sources": sample_execution.grounding_sources,
-        }
 
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, result_dict
-        )
+        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
 
         assert payload.event_type == "task.condition_met"
 
-    def test_task_data(self, sample_task, sample_execution):
+    def test_task_data(self, sample_task, sample_execution, sample_monitoring_result):
         """Test task data includes necessary fields."""
         task_dict = {
             "id": sample_task.id,
@@ -228,18 +228,10 @@ class TestBuildWebhookPayload:
             "condition_description": sample_task.condition_description,
         }
         execution_dict = {
-            "condition_met": sample_execution.condition_met,
-            "change_summary": sample_execution.change_summary,
             "completed_at": sample_execution.completed_at,
         }
-        result_dict = {
-            "answer": "Test answer",
-            "grounding_sources": sample_execution.grounding_sources,
-        }
 
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, result_dict
-        )
+        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
 
         task_data = payload.data["task"]
         assert task_data["id"] == str(sample_task.id)
@@ -247,7 +239,7 @@ class TestBuildWebhookPayload:
         assert task_data["search_query"] == sample_task.search_query
         assert task_data["condition_description"] == sample_task.condition_description
 
-    def test_execution_data(self, sample_task, sample_execution):
+    def test_execution_data(self, sample_task, sample_execution, sample_monitoring_result):
         """Test execution data includes necessary fields."""
         task_dict = {
             "id": sample_task.id,
@@ -256,25 +248,17 @@ class TestBuildWebhookPayload:
             "condition_description": sample_task.condition_description,
         }
         execution_dict = {
-            "condition_met": sample_execution.condition_met,
-            "change_summary": sample_execution.change_summary,
             "completed_at": sample_execution.completed_at,
         }
-        result_dict = {
-            "answer": "Test answer",
-            "grounding_sources": sample_execution.grounding_sources,
-        }
 
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, result_dict
-        )
+        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
 
         exec_data = payload.data["execution"]
         assert exec_data["id"] == str(sample_execution.id)
-        assert exec_data["condition_met"] == sample_execution.condition_met
-        assert exec_data["change_summary"] == sample_execution.change_summary
+        assert exec_data["condition_met"] == sample_monitoring_result["metadata"]["changed"]
+        assert exec_data["change_summary"] == sample_monitoring_result["metadata"]["change_explanation"]
 
-    def test_timestamp_format(self, sample_task, sample_execution):
+    def test_timestamp_format(self, sample_task, sample_execution, sample_monitoring_result):
         """Test timestamp is Unix timestamp."""
         task_dict = {
             "id": sample_task.id,
@@ -283,18 +267,10 @@ class TestBuildWebhookPayload:
             "condition_description": sample_task.condition_description,
         }
         execution_dict = {
-            "condition_met": sample_execution.condition_met,
-            "change_summary": sample_execution.change_summary,
             "completed_at": sample_execution.completed_at,
         }
-        result_dict = {
-            "answer": "Test answer",
-            "grounding_sources": sample_execution.grounding_sources,
-        }
 
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, result_dict
-        )
+        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
 
         # created_at should be Unix timestamp (int)
         assert isinstance(payload.created_at, int)
@@ -312,7 +288,7 @@ class TestWebhookDeliveryService:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_successful_delivery(
-        self, mock_post, delivery_service, sample_task, sample_execution
+        self, mock_post, delivery_service, sample_task, sample_execution, sample_monitoring_result
     ):
         """Test successful webhook delivery."""
         mock_response = MagicMock()
@@ -327,18 +303,10 @@ class TestWebhookDeliveryService:
             "condition_description": sample_task.condition_description,
         }
         execution_dict = {
-            "condition_met": sample_execution.condition_met,
-            "change_summary": sample_execution.change_summary,
             "completed_at": sample_execution.completed_at,
         }
-        result_dict = {
-            "answer": "Test answer",
-            "grounding_sources": sample_execution.grounding_sources,
-        }
 
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, result_dict
-        )
+        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
         success, http_status, error_msg, signature = await delivery_service.deliver(
             sample_task.webhook_url,
             payload,
@@ -354,7 +322,7 @@ class TestWebhookDeliveryService:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_failed_delivery_retries(
-        self, mock_post, delivery_service, sample_task, sample_execution
+        self, mock_post, delivery_service, sample_task, sample_execution, sample_monitoring_result
     ):
         """Test that failed delivery returns error status."""
         # First call fails with 500
@@ -370,18 +338,10 @@ class TestWebhookDeliveryService:
             "condition_description": sample_task.condition_description,
         }
         execution_dict = {
-            "condition_met": sample_execution.condition_met,
-            "change_summary": sample_execution.change_summary,
             "completed_at": sample_execution.completed_at,
         }
-        result_dict = {
-            "answer": "Test answer",
-            "grounding_sources": sample_execution.grounding_sources,
-        }
 
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, result_dict
-        )
+        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
         success, http_status, error_msg, signature = await delivery_service.deliver(
             sample_task.webhook_url,
             payload,
@@ -396,7 +356,7 @@ class TestWebhookDeliveryService:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_delivery_timeout(
-        self, mock_post, delivery_service, sample_task, sample_execution
+        self, mock_post, delivery_service, sample_task, sample_execution, sample_monitoring_result
     ):
         """Test that delivery has 10-second timeout."""
         import httpx
@@ -410,18 +370,10 @@ class TestWebhookDeliveryService:
             "condition_description": sample_task.condition_description,
         }
         execution_dict = {
-            "condition_met": sample_execution.condition_met,
-            "change_summary": sample_execution.change_summary,
             "completed_at": sample_execution.completed_at,
         }
-        result_dict = {
-            "answer": "Test answer",
-            "grounding_sources": sample_execution.grounding_sources,
-        }
 
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, result_dict
-        )
+        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
         success, http_status, error_msg, signature = await delivery_service.deliver(
             sample_task.webhook_url,
             payload,
@@ -436,7 +388,7 @@ class TestWebhookDeliveryService:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_delivery_includes_headers(
-        self, mock_post, delivery_service, sample_task, sample_execution
+        self, mock_post, delivery_service, sample_task, sample_execution, sample_monitoring_result
     ):
         """Test that delivery includes required headers."""
         mock_response = MagicMock()
@@ -450,18 +402,10 @@ class TestWebhookDeliveryService:
             "condition_description": sample_task.condition_description,
         }
         execution_dict = {
-            "condition_met": sample_execution.condition_met,
-            "change_summary": sample_execution.change_summary,
             "completed_at": sample_execution.completed_at,
         }
-        result_dict = {
-            "answer": "Test answer",
-            "grounding_sources": sample_execution.grounding_sources,
-        }
 
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, result_dict
-        )
+        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
         await delivery_service.deliver(
             sample_task.webhook_url,
             payload,
@@ -482,7 +426,7 @@ class TestWebhookDeliveryService:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_delivery_returns_result_tuple(
-        self, mock_post, delivery_service, sample_task, sample_execution
+        self, mock_post, delivery_service, sample_task, sample_execution, sample_monitoring_result
     ):
         """Test that delivery returns proper result tuple."""
         mock_response = MagicMock()
@@ -497,18 +441,10 @@ class TestWebhookDeliveryService:
             "condition_description": sample_task.condition_description,
         }
         execution_dict = {
-            "condition_met": sample_execution.condition_met,
-            "change_summary": sample_execution.change_summary,
             "completed_at": sample_execution.completed_at,
         }
-        result_dict = {
-            "answer": "Test answer",
-            "grounding_sources": sample_execution.grounding_sources,
-        }
 
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, result_dict
-        )
+        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
         result = await delivery_service.deliver(
             sample_task.webhook_url,
             payload,

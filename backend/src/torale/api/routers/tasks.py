@@ -135,14 +135,15 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         task.notifications
     )
 
-    # Create task in database
+    # Create task in database (extraction_schema will be generated on first execution)
     query = """
         INSERT INTO tasks (
             user_id, name, schedule, executor_type, config, state,
             search_query, condition_description, notify_behavior, notifications,
-            notification_channels, notification_email, webhook_url, webhook_secret
+            notification_channels, notification_email, webhook_url, webhook_secret,
+            extraction_schema
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING *
     """
 
@@ -162,6 +163,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         extracted["notification_email"],
         extracted["webhook_url"],
         extracted["webhook_secret"],
+        None,  # extraction_schema - generated on first execution
     )
 
     if not row:

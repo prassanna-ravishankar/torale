@@ -135,17 +135,31 @@ class GeminiSearchProvider:
         return sources
 
     def _extract_domain_from_uri(self, uri: str) -> str:
-        """Extract clean domain name from URI."""
+        """Extract clean domain name from URI by removing common subdomains."""
         try:
             from urllib.parse import urlparse
 
             parsed = urlparse(uri)
             domain = parsed.netloc or uri
 
-            # Remove common prefixes
-            for prefix in ["www.", "m."]:
-                if domain.startswith(prefix):
-                    domain = domain[len(prefix) :]
+            # Remove common subdomains for cleaner display
+            # This includes mobile (m.), www, blog, shop, news, and other common prefixes
+            common_subdomains = [
+                "www.",
+                "m.",
+                "mobile.",
+                "blog.",
+                "shop.",
+                "news.",
+                "api.",
+                "docs.",
+                "support.",
+            ]
+
+            for subdomain in common_subdomains:
+                if domain.startswith(subdomain):
+                    domain = domain[len(subdomain) :]
+                    break  # Only remove first matching subdomain
 
             return domain
         except Exception:

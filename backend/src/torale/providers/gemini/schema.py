@@ -87,12 +87,25 @@ Design the schema for this task. Return ONLY the JSON schema, no other text."""
 
     async def get_or_create_schema(self, task: dict) -> dict:
         """
-        Get or generate schema for task.
+        Get persisted schema or generate new one.
 
-        In the future, this could check for persisted schemas in the database
-        (task.extraction_schema field) before generating new ones.
+        Checks task.extraction_schema field first. If not present, generates
+        a new schema using Gemini.
+
+        Note: The caller (activity) is responsible for persisting the generated
+        schema back to the database to avoid regenerating on every execution.
         """
-        # TODO: Check database for persisted schema (task.extraction_schema)
-        # For now, generate fresh each time
+        # Check if schema already exists in task data
+        extraction_schema = task.get("extraction_schema")
+
+        if extraction_schema:
+            logger.info("Using persisted extraction schema from database")
+            # Parse JSON if it's a string
+            if isinstance(extraction_schema, str):
+                return json.loads(extraction_schema)
+            return extraction_schema
+
+        # No schema exists - generate new one
+        logger.info("No persisted schema found - generating new schema")
         schema = await self.generate_schema(task)
         return schema
