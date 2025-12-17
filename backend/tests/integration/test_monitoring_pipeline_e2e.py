@@ -41,14 +41,13 @@ class TestMonitoringPipelineE2E:
             "Check if iPhone 18 is officially announced",
         )
 
-        assert search_result["success"] is True
-
         # Run pipeline
         result = await pipeline.execute(
-            search_query="iPhone 18 release date",
-            condition_description="Check if iPhone 18 is officially announced",
-            search_results=search_result["answer"],
-            sources=search_result.get("grounding_sources", []),
+            task={
+                "search_query": "iPhone 18 release date",
+                "condition_description": "Check if iPhone 18 is officially announced",
+            },
+            search_result=search_result,
             previous_state=None,
         )
 
@@ -80,10 +79,11 @@ class TestMonitoringPipelineE2E:
         )
 
         result1 = await pipeline.execute(
-            search_query="What is 2+2?",
-            condition_description="A numerical answer is provided",
-            search_results=search_result1["answer"],
-            sources=search_result1.get("grounding_sources", []),
+            task={
+                "search_query": "What is 2+2?",
+                "condition_description": "A numerical answer is provided",
+            },
+            search_result=search_result1,
             previous_state=None,
         )
 
@@ -95,10 +95,11 @@ class TestMonitoringPipelineE2E:
         )
 
         result2 = await pipeline.execute(
-            search_query="What is 2+2?",
-            condition_description="A numerical answer is provided",
-            search_results=search_result2["answer"],
-            sources=search_result2.get("grounding_sources", []),
+            task={
+                "search_query": "What is 2+2?",
+                "condition_description": "A numerical answer is provided",
+            },
+            search_result=search_result2,
             previous_state=previous_state,
         )
 
@@ -120,10 +121,11 @@ class TestMonitoringPipelineE2E:
         )
 
         result1 = await pipeline.execute(
-            search_query="iPhone 16 release date",
-            condition_description="Track iPhone 16 release status",
-            search_results=search_result1["answer"],
-            sources=search_result1.get("grounding_sources", []),
+            task={
+                "search_query": "iPhone 16 release date",
+                "condition_description": "Track iPhone 16 release status",
+            },
+            search_result=search_result1,
             previous_state=None,
         )
 
@@ -144,10 +146,11 @@ class TestMonitoringPipelineE2E:
         simulated_old_state = {"is_released": True, "price_usd": None}
 
         result2 = await pipeline.execute(
-            search_query="iPhone 16 Pro Max price",
-            condition_description="Track iPhone 16 pricing",
-            search_results=search_result2["answer"],
-            sources=search_result2.get("grounding_sources", []),
+            task={
+                "search_query": "iPhone 16 Pro Max price",
+                "condition_description": "Track iPhone 16 pricing",
+            },
+            search_result=search_result2,
             previous_state=simulated_old_state,
         )
 
@@ -166,16 +169,17 @@ class TestMonitoringPipelineE2E:
         )
 
         result = await pipeline.execute(
-            search_query="Python latest version",
-            condition_description="Track Python version",
-            search_results=search_result["answer"],
-            sources=search_result.get("grounding_sources", []),
+            task={
+                "search_query": "Python latest version",
+                "condition_description": "Track Python version",
+            },
+            search_result=search_result,
             previous_state=None,
         )
 
         # Should preserve all sources from search
         assert len(result["sources"]) > 0
-        assert len(result["sources"]) == len(search_result.get("grounding_sources", []))
+        assert len(result["sources"]) == len(search_result.get("sources", []))
 
         # Each source should have uri
         for source in result["sources"]:
@@ -191,10 +195,11 @@ class TestMonitoringPipelineE2E:
         )
 
         result = await pipeline.execute(
-            search_query="Capital of France",
-            condition_description="Find capital city",
-            search_results=search_result["answer"],
-            sources=search_result.get("grounding_sources", []),
+            task={
+                "search_query": "Capital of France",
+                "condition_description": "Find capital city",
+            },
+            search_result=search_result,
             previous_state=None,
         )
 
