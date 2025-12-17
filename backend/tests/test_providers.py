@@ -15,6 +15,18 @@ with patch.dict(os.environ, {"GOOGLE_API_KEY": "test-key"}):
     from torale.providers.gemini.search import GeminiSearchProvider
 
 
+@pytest.fixture(autouse=True)
+def mock_google_api_key():
+    """Ensure GOOGLE_API_KEY is set for all tests in this module"""
+    # Need to patch settings object attribute directly since settings is
+    # instantiated at module import time and other tests may have already
+    # imported it before this test module runs
+    from torale.core.config import settings
+
+    with patch.object(settings, "google_api_key", "test-key"):
+        yield
+
+
 class TestSchemaProvider:
     """Test schema generation provider"""
 
