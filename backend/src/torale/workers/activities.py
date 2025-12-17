@@ -314,7 +314,7 @@ async def fetch_notification_context(task_id: str, execution_id: str, user_id: s
 
         if not task:
             logger.warning(f"Task {task_id} not found")
-            raise ValueError(f"Task {task_id} not found")
+            raise ApplicationError(f"Task {task_id} not found", non_retryable=True)
 
         # Get execution details
         execution = await conn.fetchrow(
@@ -323,7 +323,7 @@ async def fetch_notification_context(task_id: str, execution_id: str, user_id: s
 
         if not execution:
             logger.warning(f"Execution {execution_id} not found")
-            raise ValueError(f"Execution {execution_id} not found")
+            raise ApplicationError(f"Execution {execution_id} not found", non_retryable=True)
 
         return {
             "task": dict(task),
