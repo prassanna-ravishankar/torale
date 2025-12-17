@@ -245,12 +245,6 @@ async def list_tasks(
     return [parse_task_with_execution(row) for row in rows]
 
 
-class PreviewSearchRequest(BaseModel):
-    search_query: str = Field(..., description="The search query to test")
-    condition_description: str | None = Field(None, description="Optional condition to evaluate")
-    model: str = Field("gemini-2.0-flash-exp", description="Model to use for search")
-
-
 class SuggestTaskRequest(BaseModel):
     prompt: str = Field(..., description="Natural language description of the task")
     current_task: dict | None = Field(None, description="Current task configuration for context")
@@ -366,112 +360,6 @@ JSON Response:"""
         ) from e
 
 
-@router.post("/preview")
-async def preview_search(
-    request: PreviewSearchRequest,
-    user: CurrentUser,
-    genai_client=Depends(get_genai_client),
-):
-    """
-    Preview a search query without creating a task.
-
-    This endpoint allows users to test their search query and see results before
-    committing to creating a monitoring task. Uses the new monitoring pipeline
-    for consistent behavior with actual task executions.
-
-    Args:
-        search_query: The search query to test
-        condition_description: Optional condition to evaluate (if not provided, LLM will infer)
-        model: Model to use for search (default: gemini-2.0-flash-exp)
-
-    Returns:
-        {
-            "summary": "Natural language summary of findings",
-            "condition_met": bool (whether monitoring condition was met),
-            "inferred_condition": "LLM-inferred condition" (if condition_description not provided),
-            "sources": [{uri, title}, ...],
-            "current_state": {...} (structured extracted data)
-        }
-    """
-    from torale.pipelines.monitoring_pipeline import MonitoringPipeline
-    from torale.providers import ProviderFactory
-
-    try:
-        # If no condition provided, have LLM infer it from the query
-        condition_description = request.condition_description
-        inferred = not condition_description
-        if not condition_description:
-            try:
-                condition_description = await _infer_condition_from_query(
-                    request.search_query, request.model, genai_client
-                )
-            except Exception as e:
-                logger.error(f"Failed to infer condition from query: {str(e)}")
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Failed to automatically determine what to look for in the search. Please provide a specific condition description.",
-                ) from e
-
-        # Use ProviderFactory for all providers for consistency
-        provider_type = "gemini"  # Could be configurable in the future
-
-        # Execute grounded search
-        search_provider = ProviderFactory.create_search_provider(provider_type)
-        search_result = await search_provider.search(
-            query=request.search_query, temporal_context=None, model=request.model
-        )
-
-        # Run monitoring pipeline (first execution, no previous state)
-        pipeline = MonitoringPipeline(
-            schema_provider=ProviderFactory.create_schema_provider(provider_type),
-            extraction_provider=ProviderFactory.create_extraction_provider(provider_type),
-            comparison_provider=ProviderFactory.create_comparison_provider(provider_type),
-        )
-
-        # Construct task dict matching MonitoringPipeline.execute() signature
-        task_config = {
-            "search_query": request.search_query,
-            "condition_description": condition_description,
-        }
-        monitoring_result = await pipeline.execute(
-            task=task_config,
-            search_result=search_result,
-            previous_state=None,  # Preview is always first execution
-        )
-
-        # Return response matching expected format
-        # Note: For preview (first execution), changed=True is expected since there's no previous state
-        response = {
-            "summary": monitoring_result["summary"],
-            "condition_met": monitoring_result["metadata"]["changed"],
-            "sources": monitoring_result["sources"],
-            "current_state": monitoring_result["metadata"]["current_state"],
-        }
-
-        if inferred:
-            response["inferred_condition"] = condition_description
-
-        return response
-
-    except HTTPException:
-        # Re-raise HTTP exceptions from nested calls
-        raise
-    except ValueError as e:
-        # Handle configuration/validation errors
-        logger.error(f"Preview search validation error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid search configuration: {str(e)}",
-        ) from e
-    except Exception as e:
-        # Catch unexpected errors and log full traceback
-        logger.exception(f"Unexpected error during preview search: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred during search preview. Please try again.",
-        ) from e
-
-
 async def _start_task_execution(
     task_id: str,
     task_name: str,
@@ -543,50 +431,6 @@ async def _start_task_execution(
         ) from e
 
     return dict(execution_row)
-
-
-async def _infer_condition_from_query(
-    search_query: str,
-    model: str,
-    genai_client,
-) -> str:
-    """
-    Use LLM to infer what the monitoring condition should be based on the search query.
-
-    For example:
-    - "When is iPhone 16 coming out?" → "A specific release date has been announced"
-    - "Is GPT-5 available yet?" → "GPT-5 is officially available or released"
-
-    Args:
-        search_query: The user's search query
-        model: Gemini model to use
-        genai_client: Genai client instance (passed from parent endpoint)
-    """
-    from google.genai import types
-
-    inference_prompt = f"""Based on this search query, infer what condition the user wants to monitor for.
-
-Search Query: {search_query}
-
-What condition or change would indicate this information is available or has been announced?
-
-Examples:
-- Query: "When is the next iPhone release?" → "A specific release date or month has been officially announced"
-- Query: "Is GPT-5 available?" → "GPT-5 is officially released and available"
-- Query: "What's the price of PS5?" → "A clear price is listed"
-"""
-
-    response = await genai_client.aio.models.generate_content(
-        model=model,
-        contents=inference_prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=InferredCondition,
-        ),
-    )
-
-    result = json.loads(response.text)
-    return result["condition"]
 
 
 @router.get("/{task_id}", response_model=Task)
