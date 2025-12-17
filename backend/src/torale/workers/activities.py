@@ -197,34 +197,31 @@ async def persist_execution_result(
             "SELECT extraction_schema FROM tasks WHERE id = $1", UUID(task_id)
         )
 
-        # Build dynamic UPDATE query based on conditions
-        update_fields = {
-            "last_known_state": json.dumps(current_state),
-            "updated_at": datetime.now(UTC),
-            "last_execution_id": UUID(execution_id),
-        }
+        # Determine which optional fields to update
+        should_persist_schema = task_row and not task_row["extraction_schema"] and schema
+        new_extraction_schema = json.dumps(schema) if should_persist_schema else None
+        new_last_notified_at = datetime.now(UTC) if changed else None
 
-        # Add schema if this is first execution
-        is_first_execution = task_row and not task_row["extraction_schema"] and schema
-        if is_first_execution:
-            update_fields["extraction_schema"] = json.dumps(schema)
-
-        # Add last_notified_at if condition changed
-        if changed:
-            update_fields["last_notified_at"] = datetime.now(UTC)
-
-        # Build SET clause and parameters
-        set_clauses = [f"{key} = ${i + 1}" for i, key in enumerate(update_fields.keys())]
-        params = list(update_fields.values())
-        params.append(UUID(task_id))  # WHERE id = $last
-
-        query = f"""
+        # Static query with COALESCE for conditional updates
+        query = """
             UPDATE tasks
-            SET {", ".join(set_clauses)}
-            WHERE id = ${len(params)}
+            SET last_known_state = $1,
+                updated_at = $2,
+                last_execution_id = $3,
+                extraction_schema = COALESCE($4, extraction_schema),
+                last_notified_at = COALESCE($5, last_notified_at)
+            WHERE id = $6
         """
 
-        await conn.execute(query, *params)
+        await conn.execute(
+            query,
+            json.dumps(current_state),
+            datetime.now(UTC),
+            UUID(execution_id),
+            new_extraction_schema,
+            new_last_notified_at,
+            UUID(task_id),
+        )
 
     finally:
         await conn.close()
