@@ -395,7 +395,6 @@ async def preview_search(
     """
     from torale.pipelines.monitoring_pipeline import MonitoringPipeline
     from torale.providers import ProviderFactory
-    from torale.providers.gemini.search import GeminiSearchProvider
 
     try:
         # If no condition provided, have LLM infer it from the query
@@ -413,15 +412,16 @@ async def preview_search(
                     detail="Failed to automatically determine what to look for in the search. Please provide a specific condition description.",
                 ) from e
 
+        # Use ProviderFactory for all providers for consistency
+        provider_type = "gemini"  # Could be configurable in the future
+
         # Execute grounded search
-        search_provider = GeminiSearchProvider()
+        search_provider = ProviderFactory.create_search_provider(provider_type)
         search_result = await search_provider.search(
             query=request.search_query, temporal_context=None, model=request.model
         )
 
         # Run monitoring pipeline (first execution, no previous state)
-        # Use ProviderFactory for consistency with worker activities
-        provider_type = "gemini"  # Could be configurable in the future
         pipeline = MonitoringPipeline(
             schema_provider=ProviderFactory.create_schema_provider(provider_type),
             extraction_provider=ProviderFactory.create_extraction_provider(provider_type),

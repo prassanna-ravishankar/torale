@@ -6,11 +6,12 @@ from google.genai import types
 from google.genai.types import GoogleSearch, Tool
 
 from torale.core.config import settings
+from torale.providers.search_provider import SearchProvider
 
 logger = logging.getLogger(__name__)
 
 
-class GeminiSearchProvider:
+class GeminiSearchProvider(SearchProvider):
     """
     Performs grounded search using Gemini with Google Search.
 

@@ -103,15 +103,20 @@ async def get_task_data(task_id: str) -> dict:
 @activity.defn
 async def perform_grounded_search(task_data: dict) -> dict:
     """
-    Perform grounded search using Gemini.
+    Perform grounded search using configured provider.
 
-    Thin wrapper around GeminiSearchProvider.
+    Uses ProviderFactory for dynamic provider selection.
     Returns SearchResult model serialized as dict.
     """
-    from torale.providers.gemini import GeminiSearchProvider
+    from torale.providers import ProviderFactory
 
     task = task_data["task"]
-    search_provider = GeminiSearchProvider()
+
+    # Get provider type from config (defaults to gemini)
+    provider_type = task_data["config"].get("provider", "gemini")
+
+    # Create search provider via factory
+    search_provider = ProviderFactory.create_search_provider(provider_type)
 
     result = await search_provider.search(
         query=task["search_query"],
@@ -119,7 +124,7 @@ async def perform_grounded_search(task_data: dict) -> dict:
         model=task_data["config"].get("model", "gemini-2.5-flash"),
     )
 
-    # GeminiSearchProvider returns plain dict (not Pydantic model)
+    # SearchProvider returns plain dict (not Pydantic model)
     # Result is already serializable for Temporal
     return result
 

@@ -3,6 +3,7 @@
 from torale.providers.comparison_provider import ComparisonProvider
 from torale.providers.extraction_provider import ExtractionProvider
 from torale.providers.schema_provider import SchemaProvider
+from torale.providers.search_provider import SearchProvider
 
 
 class ProviderFactory:
@@ -13,12 +14,14 @@ class ProviderFactory:
             "schema": "torale.providers.gemini.GeminiSchemaProvider",
             "extraction": "torale.providers.gemini.GeminiExtractionProvider",
             "comparison": "torale.providers.gemini.GeminiComparisonProvider",
+            "search": "torale.providers.gemini.GeminiSearchProvider",
         },
         # Future providers can be added here:
         # "openai": {
         #     "schema": "torale.providers.openai.OpenAISchemaProvider",
         #     "extraction": "torale.providers.openai.OpenAIExtractionProvider",
         #     "comparison": "torale.providers.openai.OpenAIComparisonProvider",
+        #     "search": "torale.providers.openai.OpenAISearchProvider",
         # },
     }
 
@@ -36,6 +39,11 @@ class ProviderFactory:
     def create_comparison_provider(cls, provider_type: str = "gemini") -> ComparisonProvider:
         """Create a comparison provider based on configuration."""
         return cls._create_provider(provider_type, "comparison")
+
+    @classmethod
+    def create_search_provider(cls, provider_type: str = "gemini") -> SearchProvider:
+        """Create a search provider based on configuration."""
+        return cls._create_provider(provider_type, "search")
 
     @classmethod
     def _create_provider(cls, provider_type: str, provider_role: str):
