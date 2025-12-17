@@ -8,7 +8,14 @@ the database and Temporal schedules. All code that changes is_active MUST use th
 import logging
 from uuid import UUID
 
-from temporalio.client import Client, Schedule, ScheduleActionStartWorkflow, ScheduleSpec
+from temporalio.client import (
+    Client,
+    Schedule,
+    ScheduleActionStartWorkflow,
+    ScheduleOverlapPolicy,
+    SchedulePolicy,
+    ScheduleSpec,
+)
 from temporalio.service import RPCError, RPCStatusCode
 
 from torale.core.config import settings
@@ -130,6 +137,11 @@ class TaskStateManager:
                                     task_queue=settings.temporal_task_queue,
                                 ),
                                 spec=ScheduleSpec(cron_expressions=[schedule]),
+                                policy=SchedulePolicy(
+                                    overlap=ScheduleOverlapPolicy.SKIP,
+                                    # Skip new runs if previous execution still running
+                                    # Prevents race conditions during state updates in persist_execution_result
+                                ),
                             ),
                         )
                         logger.info(f"Successfully created schedule {schedule_id}")
