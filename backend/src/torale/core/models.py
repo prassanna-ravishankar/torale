@@ -108,7 +108,9 @@ class Task(TaskBase):
 
     # Grounded search state tracking
     condition_met: bool = False  # DEPRECATED: Will be removed, use last_execution.condition_met
-    last_known_state: dict | None = None
+    last_known_state: dict | list | None = (
+        None  # Can be dict or list depending on extraction schema
+    )
     last_notified_at: datetime | None = None  # DEPRECATED: Will be removed
 
     # Latest execution reference (replaces sticky condition_met)
@@ -201,12 +203,96 @@ class ConditionEvaluation(BaseModel):
     )
 
 
-class StateComparison(BaseModel):
-    """LLM response for comparing previous and current states."""
+# Provider/Pipeline Models
 
-    changed: bool = Field(
-        description="Whether factual information has meaningfully changed between states"
+
+class MonitoringResult(BaseModel):
+    """
+    Result from monitoring execution - minimal schema approach.
+
+    This is the contract that all monitoring providers must return.
+    Emphasizes natural language summary over rigid boolean fields.
+    """
+
+    summary: str = Field(
+        description="Agent's natural language summary for the user. Should explain what was found and what changed."
     )
-    summary: str | None = Field(
-        description="1-2 sentence summary of what changed, or null if nothing changed"
+    sources: list[dict] = Field(
+        description="Grounding sources with url and title",
+        default_factory=list,
     )
+    actions: list[str] = Field(
+        description="Actions taken during execution (e.g., ['searched', 'extracted', 'compared'])",
+        default_factory=list,
+    )
+    metadata: dict = Field(
+        description="Optional provider-specific metadata (changed, current_state, schema, etc.)",
+        default_factory=dict,
+    )
+
+
+class StateChange(BaseModel):
+    """Result of semantic state comparison."""
+
+    changed: bool = Field(description="Whether meaningful change occurred between states")
+    explanation: str = Field(
+        description="Human-readable explanation of what changed or why nothing changed"
+    )
+
+
+class SearchResult(BaseModel):
+    """Result from grounded search execution."""
+
+    answer: str = Field(description="Answer from search")
+    sources: list[dict] = Field(description="Grounding sources", default_factory=list)
+    temporal_note: str | None = Field(
+        description="Note about temporal context (e.g., 'No new updates since last check')",
+        default=None,
+    )
+
+
+class ExecutionContext(BaseModel):
+    """Context passed to monitoring providers."""
+
+    previous_state: dict | list | None = Field(
+        description="Previous extracted state (None if first execution). Can be dict or list depending on extraction schema.",
+        default=None,
+    )
+    last_execution_datetime: datetime | None = Field(
+        description="Timestamp of last successful execution",
+        default=None,
+    )
+    task_config: dict = Field(
+        description="Task configuration",
+        default_factory=dict,
+    )
+
+
+# Activity Models (for Temporal activity signatures)
+
+
+class TaskData(BaseModel):
+    """Data returned by get_task_data activity."""
+
+    task: dict = Field(description="Task record from database")
+    config: dict = Field(description="Parsed task configuration")
+    previous_state: dict | list | None = Field(
+        description="Previous monitoring state. Can be dict or list depending on extraction schema.",
+        default=None,
+    )
+    last_execution_datetime: datetime | None = Field(
+        description="Timestamp of last successful execution", default=None
+    )
+
+
+class EnrichedMonitoringResult(MonitoringResult):
+    """
+    Monitoring result enriched with execution context.
+
+    Extends MonitoringResult with task/execution metadata needed for notifications.
+    """
+
+    task_id: str = Field(description="Task ID")
+    execution_id: str = Field(description="Execution ID")
+    search_query: str = Field(description="Search query used")
+    is_first_execution: bool = Field(description="Whether this is the first execution")

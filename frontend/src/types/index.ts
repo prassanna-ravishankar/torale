@@ -87,8 +87,17 @@ export interface TaskExecution {
   started_at: string;
   completed_at: string | null;
   result: {
-    answer: string;
-    current_state: Record<string, any> | null;
+    // New monitoring result format
+    summary: string;
+    sources: GroundingSource[];
+    metadata: {
+      changed: boolean;
+      change_explanation: string | null;
+      current_state: Record<string, any> | null;
+    };
+    // Legacy fields for backward compatibility
+    answer?: string;
+    current_state?: Record<string, any> | null;
   } | null;
   condition_met: boolean;
   change_summary: string | null;

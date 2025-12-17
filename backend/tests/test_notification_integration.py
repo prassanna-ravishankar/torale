@@ -66,6 +66,20 @@ def sample_execution(sample_task_with_notifications):
     return execution
 
 
+@pytest.fixture
+def sample_monitoring_result():
+    """Create MonitoringResult dict (new structure)."""
+    return {
+        "summary": "Test answer",
+        "sources": [{"uri": "https://example.com", "title": "Example"}],
+        "metadata": {
+            "changed": True,
+            "change_explanation": "Test change detected",
+            "current_state": {"test_field": "test_value"},
+        },
+    }
+
+
 class TestEmailVerificationFlow:
     """Test complete email verification flow."""
 
@@ -166,7 +180,7 @@ class TestWebhookNotificationFlow:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_complete_webhook_flow(
-        self, mock_post, sample_task_with_notifications, sample_execution
+        self, mock_post, sample_task_with_notifications, sample_execution, sample_monitoring_result
     ):
         """Test full webhook flow: condition met → payload built → signed → delivered."""
 
@@ -178,17 +192,11 @@ class TestWebhookNotificationFlow:
             "condition_description": sample_task_with_notifications.condition_description,
         }
         execution_dict = {
-            "condition_met": sample_execution.condition_met,
-            "change_summary": sample_execution.change_summary,
             "completed_at": sample_execution.completed_at,
-        }
-        result_dict = {
-            "answer": "Test answer",
-            "grounding_sources": sample_execution.grounding_sources,
         }
 
         payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, result_dict
+            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
         )
 
         assert payload.event_type == "task.condition_met"
@@ -225,7 +233,7 @@ class TestWebhookNotificationFlow:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_webhook_retry_flow(
-        self, mock_post, sample_task_with_notifications, sample_execution
+        self, mock_post, sample_task_with_notifications, sample_execution, sample_monitoring_result
     ):
         """Test webhook retry logic when delivery fails."""
         # Mock: Initial delivery fails with 500
@@ -241,17 +249,11 @@ class TestWebhookNotificationFlow:
             "condition_description": sample_task_with_notifications.condition_description,
         }
         execution_dict = {
-            "condition_met": sample_execution.condition_met,
-            "change_summary": sample_execution.change_summary,
             "completed_at": sample_execution.completed_at,
-        }
-        result_dict = {
-            "answer": "Test answer",
-            "grounding_sources": sample_execution.grounding_sources,
         }
 
         payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, result_dict
+            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
         )
 
         service = WebhookDeliveryService()
@@ -322,7 +324,12 @@ class TestMultiChannelNotification:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_both_email_and_webhook(
-        self, mock_post, sample_user, sample_task_with_notifications, sample_execution
+        self,
+        mock_post,
+        sample_user,
+        sample_task_with_notifications,
+        sample_execution,
+        sample_monitoring_result,
     ):
         """Test that task can notify via both email and webhook."""
         # Verify task has both channels configured
@@ -343,17 +350,11 @@ class TestMultiChannelNotification:
             "condition_description": sample_task_with_notifications.condition_description,
         }
         execution_dict = {
-            "condition_met": sample_execution.condition_met,
-            "change_summary": sample_execution.change_summary,
             "completed_at": sample_execution.completed_at,
-        }
-        result_dict = {
-            "answer": "Test answer",
-            "grounding_sources": sample_execution.grounding_sources,
         }
 
         payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, result_dict
+            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
         )
 
         webhook_service = WebhookDeliveryService()

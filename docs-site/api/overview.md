@@ -36,12 +36,14 @@ Generate API keys at [torale.ai/settings/api-keys](https://torale.ai/settings/ap
 
 ```
 POST   /api/v1/tasks                    # Create task
-POST   /api/v1/tasks/preview            # Preview query
+POST   /api/v1/tasks/suggest            # Get suggested task from query
 GET    /api/v1/tasks                    # List tasks
 GET    /api/v1/tasks/{id}               # Get task
 PUT    /api/v1/tasks/{id}               # Update task
 DELETE /api/v1/tasks/{id}               # Delete task
+PATCH  /api/v1/tasks/{id}/visibility    # Update task visibility
 POST   /api/v1/tasks/{id}/execute       # Execute immediately
+POST   /api/v1/tasks/{id}/fork          # Fork task
 ```
 
 ### Executions

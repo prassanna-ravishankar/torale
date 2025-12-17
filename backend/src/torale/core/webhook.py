@@ -154,7 +154,21 @@ class WebhookDeliveryService:
 def build_webhook_payload(
     execution_id: str, task: dict, execution: dict, result: dict
 ) -> WebhookPayload:
-    """Build standardized webhook payload."""
+    """
+    Build standardized webhook payload.
+
+    Args:
+        execution_id: Execution ID
+        task: Task database record
+        execution: Execution database record
+        result: MonitoringResult dict with summary, sources, metadata
+
+    Returns:
+        WebhookPayload with standardized structure
+    """
+    # Extract from new MonitoringResult structure
+    metadata = result.get("metadata", {})
+
     return WebhookPayload(
         id=execution_id,
         event_type="task.condition_met",
@@ -168,13 +182,13 @@ def build_webhook_payload(
             },
             "execution": {
                 "id": execution_id,
-                "condition_met": execution.get("condition_met"),
-                "change_summary": execution.get("change_summary"),
+                "condition_met": metadata.get("changed", False),
+                "change_summary": metadata.get("change_explanation", ""),
                 "completed_at": str(execution.get("completed_at", "")),
             },
             "result": {
-                "answer": result.get("answer", ""),
-                "grounding_sources": result.get("grounding_sources", []),
+                "answer": result.get("summary", ""),
+                "grounding_sources": result.get("sources", []),
             },
         },
     )

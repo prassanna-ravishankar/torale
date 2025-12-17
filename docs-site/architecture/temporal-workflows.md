@@ -12,49 +12,68 @@ Torale uses Temporal Cloud for reliable task scheduling and execution.
 ## Workflow Architecture
 
 ```
-Task Creation → Temporal Schedule → Workflow Execution → Activity → Result
+Task Creation → Temporal Schedule → Workflow → Pipeline → Providers → Result
+                                      ↓
+                                  Activities (thin wrappers)
 ```
 
-## Monitoring Workflow
+## TaskExecutionWorkflow
+
+The workflow orchestrates monitoring execution with visible business logic:
 
 ```python
 @workflow.defn
-class MonitoringWorkflow:
+class TaskExecutionWorkflow:
     @workflow.run
-    async def run(self, task_config: TaskConfig) -> dict:
-        # Fetch task
-        task = await workflow.execute_activity(
-            get_task,
-            task_config.task_id,
+    async def run(self, request: TaskExecutionRequest) -> dict:
+        # Step 1: Fetch task configuration and context
+        task_data = await workflow.execute_activity(
+            "get_task_data",
+            args=[request.task_id],
             start_to_close_timeout=timedelta(seconds=30)
         )
 
-        # Execute grounded search
-        result = await workflow.execute_activity(
-            execute_grounded_search,
-            task,
-            start_to_close_timeout=timedelta(seconds=60)
+        # Step 2: Perform grounded search
+        search_result = await workflow.execute_activity(
+            "perform_grounded_search",
+            args=[task_data],
+            start_to_close_timeout=timedelta(minutes=5)
         )
 
-        # Compare with previous state
-        has_changed = await workflow.execute_activity(
-            compare_states,
-            task.id,
-            result,
-            start_to_close_timeout=timedelta(seconds=10)
+        # Step 3: Execute monitoring pipeline (extraction + comparison)
+        monitoring_result = await workflow.execute_activity(
+            "execute_monitoring_pipeline",
+            args=[task_data, search_result],
+            start_to_close_timeout=timedelta(minutes=3)
         )
 
-        # Notify if needed
-        if result.condition_met and has_changed:
+        # Step 4: Decide notification (visible orchestration!)
+        changed = monitoring_result["metadata"]["changed"]
+        should_notify = changed and not request.suppress_notifications
+
+        # Step 5: Send notification if needed
+        if should_notify:
             await workflow.execute_activity(
-                send_notification,
-                task.user_id,
-                result,
-                start_to_close_timeout=timedelta(seconds=30)
+                "send_notification",
+                args=[request.user_id, request.task_name, monitoring_result],
+                start_to_close_timeout=timedelta(minutes=1)
             )
 
-        return result
+        # Step 6: Persist execution result
+        await workflow.execute_activity(
+            "persist_execution_result",
+            args=[request.task_id, request.execution_id, monitoring_result],
+            start_to_close_timeout=timedelta(seconds=30)
+        )
+
+        return monitoring_result
 ```
+
+**Key improvements:**
+- Orchestration logic visible at workflow level
+- Each activity has single responsibility
+- Notification decision made by workflow, not buried in activity
+- Pipeline execution isolated in dedicated activity
 
 ## Schedule Management
 

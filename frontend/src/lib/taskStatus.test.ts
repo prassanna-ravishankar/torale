@@ -19,25 +19,13 @@ function assert(condition: boolean, message: string): void {
 function testTaskStatusActive(): boolean {
   console.log(`${BLUE}Testing active task status...${RESET}`);
 
-  // Active task (never executed)
-  let status = getTaskStatus(true, null);
+  // Active task
+  const status = getTaskStatus('active');
   assert(status.activityState === TaskActivityState.ACTIVE, 'Active task state incorrect');
   assert(status.iconName === 'Activity', 'Active task icon incorrect');
   assert(status.label === 'Monitoring', 'Active task label incorrect');
   assert(status.color === 'green', 'Active task color incorrect');
-  console.log(`${GREEN}✓ Active task (never executed) status correct${RESET}`);
-
-  // Active task with previous execution (condition not met)
-  status = getTaskStatus(true, false);
-  assert(status.activityState === TaskActivityState.ACTIVE, 'Active task state incorrect');
-  assert(status.iconName === 'Activity', 'Active task icon incorrect');
-  console.log(`${GREEN}✓ Active task (condition not met) status correct${RESET}`);
-
-  // Active task with previous execution (condition met)
-  status = getTaskStatus(true, true);
-  assert(status.activityState === TaskActivityState.ACTIVE, 'Active task state incorrect');
-  assert(status.iconName === 'Activity', 'Active task icon incorrect');
-  console.log(`${GREEN}✓ Active task (condition met but still running) status correct${RESET}`);
+  console.log(`${GREEN}✓ Active task status correct${RESET}`);
 
   return true;
 }
@@ -45,8 +33,8 @@ function testTaskStatusActive(): boolean {
 function testTaskStatusCompleted(): boolean {
   console.log(`\n${BLUE}Testing completed task status...${RESET}`);
 
-  // Inactive task with condition met (auto-stopped after notify_behavior="once")
-  const status = getTaskStatus(false, true);
+  // Completed task
+  const status = getTaskStatus('completed');
   assert(
     status.activityState === TaskActivityState.COMPLETED,
     'Completed task state incorrect'
@@ -58,7 +46,7 @@ function testTaskStatusCompleted(): boolean {
     status.description.toLowerCase().includes('auto-stopped'),
     'Completed task description incorrect'
   );
-  console.log(`${GREEN}✓ Completed task (auto-stopped) status correct${RESET}`);
+  console.log(`${GREEN}✓ Completed task status correct${RESET}`);
 
   return true;
 }
@@ -66,25 +54,13 @@ function testTaskStatusCompleted(): boolean {
 function testTaskStatusPaused(): boolean {
   console.log(`\n${BLUE}Testing paused task status...${RESET}`);
 
-  // Inactive task with condition not met (manually paused)
-  let status = getTaskStatus(false, false);
+  // Paused task
+  const status = getTaskStatus('paused');
   assert(status.activityState === TaskActivityState.PAUSED, 'Paused task state incorrect');
   assert(status.iconName === 'Pause', 'Paused task icon incorrect');
   assert(status.label === 'Paused', 'Paused task label incorrect');
   assert(status.color === 'yellow', 'Paused task color incorrect');
-  console.log(`${GREEN}✓ Paused task (condition not met) status correct${RESET}`);
-
-  // Inactive task never executed (manually paused before first execution)
-  status = getTaskStatus(false, null);
-  assert(status.activityState === TaskActivityState.PAUSED, 'Paused task state incorrect');
-  assert(status.iconName === 'Pause', 'Paused task icon incorrect');
-  assert(status.label === 'Paused', 'Paused task label incorrect');
-  console.log(`${GREEN}✓ Paused task (never executed) status correct${RESET}`);
-
-  // Inactive task with undefined (same as null)
-  status = getTaskStatus(false, undefined);
-  assert(status.activityState === TaskActivityState.PAUSED, 'Paused task state incorrect');
-  console.log(`${GREEN}✓ Paused task (undefined condition) status correct${RESET}`);
+  console.log(`${GREEN}✓ Paused task status correct${RESET}`);
 
   return true;
 }
@@ -109,7 +85,7 @@ function testTaskActivityStateEnum(): boolean {
 function testStatusInfoStructure(): boolean {
   console.log(`\n${BLUE}Testing status info structure...${RESET}`);
 
-  const status = getTaskStatus(true, null);
+  const status = getTaskStatus('active');
 
   // Check all required fields exist
   const requiredFields: (keyof TaskStatusInfo)[] = [
