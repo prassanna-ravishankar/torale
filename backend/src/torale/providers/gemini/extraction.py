@@ -25,9 +25,7 @@ class GeminiExtractionProvider(ExtractionProvider):
 
         self.client = genai.Client(api_key=settings.google_api_key)
 
-    async def extract(
-        self, search_result: dict, schema: dict, model: str | None = None
-    ) -> dict:
+    async def extract(self, search_result: dict, schema: dict, model: str | None = None) -> dict:
         """
         Extract structured data from search result according to schema.
 

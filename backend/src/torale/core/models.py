@@ -108,7 +108,9 @@ class Task(TaskBase):
 
     # Grounded search state tracking
     condition_met: bool = False  # DEPRECATED: Will be removed, use last_execution.condition_met
-    last_known_state: dict | list | None = None  # Can be dict or list depending on extraction schema
+    last_known_state: dict | list | None = (
+        None  # Can be dict or list depending on extraction schema
+    )
     last_notified_at: datetime | None = None  # DEPRECATED: Will be removed
 
     # Latest execution reference (replaces sticky condition_met)
@@ -274,7 +276,10 @@ class TaskData(BaseModel):
 
     task: dict = Field(description="Task record from database")
     config: dict = Field(description="Parsed task configuration")
-    previous_state: dict | list | None = Field(description="Previous monitoring state. Can be dict or list depending on extraction schema.", default=None)
+    previous_state: dict | list | None = Field(
+        description="Previous monitoring state. Can be dict or list depending on extraction schema.",
+        default=None,
+    )
     last_execution_datetime: datetime | None = Field(
         description="Timestamp of last successful execution", default=None
     )
