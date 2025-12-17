@@ -197,63 +197,34 @@ async def persist_execution_result(
             "SELECT extraction_schema FROM tasks WHERE id = $1", UUID(task_id)
         )
 
-        # Update task's last_known_state and extraction_schema (if needed)
-        if task_row and not task_row["extraction_schema"] and schema:
-            # First execution - persist schema
-            if changed:
-                await conn.execute(
-                    """
-                    UPDATE tasks
-                    SET last_known_state = $1, updated_at = $2, last_execution_id = $3, last_notified_at = $4, extraction_schema = $5
-                    WHERE id = $6
-                    """,
-                    json.dumps(current_state),
-                    datetime.now(UTC),
-                    UUID(execution_id),
-                    datetime.now(UTC),
-                    json.dumps(schema),
-                    UUID(task_id),
-                )
-            else:
-                await conn.execute(
-                    """
-                    UPDATE tasks
-                    SET last_known_state = $1, updated_at = $2, last_execution_id = $3, extraction_schema = $4
-                    WHERE id = $5
-                    """,
-                    json.dumps(current_state),
-                    datetime.now(UTC),
-                    UUID(execution_id),
-                    json.dumps(schema),
-                    UUID(task_id),
-                )
-        else:
-            # Schema already exists - just update state
-            if changed:
-                await conn.execute(
-                    """
-                    UPDATE tasks
-                    SET last_known_state = $1, updated_at = $2, last_execution_id = $3, last_notified_at = $4
-                    WHERE id = $5
-                    """,
-                    json.dumps(current_state),
-                    datetime.now(UTC),
-                    UUID(execution_id),
-                    datetime.now(UTC),
-                    UUID(task_id),
-                )
-            else:
-                await conn.execute(
-                    """
-                    UPDATE tasks
-                    SET last_known_state = $1, updated_at = $2, last_execution_id = $3
-                    WHERE id = $4
-                    """,
-                    json.dumps(current_state),
-                    datetime.now(UTC),
-                    UUID(execution_id),
-                    UUID(task_id),
-                )
+        # Build dynamic UPDATE query based on conditions
+        update_fields = {
+            "last_known_state": json.dumps(current_state),
+            "updated_at": datetime.now(UTC),
+            "last_execution_id": UUID(execution_id),
+        }
+
+        # Add schema if this is first execution
+        is_first_execution = task_row and not task_row["extraction_schema"] and schema
+        if is_first_execution:
+            update_fields["extraction_schema"] = json.dumps(schema)
+
+        # Add last_notified_at if condition changed
+        if changed:
+            update_fields["last_notified_at"] = datetime.now(UTC)
+
+        # Build SET clause and parameters
+        set_clauses = [f"{key} = ${i+1}" for i, key in enumerate(update_fields.keys())]
+        params = list(update_fields.values())
+        params.append(UUID(task_id))  # WHERE id = $last
+
+        query = f"""
+            UPDATE tasks
+            SET {', '.join(set_clauses)}
+            WHERE id = ${len(params)}
+        """
+
+        await conn.execute(query, *params)
 
     finally:
         await conn.close()

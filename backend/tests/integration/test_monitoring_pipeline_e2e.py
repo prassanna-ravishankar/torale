@@ -181,9 +181,9 @@ class TestMonitoringPipelineE2E:
         assert len(result["sources"]) > 0
         assert len(result["sources"]) == len(search_result.get("sources", []))
 
-        # Each source should have uri
+        # Each source should have url
         for source in result["sources"]:
-            assert "uri" in source
+            assert "url" in source
 
     @pytest.mark.asyncio
     async def test_summary_is_natural_language(self, pipeline):
