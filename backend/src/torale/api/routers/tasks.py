@@ -20,7 +20,6 @@ from torale.api.utils.task_parsers import (
 from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.core.models import (
-    InferredCondition,
     NotifyBehavior,
     Task,
     TaskCreate,
