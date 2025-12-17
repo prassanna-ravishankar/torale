@@ -30,11 +30,18 @@ class GeminiComparisonProvider(ComparisonProvider):
         previous_state: dict | None,
         current_state: dict,
         schema: dict,
+        model: str = "gemini-2.5-flash",
     ) -> dict:
         """
         Compare states semantically to detect meaningful changes.
 
         Returns StateChange with changed flag and explanation.
+
+        Args:
+            previous_state: Previous extracted state (None for first execution)
+            current_state: Current extracted state
+            schema: Schema defining the fields
+            model: Gemini model to use (default: gemini-2.5-flash)
         """
         if previous_state is None:
             return {
@@ -70,7 +77,7 @@ Return JSON:
 }}"""
 
         response = await self.client.aio.models.generate_content(
-            model="gemini-2.5-flash",
+            model=model,
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

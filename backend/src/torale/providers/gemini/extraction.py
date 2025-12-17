@@ -24,11 +24,16 @@ class GeminiExtractionProvider(ExtractionProvider):
 
         self.client = genai.Client(api_key=settings.google_api_key)
 
-    async def extract(self, search_result: dict, schema: dict) -> dict:
+    async def extract(self, search_result: dict, schema: dict, model: str = "gemini-2.5-flash") -> dict:
         """
         Extract structured data from search result according to schema.
 
         Uses Gemini to parse the search answer into the defined schema fields.
+
+        Args:
+            search_result: Search result containing answer field
+            schema: Schema defining fields to extract
+            model: Gemini model to use (default: gemini-2.5-flash)
         """
         answer = search_result.get("answer", "")
 
@@ -47,7 +52,7 @@ Extract the data according to the schema. If a field cannot be determined from t
 Return ONLY valid JSON matching the schema fields. Do not include any explanation."""
 
         response = await self.client.aio.models.generate_content(
-            model="gemini-2.5-flash",
+            model=model,
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

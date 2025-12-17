@@ -26,12 +26,16 @@ class GeminiSchemaProvider(SchemaProvider):
         # Note: Caching removed as providers are instantiated per-execution in distributed workers.
         # Consider adding Redis caching or singleton pattern if schema generation becomes a bottleneck.
 
-    async def generate_schema(self, task: dict) -> dict:
+    async def generate_schema(self, task: dict, model: str = "gemini-2.5-flash") -> dict:
         """
         Generate extraction schema for a monitoring task.
 
         Uses Gemini to analyze the task and determine what fields
         should be tracked.
+
+        Args:
+            task: Task configuration with search_query and condition_description
+            model: Gemini model to use (default: gemini-2.5-flash)
         """
         search_query = task.get("search_query", "")
         condition_description = task.get("condition_description", "")
@@ -70,7 +74,7 @@ Example for "Monitor iPhone 16 release date":
 Design the schema for this task. Return ONLY the JSON schema, no other text."""
 
         response = await self.client.aio.models.generate_content(
-            model="gemini-2.5-flash",
+            model=model,
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
