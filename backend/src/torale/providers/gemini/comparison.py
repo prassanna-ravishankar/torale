@@ -7,6 +7,7 @@ from google.genai import types
 from torale.core.config import settings
 from torale.core.models import StateChange
 from torale.providers.comparison_provider import ComparisonProvider
+from torale.providers.gemini.utils import format_schema_for_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ class GeminiComparisonProvider(ComparisonProvider):
             }
 
         # Build comparison prompt
-        schema_context = self._format_schema_for_prompt(schema)
+        schema_context = format_schema_for_prompt(schema)
 
         prompt = f"""Compare these two states and determine if there's a MEANINGFUL change.
 
@@ -89,13 +90,3 @@ Return JSON:
         logger.info(f"State comparison: {result}")
 
         return result
-
-    def _format_schema_for_prompt(self, schema: dict) -> str:
-        """Format schema as context for comparison."""
-        lines = []
-        for field_name, field_spec in schema.items():
-            field_type = field_spec.get("type", "string")
-            field_desc = field_spec.get("description", "")
-            lines.append(f"- {field_name} ({field_type}): {field_desc}")
-
-        return "\n".join(lines)

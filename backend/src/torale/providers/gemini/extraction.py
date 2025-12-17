@@ -6,6 +6,7 @@ from google.genai import types
 
 from torale.core.config import settings
 from torale.providers.extraction_provider import ExtractionProvider
+from torale.providers.gemini.utils import format_schema_for_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class GeminiExtractionProvider(ExtractionProvider):
         answer = search_result.get("answer", "")
 
         # Build prompt with schema
-        schema_description = self._format_schema_for_prompt(schema)
+        schema_description = format_schema_for_prompt(schema)
 
         prompt = f"""Extract structured data from the search result below.
 
@@ -65,13 +66,3 @@ Return ONLY valid JSON matching the schema fields. Do not include any explanatio
         logger.info(f"Extracted data: {extracted_data}")
 
         return extracted_data
-
-    def _format_schema_for_prompt(self, schema: dict) -> str:
-        """Format schema as human-readable text for LLM prompt."""
-        lines = []
-        for field_name, field_spec in schema.items():
-            field_type = field_spec.get("type", "string")
-            field_desc = field_spec.get("description", "")
-            lines.append(f"- {field_name} ({field_type}): {field_desc}")
-
-        return "\n".join(lines)

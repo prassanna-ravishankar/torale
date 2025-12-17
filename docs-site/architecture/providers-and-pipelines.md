@@ -117,7 +117,11 @@ class MonitoringPipeline:
 
         # 3. Fast hash pre-filter
         if previous_state:
-            if hash(current_state) == hash(previous_state):
+            from torale.core.state_utils import compute_state_hash
+            prev_hash = compute_state_hash(previous_state)
+            curr_hash = compute_state_hash(current_state)
+
+            if prev_hash == curr_hash:
                 return MonitoringResult(changed=False)
 
         # 4. Semantic comparison (LLM)
