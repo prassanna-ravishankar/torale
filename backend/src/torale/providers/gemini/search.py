@@ -54,6 +54,10 @@ class GeminiSearchProvider(SearchProvider):
         current_datetime = datetime.now(UTC).strftime("%B %d, %Y at %I:%M %p UTC")
 
         if last_execution_datetime:
+            # Handle both datetime objects and ISO strings from Pydantic serialization
+            if isinstance(last_execution_datetime, str):
+                last_execution_datetime = datetime.fromisoformat(last_execution_datetime)
+
             # Format last execution time consistently
             last_execution_formatted = last_execution_datetime.strftime("%B %d, %Y at %I:%M %p UTC")
             last_date = last_execution_datetime.strftime("%B %d, %Y")
