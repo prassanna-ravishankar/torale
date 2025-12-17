@@ -215,7 +215,9 @@ class TestBuildWebhookPayload:
             "completed_at": sample_execution.completed_at,
         }
 
-        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
+        )
 
         assert payload.event_type == "task.condition_met"
 
@@ -231,7 +233,9 @@ class TestBuildWebhookPayload:
             "completed_at": sample_execution.completed_at,
         }
 
-        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
+        )
 
         task_data = payload.data["task"]
         assert task_data["id"] == str(sample_task.id)
@@ -251,12 +255,17 @@ class TestBuildWebhookPayload:
             "completed_at": sample_execution.completed_at,
         }
 
-        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
+        )
 
         exec_data = payload.data["execution"]
         assert exec_data["id"] == str(sample_execution.id)
         assert exec_data["condition_met"] == sample_monitoring_result["metadata"]["changed"]
-        assert exec_data["change_summary"] == sample_monitoring_result["metadata"]["change_explanation"]
+        assert (
+            exec_data["change_summary"]
+            == sample_monitoring_result["metadata"]["change_explanation"]
+        )
 
     def test_timestamp_format(self, sample_task, sample_execution, sample_monitoring_result):
         """Test timestamp is Unix timestamp."""
@@ -270,7 +279,9 @@ class TestBuildWebhookPayload:
             "completed_at": sample_execution.completed_at,
         }
 
-        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
+        )
 
         # created_at should be Unix timestamp (int)
         assert isinstance(payload.created_at, int)
@@ -306,7 +317,9 @@ class TestWebhookDeliveryService:
             "completed_at": sample_execution.completed_at,
         }
 
-        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
+        )
         success, http_status, error_msg, signature = await delivery_service.deliver(
             sample_task.webhook_url,
             payload,
@@ -341,7 +354,9 @@ class TestWebhookDeliveryService:
             "completed_at": sample_execution.completed_at,
         }
 
-        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
+        )
         success, http_status, error_msg, signature = await delivery_service.deliver(
             sample_task.webhook_url,
             payload,
@@ -373,7 +388,9 @@ class TestWebhookDeliveryService:
             "completed_at": sample_execution.completed_at,
         }
 
-        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
+        )
         success, http_status, error_msg, signature = await delivery_service.deliver(
             sample_task.webhook_url,
             payload,
@@ -405,7 +422,9 @@ class TestWebhookDeliveryService:
             "completed_at": sample_execution.completed_at,
         }
 
-        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
+        )
         await delivery_service.deliver(
             sample_task.webhook_url,
             payload,
@@ -444,7 +463,9 @@ class TestWebhookDeliveryService:
             "completed_at": sample_execution.completed_at,
         }
 
-        payload = build_webhook_payload(str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result)
+        payload = build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
+        )
         result = await delivery_service.deliver(
             sample_task.webhook_url,
             payload,

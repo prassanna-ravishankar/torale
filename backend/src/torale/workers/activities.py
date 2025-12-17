@@ -214,13 +214,13 @@ async def persist_execution_result(
             update_fields["last_notified_at"] = datetime.now(UTC)
 
         # Build SET clause and parameters
-        set_clauses = [f"{key} = ${i+1}" for i, key in enumerate(update_fields.keys())]
+        set_clauses = [f"{key} = ${i + 1}" for i, key in enumerate(update_fields.keys())]
         params = list(update_fields.values())
         params.append(UUID(task_id))  # WHERE id = $last
 
         query = f"""
             UPDATE tasks
-            SET {', '.join(set_clauses)}
+            SET {", ".join(set_clauses)}
             WHERE id = ${len(params)}
         """
 

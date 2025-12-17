@@ -324,7 +324,12 @@ class TestMultiChannelNotification:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_both_email_and_webhook(
-        self, mock_post, sample_user, sample_task_with_notifications, sample_execution, sample_monitoring_result
+        self,
+        mock_post,
+        sample_user,
+        sample_task_with_notifications,
+        sample_execution,
+        sample_monitoring_result,
     ):
         """Test that task can notify via both email and webhook."""
         # Verify task has both channels configured

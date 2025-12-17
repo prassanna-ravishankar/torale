@@ -64,9 +64,7 @@ class TestTaskExecutionWorkflow:
 
         async def track_activity(activity_name, *args, **kwargs):
             # Store call details for verification
-            activity_calls.append(
-                {"name": activity_name, "args": args, "kwargs": kwargs}
-            )
+            activity_calls.append({"name": activity_name, "args": args, "kwargs": kwargs})
 
             # Return appropriate mocks
             if activity_name == "get_task_data":
