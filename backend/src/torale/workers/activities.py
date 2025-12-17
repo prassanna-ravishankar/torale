@@ -173,6 +173,8 @@ async def persist_execution_result(
     conn = await get_db_connection()
 
     try:
+        now_utc = datetime.now(UTC)
+
         # Extract metadata
         metadata = monitoring_result.get("metadata", {})
         current_state = metadata.get("current_state", {})
@@ -188,7 +190,7 @@ async def persist_execution_result(
             """,
             TaskStatus.SUCCESS.value,
             json.dumps(monitoring_result),
-            datetime.now(UTC),
+            now_utc,
             UUID(execution_id),
         )
 
@@ -200,7 +202,7 @@ async def persist_execution_result(
         # Determine which optional fields to update
         should_persist_schema = task_row and not task_row["extraction_schema"] and schema
         new_extraction_schema = json.dumps(schema) if should_persist_schema else None
-        new_last_notified_at = datetime.now(UTC) if changed else None
+        new_last_notified_at = now_utc if changed else None
 
         # Static query with COALESCE for conditional updates
         query = """
@@ -216,7 +218,7 @@ async def persist_execution_result(
         await conn.execute(
             query,
             json.dumps(current_state),
-            datetime.now(UTC),
+            now_utc,
             UUID(execution_id),
             new_extraction_schema,
             new_last_notified_at,
