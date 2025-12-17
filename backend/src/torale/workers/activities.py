@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 import asyncpg
@@ -181,7 +181,7 @@ async def persist_execution_result(
             """,
             TaskStatus.SUCCESS.value,
             json.dumps(monitoring_result),
-            datetime.utcnow(),
+            datetime.now(timezone.utc),
             UUID(execution_id),
         )
 
@@ -194,9 +194,9 @@ async def persist_execution_result(
                 WHERE id = $5
                 """,
                 json.dumps(current_state),
-                datetime.utcnow(),
+                datetime.now(timezone.utc),
                 UUID(execution_id),
-                datetime.utcnow(),
+                datetime.now(timezone.utc),
                 UUID(task_id),
             )
         else:
@@ -207,7 +207,7 @@ async def persist_execution_result(
                 WHERE id = $4
                 """,
                 json.dumps(current_state),
-                datetime.utcnow(),
+                datetime.now(timezone.utc),
                 UUID(execution_id),
                 UUID(task_id),
             )
