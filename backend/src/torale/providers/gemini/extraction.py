@@ -26,7 +26,7 @@ class GeminiExtractionProvider(ExtractionProvider):
         self.client = genai.Client(api_key=settings.google_api_key)
 
     async def extract(
-        self, search_result: dict, schema: dict, model: str = "gemini-2.5-flash"
+        self, search_result: dict, schema: dict, model: str | None = None
     ) -> dict:
         """
         Extract structured data from search result according to schema.
@@ -53,6 +53,9 @@ Extraction Schema:
 
 Extract the data according to the schema. If a field cannot be determined from the search result, set it to null.
 Return ONLY valid JSON matching the schema fields. Do not include any explanation."""
+
+        # Use default model if not specified
+        model = model or settings.default_gemini_model
 
         response = await self.client.aio.models.generate_content(
             model=model,

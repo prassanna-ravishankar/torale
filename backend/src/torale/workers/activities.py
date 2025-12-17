@@ -121,7 +121,7 @@ async def perform_grounded_search(task_data: dict) -> dict:
     result = await search_provider.search(
         query=task["search_query"],
         temporal_context={"last_execution_datetime": task_data.get("last_execution_datetime")},
-        model=task_data["config"].get("model", "gemini-2.5-flash"),
+        model=task_data["config"].get("model"),  # Uses default_gemini_model if None
     )
 
     # SearchProvider returns plain dict (not Pydantic model)

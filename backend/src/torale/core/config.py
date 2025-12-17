@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     gcp_project_id: str | None = None
     gcp_region: str = "us-central1"
 
+    # Default LLM model for Gemini provider
+    default_gemini_model: str = "gemini-2.5-flash"
+
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     api_reload: bool = False

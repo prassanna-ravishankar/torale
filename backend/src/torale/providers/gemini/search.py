@@ -30,7 +30,7 @@ class GeminiSearchProvider(SearchProvider):
         self,
         query: str,
         temporal_context: dict | None = None,
-        model: str = "gemini-2.5-flash",
+        model: str | None = None,
     ) -> dict:
         """
         Perform grounded search with temporal context.
@@ -90,6 +90,9 @@ class GeminiSearchProvider(SearchProvider):
         contextualized_query = (
             f"{temporal_instruction}\n\nQuery: {modified_query}\n\n{compression_instruction}"
         )
+
+        # Use default model if not specified
+        model = model or settings.default_gemini_model
 
         # Log for debugging
         logger.info(f"Sending to Gemini - Last execution: {last_execution_datetime}")
