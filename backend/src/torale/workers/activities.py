@@ -119,9 +119,9 @@ async def perform_grounded_search(task_data: dict) -> dict:
         model=task_data["config"].get("model", "gemini-2.5-flash"),
     )
 
-    # SearchResult is returned from provider, already typed
-    # Convert to dict for Temporal serialization
-    return result if isinstance(result, dict) else result.model_dump()
+    # GeminiSearchProvider returns plain dict (not Pydantic model)
+    # Result is already serializable for Temporal
+    return result
 
 
 @activity.defn
