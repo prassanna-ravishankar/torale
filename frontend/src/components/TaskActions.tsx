@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Edit, Trash2, Zap, ChevronRight } from 'lucide-react';
+import { Play, Pause, Trash2, Zap, ChevronRight, Settings } from 'lucide-react';
 import type { Task } from '@/types';
 
 interface TaskActionsProps {
@@ -105,7 +105,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
           onClick={(e) => handleAction(e, () => onEdit(task.id))}
           title="Edit"
         >
-          <Edit className={iconSize} />
+          <Settings className={iconSize} />
         </Button>
 
         <Button
@@ -168,7 +168,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
         size="sm"
         onClick={(e) => handleAction(e, () => onEdit(task.id))}
       >
-        <Edit className={`${iconSize} ${iconMargin}`} />
+        <Settings className={`${iconSize} ${iconMargin}`} />
         Edit
       </Button>
 
