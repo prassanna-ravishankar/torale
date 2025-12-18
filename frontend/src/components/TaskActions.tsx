@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, Trash2, Zap, ChevronRight, Settings } from 'lucide-react';
 import type { Task } from '@/types';
@@ -48,21 +48,36 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
           tooltip: 'Test the completed task again - will remain completed',
           variant: 'outline' as const,
         };
-      default:
-        return {
-          text: isMobile ? 'Test' : 'Run Once',
-          tooltip: 'Test the task immediately',
-          variant: 'default' as const,
-        };
     }
   };
 
   const runOnceConfig = getRunOnceConfig();
 
-  const handleAction = (e: React.MouseEvent, action: () => void) => {
+  // Memoized event handlers for better performance
+  const handleExecute = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    action();
-  };
+    onExecute(task.id);
+  }, [onExecute, task.id]);
+
+  const handleToggle = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggle(task.id, isTaskActive ? 'paused' : 'active');
+  }, [onToggle, task.id, isTaskActive]);
+
+  const handleEdit = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit(task.id);
+  }, [onEdit, task.id]);
+
+  const handleDelete = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete(task.id);
+  }, [onDelete, task.id]);
+
+  const handleViewDetails = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onViewDetails?.(task.id);
+  }, [onViewDetails, task.id]);
 
   if (isMobile) {
     // Mobile view - compact with icon-only buttons for edit/delete
@@ -71,7 +86,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
         <Button
           variant={runOnceConfig.variant}
           size="sm"
-          onClick={(e) => handleAction(e, () => onExecute(task.id))}
+          onClick={handleExecute}
           title={runOnceConfig.tooltip}
           className="gap-1.5"
         >
@@ -82,7 +97,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
         <Button
           variant="outline"
           size="sm"
-          onClick={(e) => handleAction(e, () => onToggle(task.id, isTaskActive ? 'paused' : 'active'))}
+          onClick={handleToggle}
           title={isTaskActive ? 'Pause Schedule' : 'Start Schedule'}
           className="gap-1.5"
         >
@@ -102,7 +117,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
         <Button
           variant="outline"
           size="sm"
-          onClick={(e) => handleAction(e, () => onEdit(task.id))}
+          onClick={handleEdit}
           title="Edit"
         >
           <Settings className={iconSize} />
@@ -111,9 +126,9 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
         <Button
           variant="outline"
           size="sm"
-          onClick={(e) => handleAction(e, () => onDelete(task.id))}
+          onClick={handleDelete}
           title="Delete"
-          className="text-destructive hover:text-destructive"
+          className="text-destructive hover:text-destructive hover:bg-destructive/10"
         >
           <Trash2 className={iconSize} />
         </Button>
@@ -122,7 +137,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={(e) => handleAction(e, () => onViewDetails(task.id))}
+            onClick={handleViewDetails}
             title="View Details"
           >
             <ChevronRight className={iconSize} />
@@ -138,7 +153,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
       <Button
         variant={runOnceConfig.variant}
         size="sm"
-        onClick={(e) => handleAction(e, () => onExecute(task.id))}
+        onClick={handleExecute}
         title={runOnceConfig.tooltip}
       >
         <Zap className={`${iconSize} ${iconMargin}`} />
@@ -148,7 +163,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
       <Button
         variant="outline"
         size="sm"
-        onClick={(e) => handleAction(e, () => onToggle(task.id, isTaskActive ? 'paused' : 'active'))}
+        onClick={handleToggle}
       >
         {isTaskActive ? (
           <>
@@ -166,7 +181,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
       <Button
         variant="outline"
         size="sm"
-        onClick={(e) => handleAction(e, () => onEdit(task.id))}
+        onClick={handleEdit}
       >
         <Settings className={`${iconSize} ${iconMargin}`} />
         Edit
@@ -175,8 +190,8 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
       <Button
         variant="outline"
         size="sm"
-        onClick={(e) => handleAction(e, () => onDelete(task.id))}
-        className="text-destructive hover:text-destructive"
+        onClick={handleDelete}
+        className="text-destructive hover:text-destructive hover:bg-destructive/10"
       >
         <Trash2 className={`${iconSize} ${iconMargin}`} />
         Delete
@@ -186,7 +201,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
         <Button
           variant="outline"
           size="sm"
-          onClick={(e) => handleAction(e, () => onViewDetails(task.id))}
+          onClick={handleViewDetails}
         >
           View Details
           <ChevronRight className={`${iconSize} ml-1.5`} />

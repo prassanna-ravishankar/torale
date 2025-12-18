@@ -48,6 +48,16 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   };
 
   // Build actions array for ActionMenu
+  // Determine Run Once button text based on task state (matching TaskActions component)
+  const getExecuteLabel = () => {
+    switch (task.state) {
+      case 'completed':
+        return 'Run Again';
+      default:
+        return 'Run Once';
+    }
+  };
+
   const actions: Action[] = [
     {
       id: 'edit',
@@ -57,7 +67,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     },
     {
       id: 'execute',
-      label: 'Run Once',
+      label: getExecuteLabel(),
       icon: Zap,
       onClick: () => onExecute(task.id),
     },
@@ -110,7 +120,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <button
             onClick={handleQuickToggle}
             className="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-sm transition-colors"
-            title={isTaskActive ? 'Pause monitor' : 'Resume monitor'}
+            title={isTaskActive ? 'Pause Schedule' : 'Start Schedule'}
           >
             {isTaskActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           </button>
