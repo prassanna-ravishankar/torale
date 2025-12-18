@@ -253,13 +253,9 @@ async def complete_task(task_id: str) -> None:
             )
             return
 
-        # TODO: Address potential race condition here
-        # There's a window between fetching the state above and updating it below
-        # where another process could change the task state (e.g., user pauses via API).
-        # Ideal solution: TaskStateMachine.complete() should use conditional UPDATE
-        # (e.g., UPDATE tasks SET state = 'completed' WHERE id = $1 AND state = 'active')
-        # This requires changes to TaskStateMachine which is out of scope for this PR.
-        # Track this as a high-priority follow-up issue.
+        # Race condition protection: TaskStateMachine now uses conditional UPDATE
+        # to ensure atomic state transitions. If the state changes between our check
+        # above and the transition below, the state machine will raise InvalidTransitionError.
 
         state_machine = TaskStateMachine(db_conn=conn)
         result = await state_machine.complete(

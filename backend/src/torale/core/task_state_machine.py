@@ -77,7 +77,12 @@ class TaskStateMachine:
             )
 
         # 2. Update database FIRST (fail fast if DB error)
-        await self._update_database_state(task_id, to_state)
+        # Use conditional update to prevent race conditions
+        success = await self._update_database_state(task_id, to_state, from_state)
+        if not success:
+            raise InvalidTransitionError(
+                f"Task {task_id} state changed concurrently. Expected {from_state.value} but was different."
+            )
 
         # 3. Apply Temporal side effect
         try:
@@ -130,19 +135,42 @@ class TaskStateMachine:
         }
         return (from_state, to_state) in valid_transitions
 
-    async def _update_database_state(self, task_id: UUID, state: TaskState) -> None:
+    async def _update_database_state(
+        self, task_id: UUID, state: TaskState, expected_current_state: TaskState | None = None
+    ) -> bool:
         """
         Update task state in database.
 
         Args:
             task_id: UUID of the task
             state: New state
+            expected_current_state: If provided, only update if current state matches this
+
+        Returns:
+            True if update was successful, False if state didn't match expected
         """
-        await self.db_conn.execute(
-            "UPDATE tasks SET state = $1, state_changed_at = NOW(), updated_at = NOW() WHERE id = $2",
-            state.value,
-            task_id,
-        )
+        if expected_current_state is not None:
+            # Conditional update - only update if current state matches expected
+            result = await self.db_conn.execute(
+                """
+                UPDATE tasks
+                SET state = $1, state_changed_at = NOW(), updated_at = NOW()
+                WHERE id = $2 AND state = $3
+                """,
+                state.value,
+                task_id,
+                expected_current_state.value,
+            )
+            # Check if any row was updated
+            return result.split()[-1] != "0"
+        else:
+            # Unconditional update (for rollback scenarios)
+            await self.db_conn.execute(
+                "UPDATE tasks SET state = $1, state_changed_at = NOW(), updated_at = NOW() WHERE id = $2",
+                state.value,
+                task_id,
+            )
+            return True
 
     # Convenience methods for common transitions
 
