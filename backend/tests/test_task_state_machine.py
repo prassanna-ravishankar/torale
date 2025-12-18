@@ -15,7 +15,8 @@ from torale.core.task_state_machine import InvalidTransitionError, TaskState, Ta
 def mock_db_conn():
     """Mock database connection"""
     conn = MagicMock()
-    conn.execute = AsyncMock(return_value=None)
+    # Return PostgreSQL-style result string indicating 1 row was updated
+    conn.execute = AsyncMock(return_value="UPDATE 1")
     return conn
 
 
