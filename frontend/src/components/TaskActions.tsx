@@ -48,6 +48,14 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
           tooltip: 'Test the completed task again - will remain completed',
           variant: 'outline' as const,
         };
+      default:
+        // Fallback for unexpected state values - treat as active for safety
+        console.warn(`Unexpected task state: ${task.state}`);
+        return {
+          text: isMobile ? 'Test' : 'Run Once',
+          tooltip: 'Test the task immediately',
+          variant: 'default' as const,
+        };
     }
   };
 
