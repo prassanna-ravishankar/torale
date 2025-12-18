@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, Trash2, Zap, ChevronRight, Settings } from 'lucide-react';
+import { getTaskExecuteLabel } from '@/lib/utils';
 import type { Task } from '@/types';
 
 interface TaskActionsProps {
@@ -27,24 +28,26 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
   const iconSize = isMobile ? 'w-4 h-4' : 'w-3 h-3';
   const iconMargin = isMobile ? '' : 'mr-1.5';
 
-  // Determine Run Once button text and tooltip based on task state
+  // Determine Run Once button configuration based on task state
   const getRunOnceConfig = () => {
+    const text = getTaskExecuteLabel(task.state, isMobile);
+
     switch (task.state) {
       case 'active':
         return {
-          text: isMobile ? 'Test' : 'Run Once',
+          text,
           tooltip: 'Test the task immediately without waiting for the schedule',
           variant: 'default' as const,
         };
       case 'paused':
         return {
-          text: isMobile ? 'Test' : 'Run Once',
+          text,
           tooltip: 'Test the task (currently paused) - will remain paused after execution',
           variant: 'secondary' as const,
         };
       case 'completed':
         return {
-          text: isMobile ? 'Re-test' : 'Run Again',
+          text,
           tooltip: 'Test the completed task again - will remain completed',
           variant: 'outline' as const,
         };
@@ -52,7 +55,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
         // Fallback for unexpected state values - treat as active for safety
         console.warn(`Unexpected task state: ${task.state}`);
         return {
-          text: isMobile ? 'Test' : 'Run Once',
+          text,
           tooltip: 'Test the task immediately',
           variant: 'default' as const,
         };

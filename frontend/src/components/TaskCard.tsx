@@ -4,7 +4,7 @@ import { StatusBadge, SectionLabel, ActionMenu, BrutalistCard, type Action } fro
 import { Clock, Globe, Trash2, Play, Edit, Pause, Zap } from 'lucide-react';
 import { CronDisplay } from '@/components/ui/CronDisplay';
 import { getTaskStatus } from '@/lib/taskStatus';
-import { formatTimeAgo } from '@/lib/utils';
+import { formatTimeAgo, getTaskExecuteLabel } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,16 +48,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   };
 
   // Build actions array for ActionMenu
-  // Determine Run Once button text based on task state (matching TaskActions component)
-  const getExecuteLabel = () => {
-    switch (task.state) {
-      case 'completed':
-        return 'Run Again';
-      default:
-        return 'Run Once';
-    }
-  };
-
   const actions: Action[] = [
     {
       id: 'edit',
@@ -67,7 +57,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     },
     {
       id: 'execute',
-      label: getExecuteLabel(),
+      label: getTaskExecuteLabel(task.state),
       icon: Zap,
       onClick: () => onExecute(task.id),
     },

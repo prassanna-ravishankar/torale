@@ -161,8 +161,13 @@ class TaskStateMachine:
                 task_id,
                 expected_current_state.value,
             )
-            # Check if any row was updated
-            return result.split()[-1] != "0"
+            # Parse affected rows from DB result
+            # asyncpg returns strings like "UPDATE N" where N is the affected rows
+            try:
+                return int(result.split()[-1]) > 0
+            except (ValueError, IndexError):
+                logger.warning(f"Could not parse affected rows from DB result: '{result}'")
+                return False
         else:
             # Unconditional update (for rollback scenarios)
             await self.db_conn.execute(

@@ -1,8 +1,26 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import type { TaskState } from "@/types"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+/**
+ * Get the appropriate execute/run label for a task based on its state
+ * @param state - The current task state
+ * @param isMobile - Whether this is for mobile view
+ * @returns The appropriate label text
+ */
+export function getTaskExecuteLabel(state: TaskState, isMobile: boolean = false): string {
+  switch (state) {
+    case 'completed':
+      return isMobile ? 'Re-test' : 'Run Again';
+    case 'active':
+    case 'paused':
+    default:
+      return isMobile ? 'Test' : 'Run Once';
+  }
 }
 
 /**
