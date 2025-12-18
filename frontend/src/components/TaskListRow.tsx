@@ -13,6 +13,7 @@ import {
   Trash2,
   ChevronRight,
   Clock,
+  Zap,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -177,15 +178,17 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                   {/* Actions */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <Button
-                      variant="outline"
+                      variant="default"
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         onExecute(task.id);
                       }}
-                      title="Run Now"
+                      title="Run Once (Test)"
+                      className="gap-1.5"
                     >
-                      <Play className="w-4 h-4" />
+                      <Zap className="w-4 h-4" />
+                      <span>Test</span>
                     </Button>
                     <Button
                       variant="outline"
@@ -194,12 +197,19 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                         e.stopPropagation();
                         onToggle(task.id, isTaskActive ? 'paused' : 'active');
                       }}
-                      title={isTaskActive ? 'Pause' : 'Resume'}
+                      title={isTaskActive ? 'Pause Schedule' : 'Start Schedule'}
+                      className="gap-1.5"
                     >
                       {isTaskActive ? (
-                        <Pause className="w-4 h-4" />
+                        <>
+                          <Pause className="w-4 h-4" />
+                          <span>Pause</span>
+                        </>
                       ) : (
-                        <Play className="w-4 h-4" />
+                        <>
+                          <Play className="w-4 h-4" />
+                          <span>Start</span>
+                        </>
                       )}
                     </Button>
                     <Button
@@ -279,15 +289,15 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                   {/* Actions */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <Button
-                      variant="outline"
+                      variant="default"
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         onExecute(task.id);
                       }}
                     >
-                      <Play className="w-3 h-3 mr-1.5" />
-                      Run Now
+                      <Zap className="w-3 h-3 mr-1.5" />
+                      Run Once
                     </Button>
                     <Button
                       variant="outline"
@@ -300,12 +310,12 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                       {isTaskActive ? (
                         <>
                           <Pause className="w-3 h-3 mr-1.5" />
-                          Pause
+                          Pause Schedule
                         </>
                       ) : (
                         <>
                           <Play className="w-3 h-3 mr-1.5" />
-                          Resume
+                          Start Schedule
                         </>
                       )}
                     </Button>

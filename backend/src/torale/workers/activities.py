@@ -51,14 +51,9 @@ async def get_task_data(task_id: str) -> dict:
                 non_retryable=True,
             )
 
-        # Check if task is active
+        # Log non-active manual executions (scheduled executions already filtered by Temporal)
         if task["state"] != "active":
-            logger.info(f"Task {task_id} is not active (state={task['state']})")
-            # Non-retryable error for inactive tasks
-            raise ApplicationError(
-                f"Task {task_id} is not active",
-                non_retryable=True,
-            )
+            logger.info(f"Manually executing task {task_id} in {task['state']} state")
 
         # Parse JSON fields
         config = task["config"]

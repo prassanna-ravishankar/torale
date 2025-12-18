@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Task } from '@/types';
 import { StatusBadge, SectionLabel, ActionMenu, BrutalistCard, type Action } from '@/components/torale';
-import { Clock, Globe, Trash2, Play, Edit, Pause } from 'lucide-react';
+import { Clock, Globe, Trash2, Play, Edit, Pause, Zap } from 'lucide-react';
 import { CronDisplay } from '@/components/ui/CronDisplay';
 import { getTaskStatus } from '@/lib/taskStatus';
 import { formatTimeAgo } from '@/lib/utils';
@@ -57,13 +57,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     },
     {
       id: 'execute',
-      label: 'Run Now',
-      icon: Play,
+      label: 'Run Once',
+      icon: Zap,
       onClick: () => onExecute(task.id),
     },
     {
       id: 'toggle',
-      label: isTaskActive ? 'Pause' : 'Resume',
+      label: isTaskActive ? 'Pause Schedule' : 'Start Schedule',
       icon: isTaskActive ? Pause : Play,
       onClick: () => onToggle(task.id, isTaskActive ? 'paused' : 'active'),
       separator: true,
