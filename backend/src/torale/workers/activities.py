@@ -235,10 +235,28 @@ async def complete_task(task_id: str) -> None:
     conn = await get_db_connection()
 
     try:
+        # Get the actual current state of the task
+        task = await conn.fetchrow("SELECT state FROM tasks WHERE id = $1", UUID(task_id))
+        if not task:
+            logger.warning(f"Task {task_id} not found")
+            raise ApplicationError(f"Task {task_id} not found", non_retryable=True)
+
+        current_state_str = task["state"]
+        current_state = TaskState(current_state_str)
+
+        # Only attempt to complete if task is in ACTIVE state
+        # PAUSED tasks should remain paused even after manual execution
+        if current_state != TaskState.ACTIVE:
+            logger.info(
+                f"Task {task_id} is in {current_state.value} state. "
+                f"Skipping completion for non-active task with notify_behavior='once'"
+            )
+            return
+
         state_machine = TaskStateMachine(db_conn=conn)
         result = await state_machine.complete(
             task_id=UUID(task_id),
-            current_state=TaskState.ACTIVE,
+            current_state=current_state,
         )
         logger.info(f"Task {task_id} completed - schedule {result['schedule_action']}")
     except Exception as e:
