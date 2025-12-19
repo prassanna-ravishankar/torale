@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import type { Task } from '@/types';
 import { StatusBadge, SectionLabel, ActionMenu, BrutalistCard, type Action } from '@/components/torale';
-import { Clock, Globe, Trash2, Play, Edit, Pause } from 'lucide-react';
+import { Clock, Globe, Trash2, Play, Edit, Pause, Zap } from 'lucide-react';
 import { CronDisplay } from '@/components/ui/CronDisplay';
 import { getTaskStatus } from '@/lib/taskStatus';
-import { formatTimeAgo } from '@/lib/utils';
+import { formatTimeAgo, getTaskExecuteLabel } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,13 +57,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     },
     {
       id: 'execute',
-      label: 'Run Now',
-      icon: Play,
+      label: getTaskExecuteLabel(task.state),
+      icon: Zap,
       onClick: () => onExecute(task.id),
     },
     {
       id: 'toggle',
-      label: isTaskActive ? 'Pause' : 'Resume',
+      label: isTaskActive ? 'Pause Schedule' : 'Start Schedule',
       icon: isTaskActive ? Pause : Play,
       onClick: () => onToggle(task.id, isTaskActive ? 'paused' : 'active'),
       separator: true,
@@ -110,7 +110,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <button
             onClick={handleQuickToggle}
             className="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-sm transition-colors"
-            title={isTaskActive ? 'Pause monitor' : 'Resume monitor'}
+            title={isTaskActive ? 'Pause Schedule' : 'Start Schedule'}
           >
             {isTaskActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           </button>

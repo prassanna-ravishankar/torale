@@ -3,14 +3,10 @@ import { motion, AnimatePresence } from '@/lib/motion-compat';
 import type { Task } from '@/types';
 import { StatusBadge } from '@/components/torale';
 import { CronDisplay } from '@/components/ui/CronDisplay';
-import { Button } from '@/components/ui/button';
 import { getTaskStatus } from '@/lib/taskStatus';
 import { formatTimeAgo } from '@/lib/utils';
+import { TaskActions } from './TaskActions';
 import {
-  Play,
-  Pause,
-  Settings,
-  Trash2,
   ChevronRight,
   Clock,
 } from 'lucide-react';
@@ -46,7 +42,6 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const status = getTaskStatus(task.state);
-  const isTaskActive = task.state === 'active';
   const lastExecution = task.last_execution;
 
   const handleRowClick = () => {
@@ -175,69 +170,15 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                   )}
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onExecute(task.id);
-                      }}
-                      title="Run Now"
-                    >
-                      <Play className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToggle(task.id, isTaskActive ? 'paused' : 'active');
-                      }}
-                      title={isTaskActive ? 'Pause' : 'Resume'}
-                    >
-                      {isTaskActive ? (
-                        <Pause className="w-4 h-4" />
-                      ) : (
-                        <Play className="w-4 h-4" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit(task.id);
-                      }}
-                      title="Edit"
-                    >
-                      <Settings className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowDeleteDialog(true);
-                      }}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                    <div className="flex-1" />
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onClick(task.id);
-                      }}
-                      title="View Details"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  <TaskActions
+                    task={task}
+                    view="mobile"
+                    onExecute={onExecute}
+                    onToggle={onToggle}
+                    onEdit={onEdit}
+                    onDelete={(id) => setShowDeleteDialog(true)}
+                    onViewDetails={onClick}
+                  />
                 </div>
               </motion.div>
             </td>
@@ -277,74 +218,15 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                   )}
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onExecute(task.id);
-                      }}
-                    >
-                      <Play className="w-3 h-3 mr-1.5" />
-                      Run Now
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToggle(task.id, isTaskActive ? 'paused' : 'active');
-                      }}
-                    >
-                      {isTaskActive ? (
-                        <>
-                          <Pause className="w-3 h-3 mr-1.5" />
-                          Pause
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-3 h-3 mr-1.5" />
-                          Resume
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit(task.id);
-                      }}
-                    >
-                      <Settings className="w-3 h-3 mr-1.5" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowDeleteDialog(true);
-                      }}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="w-3 h-3 mr-1.5" />
-                      Delete
-                    </Button>
-                    <div className="flex-1" />
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onClick(task.id);
-                      }}
-                    >
-                      View Details
-                      <ChevronRight className="w-3 h-3 ml-1.5" />
-                    </Button>
-                  </div>
+                  <TaskActions
+                    task={task}
+                    view="desktop"
+                    onExecute={onExecute}
+                    onToggle={onToggle}
+                    onEdit={onEdit}
+                    onDelete={(id) => setShowDeleteDialog(true)}
+                    onViewDetails={onClick}
+                  />
                 </div>
               </motion.div>
             </td>

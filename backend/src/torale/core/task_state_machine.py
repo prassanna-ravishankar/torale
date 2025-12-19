@@ -77,7 +77,14 @@ class TaskStateMachine:
             )
 
         # 2. Update database FIRST (fail fast if DB error)
-        await self._update_database_state(task_id, to_state)
+        # Use conditional update to prevent race conditions
+        update_result = await self._update_database_state(task_id, to_state, from_state)
+        if update_result is False:
+            raise InvalidTransitionError(
+                f"Task {task_id} state changed concurrently. Expected {from_state.value} but was different."
+            )
+        elif update_result is None:
+            raise RuntimeError(f"Could not parse DB response for task {task_id} state update.")
 
         # 3. Apply Temporal side effect
         try:
@@ -130,19 +137,47 @@ class TaskStateMachine:
         }
         return (from_state, to_state) in valid_transitions
 
-    async def _update_database_state(self, task_id: UUID, state: TaskState) -> None:
+    async def _update_database_state(
+        self, task_id: UUID, state: TaskState, expected_current_state: TaskState | None = None
+    ) -> bool | None:
         """
         Update task state in database.
 
         Args:
             task_id: UUID of the task
             state: New state
+            expected_current_state: If provided, only update if current state matches this
+
+        Returns:
+            True if update was successful, False if state didn't match expected, None if parsing failed
         """
-        await self.db_conn.execute(
-            "UPDATE tasks SET state = $1, state_changed_at = NOW(), updated_at = NOW() WHERE id = $2",
-            state.value,
-            task_id,
-        )
+        if expected_current_state is not None:
+            # Conditional update - only update if current state matches expected
+            result = await self.db_conn.execute(
+                """
+                UPDATE tasks
+                SET state = $1, state_changed_at = NOW(), updated_at = NOW()
+                WHERE id = $2 AND state = $3
+                """,
+                state.value,
+                task_id,
+                expected_current_state.value,
+            )
+            # Parse affected rows from DB result
+            # asyncpg returns strings like "UPDATE N" where N is the affected rows
+            try:
+                return int(result.split()[-1]) > 0
+            except (ValueError, IndexError, AttributeError):
+                logger.warning(f"Could not parse affected rows from DB result: '{result}'")
+                return None
+        else:
+            # Unconditional update (for rollback scenarios)
+            await self.db_conn.execute(
+                "UPDATE tasks SET state = $1, state_changed_at = NOW(), updated_at = NOW() WHERE id = $2",
+                state.value,
+                task_id,
+            )
+            return True
 
     # Convenience methods for common transitions
 
