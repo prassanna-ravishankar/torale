@@ -151,7 +151,7 @@ class UserRepository(BaseRepository):
 
     async def update_webhook_config(
         self, user_id: UUID, webhook_url: str | None, webhook_enabled: bool
-    ) -> dict:
+    ) -> dict | None:
         """Update user's webhook configuration.
 
         Args:
@@ -160,7 +160,7 @@ class UserRepository(BaseRepository):
             webhook_enabled: Whether webhooks are enabled
 
         Returns:
-            Updated webhook config dict
+            Updated webhook config dict or None if user not found
         """
         data = {
             "webhook_url": webhook_url,
