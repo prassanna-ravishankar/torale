@@ -2,6 +2,7 @@ import json
 from uuid import UUID
 
 from pypika_tortoise import Order, Parameter, PostgreSQLQuery
+from pypika_tortoise.functions import Now
 
 from torale.core.database import Database
 from torale.repositories.base import BaseRepository
@@ -88,21 +89,30 @@ class WebhookRepository(BaseRepository):
         if not data and delivered_at is None:
             return await self.find_by_id(self.deliveries, delivery_id)
 
-        # Handle delivered_at separately for NOW() support
+        # Handle delivered_at - use PyPika's Now() function for "NOW()"
         if delivered_at == "NOW()":
-            set_clauses = [f"{col} = ${i}" for i, col in enumerate(data.keys(), start=1)]
-            set_clauses.append("delivered_at = NOW()")
+            # Build PyPika UPDATE query with Now() function
+            query = PostgreSQLQuery.update(self.deliveries)
 
-            params = list(data.values())
+            # Add all data fields to SET clause
+            param_index = 1
+            params = []
+            for col, val in data.items():
+                query = query.set(getattr(self.deliveries, col), Parameter(f"${param_index}"))
+                params.append(val)
+                param_index += 1
+
+            # Add delivered_at with Now()
+            query = query.set(self.deliveries.delivered_at, Now())
+
+            # WHERE clause
+            query = query.where(self.deliveries.id == Parameter(f"${param_index}"))
             params.append(delivery_id)
 
-            query = f"""
-                UPDATE {self.deliveries.get_table_name()}
-                SET {", ".join(set_clauses)}
-                WHERE id = ${len(params)}
-                RETURNING *
-            """
-            return await self.db.fetch_one(query, *params)
+            # RETURNING clause
+            query = query.returning("*")
+
+            return await self.db.fetch_one(str(query), *params)
         elif delivered_at is not None:
             data["delivered_at"] = delivered_at
 
@@ -118,16 +128,14 @@ class WebhookRepository(BaseRepository):
         Returns:
             List of delivery records ready for retry
         """
-        query = f"""
-            SELECT *
-            FROM {self.deliveries.get_table_name()}
-            WHERE status = $1
-              AND next_retry_at IS NOT NULL
-              AND next_retry_at <= NOW()
-            ORDER BY next_retry_at ASC
-            LIMIT $2
-        """
-        return await self.db.fetch_all(query, "failed", limit)
+        query = PostgreSQLQuery.from_(self.deliveries).select("*")
+        query = query.where(self.deliveries.status == Parameter("$1"))
+        query = query.where(self.deliveries.next_retry_at.isnotnull())
+        query = query.where(self.deliveries.next_retry_at <= Now())
+        query = query.orderby(self.deliveries.next_retry_at, order=Order.asc)
+        query = query.limit(Parameter("$2"))
+
+        return await self.db.fetch_all(str(query), "failed", limit)
 
     async def find_by_task(self, task_id: UUID, limit: int = 50, offset: int = 0) -> list[dict]:
         """Find webhook deliveries for a task.

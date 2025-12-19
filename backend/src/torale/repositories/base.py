@@ -71,7 +71,10 @@ class BaseRepository:
         return await self.db.fetch_all(str(query), *(params or []))
 
     async def count(
-        self, table: Table, where_conditions: list[Any] | None = None, params: list[Any] | None = None
+        self,
+        table: Table,
+        where_conditions: list[Any] | None = None,
+        params: list[Any] | None = None,
     ) -> int:
         """Count records matching conditions.
 

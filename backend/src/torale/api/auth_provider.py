@@ -346,16 +346,32 @@ class NoAuthProvider(AuthProvider):
         This creates or updates the test user in the database to ensure
         it exists for development/testing scenarios.
         """
-        await db.execute(
-            """
-            INSERT INTO users (id, clerk_user_id, email, is_active)
-            VALUES ($1, $2, $3, true)
-            ON CONFLICT (clerk_user_id) DO UPDATE SET email = EXCLUDED.email
-            """,
-            NOAUTH_TEST_USER_ID,
-            self.test_user.user_id,
-            self.test_user.email,
-        )
+        from pypika_tortoise import Field, Parameter, PostgreSQLQuery
+
+        user_repo = UserRepository(db)
+
+        # Check if test user already exists
+        existing_user = await user_repo.find_by_clerk_id(self.test_user.user_id)
+
+        if existing_user:
+            # Update email if it has changed
+            if existing_user["email"] != self.test_user.email:
+                await user_repo.update_user(existing_user["id"], email=self.test_user.email)
+        else:
+            # Create new user with specific UUID using PyPika
+            # (create_user doesn't support custom IDs, which we need for noauth)
+            query = PostgreSQLQuery.into(user_repo.users)
+            query = query.columns("id", "clerk_user_id", "email", "is_active")
+            query = query.insert(Parameter("$1"), Parameter("$2"), Parameter("$3"), True)
+            query = query.on_conflict("clerk_user_id").do_update(Field("email"), Parameter("$3"))
+
+            await db.execute(
+                str(query),
+                NOAUTH_TEST_USER_ID,
+                self.test_user.user_id,
+                self.test_user.email,
+            )
+
         logger.info(f"✓ Test user ready ({self.test_user.email})")
 
     async def get_current_user(

@@ -2,6 +2,7 @@ import json
 from uuid import UUID
 
 from pypika_tortoise import Order, Parameter, PostgreSQLQuery
+from pypika_tortoise.functions import Now
 
 from torale.core.database import Database
 from torale.repositories.base import BaseRepository
@@ -77,22 +78,30 @@ class TaskExecutionRepository(BaseRepository):
         if not data and completed_at is None:
             return await self.find_by_id(self.executions, execution_id)
 
-        # Handle completed_at separately for NOW() support
+        # Handle completed_at - use PyPika's Now() function for "NOW()"
         if completed_at == "NOW()":
-            # Build custom update with NOW()
-            set_clauses = [f"{col} = ${i}" for i, col in enumerate(data.keys(), start=1)]
-            set_clauses.append("completed_at = NOW()")
+            # Build PyPika UPDATE query with Now() function
+            query = PostgreSQLQuery.update(self.executions)
 
-            params = list(data.values())
+            # Add all data fields to SET clause
+            param_index = 1
+            params = []
+            for col, val in data.items():
+                query = query.set(getattr(self.executions, col), Parameter(f"${param_index}"))
+                params.append(val)
+                param_index += 1
+
+            # Add completed_at with Now()
+            query = query.set(self.executions.completed_at, Now())
+
+            # WHERE clause
+            query = query.where(self.executions.id == Parameter(f"${param_index}"))
             params.append(execution_id)
 
-            query = f"""
-                UPDATE {self.executions.get_table_name()}
-                SET {", ".join(set_clauses)}
-                WHERE id = ${len(params)}
-                RETURNING *
-            """
-            return await self.db.fetch_one(query, *params)
+            # RETURNING clause
+            query = query.returning("*")
+
+            return await self.db.fetch_one(str(query), *params)
         elif completed_at is not None:
             data["completed_at"] = completed_at
 

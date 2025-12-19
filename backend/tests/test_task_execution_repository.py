@@ -125,7 +125,8 @@ class TestTaskExecutionRepositoryUpdateOperations:
 
         assert result == updated_execution
         call_args = mock_db.fetch_one.call_args[0]
-        assert "completed_at = NOW()" in call_args[0]
+        # PyPika generates no spaces around = sign
+        assert "completed_at" in call_args[0] and "NOW()" in call_args[0]
 
     @pytest.mark.asyncio
     async def test_update_execution_condition_met(self, execution_repo, mock_db):

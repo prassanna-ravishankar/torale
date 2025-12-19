@@ -1,7 +1,7 @@
 from uuid import UUID
 
-from pypika_tortoise import Order, Parameter, PostgreSQLQuery
-from pypika_tortoise.functions import Now
+from pypika_tortoise import Interval, Order, Parameter, PostgreSQLQuery
+from pypika_tortoise.functions import Count, Now
 
 from torale.core.database import Database
 from torale.repositories.base import BaseRepository
@@ -122,15 +122,13 @@ class EmailVerificationRepository(BaseRepository):
         Returns:
             Count of recent verifications
         """
-        # Use parameterized query to prevent SQL injection
-        # PostgreSQL allows INTERVAL with concatenation: INTERVAL '1 hour' * N
-        query = f"""
-            SELECT COUNT(*)
-            FROM {self.verifications.get_table_name()}
-            WHERE user_id = $1
-              AND created_at > NOW() - (INTERVAL '1 hour' * $2)
-        """
-        return await self.db.fetch_val(query, user_id, hours) or 0
+        # Use PyPika with Interval for type-safe interval arithmetic
+        interval = Interval(hours=1) * Parameter("$2")
+        query = PostgreSQLQuery.from_(self.verifications).select(Count("*"))
+        query = query.where(self.verifications.user_id == Parameter("$1"))
+        query = query.where(self.verifications.created_at > Now() - interval)
+
+        return await self.db.fetch_val(str(query), user_id, hours) or 0
 
     async def find_by_user(self, user_id: UUID, limit: int = 50) -> list[dict]:
         """Find all verifications for a user.
