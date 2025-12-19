@@ -1,11 +1,11 @@
 """Authentication and user management endpoints."""
 
-import hashlib
 import secrets
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
+import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select, text
@@ -223,7 +223,8 @@ async def create_api_key(
 
     # Generate random API key
     key = f"sk_{secrets.token_urlsafe(32)}"
-    key_hash = hashlib.sha256(key.encode()).hexdigest()
+    # Use bcrypt for secure hashing (computationally expensive, resistant to brute force)
+    key_hash = bcrypt.hashpw(key.encode(), bcrypt.gensalt()).decode()
     key_prefix = key[:15] + "..."
 
     # Store in database

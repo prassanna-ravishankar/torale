@@ -1,20 +1,19 @@
 """Authentication provider abstraction and implementations."""
 
-import hashlib
 import logging
 import uuid
 from abc import ABC, abstractmethod
 
+import bcrypt
 from clerk_backend_api import Clerk
 from clerk_backend_api.security import verify_token
 from clerk_backend_api.security.types import TokenVerificationError, VerifyTokenOptions
 from fastapi import HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.core.config import settings
 from torale.core.database import Database
+from torale.repositories import ApiKeyRepository, UserRepository
 
 logger = logging.getLogger(__name__)
 
@@ -58,14 +57,14 @@ class AuthProvider(ABC):
     async def get_current_user(
         self,
         credentials: HTTPAuthorizationCredentials | None,
-        session: AsyncSession,
+        db: Database,
     ) -> User:
         """
         Authenticate the user based on credentials.
 
         Args:
             credentials: The HTTP credentials (Bearer token).
-            session: Database session.
+            db: Database instance.
 
         Returns:
             User: The authenticated user.
@@ -105,7 +104,7 @@ class ProductionAuthProvider(AuthProvider):
     async def get_current_user(
         self,
         credentials: HTTPAuthorizationCredentials | None,
-        session: AsyncSession,
+        db: Database,
     ) -> User:
         """Authenticate user via Clerk JWT or API key."""
         if not credentials:
@@ -119,18 +118,18 @@ class ProductionAuthProvider(AuthProvider):
 
         # Check if it's an API key (starts with 'sk_')
         if token.startswith("sk_"):
-            return await self._verify_api_key(token, session)
+            return await self._verify_api_key(token, db)
 
         # Otherwise try Clerk JWT
-        return await self._verify_clerk_token(token, session)
+        return await self._verify_clerk_token(token, db)
 
-    async def _verify_clerk_token(self, token: str, session: AsyncSession) -> User:
+    async def _verify_clerk_token(self, token: str, db: Database) -> User:
         """
         Verify Clerk session token and return user information.
 
         Args:
             token: JWT token from Clerk
-            session: Database session
+            db: Database instance
 
         Returns:
             User object with user information
@@ -192,15 +191,10 @@ class ProductionAuthProvider(AuthProvider):
                         detail="User has no email address",
                     )
 
-                # Fetch database user_id
-                db_user_id = None
-                result = await session.execute(
-                    text("SELECT id FROM users WHERE clerk_user_id = :clerk_user_id"),
-                    {"clerk_user_id": clerk_user_id},
-                )
-                row = result.first()
-                if row:
-                    db_user_id = row[0]
+                # Fetch database user_id using repository
+                user_repo = UserRepository(db)
+                db_user = await user_repo.find_by_clerk_id(clerk_user_id)
+                db_user_id = db_user["id"] if db_user else None
 
                 return User(
                     user_id=clerk_user_id,
@@ -234,13 +228,16 @@ class ProductionAuthProvider(AuthProvider):
                 headers={"WWW-Authenticate": "Bearer"},
             ) from e
 
-    async def _verify_api_key(self, api_key: str, session: AsyncSession) -> User:
+    async def _verify_api_key(self, api_key: str, db: Database) -> User:
         """
         Verify API key and return user information.
 
+        Uses bcrypt for secure verification. Since bcrypt hashes include unique salts,
+        we look up by key prefix and then verify the hash with bcrypt.checkpw().
+
         Args:
             api_key: The API key to verify
-            session: Database session
+            db: Database instance
 
         Returns:
             User object with user information
@@ -248,47 +245,37 @@ class ProductionAuthProvider(AuthProvider):
         Raises:
             HTTPException: If API key is invalid or inactive
         """
-        key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+        # Extract prefix for lookup (first 15 chars + "...")
+        key_prefix = api_key[:15] + "..."
 
-        # Look up API key in database
-        result = await session.execute(
-            text("""
-            SELECT ak.user_id, ak.id as key_id, u.clerk_user_id, u.email
-            FROM api_keys ak
-            JOIN users u ON ak.user_id = u.id
-            WHERE ak.key_hash = :key_hash AND ak.is_active = true
-            """),
-            {"key_hash": key_hash},
-        )
-        row = result.first()
+        # Look up API key by prefix
+        api_key_repo = ApiKeyRepository(db)
+        key_data = await api_key_repo.find_by_prefix(key_prefix)
 
-        if not row:
+        if not key_data:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid API key",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        user_id, key_id, clerk_user_id, email = row
+        # Verify the hash using bcrypt
+        stored_hash = key_data["key_hash"].encode()
+        if not bcrypt.checkpw(api_key.encode(), stored_hash):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid API key",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
-        # Update last_used_at timestamp (commit immediately for audit trail)
-        # This is a self-contained audit operation that should persist regardless
-        # of whether the main request succeeds or fails
-        await session.execute(
-            text("""
-            UPDATE api_keys
-            SET last_used_at = NOW()
-            WHERE id = :key_id
-            """),
-            {"key_id": key_id},
-        )
-        await session.commit()
+        # Update last_used_at timestamp
+        await api_key_repo.update_last_used(key_data["key_id"])
 
         return User(
-            user_id=clerk_user_id,
-            email=email,
+            user_id=key_data["clerk_user_id"],
+            email=key_data["email"],
             email_verified=True,  # API keys are only created for verified users
-            db_user_id=user_id,
+            db_user_id=key_data["user_id"],
         )
 
     async def verify_role(self, user: User, required_role: str) -> bool:
@@ -372,22 +359,38 @@ class NoAuthProvider(AuthProvider):
         This creates or updates the test user in the database to ensure
         it exists for development/testing scenarios.
         """
-        await db.execute(
-            """
-            INSERT INTO users (id, clerk_user_id, email, is_active)
-            VALUES ($1, $2, $3, true)
-            ON CONFLICT (clerk_user_id) DO UPDATE SET email = EXCLUDED.email
-            """,
-            NOAUTH_TEST_USER_ID,
-            self.test_user.user_id,
-            self.test_user.email,
-        )
+        from pypika_tortoise import Field, Parameter, PostgreSQLQuery
+
+        user_repo = UserRepository(db)
+
+        # Check if test user already exists
+        existing_user = await user_repo.find_by_clerk_id(self.test_user.user_id)
+
+        if existing_user:
+            # Update email if it has changed
+            if existing_user["email"] != self.test_user.email:
+                await user_repo.update_user(existing_user["id"], email=self.test_user.email)
+        else:
+            # Create new user with specific UUID using PyPika
+            # (create_user doesn't support custom IDs, which we need for noauth)
+            query = PostgreSQLQuery.into(user_repo.users)
+            query = query.columns("id", "clerk_user_id", "email", "is_active")
+            query = query.insert(Parameter("$1"), Parameter("$2"), Parameter("$3"), True)
+            query = query.on_conflict("clerk_user_id").do_update(Field("email"), Parameter("$3"))
+
+            await db.execute(
+                str(query),
+                NOAUTH_TEST_USER_ID,
+                self.test_user.user_id,
+                self.test_user.email,
+            )
+
         logger.info(f"✓ Test user ready ({self.test_user.email})")
 
     async def get_current_user(
         self,
         credentials: HTTPAuthorizationCredentials | None,
-        session: AsyncSession,
+        db: Database,
     ) -> User:
         """Return the test user (ignoring credentials in dev mode)."""
         return self.test_user
