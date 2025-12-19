@@ -167,7 +167,7 @@ class TaskStateMachine:
             # asyncpg returns strings like "UPDATE N" where N is the affected rows
             try:
                 return int(result.split()[-1]) > 0
-            except (ValueError, IndexError):
+            except (ValueError, IndexError, AttributeError):
                 logger.warning(f"Could not parse affected rows from DB result: '{result}'")
                 return None
         else:

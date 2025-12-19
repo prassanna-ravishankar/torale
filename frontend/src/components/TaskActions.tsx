@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, Trash2, Zap, ChevronRight, Settings } from 'lucide-react';
 import { getTaskExecuteLabel } from '@/lib/utils';
@@ -29,7 +29,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
   const iconMargin = isMobile ? '' : 'mr-1.5';
 
   // Determine Run Once button configuration based on task state
-  const getRunOnceConfig = () => {
+  const runOnceConfig = useMemo(() => {
     const text = getTaskExecuteLabel(task.state, isMobile);
 
     switch (task.state) {
@@ -60,9 +60,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
           variant: 'default' as const,
         };
     }
-  };
-
-  const runOnceConfig = getRunOnceConfig();
+  }, [task.state, isMobile]);
 
   // Memoized event handlers for better performance
   const handleExecute = useCallback((e: React.MouseEvent) => {
