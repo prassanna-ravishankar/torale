@@ -260,3 +260,45 @@ class TestTaskStateMachine:
             )
 
         assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_race_condition_concurrent_state_change(self, task_data):
+        """Test that concurrent state changes are detected (UPDATE affects 0 rows)"""
+        # Mock db_conn to return "UPDATE 0" (no rows affected)
+        mock_db_conn = MagicMock()
+        mock_db_conn.execute = AsyncMock(return_value="UPDATE 0")
+
+        machine = TaskStateMachine(db_conn=mock_db_conn)
+
+        # Should raise InvalidTransitionError due to race condition
+        with pytest.raises(InvalidTransitionError) as exc_info:
+            await machine.transition(
+                task_id=task_data["task_id"],
+                from_state=TaskState.ACTIVE,
+                to_state=TaskState.PAUSED,
+            )
+
+        assert "state changed concurrently" in str(exc_info.value).lower()
+        # Verify we only attempted the conditional update once (no rollback)
+        assert mock_db_conn.execute.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_db_parsing_error(self, task_data):
+        """Test that unparseable DB responses are handled gracefully"""
+        # Mock db_conn to return an unparseable result
+        mock_db_conn = MagicMock()
+        mock_db_conn.execute = AsyncMock(return_value="INVALID_RESPONSE")
+
+        machine = TaskStateMachine(db_conn=mock_db_conn)
+
+        # Should raise RuntimeError due to parsing failure
+        with pytest.raises(RuntimeError) as exc_info:
+            await machine.transition(
+                task_id=task_data["task_id"],
+                from_state=TaskState.ACTIVE,
+                to_state=TaskState.PAUSED,
+            )
+
+        assert "Could not parse DB response" in str(exc_info.value)
+        # Verify we only attempted the update once (no rollback on parsing error)
+        assert mock_db_conn.execute.await_count == 1
