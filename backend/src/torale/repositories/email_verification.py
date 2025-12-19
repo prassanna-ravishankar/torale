@@ -120,13 +120,15 @@ class EmailVerificationRepository(BaseRepository):
         Returns:
             Count of recent verifications
         """
+        # Use parameterized query to prevent SQL injection
+        # PostgreSQL allows INTERVAL with concatenation: INTERVAL '1 hour' * N
         query = f"""
             SELECT COUNT(*)
             FROM {self.verifications.get_table_name()}
             WHERE user_id = $1
-              AND created_at > NOW() - INTERVAL '{hours} hours'
+              AND created_at > NOW() - (INTERVAL '1 hour' * $2)
         """
-        return await self.db.fetch_val(query, user_id) or 0
+        return await self.db.fetch_val(query, user_id, hours) or 0
 
     async def find_by_user(self, user_id: UUID, limit: int = 50) -> list[dict]:
         """Find all verifications for a user.
