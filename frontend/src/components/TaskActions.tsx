@@ -130,6 +130,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
           size="sm"
           onClick={handleEdit}
           title="Edit"
+          aria-label="Edit task"
         >
           <Settings className={iconSize} />
         </Button>
@@ -139,6 +140,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
           size="sm"
           onClick={handleDelete}
           title="Delete"
+          aria-label="Delete task"
           className="text-destructive hover:text-destructive hover:bg-destructive/10"
         >
           <Trash2 className={iconSize} />
@@ -150,6 +152,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
             size="sm"
             onClick={handleViewDetails}
             title="View Details"
+            aria-label="View task details"
           >
             <ChevronRight className={iconSize} />
           </Button>

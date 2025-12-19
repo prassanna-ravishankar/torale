@@ -78,11 +78,13 @@ class TaskStateMachine:
 
         # 2. Update database FIRST (fail fast if DB error)
         # Use conditional update to prevent race conditions
-        success = await self._update_database_state(task_id, to_state, from_state)
-        if not success:
+        update_result = await self._update_database_state(task_id, to_state, from_state)
+        if update_result is False:
             raise InvalidTransitionError(
                 f"Task {task_id} state changed concurrently. Expected {from_state.value} but was different."
             )
+        elif update_result is None:
+            raise RuntimeError(f"Could not parse DB response for task {task_id} state update.")
 
         # 3. Apply Temporal side effect
         try:
@@ -137,7 +139,7 @@ class TaskStateMachine:
 
     async def _update_database_state(
         self, task_id: UUID, state: TaskState, expected_current_state: TaskState | None = None
-    ) -> bool:
+    ) -> bool | None:
         """
         Update task state in database.
 
@@ -147,7 +149,7 @@ class TaskStateMachine:
             expected_current_state: If provided, only update if current state matches this
 
         Returns:
-            True if update was successful, False if state didn't match expected
+            True if update was successful, False if state didn't match expected, None if parsing failed
         """
         if expected_current_state is not None:
             # Conditional update - only update if current state matches expected
@@ -167,7 +169,7 @@ class TaskStateMachine:
                 return int(result.split()[-1]) > 0
             except (ValueError, IndexError):
                 logger.warning(f"Could not parse affected rows from DB result: '{result}'")
-                return False
+                return None
         else:
             # Unconditional update (for rollback scenarios)
             await self.db_conn.execute(
