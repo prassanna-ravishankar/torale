@@ -17,18 +17,18 @@ class BaseRepository:
         """
         self.db = db
 
-    async def find_by_id(self, table: Table, id: UUID) -> dict | None:
+    async def find_by_id(self, table: Table, record_id: UUID) -> dict | None:
         """Find a record by ID.
 
         Args:
             table: PyPika table instance
-            id: Record UUID
+            record_id: Record UUID
 
         Returns:
             Record dict or None if not found
         """
         query = PostgreSQLQuery.from_(table).select("*").where(table.id == Parameter("$1"))
-        return await self.db.fetch_one(str(query), id)
+        return await self.db.fetch_one(str(query), record_id)
 
     async def find_all(
         self,
@@ -91,18 +91,18 @@ class BaseRepository:
 
         return await self.db.fetch_val(str(query), *(params or [])) or 0
 
-    async def delete_by_id(self, table: Table, id: UUID) -> str:
+    async def delete_by_id(self, table: Table, record_id: UUID) -> str:
         """Delete a record by ID.
 
         Args:
             table: PyPika table instance
-            id: Record UUID
+            record_id: Record UUID
 
         Returns:
             SQL execution result
         """
         query = PostgreSQLQuery.from_(table).delete().where(table.id == Parameter("$1"))
-        return await self.db.execute(str(query), id)
+        return await self.db.execute(str(query), record_id)
 
     def _build_insert_query(
         self, table: Table, data: dict, returning: bool = True
@@ -131,13 +131,13 @@ class BaseRepository:
         return str(query), params
 
     def _build_update_query(
-        self, table: Table, id: UUID, data: dict, returning: bool = True
+        self, table: Table, record_id: UUID, data: dict, returning: bool = True
     ) -> tuple[str, list]:
         """Build UPDATE query from data dict.
 
         Args:
             table: PyPika table instance
-            id: Record UUID to update
+            record_id: Record UUID to update
             data: Dict of column: value pairs
             returning: Whether to include RETURNING *
 
@@ -152,7 +152,7 @@ class BaseRepository:
             params.append(value)
 
         # ID is the last parameter
-        params.append(id)
+        params.append(record_id)
         query = query.where(table.id == Parameter(f"${len(params)}"))
 
         if returning:

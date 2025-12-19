@@ -32,7 +32,7 @@ class ApiKeyRepository(BaseRepository):
         )
         query = query.join(self.users).on(self.api_keys.user_id == self.users.id)
         query = query.where(self.api_keys.key_hash == Parameter("$1"))
-        query = query.where(self.api_keys.is_active == True)  # noqa: E712
+        query = query.where(self.api_keys.is_active.eq(True))
 
         return await self.db.fetch_one(str(query), key_hash)
 
@@ -99,7 +99,7 @@ class ApiKeyRepository(BaseRepository):
         query = query.where(self.api_keys.user_id == Parameter("$1"))
 
         if not include_inactive:
-            query = query.where(self.api_keys.is_active == True)  # noqa: E712
+            query = query.where(self.api_keys.is_active.eq(True))
 
         query = query.orderby(self.api_keys.created_at, order=Order.desc)
 
