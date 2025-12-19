@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from pypika_tortoise import Order, Parameter, PostgreSQLQuery
+from pypika_tortoise.functions import Now
 
 from torale.core.database import Database
 from torale.repositories.base import BaseRepository
@@ -55,7 +56,7 @@ class EmailVerificationRepository(BaseRepository):
         """
         query = PostgreSQLQuery.from_(self.verifications).select("*")
         query = query.where(self.verifications.verification_code == Parameter("$1"))
-        query = query.where(self.verifications.verified == False)  # noqa: E712
+        query = query.where(self.verifications.verified.eq(False))
 
         return await self.db.fetch_one(str(query), verification_code)
 
@@ -68,13 +69,14 @@ class EmailVerificationRepository(BaseRepository):
         Returns:
             Updated verification record
         """
-        query = f"""
-            UPDATE {self.verifications.get_table_name()}
-            SET verified = true, verified_at = NOW()
-            WHERE id = $1
-            RETURNING *
-        """
-        return await self.db.fetch_one(query, verification_id)
+        query = (
+            PostgreSQLQuery.update(self.verifications)
+            .set(self.verifications.verified, True)
+            .set(self.verifications.verified_at, Now())
+            .where(self.verifications.id == Parameter("$1"))
+            .returning("*")
+        )
+        return await self.db.fetch_one(str(query), verification_id)
 
     async def increment_attempts(self, verification_id: UUID) -> dict:
         """Increment verification attempt count.
@@ -85,13 +87,13 @@ class EmailVerificationRepository(BaseRepository):
         Returns:
             Updated verification record
         """
-        query = f"""
-            UPDATE {self.verifications.get_table_name()}
-            SET attempts = attempts + 1
-            WHERE id = $1
-            RETURNING *
-        """
-        return await self.db.fetch_one(query, verification_id)
+        query = (
+            PostgreSQLQuery.update(self.verifications)
+            .set(self.verifications.attempts, self.verifications.attempts + 1)
+            .where(self.verifications.id == Parameter("$1"))
+            .returning("*")
+        )
+        return await self.db.fetch_one(str(query), verification_id)
 
     async def find_pending_by_user_email(self, user_id: UUID, email: str) -> dict | None:
         """Find pending verification for user and email.
@@ -106,7 +108,7 @@ class EmailVerificationRepository(BaseRepository):
         query = PostgreSQLQuery.from_(self.verifications).select("*")
         query = query.where(self.verifications.user_id == Parameter("$1"))
         query = query.where(self.verifications.email == Parameter("$2"))
-        query = query.where(self.verifications.verified == False)  # noqa: E712
+        query = query.where(self.verifications.verified.eq(False))
 
         return await self.db.fetch_one(str(query), user_id, email)
 

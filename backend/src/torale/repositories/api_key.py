@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from pypika_tortoise import Order, Parameter, PostgreSQLQuery
+from pypika_tortoise.functions import Now
 
 from torale.core.database import Database
 from torale.repositories.base import BaseRepository
@@ -65,12 +66,12 @@ class ApiKeyRepository(BaseRepository):
         Args:
             key_id: API key UUID
         """
-        query = f"""
-            UPDATE {self.api_keys.get_table_name()}
-            SET last_used_at = NOW()
-            WHERE id = $1
-        """
-        await self.db.execute(query, key_id)
+        query = (
+            PostgreSQLQuery.update(self.api_keys)
+            .set(self.api_keys.last_used_at, Now())
+            .where(self.api_keys.id == Parameter("$1"))
+        )
+        await self.db.execute(str(query), key_id)
 
     async def revoke_key(self, key_id: UUID) -> dict:
         """Revoke (deactivate) an API key.

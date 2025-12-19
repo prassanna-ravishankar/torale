@@ -121,7 +121,8 @@ class TestApiKeyRepositoryUpdateOperations:
 
         mock_db.execute.assert_called_once()
         call_args = mock_db.execute.call_args[0]
-        assert "last_used_at = NOW()" in call_args[0]
+        # PyPika generates no spaces around = sign
+        assert "last_used_at" in call_args[0] and "NOW()" in call_args[0]
 
     @pytest.mark.asyncio
     async def test_revoke_key(self, api_key_repo, mock_db):

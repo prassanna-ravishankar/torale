@@ -62,10 +62,10 @@ class BaseRepository:
             field, order = order_by
             query = query.orderby(field, order=order)
 
-        if limit:
+        if limit is not None:
             query = query.limit(limit)
 
-        if offset:
+        if offset is not None:
             query = query.offset(offset)
 
         return await self.db.fetch_all(str(query), *(params or []))

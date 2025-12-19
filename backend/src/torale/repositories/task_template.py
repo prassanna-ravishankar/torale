@@ -21,7 +21,7 @@ class TaskTemplateRepository(BaseRepository):
             List of active template records
         """
         query = PostgreSQLQuery.from_(self.templates).select("*")
-        query = query.where(self.templates.is_active == True)  # noqa: E712
+        query = query.where(self.templates.is_active.eq(True))
         query = query.orderby(self.templates.display_order, order=Order.asc)
 
         return await self.db.fetch_all(str(query))
@@ -37,7 +37,7 @@ class TaskTemplateRepository(BaseRepository):
         """
         query = PostgreSQLQuery.from_(self.templates).select("*")
         query = query.where(self.templates.slug == Parameter("$1"))
-        query = query.where(self.templates.is_active == True)  # noqa: E712
+        query = query.where(self.templates.is_active.eq(True))
 
         return await self.db.fetch_one(str(query), slug)
 
@@ -47,9 +47,9 @@ class TaskTemplateRepository(BaseRepository):
         Args:
             template_id: Template UUID
         """
-        query = f"""
-            UPDATE {self.templates.get_table_name()}
-            SET usage_count = usage_count + 1
-            WHERE id = $1
-        """
-        await self.db.execute(query, template_id)
+        query = (
+            PostgreSQLQuery.update(self.templates)
+            .set(self.templates.usage_count, self.templates.usage_count + 1)
+            .where(self.templates.id == Parameter("$1"))
+        )
+        await self.db.execute(str(query), template_id)

@@ -321,7 +321,7 @@ class TaskRepository(BaseRepository):
             self.tasks.star, self.users.username.as_("creator_username")
         )
         query = query.join(self.users).on(self.tasks.user_id == self.users.id)
-        query = query.where(self.tasks.is_public == True)  # noqa: E712
+        query = query.where(self.tasks.is_public.eq(True))
 
         if search:
             search_param = f"%{search}%"
@@ -353,7 +353,7 @@ class TaskRepository(BaseRepository):
         )
         query = query.join(self.users).on(self.tasks.user_id == self.users.id)
         query = query.where(self.tasks.slug == Parameter("$1"))
-        query = query.where(self.tasks.is_public == True)  # noqa: E712
+        query = query.where(self.tasks.is_public.eq(True))
 
         return await self.db.fetch_one(str(query), slug)
 

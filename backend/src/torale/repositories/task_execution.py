@@ -148,7 +148,7 @@ class TaskExecutionRepository(BaseRepository):
         """
         query = PostgreSQLQuery.from_(self.executions).select("*")
         query = query.where(self.executions.task_id == Parameter("$1"))
-        query = query.where(self.executions.condition_met == True)  # noqa: E712
+        query = query.where(self.executions.condition_met.eq(True))
         query = query.orderby(self.executions.started_at, order=Order.desc)
         query = query.limit(limit).offset(offset)
 
