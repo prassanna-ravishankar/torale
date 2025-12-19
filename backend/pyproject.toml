@@ -62,6 +62,7 @@ dependencies = [
     "python-slugify>=8.0.0",
     "slowapi>=0.1.9",
     "pypika-tortoise>=0.1.6",
+    "bcrypt>=4.0.0",
 ]
 
 [project.urls]

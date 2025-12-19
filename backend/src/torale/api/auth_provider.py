@@ -1,10 +1,10 @@
 """Authentication provider abstraction and implementations."""
 
-import hashlib
 import logging
 import uuid
 from abc import ABC, abstractmethod
 
+import bcrypt
 from clerk_backend_api import Clerk
 from clerk_backend_api.security import verify_token
 from clerk_backend_api.security.types import TokenVerificationError, VerifyTokenOptions
@@ -232,6 +232,9 @@ class ProductionAuthProvider(AuthProvider):
         """
         Verify API key and return user information.
 
+        Uses bcrypt for secure verification. Since bcrypt hashes include unique salts,
+        we look up by key prefix and then verify the hash with bcrypt.checkpw().
+
         Args:
             api_key: The API key to verify
             db: Database instance
@@ -242,13 +245,23 @@ class ProductionAuthProvider(AuthProvider):
         Raises:
             HTTPException: If API key is invalid or inactive
         """
-        key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+        # Extract prefix for lookup (first 15 chars + "...")
+        key_prefix = api_key[:15] + "..."
 
-        # Look up API key in database using repository
+        # Look up API key by prefix
         api_key_repo = ApiKeyRepository(db)
-        key_data = await api_key_repo.find_by_hash(key_hash)
+        key_data = await api_key_repo.find_by_prefix(key_prefix)
 
         if not key_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid API key",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Verify the hash using bcrypt
+        stored_hash = key_data["key_hash"].encode()
+        if not bcrypt.checkpw(api_key.encode(), stored_hash):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid API key",

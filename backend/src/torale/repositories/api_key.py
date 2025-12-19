@@ -19,8 +19,11 @@ class ApiKeyRepository(BaseRepository):
     async def find_by_hash(self, key_hash: str) -> dict | None:
         """Find active API key by hash with user info.
 
+        DEPRECATED: This method is kept for backward compatibility but should not be used
+        with bcrypt hashes. Use find_by_prefix() instead.
+
         Args:
-            key_hash: SHA256 hash of the API key
+            key_hash: Hash of the API key
 
         Returns:
             Dict with key and user info or None
@@ -28,6 +31,7 @@ class ApiKeyRepository(BaseRepository):
         query = PostgreSQLQuery.from_(self.api_keys).select(
             self.api_keys.id.as_("key_id"),
             self.api_keys.user_id,
+            self.api_keys.key_hash,
             self.users.clerk_user_id,
             self.users.email,
         )
@@ -36,6 +40,30 @@ class ApiKeyRepository(BaseRepository):
         query = query.where(self.api_keys.is_active.eq(True))
 
         return await self.db.fetch_one(str(query), key_hash)
+
+    async def find_by_prefix(self, key_prefix: str) -> dict | None:
+        """Find active API key by prefix with user info.
+
+        Used for bcrypt verification where we can't pre-compute the hash.
+
+        Args:
+            key_prefix: Display prefix of the API key (e.g., "sk_abc...xyz")
+
+        Returns:
+            Dict with key, hash, and user info or None
+        """
+        query = PostgreSQLQuery.from_(self.api_keys).select(
+            self.api_keys.id.as_("key_id"),
+            self.api_keys.user_id,
+            self.api_keys.key_hash,
+            self.users.clerk_user_id,
+            self.users.email,
+        )
+        query = query.join(self.users).on(self.api_keys.user_id == self.users.id)
+        query = query.where(self.api_keys.key_prefix == Parameter("$1"))
+        query = query.where(self.api_keys.is_active.eq(True))
+
+        return await self.db.fetch_one(str(query), key_prefix)
 
     async def create_key(self, user_id: UUID, key_prefix: str, key_hash: str, name: str) -> dict:
         """Create a new API key.
