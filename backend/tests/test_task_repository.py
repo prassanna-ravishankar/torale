@@ -252,7 +252,7 @@ class TestTaskRepositoryVisibilityOperations:
 
         mock_db.execute.assert_called_once()
         call_args = mock_db.execute.call_args[0]
-        assert "view_count = view_count + 1" in call_args[0]
+        assert '"view_count"+1' in call_args[0] or "view_count+1" in call_args[0]
 
     @pytest.mark.asyncio
     async def test_increment_subscriber_count(self, task_repo, mock_db):
@@ -263,7 +263,7 @@ class TestTaskRepositoryVisibilityOperations:
 
         mock_db.execute.assert_called_once()
         call_args = mock_db.execute.call_args[0]
-        assert "subscriber_count = subscriber_count + 1" in call_args[0]
+        assert '"subscriber_count"+1' in call_args[0] or "subscriber_count+1" in call_args[0]
 
 
 class TestTaskRepositoryPublicTasksOperations:

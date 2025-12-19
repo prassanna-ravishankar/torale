@@ -211,15 +211,14 @@ class TestUserRepositoryWebhookOperations:
     async def test_update_webhook_config(self, user_repo, mock_db):
         """Test updating webhook configuration."""
         user_id = uuid4()
-        updated_config = {
+        updated_row = {
             "webhook_url": "https://new.com/webhook",
             "webhook_enabled": True,
             "webhook_secret": "secret_123",
         }
 
-        # First call updates, second call fetches
-        mock_db.execute.return_value = None
-        mock_db.fetch_one.return_value = updated_config
+        # Now uses RETURNING clause, single fetch_one call
+        mock_db.fetch_one.return_value = updated_row
 
         result = await user_repo.update_webhook_config(
             user_id, webhook_url="https://new.com/webhook", webhook_enabled=True
@@ -227,7 +226,8 @@ class TestUserRepositoryWebhookOperations:
 
         assert result["url"] == "https://new.com/webhook"
         assert result["enabled"] is True
-        mock_db.execute.assert_called_once()
+        assert result["secret"] == "secret_123"
+        mock_db.fetch_one.assert_called_once()
 
 
 class TestUserRepositoryUtilities:

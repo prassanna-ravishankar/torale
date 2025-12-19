@@ -2,7 +2,7 @@ import json
 from uuid import UUID
 
 from pypika_tortoise import Order, Parameter, PostgreSQLQuery
-from pypika_tortoise.functions import Count
+from pypika_tortoise.functions import Count, Now
 
 from torale.core.database import Database
 from torale.core.models import TaskState
@@ -249,15 +249,14 @@ class TaskRepository(BaseRepository):
         Returns:
             Updated task record
         """
-        # PyPika doesn't support NOW() function directly, so we use raw SQL for this case
-        # This is a deliberate exception to maintain PostgreSQL-specific time handling
-        query = f"""
-            UPDATE {self.tasks.get_table_name()}
-            SET state = $1, state_changed_at = NOW()
-            WHERE id = $2
-            RETURNING *
-        """
-        return await self.db.fetch_one(query, state, task_id)
+        query = (
+            PostgreSQLQuery.update(self.tasks)
+            .set(self.tasks.state, Parameter("$1"))
+            .set(self.tasks.state_changed_at, Now())
+            .where(self.tasks.id == Parameter("$2"))
+            .returning("*")
+        )
+        return await self.db.fetch_one(str(query), state, task_id)
 
     async def update_visibility(
         self, task_id: UUID, is_public: bool, slug: str | None = None
@@ -285,14 +284,12 @@ class TaskRepository(BaseRepository):
         Args:
             task_id: Task UUID
         """
-        # PyPika doesn't support arithmetic expressions in SET clauses well
-        # Using raw SQL for atomic increment operation
-        query = f"""
-            UPDATE {self.tasks.get_table_name()}
-            SET view_count = view_count + 1
-            WHERE id = $1
-        """
-        await self.db.execute(query, task_id)
+        query = (
+            PostgreSQLQuery.update(self.tasks)
+            .set(self.tasks.view_count, self.tasks.view_count + 1)
+            .where(self.tasks.id == Parameter("$1"))
+        )
+        await self.db.execute(str(query), task_id)
 
     async def increment_subscriber_count(self, task_id: UUID) -> None:
         """Increment task subscriber count (fork count).
@@ -300,14 +297,12 @@ class TaskRepository(BaseRepository):
         Args:
             task_id: Task UUID
         """
-        # PyPika doesn't support arithmetic expressions in SET clauses well
-        # Using raw SQL for atomic increment operation
-        query = f"""
-            UPDATE {self.tasks.get_table_name()}
-            SET subscriber_count = subscriber_count + 1
-            WHERE id = $1
-        """
-        await self.db.execute(query, task_id)
+        query = (
+            PostgreSQLQuery.update(self.tasks)
+            .set(self.tasks.subscriber_count, self.tasks.subscriber_count + 1)
+            .where(self.tasks.id == Parameter("$1"))
+        )
+        await self.db.execute(str(query), task_id)
 
     async def find_public_tasks(
         self, limit: int = 50, offset: int = 0, search: str | None = None

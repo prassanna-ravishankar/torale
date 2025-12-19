@@ -168,9 +168,16 @@ class UserRepository(BaseRepository):
         }
 
         sql, params = self._build_update_query(self.users, user_id, data)
-        await self.db.execute(sql, *params)
+        row = await self.db.fetch_one(sql, *params)
 
-        return await self.get_webhook_config(user_id)
+        if not row:
+            return None
+
+        return {
+            "url": str(row["webhook_url"]) if row["webhook_url"] else None,
+            "secret": row["webhook_secret"],
+            "enabled": row["webhook_enabled"],
+        }
 
     async def username_exists(self, username: str) -> bool:
         """Check if a username already exists.
