@@ -110,9 +110,7 @@ class EmailVerificationRepository(BaseRepository):
 
         return await self.db.fetch_one(str(query), user_id, email)
 
-    async def count_recent_verifications(
-        self, user_id: UUID, hours: int = 24
-    ) -> int:
+    async def count_recent_verifications(self, user_id: UUID, hours: int = 24) -> int:
         """Count verifications created in recent hours for spam prevention.
 
         Args:
@@ -130,9 +128,7 @@ class EmailVerificationRepository(BaseRepository):
         """
         return await self.db.fetch_val(query, user_id) or 0
 
-    async def find_by_user(
-        self, user_id: UUID, limit: int = 50
-    ) -> list[dict]:
+    async def find_by_user(self, user_id: UUID, limit: int = 50) -> list[dict]:
         """Find all verifications for a user.
 
         Args:

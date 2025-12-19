@@ -249,7 +249,8 @@ class TaskRepository(BaseRepository):
         Returns:
             Updated task record
         """
-        # Use raw SQL for NOW() function
+        # PyPika doesn't support NOW() function directly, so we use raw SQL for this case
+        # This is a deliberate exception to maintain PostgreSQL-specific time handling
         query = f"""
             UPDATE {self.tasks.get_table_name()}
             SET state = $1, state_changed_at = NOW()
@@ -284,6 +285,8 @@ class TaskRepository(BaseRepository):
         Args:
             task_id: Task UUID
         """
+        # PyPika doesn't support arithmetic expressions in SET clauses well
+        # Using raw SQL for atomic increment operation
         query = f"""
             UPDATE {self.tasks.get_table_name()}
             SET view_count = view_count + 1
@@ -297,6 +300,8 @@ class TaskRepository(BaseRepository):
         Args:
             task_id: Task UUID
         """
+        # PyPika doesn't support arithmetic expressions in SET clauses well
+        # Using raw SQL for atomic increment operation
         query = f"""
             UPDATE {self.tasks.get_table_name()}
             SET subscriber_count = subscriber_count + 1
