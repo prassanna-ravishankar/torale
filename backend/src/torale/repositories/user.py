@@ -123,7 +123,7 @@ class UserRepository(BaseRepository):
         sql, params = self._build_update_query(self.users, user_id, data)
         return await self.db.fetch_one(sql, *params)
 
-    async def get_webhook_config(self, user_id: UUID) -> dict:
+    async def get_webhook_config(self, user_id: UUID) -> dict | None:
         """Get user's webhook configuration.
 
         Args:

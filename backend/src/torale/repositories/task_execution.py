@@ -80,7 +80,7 @@ class TaskExecutionRepository(BaseRepository):
         # Handle completed_at separately for NOW() support
         if completed_at == "NOW()":
             # Build custom update with NOW()
-            set_clauses = [f"{col} = ${i + 1}" for i, col in enumerate(data.keys(), start=1)]
+            set_clauses = [f"{col} = ${i}" for i, col in enumerate(data.keys(), start=1)]
             set_clauses.append("completed_at = NOW()")
 
             params = list(data.values())
@@ -188,5 +188,5 @@ class TaskExecutionRepository(BaseRepository):
             conditions.append(self.executions.status == Parameter("$2"))
             params.append(status)
 
-        count = await self.count(self.executions, conditions)
+        count = await self.count(self.executions, conditions, params=params)
         return count

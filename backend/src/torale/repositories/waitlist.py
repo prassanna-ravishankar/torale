@@ -49,5 +49,8 @@ class WaitlistRepository(BaseRepository):
         Returns:
             True if email exists
         """
-        result = await self.find_by_email(email)
-        return result is not None
+        query = PostgreSQLQuery.from_(self.waitlist).select("COUNT(*)")
+        query = query.where(self.waitlist.email == Parameter("$1"))
+
+        count = await self.db.fetch_val(str(query), email)
+        return count > 0

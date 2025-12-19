@@ -1,3 +1,4 @@
+import json
 from uuid import UUID
 
 from pypika_tortoise import Order, Parameter, PostgreSQLQuery
@@ -32,7 +33,6 @@ class WebhookRepository(BaseRepository):
         Returns:
             Created delivery record
         """
-        import json
 
         data = {
             "task_id": task_id,
@@ -90,7 +90,7 @@ class WebhookRepository(BaseRepository):
 
         # Handle delivered_at separately for NOW() support
         if delivered_at == "NOW()":
-            set_clauses = [f"{col} = ${i + 1}" for i, col in enumerate(data.keys(), start=1)]
+            set_clauses = [f"{col} = ${i}" for i, col in enumerate(data.keys(), start=1)]
             set_clauses.append("delivered_at = NOW()")
 
             params = list(data.values())

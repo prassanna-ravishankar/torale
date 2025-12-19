@@ -34,6 +34,7 @@ class BaseRepository:
         self,
         table: Table,
         where_conditions: list[Any] | None = None,
+        params: list[Any] | None = None,
         order_by: tuple[Any, Order] | None = None,
         limit: int | None = None,
         offset: int | None = None,
@@ -43,6 +44,7 @@ class BaseRepository:
         Args:
             table: PyPika table instance
             where_conditions: List of WHERE conditions
+            params: List of parameters for the WHERE conditions
             order_by: Tuple of (field, Order) for sorting
             limit: Maximum number of records
             offset: Number of records to skip
@@ -66,14 +68,17 @@ class BaseRepository:
         if offset:
             query = query.offset(offset)
 
-        return await self.db.fetch_all(str(query))
+        return await self.db.fetch_all(str(query), *(params or []))
 
-    async def count(self, table: Table, where_conditions: list[Any] | None = None) -> int:
+    async def count(
+        self, table: Table, where_conditions: list[Any] | None = None, params: list[Any] | None = None
+    ) -> int:
         """Count records matching conditions.
 
         Args:
             table: PyPika table instance
             where_conditions: List of WHERE conditions
+            params: List of parameters for the WHERE conditions
 
         Returns:
             Count of matching records
@@ -84,7 +89,7 @@ class BaseRepository:
             for condition in where_conditions:
                 query = query.where(condition)
 
-        return await self.db.fetch_val(str(query)) or 0
+        return await self.db.fetch_val(str(query), *(params or [])) or 0
 
     async def delete_by_id(self, table: Table, id: UUID) -> str:
         """Delete a record by ID.
