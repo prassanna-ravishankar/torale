@@ -5,7 +5,7 @@ from google import genai
 from google.genai import types
 
 from torale.core.config import settings
-from torale.providers.schema_provider import SchemaProvider
+from torale.monitoring.providers.schema_provider import SchemaProvider
 
 logger = logging.getLogger(__name__)
 

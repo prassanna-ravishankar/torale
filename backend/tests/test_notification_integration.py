@@ -10,8 +10,8 @@ from uuid import uuid4
 
 import pytest
 
-from torale.core.email_verification import EmailVerificationService
-from torale.core.webhook import (
+from torale.notifications import (
+    EmailVerificationService,
     WebhookDeliveryService,
     WebhookSignature,
     build_webhook_payload,

@@ -9,10 +9,10 @@ import pytest
 
 # Mock settings before importing providers
 with patch.dict(os.environ, {"GOOGLE_API_KEY": "test-key"}):
-    from torale.providers.gemini.comparison import GeminiComparisonProvider
-    from torale.providers.gemini.extraction import GeminiExtractionProvider
-    from torale.providers.gemini.schema import GeminiSchemaProvider
-    from torale.providers.gemini.search import GeminiSearchProvider
+    from torale.monitoring.providers.gemini.comparison import GeminiComparisonProvider
+    from torale.monitoring.providers.gemini.extraction import GeminiExtractionProvider
+    from torale.monitoring.providers.gemini.schema import GeminiSchemaProvider
+    from torale.monitoring.providers.gemini.search import GeminiSearchProvider
 
 
 @pytest.fixture(autouse=True)

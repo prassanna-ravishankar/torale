@@ -72,7 +72,7 @@ class TestUpdateUserRole:
     @pytest.fixture
     def mock_admin_clerk_user(self):
         """Mock Clerk user with admin role."""
-        with patch("torale.api.clerk_auth.clerk_client") as mock_clerk:
+        with patch("torale.access.clerk_client") as mock_clerk:
             # Mock the admin user calling the endpoint
             admin_user = MagicMock()
             admin_user.public_metadata = {"role": "admin"}
@@ -119,7 +119,7 @@ class TestRoleUpdateSafeguards:
     @pytest.fixture
     def mock_clerk_same_user(self):
         """Mock Clerk where admin tries to change their own role."""
-        with patch("torale.api.clerk_auth.clerk_client") as mock_clerk:
+        with patch("torale.access.clerk_client") as mock_clerk:
             # Same user for both admin and target
             user = MagicMock()
             user.public_metadata = {"role": "admin"}
@@ -151,7 +151,7 @@ class TestRoleUpdateIntegration:
     @pytest.fixture
     def mock_clerk_with_update(self):
         """Mock Clerk client with update capability."""
-        with patch("torale.api.clerk_auth.clerk_client") as mock_clerk:
+        with patch("torale.access.clerk_client") as mock_clerk:
             # Mock admin user
             admin_user = MagicMock()
             admin_user.public_metadata = {"role": "admin"}

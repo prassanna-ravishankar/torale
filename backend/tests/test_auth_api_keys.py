@@ -44,7 +44,7 @@ class TestAPIKeyCreation:
     @pytest.fixture
     def mock_clerk_user_developer(self):
         """Mock Clerk user with developer role."""
-        with patch("torale.api.clerk_auth.clerk_client") as mock_clerk:
+        with patch("torale.access.clerk_client") as mock_clerk:
             mock_user = MagicMock()
             mock_user.public_metadata = {"role": "developer"}
             mock_clerk.users.get.return_value = mock_user
@@ -53,7 +53,7 @@ class TestAPIKeyCreation:
     @pytest.fixture
     def mock_clerk_user_no_role(self):
         """Mock Clerk user without developer role."""
-        with patch("torale.api.clerk_auth.clerk_client") as mock_clerk:
+        with patch("torale.access.clerk_client") as mock_clerk:
             mock_user = MagicMock()
             mock_user.public_metadata = {}  # No role
             mock_clerk.users.get.return_value = mock_user

@@ -5,12 +5,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 
-from torale.api.auth import OptionalUser
+from torale.access import OptionalUser
 from torale.api.rate_limiter import limiter
 from torale.api.routers.tasks import get_task
 from torale.api.utils.task_parsers import parse_task_with_execution
 from torale.core.database import Database, get_db
-from torale.core.models import Task
+from torale.tasks import Task
 
 router = APIRouter(prefix="/public", tags=["public"])
 

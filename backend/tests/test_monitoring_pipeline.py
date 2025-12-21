@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from torale.core.state_utils import compute_state_hash
-from torale.pipelines.monitoring_pipeline import MonitoringPipeline
+from torale.monitoring.pipeline import MonitoringPipeline
 
 
 class TestMonitoringPipeline:

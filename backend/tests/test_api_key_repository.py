@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from torale.repositories.api_key import ApiKeyRepository
+from torale.access import ApiKeyRepository
 
 
 @pytest.fixture

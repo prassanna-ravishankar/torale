@@ -13,7 +13,8 @@ from fastapi.security import HTTPAuthorizationCredentials
 
 from torale.core.config import settings
 from torale.core.database import Database
-from torale.repositories import ApiKeyRepository, UserRepository
+
+from .repository import ApiKeyRepository, UserRepository
 
 logger = logging.getLogger(__name__)
 

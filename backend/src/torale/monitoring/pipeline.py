@@ -1,10 +1,10 @@
 import logging
 
-from torale.core.models import MonitoringResult
 from torale.core.state_utils import compute_state_hash
-from torale.providers.comparison_provider import ComparisonProvider
-from torale.providers.extraction_provider import ExtractionProvider
-from torale.providers.schema_provider import SchemaProvider
+from torale.monitoring.monitoring import MonitoringResult
+from torale.monitoring.providers.comparison_provider import ComparisonProvider
+from torale.monitoring.providers.extraction_provider import ExtractionProvider
+from torale.monitoring.providers.schema_provider import SchemaProvider
 
 logger = logging.getLogger(__name__)
 

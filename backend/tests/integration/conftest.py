@@ -1,7 +1,11 @@
 import os
 
 import pytest
+from dotenv import load_dotenv
 from httpx import AsyncClient
+
+# Load .env for integration tests that need API keys
+load_dotenv()
 
 # We will run tests against the running service if E2E is specified,
 # otherwise we might want to spin up a test app.

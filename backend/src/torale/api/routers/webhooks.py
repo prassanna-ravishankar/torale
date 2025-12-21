@@ -9,9 +9,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, HttpUrl
 
-from torale.api.auth import CurrentUser
+from torale.access import CurrentUser
 from torale.core.database import Database, get_db
-from torale.core.webhook import (
+from torale.notifications import (
     WebhookDeliveryService,
     WebhookPayload,
     WebhookSignature,

@@ -9,7 +9,7 @@ from uuid import uuid4
 
 import pytest
 
-from torale.core.webhook import (
+from torale.notifications import (
     WebhookDeliveryService,
     WebhookSignature,
     build_webhook_payload,

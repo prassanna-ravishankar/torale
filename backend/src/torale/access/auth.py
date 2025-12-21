@@ -5,8 +5,9 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from torale.api.auth_provider import User, get_auth_provider
 from torale.core.database import Database, get_db
+
+from .auth_provider import User, get_auth_provider
 
 # Security scheme for Bearer token
 security = HTTPBearer()
