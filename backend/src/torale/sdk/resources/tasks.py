@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from torale.core.models import NotificationConfig, NotifyBehavior, Task, TaskExecution
+from torale.tasks import NotificationConfig, NotifyBehavior, Task, TaskExecution
 
 if TYPE_CHECKING:
     from torale.sdk.client import ToraleClient

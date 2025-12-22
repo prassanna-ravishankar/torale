@@ -5,8 +5,8 @@ from google import genai
 from google.genai import types
 
 from torale.core.config import settings
-from torale.providers.extraction_provider import ExtractionProvider
-from torale.providers.gemini.utils import format_schema_for_prompt
+from torale.monitoring.providers.extraction_provider import ExtractionProvider
+from torale.monitoring.providers.gemini.utils import format_schema_for_prompt
 
 logger = logging.getLogger(__name__)
 

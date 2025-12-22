@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from torale.repositories.user import UserRepository
+from torale.access import UserRepository
 
 
 @pytest.fixture

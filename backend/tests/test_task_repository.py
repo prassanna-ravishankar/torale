@@ -3,8 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from torale.core.models import TaskState
-from torale.repositories.task import TaskRepository
+from torale.tasks import TaskRepository, TaskState
 
 
 @pytest.fixture

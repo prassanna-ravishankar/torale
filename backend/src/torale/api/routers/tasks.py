@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from temporalio.client import Client
 from temporalio.service import RPCError
 
-from torale.api.auth import CurrentUser, OptionalUser
+from torale.access import CurrentUser, OptionalUser
 from torale.api.dependencies import get_genai_client
 from torale.api.utils.task_parsers import (
     parse_execution_row,
@@ -19,18 +19,18 @@ from torale.api.utils.task_parsers import (
 )
 from torale.core.config import settings
 from torale.core.database import Database, get_db
-from torale.core.models import (
+from torale.notifications import NotificationValidationError, validate_notification
+from torale.tasks import (
+    InvalidTransitionError,
     NotifyBehavior,
     Task,
     TaskCreate,
     TaskExecution,
     TaskExecutionRequest,
+    TaskService,
     TaskState,
     TaskUpdate,
 )
-from torale.core.task_state import TaskStateManager
-from torale.core.task_state_machine import InvalidTransitionError, TaskStateMachine
-from torale.notifications import NotificationValidationError, validate_notification
 from torale.utils.slug import generate_unique_slug
 from torale.workers.workflows import TaskExecutionWorkflow
 
@@ -176,11 +176,10 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
     # Create Temporal schedule for automatic execution if task is active
     if task.state == TaskState.ACTIVE:
         try:
-            state_manager = TaskStateManager(db_conn=db)
+            task_service = TaskService(db=db)
             # For new tasks, create the schedule directly (not a transition)
-            await state_manager.set_task_active_state(
+            await task_service.create_schedule_for_new_task(
                 task_id=UUID(task_id),
-                is_active=True,
                 task_name=task.name,
                 user_id=user.id,
                 schedule=task.schedule,
@@ -838,6 +837,10 @@ async def update_task(
     param_num = 1
 
     for field, value in update_data.items():
+        # Skip state field - it's handled via TaskService below for Temporal sync
+        if field == "state":
+            continue
+
         if field == "config":
             set_clauses.append(f"{field} = ${param_num}")
             params.append(json.dumps(value))
@@ -853,17 +856,22 @@ async def update_task(
             params.append(value)
         param_num += 1
 
-    params.append(task_id)
-    params.append(user.id)
+    # If only state is being updated, set_clauses will be empty
+    if set_clauses:
+        params.append(task_id)
+        params.append(user.id)
 
-    query = f"""
-        UPDATE tasks
-        SET {", ".join(set_clauses)}
-        WHERE id = ${param_num} AND user_id = ${param_num + 1}
-        RETURNING *
-    """
+        query = f"""
+            UPDATE tasks
+            SET {", ".join(set_clauses)}
+            WHERE id = ${param_num} AND user_id = ${param_num + 1}
+            RETURNING *
+        """
 
-    row = await db.fetch_one(query, *params)
+        row = await db.fetch_one(query, *params)
+    else:
+        # Only state (or nothing) changed, fetch the row to return
+        row = existing
 
     if not row:
         raise HTTPException(
@@ -873,13 +881,15 @@ async def update_task(
 
     # Handle state transitions if state changed
     if "state" in update_data and update_data["state"] != existing["state"]:
-        state_machine = TaskStateMachine(db_conn=db)
         current_state = TaskState(existing["state"])
         new_state = TaskState(update_data["state"])
 
+        # Validate and execute transition using TaskService
+        # This handles DB update + Temporal side effects (pause/unpause/complete)
         try:
-            await state_machine.transition(
-                task_id=task_id,
+            task_service = TaskService(db=db)
+            await task_service.transition(
+                task_id=UUID(task_id),
                 from_state=current_state,
                 to_state=new_state,
                 user_id=user.id,

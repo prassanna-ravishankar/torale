@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from torale.core.database import Database, get_db
-from torale.core.models import TaskTemplate
+from torale.tasks import TaskTemplate
 
 router = APIRouter(prefix="/templates", tags=["templates"])
 

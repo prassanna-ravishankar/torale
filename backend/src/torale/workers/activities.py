@@ -8,11 +8,13 @@ from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
 from torale.core.config import settings
-from torale.core.email_verification import EmailVerificationService
-from torale.core.models import TaskState, TaskStatus
-from torale.core.task_state_machine import TaskStateMachine
-from torale.core.webhook import WebhookDeliveryService, build_webhook_payload
-from torale.notifications.novu_service import novu_service
+from torale.notifications import (
+    EmailVerificationService,
+    WebhookDeliveryService,
+    build_webhook_payload,
+    novu_service,
+)
+from torale.tasks import TaskService, TaskState, TaskStatus
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,7 @@ async def get_task_data(task_id: str) -> dict:
     - Previous state
     - Last execution timestamp
     """
-    from torale.core.models import TaskData
+    from torale.tasks import TaskData
 
     conn = await get_db_connection()
 
@@ -101,9 +103,8 @@ async def perform_grounded_search(task_data: dict) -> dict:
     Perform grounded search using configured provider.
 
     Uses ProviderFactory for dynamic provider selection.
-    Returns SearchResult model serialized as dict.
     """
-    from torale.providers import ProviderFactory
+    from torale.monitoring.providers import ProviderFactory
 
     task = task_data["task"]
 
@@ -131,8 +132,8 @@ async def execute_monitoring_pipeline(task_data: dict, search_result: dict) -> d
 
     Uses ProviderFactory for dynamic provider selection based on configuration.
     """
-    from torale.pipelines import MonitoringPipeline
-    from torale.providers import ProviderFactory
+    from torale.monitoring import MonitoringPipeline
+    from torale.monitoring.providers import ProviderFactory
 
     # Get provider type from config (defaults to gemini)
     provider_type = task_data["config"].get("provider", "gemini")
@@ -227,7 +228,7 @@ async def persist_execution_result(
 @activity.defn
 async def complete_task(task_id: str) -> None:
     """
-    Mark task as completed via TaskStateMachine.
+    Mark task as completed via TaskService.
 
     This activity handles the state transition when a task with notify_behavior="once"
     has successfully detected a condition change and sent notification.
@@ -253,20 +254,16 @@ async def complete_task(task_id: str) -> None:
             )
             return
 
-        # Race condition protection: TaskStateMachine now uses conditional UPDATE
-        # to ensure atomic state transitions. If the state changes between our check
-        # above and the transition below, the state machine will raise InvalidTransitionError.
-
-        state_machine = TaskStateMachine(db_conn=conn)
-        result = await state_machine.complete(
+        # Race condition protection: TaskService now uses conditional UPDATE
+        # to ensure atomic state transitions.
+        task_service = TaskService(db=conn)
+        result = await task_service.complete(
             task_id=UUID(task_id),
             current_state=current_state,
         )
         logger.info(f"Task {task_id} completed - schedule {result['schedule_action']}")
     except Exception as e:
-        logger.error(
-            f"Failed to complete task {task_id}: {str(e)}. State machine transition failed."
-        )
+        logger.error(f"Failed to complete task {task_id}: {str(e)}. State transition failed.")
         raise  # Re-raise to let workflow handle the failure
     finally:
         await conn.close()

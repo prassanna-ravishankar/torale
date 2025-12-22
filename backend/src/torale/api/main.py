@@ -11,7 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from torale.api.auth_provider import (
+from torale.access import (
     NoAuthProvider,
     ProductionAuthProvider,
     set_auth_provider,

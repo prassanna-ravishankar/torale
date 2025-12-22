@@ -13,13 +13,11 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from temporalio.client import Client
 
-from torale.api.auth import require_admin
-from torale.api.clerk_auth import ClerkUser, clerk_client
+from torale.access import ClerkUser, clerk_client, require_admin
 from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.core.database_alchemy import get_async_session
-from torale.core.models import TaskState
-from torale.core.task_state_machine import TaskStateMachine
+from torale.tasks import TaskService, TaskState
 
 router = APIRouter(prefix="/admin", tags=["admin"], include_in_schema=False)
 
@@ -632,15 +630,15 @@ async def deactivate_user(
     )
     active_tasks = [(row[0], row[1]) for row in tasks_result]
 
-    # Pause each active task via state machine
-    state_machine = TaskStateMachine(db_conn=db)
+    # Pause each active task via TaskService
+    task_service = TaskService(db=db)
     paused_count = 0
     failed_tasks = []
 
     for task_id, state in active_tasks:
         try:
             current_state = TaskState(state)
-            await state_machine.pause(task_id=task_id, current_state=current_state)
+            await task_service.pause(task_id=task_id, current_state=current_state)
             paused_count += 1
         except Exception as e:
             failed_tasks.append({"task_id": str(task_id), "error": str(e)})

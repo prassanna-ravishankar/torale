@@ -15,7 +15,7 @@ class TestTaskExecutionWorkflow:
         # This test verifies the orchestration pattern and argument passing
 
         # Create mock request
-        from torale.core.models import TaskExecutionRequest
+        from torale.tasks import TaskExecutionRequest
 
         request = TaskExecutionRequest(
             task_id="test-id",

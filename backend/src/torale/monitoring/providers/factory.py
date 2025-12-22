@@ -1,9 +1,9 @@
 """Provider factory for dynamic provider selection based on configuration."""
 
-from torale.providers.comparison_provider import ComparisonProvider
-from torale.providers.extraction_provider import ExtractionProvider
-from torale.providers.schema_provider import SchemaProvider
-from torale.providers.search_provider import SearchProvider
+from torale.monitoring.providers.comparison_provider import ComparisonProvider
+from torale.monitoring.providers.extraction_provider import ExtractionProvider
+from torale.monitoring.providers.schema_provider import SchemaProvider
+from torale.monitoring.providers.search_provider import SearchProvider
 
 
 class ProviderFactory:
@@ -11,17 +11,17 @@ class ProviderFactory:
 
     _PROVIDER_REGISTRY = {
         "gemini": {
-            "schema": "torale.providers.gemini.GeminiSchemaProvider",
-            "extraction": "torale.providers.gemini.GeminiExtractionProvider",
-            "comparison": "torale.providers.gemini.GeminiComparisonProvider",
-            "search": "torale.providers.gemini.GeminiSearchProvider",
+            "schema": "torale.monitoring.providers.gemini.GeminiSchemaProvider",
+            "extraction": "torale.monitoring.providers.gemini.GeminiExtractionProvider",
+            "comparison": "torale.monitoring.providers.gemini.GeminiComparisonProvider",
+            "search": "torale.monitoring.providers.gemini.GeminiSearchProvider",
         },
         # Future providers can be added here:
         # "openai": {
-        #     "schema": "torale.providers.openai.OpenAISchemaProvider",
-        #     "extraction": "torale.providers.openai.OpenAIExtractionProvider",
-        #     "comparison": "torale.providers.openai.OpenAIComparisonProvider",
-        #     "search": "torale.providers.openai.OpenAISearchProvider",
+        #     "schema": "torale.monitoring.providers.openai.OpenAISchemaProvider",
+        #     "extraction": "torale.monitoring.providers.openai.OpenAIExtractionProvider",
+        #     "comparison": "torale.monitoring.providers.openai.OpenAIComparisonProvider",
+        #     "search": "torale.monitoring.providers.openai.OpenAISearchProvider",
         # },
     }
 

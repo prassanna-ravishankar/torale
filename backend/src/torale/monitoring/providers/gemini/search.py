@@ -6,7 +6,7 @@ from google.genai import types
 from google.genai.types import GoogleSearch, Tool
 
 from torale.core.config import settings
-from torale.providers.search_provider import SearchProvider
+from torale.monitoring.providers.search_provider import SearchProvider
 
 logger = logging.getLogger(__name__)
 

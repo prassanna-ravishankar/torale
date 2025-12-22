@@ -5,9 +5,9 @@ from google import genai
 from google.genai import types
 
 from torale.core.config import settings
-from torale.core.models import StateChange
-from torale.providers.comparison_provider import ComparisonProvider
-from torale.providers.gemini.utils import format_schema_for_prompt
+from torale.monitoring.monitoring import StateChange
+from torale.monitoring.providers.comparison_provider import ComparisonProvider
+from torale.monitoring.providers.gemini.utils import format_schema_for_prompt
 
 logger = logging.getLogger(__name__)
 

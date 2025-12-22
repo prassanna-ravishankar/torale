@@ -4,7 +4,7 @@ from asyncpg.exceptions import UniqueViolationError
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from torale.api.auth import CurrentUser, OptionalUser
+from torale.access import CurrentUser, OptionalUser
 from torale.core.database import Database, get_db
 from torale.utils.username import check_username_available, validate_username
 

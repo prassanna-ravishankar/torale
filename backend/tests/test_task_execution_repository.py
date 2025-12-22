@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from torale.repositories.task_execution import TaskExecutionRepository
+from torale.tasks import TaskExecutionRepository
 
 
 @pytest.fixture

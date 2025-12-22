@@ -2,7 +2,7 @@
 
 import json
 
-from torale.core.models import Task
+from torale.tasks import Task
 
 
 def parse_task_row(row) -> dict:

@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from torale.core.email_verification import EmailVerificationService
+from torale.notifications import EmailVerificationService
 
 
 @pytest.fixture

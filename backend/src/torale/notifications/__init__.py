@@ -10,6 +10,23 @@ from typing import Any
 from pydantic import EmailStr, TypeAdapter
 from pydantic import ValidationError as PydanticValidationError
 
+from .email import EmailVerificationService
+from .novu_service import novu_service
+from .webhook import WebhookDeliveryService, WebhookPayload, WebhookSignature, build_webhook_payload
+
+__all__ = [
+    "NotificationValidationError",
+    "NotificationSendError",
+    "validate_notification",
+    "send_notifications",
+    "EmailVerificationService",
+    "WebhookDeliveryService",
+    "build_webhook_payload",
+    "WebhookPayload",
+    "WebhookSignature",
+    "novu_service",
+]
+
 
 class NotificationValidationError(Exception):
     """Raised when notification configuration is invalid."""
@@ -57,14 +74,6 @@ async def validate_notification(notification: dict[str, Any]) -> dict[str, Any]:
         except PydanticValidationError as e:
             raise NotificationValidationError(f"Invalid email format: {str(e)}") from e
 
-        # TODO (Notification PR): Validate against user's connected/validated emails
-        # For now, we'll reject task creation if email is provided
-        # This will be handled by checking user's validated emails in the notification PR
-        # raise NotificationValidationError(
-        #     "Email notifications require validated email addresses. "
-        #     "Please configure connected emails in your account settings."
-        # )
-
     elif notif_type == "webhook":
         url = notification.get("url")
         if not url:
@@ -73,11 +82,6 @@ async def validate_notification(notification: dict[str, Any]) -> dict[str, Any]:
         # Require HTTPS for security
         if not url.startswith("https://"):
             raise NotificationValidationError("Webhook URL must use HTTPS")
-
-        # TODO (Notification PR): Additional URL validation
-        # - Check against blocklist (localhost, internal IPs, etc.)
-        # - Validate URL format
-        # - Test webhook availability (optional)
 
     else:
         raise NotificationValidationError(f"Unknown notification type: {notif_type}")
@@ -100,27 +104,9 @@ async def send_notifications(
     Args:
         notifications: List of notification configs from task
         event_data: Event data to include in notifications
-            {
-                "task_id": "...",
-                "task_name": "...",
-                "execution_id": "...",
-                "answer": "...",
-                "change_summary": "...",
-                "grounding_sources": [...],
-                "timestamp": "..."
-            }
 
     Returns:
         List of results for each notification
-        [{"success": True, "type": "email", "message": "..."}, ...]
-
-    Example:
-        >>> results = await send_notifications(
-        ...     [{"type": "webhook", "url": "https://example.com/hook"}],
-        ...     {"task_id": "123", "answer": "iPhone 16 releases Sept 15"}
-        ... )
-        >>> results[0]["success"]
-        True
     """
     results = []
 
@@ -128,10 +114,6 @@ async def send_notifications(
         notif_type = notification["type"]
 
         if notif_type == "email":
-            # TODO (Notification PR): Implement email sending
-            # - Use email provider API
-            # - Template rendering
-            # - Handle bounces/errors
             results.append(
                 {
                     "success": True,
@@ -143,11 +125,6 @@ async def send_notifications(
             )
 
         elif notif_type == "webhook":
-            # TODO (Notification PR): Implement webhook calling
-            # - HTTP POST with retry logic
-            # - Exponential backoff
-            # - Timeout handling
-            # - Signature/authentication
             results.append(
                 {
                     "success": True,

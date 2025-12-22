@@ -3,7 +3,8 @@ from datetime import timedelta
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-from torale.core.models import EnrichedMonitoringResult, TaskExecutionRequest
+from torale.monitoring import EnrichedMonitoringResult
+from torale.tasks.tasks import TaskExecutionRequest
 
 
 @workflow.defn
@@ -60,6 +61,9 @@ class TaskExecutionWorkflow:
 
         # Step 4: Enrich result with metadata for notifications
         # Create typed enriched result
+        # Note: monitoring_result is a dict from execute_monitoring_pipeline activity
+        # which returns MonitoringResult.model_dump(). If MonitoringResult schema changes,
+        # ensure the activity return value stays compatible with this unpacking.
         is_first_execution = task_data.get("previous_state") is None
         enriched_result_model = EnrichedMonitoringResult(
             **monitoring_result,

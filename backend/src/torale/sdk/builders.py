@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from torale.core.models import NotifyBehavior, Task
+from torale.tasks import NotifyBehavior, Task
 
 if TYPE_CHECKING:
     from torale.sdk import Torale

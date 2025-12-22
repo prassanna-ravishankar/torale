@@ -2,12 +2,12 @@
 Backwards compatibility shim for ClerkUser.
 
 DEPRECATED: This module exists only for backwards compatibility.
-New code should import User from torale.api.auth_provider instead.
+New code should import User from torale.access instead.
 
 All Clerk-specific logic has been moved to ProductionAuthProvider.
 """
 
-from torale.api.auth_provider import ProductionAuthProvider, User, get_auth_provider
+from .auth_provider import ProductionAuthProvider, User, get_auth_provider
 
 # Backwards compatibility alias
 ClerkUser = User
@@ -26,7 +26,7 @@ def get_clerk_client():
 
 
 # Lazy property for backwards compatibility
-# This allows `from torale.api.clerk_auth import clerk_client` to work
+# This allows `from torale.access import clerk_client` to work
 
 
 def __getattr__(name):
