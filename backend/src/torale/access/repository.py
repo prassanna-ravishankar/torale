@@ -85,7 +85,19 @@ class UserRepository(BaseRepository):
         username: str | None = None,
         is_active: bool | None = None,
     ) -> dict:
-        """Update a user."""
+        """
+        Update a user.
+
+        Args:
+            user_id: User UUID
+            email: New email (optional)
+            first_name: New first name (optional)
+            username: New username (optional)
+            is_active: New active status (optional)
+
+        Returns:
+            Updated user record dict.
+        """
         data = {}
 
         if email is not None:
@@ -104,7 +116,12 @@ class UserRepository(BaseRepository):
         return await self.db.fetch_one(sql, *params)
 
     async def get_webhook_config(self, user_id: UUID) -> dict | None:
-        """Get user's webhook configuration."""
+        """
+        Get user's webhook configuration.
+
+        Returns:
+            Dict with url, secret, enabled keys, or None if user not found.
+        """
         query = (
             PostgreSQLQuery.from_(self.users)
             .select(self.users.webhook_url, self.users.webhook_enabled, self.users.webhook_secret)
@@ -125,7 +142,12 @@ class UserRepository(BaseRepository):
     async def update_webhook_config(
         self, user_id: UUID, webhook_url: str | None, webhook_enabled: bool
     ) -> dict | None:
-        """Update user's webhook configuration."""
+        """
+        Update user's webhook configuration.
+
+        Returns:
+            Updated user record dict.
+        """
         data = {
             "webhook_url": webhook_url,
             "webhook_enabled": webhook_enabled,
@@ -144,7 +166,12 @@ class UserRepository(BaseRepository):
         }
 
     async def username_exists(self, username: str) -> bool:
-        """Check if a username already exists."""
+        """
+        Check if a username already exists.
+
+        Returns:
+            True if username is taken, False otherwise.
+        """
         query = (
             PostgreSQLQuery.from_(self.users)
             .select("COUNT(*)")
