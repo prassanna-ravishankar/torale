@@ -104,6 +104,13 @@ class TaskService:
                 f"Cannot transition from {from_state.value} to {to_state.value}"
             )
 
+        # Handle idempotent case to avoid unnecessary DB updates and side effects
+        if from_state == to_state:
+            logger.info(
+                f"Task {task_id} is already in state {to_state.value}. No transition needed."
+            )
+            return {"success": True, "schedule_action": "none", "error": None}
+
         # 2. Update database FIRST (fail fast if DB error)
         # Use conditional update to prevent race conditions
         update_result = await self._update_database_state(task_id, to_state, from_state)
