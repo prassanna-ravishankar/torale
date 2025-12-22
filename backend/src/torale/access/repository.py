@@ -142,21 +142,6 @@ class ApiKeyRepository(BaseRepository):
         self.api_keys = tables.api_keys
         self.users = tables.users
 
-    async def find_by_hash(self, key_hash: str) -> dict | None:
-        """Find active API key by hash with user info."""
-        query = PostgreSQLQuery.from_(self.api_keys).select(
-            self.api_keys.id.as_("key_id"),
-            self.api_keys.user_id,
-            self.api_keys.key_hash,
-            self.users.clerk_user_id,
-            self.users.email,
-        )
-        query = query.join(self.users).on(self.api_keys.user_id == self.users.id)
-        query = query.where(self.api_keys.key_hash == Parameter("$1"))
-        query = query.where(self.api_keys.is_active.eq(True))
-
-        return await self.db.fetch_one(str(query), key_hash)
-
     async def find_by_prefix(self, key_prefix: str) -> dict | None:
         """Find active API key by prefix with user info."""
         query = PostgreSQLQuery.from_(self.api_keys).select(

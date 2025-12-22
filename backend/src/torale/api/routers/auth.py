@@ -12,9 +12,15 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from torale.access import CurrentUser, require_developer
-from torale.access_provider import ProductionAuthProvider, get_auth_provider
-from torale.access_provider import User as AuthUser
+from torale.access import (
+    CurrentUser,
+    ProductionAuthProvider,
+    get_auth_provider,
+    require_developer,
+)
+from torale.access import (
+    User as AuthUser,
+)
 from torale.api.users import User, UserRead
 from torale.core.database_alchemy import get_async_session
 

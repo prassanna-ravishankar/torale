@@ -22,34 +22,6 @@ class TestApiKeyRepositoryFindOperations:
     """Tests for API key find operations."""
 
     @pytest.mark.asyncio
-    async def test_find_by_hash_success(self, api_key_repo, mock_db):
-        """Test finding an active API key by hash."""
-        key_hash = "abc123hash"
-        expected_key = {
-            "key_id": uuid4(),
-            "user_id": uuid4(),
-            "clerk_user_id": "clerk_123",
-            "email": "test@example.com",
-        }
-        mock_db.fetch_one.return_value = expected_key
-
-        result = await api_key_repo.find_by_hash(key_hash)
-
-        assert result == expected_key
-        mock_db.fetch_one.assert_called_once()
-        call_args = mock_db.fetch_one.call_args[0]
-        assert "is_active" in call_args[0]
-
-    @pytest.mark.asyncio
-    async def test_find_by_hash_not_found(self, api_key_repo, mock_db):
-        """Test finding API key when not found."""
-        mock_db.fetch_one.return_value = None
-
-        result = await api_key_repo.find_by_hash("nonexistent")
-
-        assert result is None
-
-    @pytest.mark.asyncio
     async def test_find_by_user(self, api_key_repo, mock_db):
         """Test finding all API keys for a user."""
         user_id = uuid4()

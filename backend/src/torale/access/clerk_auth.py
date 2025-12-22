@@ -2,7 +2,7 @@
 Backwards compatibility shim for ClerkUser.
 
 DEPRECATED: This module exists only for backwards compatibility.
-New code should import User from torale.access_provider instead.
+New code should import User from torale.access instead.
 
 All Clerk-specific logic has been moved to ProductionAuthProvider.
 """
