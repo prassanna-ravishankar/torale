@@ -16,7 +16,13 @@ class UserRepository(BaseRepository):
         self.users = tables.users
 
     async def find_by_clerk_id(self, clerk_user_id: str) -> dict | None:
-        """Find a user by Clerk user ID."""
+        """
+        Find a user by Clerk user ID.
+
+        Returns:
+            User dict with id, clerk_user_id, email, username, first_name,
+            is_active, role, created_at, updated_at, or None if not found.
+        """
         query = (
             PostgreSQLQuery.from_(self.users)
             .select("*")
@@ -25,14 +31,24 @@ class UserRepository(BaseRepository):
         return await self.db.fetch_one(str(query), clerk_user_id)
 
     async def find_by_email(self, email: str) -> dict | None:
-        """Find a user by email address."""
+        """
+        Find a user by email address.
+
+        Returns:
+            User dict or None if not found.
+        """
         query = (
             PostgreSQLQuery.from_(self.users).select("*").where(self.users.email == Parameter("$1"))
         )
         return await self.db.fetch_one(str(query), email)
 
     async def find_by_username(self, username: str) -> dict | None:
-        """Find a user by username."""
+        """
+        Find a user by username.
+
+        Returns:
+            User dict or None if not found.
+        """
         query = (
             PostgreSQLQuery.from_(self.users)
             .select("*")
@@ -43,7 +59,12 @@ class UserRepository(BaseRepository):
     async def create_user(
         self, clerk_user_id: str, email: str, first_name: str | None = None
     ) -> dict:
-        """Create a new user."""
+        """
+        Create a new user.
+
+        Returns:
+            Created user dict with all fields.
+        """
         data = {
             "clerk_user_id": clerk_user_id,
             "email": email,
