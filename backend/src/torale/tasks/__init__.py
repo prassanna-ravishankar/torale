@@ -1,5 +1,4 @@
 from .repository import TaskExecutionRepository, TaskRepository
-from .service import InvalidTransitionError, TaskService
 from .tasks import (
     ExecutorType,
     NotificationConfig,
@@ -33,9 +32,6 @@ __all__ = [
     "TaskTemplate",
     "TaskTemplateBase",
     "TaskTemplateCreate",
-    # Logic
-    "TaskService",
-    "InvalidTransitionError",
     # Data Access
     "TaskRepository",
     "TaskExecutionRepository",

@@ -21,16 +21,15 @@ from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.notifications import NotificationValidationError, validate_notification
 from torale.tasks import (
-    InvalidTransitionError,
     NotifyBehavior,
     Task,
     TaskCreate,
     TaskExecution,
     TaskExecutionRequest,
-    TaskService,
     TaskState,
     TaskUpdate,
 )
+from torale.tasks.service import InvalidTransitionError, TaskService
 from torale.utils.slug import generate_unique_slug
 from torale.workers.workflows import TaskExecutionWorkflow
 

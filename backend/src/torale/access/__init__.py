@@ -1,4 +1,4 @@
-from .auth import CurrentUser, OptionalUser, require_admin
+from .auth import CurrentUser, OptionalUser, require_admin, require_developer
 from .auth_provider import (
     AuthProvider,
     NoAuthProvider,
@@ -21,6 +21,7 @@ __all__ = [
     "CurrentUser",
     "OptionalUser",
     "require_admin",
+    "require_developer",
     "clerk_client",
     "ClerkUser",
     "UserRepository",

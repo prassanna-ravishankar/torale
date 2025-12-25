@@ -14,7 +14,8 @@ from torale.notifications import (
     build_webhook_payload,
     novu_service,
 )
-from torale.tasks import TaskService, TaskState, TaskStatus
+from torale.tasks import TaskState, TaskStatus
+from torale.tasks.service import TaskService
 
 logger = logging.getLogger(__name__)
 
