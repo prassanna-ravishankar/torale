@@ -21,7 +21,10 @@ from torale.access import (
 from torale.access import (
     User as AuthUser,
 )
-from torale.api.users import User, UserRead
+from torale.access import (
+    UserDBModel as User,
+)
+from torale.access.models import UserRead
 from torale.core.database_alchemy import get_async_session
 
 router = APIRouter()
