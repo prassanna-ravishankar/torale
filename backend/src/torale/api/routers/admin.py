@@ -17,7 +17,8 @@ from torale.access import ClerkUser, clerk_client, require_admin
 from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.core.database_alchemy import get_async_session
-from torale.tasks import TaskService, TaskState
+from torale.tasks import TaskState
+from torale.tasks.service import TaskService
 
 router = APIRouter(prefix="/admin", tags=["admin"], include_in_schema=False)
 

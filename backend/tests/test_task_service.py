@@ -8,7 +8,8 @@ from uuid import uuid4
 
 import pytest
 
-from torale.tasks import InvalidTransitionError, TaskService, TaskState
+from torale.tasks import TaskState
+from torale.tasks.service import InvalidTransitionError, TaskService
 
 
 @pytest.fixture
