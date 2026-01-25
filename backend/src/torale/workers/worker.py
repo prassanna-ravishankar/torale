@@ -9,6 +9,7 @@ from temporalio.worker import Worker
 from torale.core.config import settings
 from torale.workers.activities import (
     complete_task,
+    create_execution_record,
     execute_monitoring_pipeline,
     fetch_notification_context,
     get_task_data,
@@ -47,6 +48,7 @@ async def main():
         task_queue=settings.temporal_task_queue,
         workflows=[TaskExecutionWorkflow],
         activities=[
+            create_execution_record,
             get_task_data,
             perform_grounded_search,
             execute_monitoring_pipeline,

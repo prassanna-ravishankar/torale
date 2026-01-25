@@ -137,6 +137,75 @@ class TestTaskExecutionWorkflow:
             assert result["summary"] == "Test summary"
             assert result["task_id"] == request.task_id
 
+    @pytest.mark.asyncio
+    async def test_workflow_creates_execution_when_empty(self):
+        """Test that workflow creates execution record when execution_id is empty (scheduled workflows)"""
+        from torale.tasks import TaskExecutionRequest
+
+        # Request with empty execution_id (like scheduled workflows)
+        request = TaskExecutionRequest(
+            task_id="test-id",
+            execution_id="",  # Empty - simulates scheduled execution
+            user_id="user-id",
+            task_name="Test Task",
+            suppress_notifications=True,  # Simplify test
+        )
+
+        activity_calls = []
+        created_execution_id = "new-exec-id-12345"
+
+        task_data = {
+            "task": {
+                "name": "Test",
+                "search_query": "test query",
+                "condition_description": "test",
+                "config": {},
+                "notify_behavior": "always",
+            },
+            "previous_state": {"existing": "state"},  # Not first execution
+        }
+
+        search_result = {"answer": "Test", "sources": []}
+        pipeline_result = {
+            "summary": "Test",
+            "sources": [],
+            "metadata": {"changed": False, "current_state": {}},
+        }
+
+        async def track_activity(activity_name, *args, **kwargs):
+            activity_calls.append({"name": activity_name, "args": args, "kwargs": kwargs})
+
+            if activity_name == "create_execution_record":
+                return created_execution_id
+            elif activity_name == "get_task_data":
+                return task_data
+            elif activity_name == "perform_grounded_search":
+                return search_result
+            elif activity_name == "execute_monitoring_pipeline":
+                return pipeline_result
+            elif activity_name == "persist_execution_result":
+                return None
+            return None
+
+        with patch("temporalio.workflow.execute_activity", side_effect=track_activity):
+            from torale.workers.workflows import TaskExecutionWorkflow
+
+            wf = TaskExecutionWorkflow()
+            result = await wf.run(request)
+
+            # Verify create_execution_record was called first
+            assert activity_calls[0]["name"] == "create_execution_record"
+            assert activity_calls[0]["kwargs"]["args"][0] == request.task_id
+
+            # Verify the created execution_id is used in persist_execution_result
+            persist_call = next(
+                c for c in activity_calls if c["name"] == "persist_execution_result"
+            )
+            assert persist_call["kwargs"]["args"][1] == created_execution_id
+
+            # Verify execution_id is in the enriched result
+            assert result["execution_id"] == created_execution_id
+
     def test_notification_decision_logic(self):
         """Test the workflow's notification decision logic"""
         # Test: changed=True, suppress=False → should notify

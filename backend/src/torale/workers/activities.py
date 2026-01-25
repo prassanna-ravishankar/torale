@@ -29,6 +29,50 @@ async def get_db_connection():
 
 
 @activity.defn
+async def create_execution_record(task_id: str) -> str:
+    """
+    Create a new execution record for a task.
+
+    Used by scheduled workflows that don't have an execution_id yet.
+    Manual executions (via API) create the record before starting the workflow.
+
+    Returns:
+        The new execution_id as a string
+    """
+    try:
+        task_uuid = UUID(task_id)
+    except ValueError as e:
+        logger.error(f"Invalid task_id format: {task_id}")
+        raise ApplicationError(f"Invalid task_id format: {task_id}", non_retryable=True) from e
+
+    conn = await get_db_connection()
+
+    try:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO task_executions (task_id, status)
+            VALUES ($1, $2)
+            RETURNING id
+            """,
+            task_uuid,
+            TaskStatus.PENDING.value,
+        )
+        if not row:
+            logger.error(f"Failed to create execution record for task {task_id}")
+            raise ApplicationError(
+                f"Failed to create execution record for task {task_id}", non_retryable=True
+            )
+        execution_id = str(row["id"])
+        logger.info(f"Created execution record {execution_id} for task {task_id}")
+        return execution_id
+    except asyncpg.ForeignKeyViolationError as e:
+        logger.warning(f"Task {task_id} not found - cannot create execution record")
+        raise ApplicationError(f"Task {task_id} not found", non_retryable=True) from e
+    finally:
+        await conn.close()
+
+
+@activity.defn
 async def get_task_data(task_id: str) -> dict:
     """
     Fetch task configuration and execution context.

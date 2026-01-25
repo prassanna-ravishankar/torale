@@ -35,6 +35,18 @@ class TaskExecutionWorkflow:
             non_retryable_error_types=["ApplicationError"],
         )
 
+        # Step 0: Create execution record if not provided (scheduled workflows)
+        # Manual executions (via API) pass a valid execution_id
+        # Scheduled executions pass execution_id="" and need one created
+        execution_id = request.execution_id
+        if not execution_id:
+            execution_id = await workflow.execute_activity(
+                "create_execution_record",
+                args=[request.task_id],
+                start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=retry_policy,
+            )
+
         # Step 1: Fetch task configuration and context
         task_data = await workflow.execute_activity(
             "get_task_data",
@@ -68,7 +80,7 @@ class TaskExecutionWorkflow:
         enriched_result_model = EnrichedMonitoringResult(
             **monitoring_result,
             task_id=request.task_id,
-            execution_id=request.execution_id,
+            execution_id=execution_id,
             search_query=task_data["task"]["search_query"],
             is_first_execution=is_first_execution,
         )
@@ -93,7 +105,7 @@ class TaskExecutionWorkflow:
                 # 6a: Fetch notification context (task, user, execution details)
                 notification_context = await workflow.execute_activity(
                     "fetch_notification_context",
-                    args=[request.task_id, request.execution_id, request.user_id],
+                    args=[request.task_id, execution_id, request.user_id],
                     start_to_close_timeout=timedelta(seconds=30),
                     retry_policy=retry_policy,  # Use default retry for fetching context
                 )
@@ -127,7 +139,7 @@ class TaskExecutionWorkflow:
         # Step 7: Persist execution result
         await workflow.execute_activity(
             "persist_execution_result",
-            args=[request.task_id, request.execution_id, enriched_result],
+            args=[request.task_id, execution_id, enriched_result],
             start_to_close_timeout=timedelta(seconds=30),
             retry_policy=retry_policy,
         )
