@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__datetime",
+      "mcp__mem0",
+      "mcp__perplexity__perplexity_search"
+    ],
+    "deny": [
+      "WebSearch",
+      "WebFetch",
+      "Read",
+      "Write",
+      "Edit",
+      "Bash",
+      "mcp__Ref",
+      "mcp__repowire",
+      "mcp__tmux-mcp",
+      "mcp__perplexity__perplexity_ask",
+      "mcp__perplexity__perplexity_research",
+      "mcp__perplexity__perplexity_reason"
+    ]
+  },
+  "permissionMode": "bypassPermissions"
+}
