@@ -66,6 +66,10 @@ agent:
       cpu: 200m
       memory: 256Mi
 
+# Staging database (separate from production)
+database:
+  name: torale_staging
+
 # Disable docs for staging
 docs:
   enabled: false
