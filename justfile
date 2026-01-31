@@ -202,3 +202,11 @@ k8s-pf-api:
 # K8s port forward Temporal
 k8s-pf-temporal:
     kubectl port-forward -n temporal svc/temporal-ui 8080:8080
+
+# Scale staging deployments to zero
+staging-down:
+    kubectl scale deployment --all -n torale-staging --replicas=0
+
+# Scale staging deployments back up
+staging-up:
+    kubectl scale deployment --all -n torale-staging --replicas=1
