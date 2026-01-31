@@ -1,14 +1,12 @@
+import asyncio
 import json
 import logging
 import secrets
 from uuid import UUID
 
-import grpc
 from asyncpg.exceptions import UniqueViolationError
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from temporalio.client import Client
-from temporalio.service import RPCError
 
 from torale.access import CurrentUser, OptionalUser
 from torale.api.dependencies import get_genai_client
@@ -17,25 +15,26 @@ from torale.api.utils.task_parsers import (
     parse_task_row,
     parse_task_with_execution,
 )
-from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.notifications import NotificationValidationError, validate_notification
+from torale.scheduler.job import execute_task_job_manual
+from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import (
     NotifyBehavior,
     Task,
     TaskCreate,
     TaskExecution,
-    TaskExecutionRequest,
     TaskState,
     TaskUpdate,
 )
 from torale.tasks.service import InvalidTransitionError, TaskService
 from torale.utils.slug import generate_unique_slug
-from torale.workers.workflows import TaskExecutionWorkflow
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+_background_tasks: set[asyncio.Task] = set()
 
 
 async def _validate_and_extract_notifications(
@@ -110,22 +109,6 @@ async def _validate_and_extract_notifications(
     return validated_notifications, extracted
 
 
-async def get_temporal_client() -> Client:
-    """Get a Temporal client with proper authentication for Temporal Cloud or local dev."""
-    if settings.temporal_api_key:
-        return await Client.connect(
-            settings.temporal_host,
-            namespace=settings.temporal_namespace,
-            tls=True,
-            api_key=settings.temporal_api_key,
-        )
-    else:
-        return await Client.connect(
-            settings.temporal_host,
-            namespace=settings.temporal_namespace,
-        )
-
-
 @router.post("/", response_model=Task)
 async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depends(get_db)):
     # Validate notifications and extract fields for database
@@ -172,7 +155,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
 
     task_id = str(row["id"])
 
-    # Create Temporal schedule for automatic execution if task is active
+    # Create APScheduler job for automatic execution if task is active
     if task.state == TaskState.ACTIVE:
         try:
             task_service = TaskService(db=db)
@@ -364,26 +347,7 @@ async def _start_task_execution(
     db: Database,
     suppress_notifications: bool = False,
 ) -> dict:
-    """
-    Helper function to create execution record and start Temporal workflow.
-
-    This centralizes the logic for starting task executions, used by both
-    the create_task endpoint (when run_immediately=True) and the execute_task endpoint.
-
-    Args:
-        task_id: UUID of the task to execute
-        task_name: Name of the task
-        user_id: UUID of the user
-        db: Database connection
-        suppress_notifications: Whether to suppress notifications (preview mode)
-
-    Returns:
-        dict with execution record data
-
-    Raises:
-        HTTPException if execution creation or workflow start fails
-    """
-    # Create execution record
+    """Create execution record and launch agent-based execution in background."""
     execution_query = """
         INSERT INTO task_executions (task_id, status)
         VALUES ($1, $2)
@@ -398,34 +362,19 @@ async def _start_task_execution(
             detail="Failed to create execution record",
         )
 
-    # Start Temporal workflow
-    try:
-        client = await get_temporal_client()
-        await client.start_workflow(
-            TaskExecutionWorkflow.run,
-            TaskExecutionRequest(
-                task_id=task_id,
-                execution_id=str(execution_row["id"]),
-                user_id=user_id,
-                task_name=task_name,
-                suppress_notifications=suppress_notifications,
-            ),
-            id=f"task-{task_id}-{execution_row['id']}",
-            task_queue=settings.temporal_task_queue,
+    # Run agent execution in background (prevent GC via module-level set)
+    bg_task = asyncio.create_task(
+        execute_task_job_manual(
+            task_id=task_id,
+            execution_id=str(execution_row["id"]),
+            user_id=user_id,
+            task_name=task_name,
+            suppress_notifications=suppress_notifications,
         )
-        logger.info(f"Started execution {execution_row['id']} for task {task_id}")
-    except Exception as e:
-        # If workflow fails to start, update execution status
-        await db.execute(
-            "UPDATE task_executions SET status = $1, error_message = $2 WHERE id = $3",
-            "failed",
-            f"Failed to start workflow: {str(e)}",
-            execution_row["id"],
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to start execution workflow: {str(e)}",
-        ) from e
+    )
+    _background_tasks.add(bg_task)
+    bg_task.add_done_callback(_background_tasks.discard)
+    logger.info(f"Started execution {execution_row['id']} for task {task_id}")
 
     return dict(execution_row)
 
@@ -836,7 +785,7 @@ async def update_task(
     param_num = 1
 
     for field, value in update_data.items():
-        # Skip state field - it's handled via TaskService below for Temporal sync
+        # Skip state field - it's handled via TaskService below for scheduler sync
         if field == "state":
             continue
 
@@ -884,11 +833,11 @@ async def update_task(
         new_state = TaskState(update_data["state"])
 
         # Validate and execute transition using TaskService
-        # This handles DB update + Temporal side effects (pause/unpause/complete)
+        # This handles DB update + scheduler side effects (pause/resume/remove)
         try:
             task_service = TaskService(db=db)
             await task_service.transition(
-                task_id=UUID(task_id),
+                task_id=task_id,
                 from_state=current_state,
                 to_state=new_state,
                 user_id=user.id,
@@ -913,7 +862,7 @@ async def update_task(
                 detail=f"Invalid state transition: {str(e)}",
             ) from e
         except Exception as e:
-            # Temporal operation failed - rollback database
+            # Scheduler operation failed - rollback database
             logger.error(f"Failed to transition task {task_id} state: {str(e)}. Rolling back.")
             await db.execute(
                 "UPDATE tasks SET state = $1 WHERE id = $2",
@@ -943,36 +892,14 @@ async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(g
             detail="Task not found",
         )
 
-    # Delete Temporal schedule first (if it exists)
-    schedule_deleted = False
-    schedule_error = None
-    schedule_id = f"schedule-{task_id}"
-
+    # Remove APScheduler job (if it exists)
+    job_id = f"task-{task_id}"
     try:
-        client = await get_temporal_client()
-        schedule_handle = client.get_schedule_handle(schedule_id)
-        logger.info(f"Deleting Temporal schedule {schedule_id} for task {task_id}")
-        await schedule_handle.delete()
-        schedule_deleted = True
-        logger.info(f"Successfully deleted schedule {schedule_id}")
-    except RPCError as e:
-        if e.status == grpc.StatusCode.NOT_FOUND:
-            logger.info(f"Schedule {schedule_id} not found - already deleted or never existed")
-            schedule_deleted = True  # Schedule doesn't exist, safe to proceed
-        else:
-            logger.error(f"Failed to delete schedule {schedule_id}: {str(e)}")
-            schedule_error = e
-    except Exception as e:
-        # Catch any other unexpected errors
-        logger.error(f"Unexpected error when deleting schedule {schedule_id}: {str(e)}")
-        schedule_error = e
-
-    # Only delete from database if schedule was successfully deleted or doesn't exist
-    if not schedule_deleted:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete Temporal schedule: {str(schedule_error)}. Task not deleted to prevent orphaned schedule.",
-        ) from schedule_error
+        scheduler = get_scheduler()
+        scheduler.remove_job(job_id)
+        logger.info(f"Removed scheduler job {job_id}")
+    except Exception:
+        logger.info(f"Job {job_id} not found when deleting - already removed or never existed")
 
     # Delete task from database
     query = """

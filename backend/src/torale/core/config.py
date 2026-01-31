@@ -21,11 +21,7 @@ class Settings(BaseSettings):
     clerk_secret_key: str = ""
     clerk_publishable_key: str = ""
 
-    temporal_host: str = "localhost:7233"
-    temporal_namespace: str = "default"
-    temporal_api_key: str | None = None
-    temporal_ui_url: str = "http://localhost:8080"  # Temporal UI base URL
-    temporal_task_queue: str = "torale-tasks"
+    agent_url: str = "http://localhost:8001"
 
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None

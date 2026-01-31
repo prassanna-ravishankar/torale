@@ -31,16 +31,6 @@ class TaskStatus(str, Enum):
     FAILED = "failed"
 
 
-class TaskExecutionRequest(BaseModel):
-    """Request to execute a task via Temporal workflow."""
-
-    task_id: str
-    execution_id: str
-    user_id: str
-    task_name: str
-    suppress_notifications: bool = False  # For preview/manual runs
-
-
 # Notification Models
 class NotificationConfig(BaseModel):
     """Configuration for a notification channel."""

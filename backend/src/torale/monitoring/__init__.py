@@ -7,7 +7,6 @@ from .monitoring import (
     SearchResult,
     StateChange,
 )
-from .pipeline import MonitoringPipeline
 
 __all__ = [
     "ConditionEvaluation",
@@ -17,5 +16,4 @@ __all__ = [
     "MonitoringResult",
     "SearchResult",
     "StateChange",
-    "MonitoringPipeline",
 ]

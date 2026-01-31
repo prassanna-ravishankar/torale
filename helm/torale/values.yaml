@@ -78,9 +78,9 @@ api:
     maxReplicas: 10
     targetCPUUtilizationPercentage: 70
 
-# Worker deployment
+# Worker deployment (disabled — replaced by APScheduler in-process)
 worker:
-  enabled: true
+  enabled: false
   replicaCount: 2
 
   image:
@@ -238,14 +238,6 @@ cloudsql:
       cpu: 200m
       memory: 256Mi
 
-# Temporal configuration
-temporal:
-  # Can be overridden to point to Temporal Cloud
-  host: temporal.temporal.svc.cluster.local:7233
-  namespace: default
-  taskQueue: torale-tasks
-  uiUrl: https://cloud.temporal.io
-
 # Platform capacity limit for beta
 capacity:
   maxUsers: 100
@@ -303,7 +295,6 @@ secrets:
   #     --from-literal=SECRET_KEY="..." \
   #     --from-literal=DB_PASSWORD="..." \
   #     --from-literal=CLERK_SECRET_KEY="..." \
-  #     --from-literal=TEMPORAL_API_KEY="..." \
   #     --from-literal=NOVU_SECRET_KEY="..." \
   #     --from-literal=OPENAI_API_KEY="" \
   #     --from-literal=ANTHROPIC_API_KEY="" \

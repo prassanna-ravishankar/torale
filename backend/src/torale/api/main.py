@@ -34,6 +34,8 @@ from torale.api.routers import (
 from torale.core.config import settings
 from torale.core.database import db
 from torale.core.database_alchemy import get_async_session
+from torale.scheduler import get_scheduler
+from torale.scheduler.migrate import sync_jobs_from_database
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +83,17 @@ async def lifespan(app: FastAPI):
         logger.info("🔒 Using ProductionAuthProvider (Clerk + API Keys)")
         set_auth_provider(ProductionAuthProvider())
 
+    # Start scheduler
+    scheduler = get_scheduler()
+    scheduler.start()
+    logger.info("APScheduler started")
+    await sync_jobs_from_database()
+    logger.info("Scheduler jobs synced from database")
+
     yield
+
+    scheduler.shutdown(wait=False)
+    logger.info("APScheduler shut down")
     await db.disconnect()
     logger.info("Shutting down Torale API")
 

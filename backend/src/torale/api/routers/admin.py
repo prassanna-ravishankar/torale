@@ -11,12 +11,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from temporalio.client import Client
 
 from torale.access import ClerkUser, clerk_client, require_admin
 from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.core.database_alchemy import get_async_session
+from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import TaskState
 from torale.tasks.service import TaskService
 
@@ -48,22 +48,6 @@ class BulkUpdateUserRolesRequest(BaseModel):
         ...,
         description="User role: 'admin', 'developer', or null to remove role",
     )
-
-
-async def get_temporal_client() -> Client:
-    """Get a Temporal client with proper authentication for Temporal Cloud or local dev."""
-    if settings.temporal_api_key:
-        return await Client.connect(
-            settings.temporal_host,
-            namespace=settings.temporal_namespace,
-            tls=True,
-            api_key=settings.temporal_api_key,
-        )
-    else:
-        return await Client.connect(
-            settings.temporal_host,
-            namespace=settings.temporal_namespace,
-        )
 
 
 def parse_json_field(value: Any) -> Any:
@@ -328,117 +312,26 @@ async def list_recent_executions(
     return {"executions": executions, "total": len(executions)}
 
 
-@router.get("/temporal/workflows")
-async def list_temporal_workflows(
+@router.get("/scheduler/jobs")
+async def list_scheduler_jobs(
     admin: ClerkUser = Depends(require_admin),
 ):
-    """
-    List recent Temporal workflow executions.
+    """List all APScheduler jobs with their state."""
+    scheduler = get_scheduler()
+    jobs = []
 
-    Returns:
-    - Workflow ID and run ID
-    - Workflow type (e.g., TaskExecutionWorkflow)
-    - Status (RUNNING, COMPLETED, FAILED, TIMED_OUT)
-    - Start/close timestamps
-    - Execution duration
-    - UI URL (clickable link to Temporal UI)
-    """
-    try:
-        client = await get_temporal_client()
+    for job in scheduler.get_jobs():
+        jobs.append(
+            {
+                "id": job.id,
+                "name": job.name,
+                "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+                "paused": job.next_run_time is None,
+                "trigger": str(job.trigger),
+            }
+        )
 
-        # Use configured Temporal UI URL
-        temporal_ui_base = settings.temporal_ui_url
-
-        # List recent workflows (last 100)
-        workflows = []
-        async for workflow in client.list_workflows(
-            f"ExecutionTime >= '{(datetime.now(UTC) - timedelta(hours=24)).isoformat()}'"
-        ):
-            # Construct UI URL: {base}/namespaces/{namespace}/workflows/{workflow_id}/{run_id}/history
-            ui_url = f"{temporal_ui_base}/namespaces/{settings.temporal_namespace}/workflows/{workflow.id}/{workflow.run_id}/history"
-
-            workflows.append(
-                {
-                    "workflow_id": workflow.id,
-                    "run_id": workflow.run_id,
-                    "workflow_type": workflow.workflow_type,
-                    "status": workflow.status.name,
-                    "start_time": workflow.start_time.isoformat() if workflow.start_time else None,
-                    "close_time": workflow.close_time.isoformat() if workflow.close_time else None,
-                    "execution_time": workflow.execution_time.isoformat()
-                    if workflow.execution_time
-                    else None,
-                    "ui_url": ui_url,
-                }
-            )
-
-            # Limit to 100 workflows
-            if len(workflows) >= 100:
-                break
-
-        return {"workflows": workflows, "total": len(workflows)}
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch Temporal workflows: {str(e)}",
-        ) from e
-
-
-@router.get("/temporal/schedules")
-async def list_temporal_schedules(
-    admin: ClerkUser = Depends(require_admin),
-):
-    """
-    List all active Temporal schedules.
-
-    Returns:
-    - Schedule ID (matches task ID)
-    - Cron spec
-    - Next scheduled run time
-    - Paused/running status
-    - Recent action count
-    """
-    try:
-        client = await get_temporal_client()
-
-        schedules = []
-        schedule_iterator = await client.list_schedules()
-        async for schedule in schedule_iterator:
-            handle = client.get_schedule_handle(schedule.id)
-            desc = await handle.describe()
-
-            # Extract cron spec
-            cron_spec = None
-            if desc.schedule.spec and desc.schedule.spec.cron_expressions:
-                cron_spec = desc.schedule.spec.cron_expressions[0]
-
-            # Get memo data from description (memo is an async method)
-            try:
-                memo_data = await desc.memo()
-            except Exception:
-                memo_data = {}
-
-            schedules.append(
-                {
-                    "schedule_id": schedule.id,
-                    "spec": cron_spec,
-                    "paused": desc.schedule.state.paused,
-                    "next_run": None,  # Would need to compute from cron
-                    "recent_actions": len(desc.info.recent_actions)
-                    if desc.info.recent_actions
-                    else 0,
-                    "created_at": memo_data.get("created_at") if memo_data else None,
-                }
-            )
-
-        return {"schedules": schedules, "total": len(schedules)}
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch Temporal schedules: {str(e)}",
-        ) from e
+    return {"jobs": jobs, "total": len(jobs)}
 
 
 @router.get("/errors")

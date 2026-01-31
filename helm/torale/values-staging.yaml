@@ -13,12 +13,6 @@ clerk:
 image:
   tag: staging
 
-# Temporal Cloud configuration (same namespace, different task queue)
-temporal:
-  host: us-central1.gcp.api.temporal.io:7233
-  namespace: quickstart-baldmaninc.g5zzo
-  taskQueue: torale-staging
-
 # Staging resource sizing (minimal, no autoscaling)
 api:
   replicaCount: 1
@@ -33,16 +27,7 @@ api:
       memory: 512Mi
 
 worker:
-  replicaCount: 1
-  autoscaling:
-    enabled: false
-  resources:
-    requests:
-      cpu: 25m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
+  enabled: false
 
 frontend:
   replicaCount: 1
