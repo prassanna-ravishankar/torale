@@ -57,7 +57,7 @@ jobs:
             context: docs-site
             dockerfile: docs-site/Dockerfile
           - component: agent
-            context: .
+            context: torale-agent
             dockerfile: torale-agent/Dockerfile
 
     steps:

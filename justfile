@@ -183,7 +183,7 @@ k8s-push:
     docker build --platform=linux/amd64 -f backend/Dockerfile -t gcr.io/baldmaninc/torale-api:latest ./backend
     docker tag gcr.io/baldmaninc/torale-api:latest gcr.io/baldmaninc/torale-worker:latest
     docker build --platform=linux/amd64 -f frontend/Dockerfile -t gcr.io/baldmaninc/torale-frontend:latest ./frontend
-    docker build --platform=linux/amd64 -f torale-agent/Dockerfile -t gcr.io/baldmaninc/torale-agent:latest .
+    docker build --platform=linux/amd64 -f torale-agent/Dockerfile -t gcr.io/baldmaninc/torale-agent:latest ./torale-agent
     docker push gcr.io/baldmaninc/torale-api:latest
     docker push gcr.io/baldmaninc/torale-worker:latest
     docker push gcr.io/baldmaninc/torale-frontend:latest

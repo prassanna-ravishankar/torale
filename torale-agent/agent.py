@@ -10,6 +10,9 @@ from fastharness.client import HarnessClient
 from fastharness.core.context import AgentContext
 from fastharness.core.skill import Skill
 from pydantic import BaseModel, Field
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.routing import Route
 
 load_dotenv()
 
@@ -37,7 +40,7 @@ harness = FastHarness(
     url=os.getenv("AGENT_URL", "http://localhost:8000"),
 )
 
-cost_tracker = CostTracker(warn_threshold_usd=0.50, error_threshold_usd=2.00)
+step_logger = ConsoleStepLogger()
 
 SYSTEM_PROMPT = """You are a search monitoring agent for Torale. You run as a scheduled API service - called periodically to check if a monitoring condition is met.
 
@@ -62,10 +65,20 @@ This is not an interactive conversation. You are called, you execute, you return
     },
 )
 async def monitor(prompt: str, ctx: AgentContext, client: HarnessClient):
-    client.step_logger = ConsoleStepLogger()
-    client.telemetry_callbacks = [cost_tracker]
+    client.step_logger = step_logger
+    client.telemetry_callbacks = [CostTracker(warn_threshold_usd=0.50, error_threshold_usd=2.00)]
     result = await client.run(prompt)
     return result
 
 
+async def health(request: Request) -> JSONResponse:
+    return JSONResponse({"status": "ok"})
+
+
+async def ready(request: Request) -> JSONResponse:
+    return JSONResponse({"status": "ok"})
+
+
 app = harness.app
+app.routes.insert(0, Route("/health", health))
+app.routes.insert(0, Route("/ready", ready))

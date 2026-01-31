@@ -31,7 +31,7 @@ jobs:
             context: frontend
             dockerfile: frontend/Dockerfile
           - component: agent
-            context: .
+            context: torale-agent
             dockerfile: torale-agent/Dockerfile
 
     env:
