@@ -134,3 +134,26 @@ Frontend image
 {{- define "torale.frontend.image" -}}
 {{ .Values.image.registry }}/{{ .Values.image.repository }}/{{ .Values.frontend.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}
 {{- end }}
+
+{{/*
+Agent specific labels
+*/}}
+{{- define "torale.agent.labels" -}}
+{{ include "torale.labels" . }}
+app.kubernetes.io/component: agent
+{{- end }}
+
+{{/*
+Agent selector labels
+*/}}
+{{- define "torale.agent.selectorLabels" -}}
+{{ include "torale.selectorLabels" . }}
+app.kubernetes.io/component: agent
+{{- end }}
+
+{{/*
+Agent image
+*/}}
+{{- define "torale.agent.image" -}}
+{{ .Values.image.registry }}/{{ .Values.image.repository }}/{{ .Values.agent.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+{{- end }}

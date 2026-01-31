@@ -30,6 +30,9 @@ jobs:
           - component: frontend
             context: frontend
             dockerfile: frontend/Dockerfile
+          - component: agent
+            context: torale-agent
+            dockerfile: torale-agent/Dockerfile
 
     env:
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -117,6 +120,7 @@ jobs:
           kubectl rollout status deployment/torale-api -n torale-staging --timeout=5m
           kubectl rollout status deployment/torale-worker -n torale-staging --timeout=5m
           kubectl rollout status deployment/torale-frontend -n torale-staging --timeout=5m
+          kubectl rollout status deployment/torale-agent -n torale-staging --timeout=5m
 
       - name: Post Deployment Info
         if: github.event_name == 'pull_request'
