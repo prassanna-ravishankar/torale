@@ -1,0 +1,17 @@
+{{- if .Values.agent.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "torale.fullname" . }}-agent
+  labels:
+    {{- include "torale.agent.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "torale.agent.selectorLabels" . | nindent 4 }}
+{{- end }}

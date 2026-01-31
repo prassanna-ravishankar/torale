@@ -22,11 +22,11 @@ logger = logging.getLogger(__name__)
 class MonitoringResponse(BaseModel):
     """Response from monitoring check."""
 
-    condition_met: bool = Field(description="Whether the monitoring condition is met")
-    evidence: str = Field(description="Clear explanation with sources of what was found")
+    evidence: str = Field(description="Internal reasoning and audit trail (not user-facing)")
+    sources: list[str] = Field(description="URLs backing the evidence")
     confidence: int = Field(ge=0, le=100, description="Confidence level 0-100")
-    next_check_at: Optional[str] = Field(description="ISO timestamp for next check, or null if complete")
-    sources: list[str] = Field(description="List of source URLs used")
+    next_run: Optional[str] = Field(description="ISO timestamp for next check, or null if monitoring is complete")
+    notification: Optional[str] = Field(description="Markdown message for the user, or null if nothing to report")
 
 
 harness = FastHarness(

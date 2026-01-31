@@ -190,6 +190,32 @@ docs:
     maxReplicas: 5
     targetCPUUtilizationPercentage: 70
 
+# Agent deployment
+agent:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    name: torale-agent
+
+  # Cost optimization: Use Spot pods
+  nodeSelector:
+    cloud.google.com/gke-spot: "true"
+
+  tolerations:
+    - key: cloud.google.com/gke-spot
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
 # Database configuration (Cloud SQL)
 database:
   # Cloud SQL instance connection name

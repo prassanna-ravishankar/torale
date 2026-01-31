@@ -183,9 +183,11 @@ k8s-push:
     docker build --platform=linux/amd64 -f backend/Dockerfile -t gcr.io/baldmaninc/torale-api:latest ./backend
     docker tag gcr.io/baldmaninc/torale-api:latest gcr.io/baldmaninc/torale-worker:latest
     docker build --platform=linux/amd64 -f frontend/Dockerfile -t gcr.io/baldmaninc/torale-frontend:latest ./frontend
+    docker build --platform=linux/amd64 -f torale-agent/Dockerfile -t gcr.io/baldmaninc/torale-agent:latest .
     docker push gcr.io/baldmaninc/torale-api:latest
     docker push gcr.io/baldmaninc/torale-worker:latest
     docker push gcr.io/baldmaninc/torale-frontend:latest
+    docker push gcr.io/baldmaninc/torale-agent:latest
 
 # Check K8s status
 k8s-status:
@@ -198,6 +200,14 @@ k8s-logs component:
 # K8s port forward API
 k8s-pf-api:
     kubectl port-forward -n torale svc/torale-api 8000:80
+
+# K8s logs for agent
+k8s-logs-agent:
+    kubectl logs -n torale -l app.kubernetes.io/component=agent -f --tail=100
+
+# K8s port forward agent
+k8s-pf-agent:
+    kubectl port-forward -n torale svc/torale-agent 8001:80
 
 # K8s port forward Temporal
 k8s-pf-temporal:
