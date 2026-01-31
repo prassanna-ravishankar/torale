@@ -1,6 +1,7 @@
 """Torale monitoring agent service."""
 
 import logging
+import os
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -33,7 +34,7 @@ harness = FastHarness(
     name="torale-agent",
     description="Torale search monitoring agent",
     version="0.1.0",
-    url="http://localhost:8000",
+    url=os.getenv("AGENT_URL", "http://localhost:8000"),
 )
 
 cost_tracker = CostTracker(warn_threshold_usd=0.50, error_threshold_usd=2.00)

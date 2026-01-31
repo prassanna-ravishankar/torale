@@ -33,6 +33,8 @@ spec:
         - containerPort: 8000
           protocol: TCP
         env:
+        - name: AGENT_URL
+          value: "http://{{ include "torale.fullname" . }}-agent:80"
         - name: ANTHROPIC_API_KEY
           valueFrom:
             secretKeyRef:
