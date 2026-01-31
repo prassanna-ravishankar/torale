@@ -48,6 +48,16 @@ spec:
             secretKeyRef:
               name: {{ .Values.secrets.name }}
               key: PERPLEXITY_API_KEY
+        livenessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
         resources:
           {{- toYaml .Values.agent.resources | nindent 10 }}
 {{- end }}

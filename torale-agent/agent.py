@@ -62,7 +62,7 @@ This is not an interactive conversation. You are called, you execute, you return
 )
 async def monitor(prompt: str, ctx: AgentContext, client: HarnessClient):
     client.step_logger = ConsoleStepLogger()
-    client.telemetry_callbacks.append(cost_tracker)
+    client.telemetry_callbacks = [cost_tracker]
     result = await client.run(prompt)
     return result
 
