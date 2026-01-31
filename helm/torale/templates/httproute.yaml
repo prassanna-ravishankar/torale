@@ -14,8 +14,8 @@ metadata:
     {{- include "torale.labels" . | nindent 4 }}
     app.kubernetes.io/component: routing
   annotations:
-    # REQUIRED: Disable Cloudflare proxy for GCP SSL to work
-    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+    # REQUIRED: Enable Cloudflare proxy for Origin CA SSL
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
 spec:
   parentRefs:
   - group: gateway.networking.k8s.io
@@ -47,7 +47,7 @@ metadata:
     {{- include "torale.labels" . | nindent 4 }}
     app.kubernetes.io/component: routing
   annotations:
-    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
 spec:
   parentRefs:
   - group: gateway.networking.k8s.io
@@ -80,7 +80,7 @@ metadata:
     {{- include "torale.labels" . | nindent 4 }}
     app.kubernetes.io/component: routing
   annotations:
-    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
 spec:
   parentRefs:
   - group: gateway.networking.k8s.io
