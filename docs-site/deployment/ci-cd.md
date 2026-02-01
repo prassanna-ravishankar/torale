@@ -111,8 +111,6 @@ gh workflow run staging.yml
 | Namespace | `torale-staging` | `torale` |
 | Database | Shared | Shared |
 | Clerk App | Shared | Shared |
-| Temporal Namespace | Shared | Shared |
-| Temporal Task Queue | `torale-staging` | `torale-tasks` |
 | Static IP | Separate | Separate |
 | SSL Certificate | Separate | Separate |
 | Domains | staging.torale.ai | torale.ai |

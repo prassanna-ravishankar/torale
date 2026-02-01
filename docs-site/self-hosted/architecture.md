@@ -13,40 +13,28 @@ config:
 flowchart TB
     User[User]
     Frontend[Frontend<br/>React + TypeScript]
-    API[API Service<br/>FastAPI]
+    API[API Service<br/>FastAPI + APScheduler]
     DB[(PostgreSQL<br/>Cloud SQL)]
-    Temporal[Temporal Cloud<br/>Workflow Engine]
-    Workers[Workers<br/>Task Execution]
-    LLM[LLM APIs<br/>Gemini/OpenAI/Anthropic]
-    Notif[Notifications<br/>In-app]
+    Agent[Monitoring Agent<br/>Claude + Perplexity + Mem0]
+    Notif[Notifications<br/>Email/Webhook]
 
     User --> Frontend
     Frontend --> API
     API --> DB
-    API --> Temporal
-    Temporal --> Workers
-    Workers --> LLM
-    Workers --> Notif
-    Workers --> DB
+    API --> Agent
+    Agent --> Notif
+    Agent --> DB
 ```
 
 ## API Service
 
-FastAPI application serving REST endpoints. Handles authentication via Clerk JWT tokens or API keys, validates requests, and coordinates with PostgreSQL for data persistence and Temporal for workflow scheduling.
+FastAPI application serving REST endpoints. Handles authentication via Clerk JWT tokens or API keys, validates requests, and coordinates with PostgreSQL for data persistence. APScheduler runs in-process for task scheduling.
 
 Connects to PostgreSQL via Cloud SQL Proxy sidecar in Kubernetes, or direct connection in Docker Compose.
 
-## Workers
+## Monitoring Agent
 
-Temporal workers execute monitoring tasks on schedule. Each worker runs activities that perform grounded search, evaluate conditions, compare with previous state, and send notifications when appropriate.
-
-Workers scale horizontally and process tasks from the Temporal queue independently.
-
-## Executors
-
-The executor system implements different types of task execution. The grounded search executor queries Google Search via Gemini, extracts concise answers, evaluates whether conditions are met, and provides source attribution.
-
-Executors are designed to be pluggable for future expansion to browser automation, API monitoring, or other sources.
+Claude-powered agent that searches the web via Perplexity, uses Mem0 for cross-run memory, evaluates conditions, and returns structured results (evidence, sources, confidence, notifications).
 
 ## Database Schema
 
@@ -54,15 +42,9 @@ PostgreSQL stores users (Clerk-integrated), API keys (hashed), tasks with config
 
 Migrations managed through Alembic with forward-only migrations in production.
 
-## Temporal Workflows
-
-Each task has a corresponding Temporal schedule that triggers workflow executions. The monitoring workflow fetches task configuration, executes grounded search via activities, compares state, and sends notifications.
-
-Temporal provides durable execution with automatic retries, schedule management, and full observability through the Temporal UI.
-
 ## Scaling Strategy
 
-**API and Workers** - Horizontal Pod Autoscaler (HPA) scales based on CPU usage from 2 to 10 replicas
+**API** - Horizontal Pod Autoscaler (HPA) scales based on CPU usage from 2 to 10 replicas
 
 **Database** - Cloud SQL auto-scales storage and compute, with optional read replicas for high read loads
 

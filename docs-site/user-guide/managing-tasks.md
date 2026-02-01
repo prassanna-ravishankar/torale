@@ -11,7 +11,7 @@ Click "Edit" on any task to modify:
 - Notification behavior
 - Task name
 
-Changes take effect on the next scheduled run. The Temporal schedule is updated automatically when you modify the cron expression.
+Changes take effect on the next scheduled run.
 
 ## Pausing Tasks
 
@@ -28,7 +28,7 @@ Resume by toggling the status back to active.
 
 Remove tasks you no longer need. This action:
 - Deletes the task record
-- Removes the Temporal schedule
+- Removes the scheduled job
 - Preserves execution history for auditing
 - Cannot be undone
 

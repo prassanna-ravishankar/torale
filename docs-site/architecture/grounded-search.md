@@ -9,7 +9,7 @@ Grounded search means the AI's responses are **grounded** in actual search resul
 - **Current information** - Real-time web data
 - **Source attribution** - Verifiable citations
 - **Reduced hallucinations** - Answers based on search results
-- **Temporal awareness** - Knows about recent events
+- **Execution awareness** - Knows about recent events
 
 ## How It Works
 
@@ -108,9 +108,9 @@ def filter_infrastructure_urls(sources):
 
 **Result:** Clean source URLs like `apple.com` instead of redirect URLs.
 
-## Temporal Context
+## Execution Context
 
-The executor provides the LLM with temporal context to improve change detection:
+The executor provides the LLM with execution context to improve change detection:
 
 ```python
 async def execute_with_context(self, task):
@@ -213,5 +213,4 @@ If Gemini unavailable:
 ## Next Steps
 
 - Learn about [State Tracking](/architecture/state-tracking)
-- Understand [Temporal Workflows](/architecture/temporal-workflows)
 - View [Executor System](/architecture/executors)

@@ -17,7 +17,7 @@ cd frontend && npm test
 
 ```
 backend/tests/
-├── integration/    # Integration tests (requires DB/Temporal)
+├── integration/    # Integration tests (requires DB)
 ├── ...             # Unit tests
 ```
 
@@ -66,9 +66,8 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/admin/users
 # Test errors endpoint
 curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/admin/errors
 
-# Test Temporal endpoints
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/admin/temporal/workflows
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/admin/temporal/schedules
+# Test scheduler endpoint
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/admin/scheduler/jobs
 ```
 
 ### 3. Test Non-Admin Access (should return 403)
@@ -117,12 +116,10 @@ just dev-frontend
 - [ ] Duration calculated correctly
 - [ ] Grounding sources count displays
 
-**Temporal Tab:**
-- [ ] Workflows tab loads and shows recent workflows
-- [ ] Schedules tab loads and shows active schedules
+**Scheduler Tab:**
+- [ ] Jobs list loads and shows active scheduler jobs
 - [ ] Status badges have correct colors
-- [ ] Workflow IDs and types display
-- [ ] Cron specs show in schedules
+- [ ] Next run times display
 
 **Errors Tab:**
 - [ ] Error list loads
@@ -149,7 +146,7 @@ just dev-frontend
 **Empty data in admin console:**
 - Create some tasks as a regular user first
 - Execute tasks to generate execution history
-- Temporal data only shows if Temporal is running
+- Scheduler data only shows if tasks exist
 
 **TypeScript errors:**
 - Run `npm install` in frontend directory

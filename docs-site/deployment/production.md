@@ -3,7 +3,7 @@
 ## Monitoring
 
 - Check execution error rates
-- Monitor Temporal workflow health
+- Monitor APScheduler job health
 - Track API response times
 
 ## Scaling

@@ -177,77 +177,6 @@ curl -X GET "https://api.torale.ai/admin/executions?status=failed&hours=6" \
   -H "Authorization: Bearer sk_..."
 ```
 
-### Temporal Workflows
-
-View recent Temporal workflow executions with UI links.
-
-**Endpoint:** `GET /admin/temporal/workflows`
-
-**Query parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `limit` | integer | Number of workflows (default: 50, max: 100) |
-
-**Response:** `200 OK`
-
-```json
-{
-  "workflows": [
-    {
-      "workflow_id": "task-550e8400-e29b-41d4-a716-446655440000-1705314000",
-      "workflow_type": "monitoring_workflow",
-      "status": "COMPLETED",
-      "start_time": "2024-01-15T09:00:00Z",
-      "close_time": "2024-01-15T09:00:05Z",
-      "execution_duration_ms": 5000,
-      "temporal_ui_url": "https://cloud.temporal.io/namespaces/torale.abc123/workflows/task-550e8400/..."
-    }
-  ],
-  "total": 15623
-}
-```
-
-**Example:**
-```bash
-curl -X GET https://api.torale.ai/admin/temporal/workflows \
-  -H "Authorization: Bearer sk_..."
-```
-
-**Temporal UI URL:** Clickable link to view workflow execution in Temporal Cloud UI.
-
-### Temporal Schedules
-
-View all active Temporal schedules.
-
-**Endpoint:** `GET /admin/temporal/schedules`
-
-**Response:** `200 OK`
-
-```json
-{
-  "schedules": [
-    {
-      "schedule_id": "task-550e8400-e29b-41d4-a716-446655440000",
-      "task_id": "550e8400-e29b-41d4-a716-446655440000",
-      "user_email": "user@example.com",
-      "cron": "0 9 * * *",
-      "is_paused": false,
-      "recent_executions": 15,
-      "next_run_time": "2024-01-16T09:00:00Z",
-      "temporal_ui_url": "https://cloud.temporal.io/namespaces/torale.abc123/schedules/task-550e8400"
-    }
-  ],
-  "total": 3891
-}
-```
-
-**Example:**
-```bash
-curl -X GET https://api.torale.ai/admin/temporal/schedules \
-  -H "Authorization: Bearer sk_..."
-```
-
 ### Error Monitoring
 
 View recent failed executions for monitoring.
@@ -404,12 +333,6 @@ for query in queries['queries']:
     print(f"Tasks: {query['total_tasks']}")
     print(f"Success rate: {query['success_rate']:.1%}")
 
-# View Temporal workflows
-workflows = client.admin.get_temporal_workflows(limit=10)
-for wf in workflows['workflows']:
-    print(f"Workflow: {wf['workflow_id']}")
-    print(f"Status: {wf['status']}")
-    print(f"Temporal UI: {wf['temporal_ui_url']}")
 ```
 
 ### Dashboard Monitoring

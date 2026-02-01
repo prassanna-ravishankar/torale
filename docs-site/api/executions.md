@@ -190,7 +190,7 @@ Execution completed successfully.
 Execution encountered an error.
 
 **error_message:** Contains error details
-**Retry behavior:** Temporal automatically retries (up to 3 times)
+**Retry behavior:** Failed executions will be retried on the next scheduled run
 
 ## Usage Examples
 
@@ -322,7 +322,7 @@ When `status: "failed"`:
 
 **What this means:**
 - Execution encountered an error
-- Temporal will automatically retry (up to 3 times)
+- Failed executions will be retried on the next scheduled run
 - Check error_message for details
 
 ## Change Summaries

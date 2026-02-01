@@ -13,12 +13,13 @@ CLERK_SECRET_KEY=sk_test_...
 CLERK_PUBLISHABLE_KEY=pk_test_...
 VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
 
-# LLM Provider (at least one required)
-GOOGLE_API_KEY=your-gemini-api-key
+# Agent
+AGENT_URL=http://localhost:8000
 
-# Temporal
-TEMPORAL_HOST=temporal:7233
-TEMPORAL_NAMESPACE=default
+# AI (required for monitoring agent)
+ANTHROPIC_API_KEY=your-anthropic-api-key
+PERPLEXITY_API_KEY=your-perplexity-api-key
+MEM0_API_KEY=your-mem0-api-key
 ```
 
 ## Optional Variables
@@ -26,11 +27,6 @@ TEMPORAL_NAMESPACE=default
 ```bash
 # Fallback LLM providers
 OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
-
-# Temporal Cloud (for production)
-TEMPORAL_API_KEY=your-temporal-cloud-api-key
-TEMPORAL_UI_URL=https://cloud.temporal.io
 
 # Frontend configuration
 VITE_API_BASE_URL=http://localhost:8000
@@ -51,8 +47,7 @@ Pre-configured in `docker-compose.yml`:
 
 ```yaml
 DATABASE_URL: postgresql://torale:torale@postgres:5432/torale
-TEMPORAL_HOST: temporal:7233
-TEMPORAL_NAMESPACE: default
+AGENT_URL: http://agent:8000
 ```
 
 ## Kubernetes Values
@@ -67,7 +62,8 @@ Deploy secrets before Helm:
 
 ```bash
 kubectl create secret generic torale-secrets -n torale \
-  --from-literal=GOOGLE_API_KEY="..." \
+  --from-literal=ANTHROPIC_API_KEY="..." \
+  --from-literal=PERPLEXITY_API_KEY="..." \
   --from-literal=CLERK_SECRET_KEY="..." \
   --from-literal=DB_PASSWORD="..."
 ```

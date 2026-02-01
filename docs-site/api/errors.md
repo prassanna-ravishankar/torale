@@ -353,7 +353,7 @@ task = create_task_with_retry(client,
 **Causes:**
 - Unexpected server error
 - Database connection issue
-- Temporal connection issue
+- Agent service connection issue
 
 **Solutions:**
 - Retry request

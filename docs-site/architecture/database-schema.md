@@ -162,4 +162,3 @@ See [Deployment Architecture](https://github.com/torale-ai/torale/blob/main/CLAU
 
 - Learn about [Task State Machine](/architecture/task-state-machine)
 - Read [Architecture Overview](/architecture/overview)
-- View [Temporal Workflows](/architecture/temporal-workflows)

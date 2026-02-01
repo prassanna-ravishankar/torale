@@ -6,7 +6,6 @@ Deploy Torale to production Kubernetes environments.
 
 - Kubernetes cluster
 - PostgreSQL database (managed or self-hosted)
-- Temporal Cloud account or self-hosted Temporal
 - DNS configuration for domains
 
 ## GKE Quick Start
@@ -43,9 +42,7 @@ Override for production in `values-production.yaml`.
 
 ## Deployment Components
 
-**API Deployment** - FastAPI with Cloud SQL Proxy sidecar, HPA for scaling
-
-**Worker Deployment** - Temporal workers with Cloud SQL Proxy, HPA for scaling
+**API Deployment** - FastAPI + APScheduler with Cloud SQL Proxy sidecar, HPA for scaling
 
 **Frontend & Docs** - nginx serving static assets, lightweight HPA
 
@@ -74,10 +71,10 @@ Create secrets manually before deployment:
 
 ```bash
 kubectl create secret generic torale-secrets -n torale \
-  --from-literal=GOOGLE_API_KEY="..." \
+  --from-literal=ANTHROPIC_API_KEY="..." \
+  --from-literal=PERPLEXITY_API_KEY="..." \
   --from-literal=CLERK_SECRET_KEY="..." \
-  --from-literal=DB_PASSWORD="..." \
-  --from-literal=TEMPORAL_API_KEY="..."
+  --from-literal=DB_PASSWORD="..."
 ```
 
 Or use the helper script:
