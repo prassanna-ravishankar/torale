@@ -107,9 +107,9 @@ refactor: code change that neither fixes nor adds
 | Agent service (experimental v3) | `torale-agent/agent.py` |
 | Agent workflow | `torale-agent/CLAUDE.md` |
 | Agent MCP tools | `torale-agent/.mcp.json` |
-| Agent run | `cd torale-agent && uv run uvicorn agent:app --host 0.0.0.0 --port 8000` |
-| Agent call | `curl -X POST http://localhost:8000/ -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"1","method":"message/send","params":{"message":{"kind":"message","messageId":"msg-001","role":"user","parts":[{"kind":"text","text":"YOUR PROMPT"}]}}}'` |
-| Agent poll | `curl -X POST http://localhost:8000/ -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"2","method":"tasks/get","params":{"id":"TASK_ID"}}'` |
+| Agent run | `just dev-noauth` (included in docker compose) or `cd torale-agent && uv run uvicorn agent:app --host 0.0.0.0 --port 8001` |
+| Agent call | `curl -X POST http://localhost:8001/ -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"1","method":"message/send","params":{"message":{"kind":"message","messageId":"msg-001","role":"user","parts":[{"kind":"text","text":"YOUR PROMPT"}]}}}'` |
+| Agent poll | `curl -X POST http://localhost:8001/ -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"2","method":"tasks/get","params":{"id":"TASK_ID"}}'` |
 | API endpoints | `backend/src/torale/api/routers/` |
 | DB schema | `docs-site/architecture/database-schema.md` |
 | Migrations | `backend/alembic/versions/` |

@@ -85,4 +85,4 @@ class TestPersistExecutionResult:
 
         task_call = mock_conn.execute.call_args_list[1]
         task_args = task_call[0]
-        assert task_args[1] == "Price is $999"  # evidence -> last_known_state
+        assert json.loads(task_args[1]) == {"evidence": "Price is $999"}

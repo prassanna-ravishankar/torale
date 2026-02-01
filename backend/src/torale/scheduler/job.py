@@ -7,9 +7,12 @@ Imports from activities (data access) and service (state machine) -- no circular
 import json
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+
+from apscheduler.triggers.date import DateTrigger
 
 from torale.core.database import db
+from torale.scheduler import JOB_FUNC_REF
 from torale.scheduler.activities import (
     create_execution_record,
     fetch_notification_context,
@@ -23,6 +26,76 @@ from torale.tasks import TaskState
 from torale.tasks.service import TaskService
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_confidence(value: object) -> int:
+    if isinstance(value, bool):
+        return 50
+    if isinstance(value, (int, float)):
+        try:
+            return max(0, min(100, int(value)))
+        except (ValueError, TypeError):
+            return 50
+    if isinstance(value, str):
+        try:
+            return max(0, min(100, int(float(value))))
+        except ValueError:
+            return 50
+    return 50
+
+
+def _parse_next_run(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    normalized = value.strip()
+    if not normalized:
+        return None
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt
+
+
+def _resolve_next_run(value: str | None) -> datetime:
+    now = datetime.now(UTC)
+    dt = _parse_next_run(value)
+    if dt is None or dt <= now:
+        return now + timedelta(hours=24)
+    return dt
+
+
+async def _schedule_next_run(
+    task_id: str,
+    user_id: str,
+    task_name: str,
+    next_run_value: str | None,
+    execution_id: str | None,
+) -> None:
+    try:
+        row = await db.fetch_one("SELECT state FROM tasks WHERE id = $1", uuid.UUID(task_id))
+        if not row or row["state"] != TaskState.ACTIVE.value:
+            return
+
+        run_date = _resolve_next_run(next_run_value)
+        scheduler = get_scheduler()
+        job_id = f"task-{task_id}"
+        scheduler.add_job(
+            JOB_FUNC_REF,
+            trigger=DateTrigger(run_date=run_date),
+            id=job_id,
+            args=[task_id, user_id, task_name],
+            replace_existing=True,
+        )
+        logger.info(f"Scheduled task {task_id} next run at {run_date.isoformat()}")
+    except Exception as e:
+        logger.error(f"Failed to schedule next run for task {task_id}: {e}", exc_info=True)
+        if execution_id:
+            await _merge_execution_result(execution_id, {"reschedule_failed": True})
 
 
 async def _merge_execution_result(execution_id: str, data: dict) -> None:
@@ -47,6 +120,8 @@ async def _execute(
     """Core execution logic shared by scheduled and manual runs."""
     if not execution_id:
         execution_id = await create_execution_record(task_id)
+
+    next_run_value: str | None = None
 
     try:
         await db.execute(
@@ -90,8 +165,10 @@ async def _execute(
         if not isinstance(sources, list):
             logger.warning(f"Agent returned non-list sources: {type(sources)}")
             sources = []
-        confidence = agent_response.get("confidence", "medium")
-        next_run = agent_response.get("next_run")
+        confidence = _normalize_confidence(agent_response.get("confidence"))
+        next_run_value = agent_response.get("next_run")
+        next_run_dt = _parse_next_run(next_run_value)
+        next_run = next_run_dt.isoformat() if next_run_dt else None
 
         change_summary = notification if condition_met else evidence
         grounding_sources = [{"url": u} if isinstance(u, str) else u for u in sources]
@@ -161,25 +238,6 @@ async def _execute(
                     logger.error(f"Auto-complete failed for task {task_id}: {e}", exc_info=True)
                     await _merge_execution_result(execution_id, {"auto_complete_failed": True})
 
-        # Dynamic reschedule if agent returns next_run
-        if next_run:
-            try:
-                dt = datetime.fromisoformat(next_run)
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=UTC)
-                if dt <= datetime.now(UTC):
-                    logger.warning(f"Agent returned past next_run {next_run}, ignoring")
-                else:
-                    scheduler = get_scheduler()
-                    job_id = f"task-{task_id}"
-                    scheduler.modify_job(job_id, next_run_time=dt)
-                    logger.info(f"Rescheduled task {task_id} to {next_run}")
-            except Exception as e:
-                logger.error(
-                    f"Failed to reschedule task {task_id} to {next_run}: {e}", exc_info=True
-                )
-                await _merge_execution_result(execution_id, {"reschedule_failed": True})
-
     except Exception as e:
         logger.error(f"Task execution failed for {task_id}: {e}", exc_info=True)
         if execution_id:
@@ -196,10 +254,18 @@ async def _execute(
                     exc_info=True,
                 )
         raise
+    finally:
+        await _schedule_next_run(
+            task_id=task_id,
+            user_id=user_id,
+            task_name=task_name,
+            next_run_value=next_run_value,
+            execution_id=execution_id,
+        )
 
 
 async def execute_task_job(task_id: str, user_id: str, task_name: str) -> None:
-    """Entry point for APScheduler cron jobs."""
+    """Entry point for APScheduler scheduled jobs."""
     await _execute(task_id=task_id, execution_id=None, user_id=user_id, task_name=task_name)
 
 

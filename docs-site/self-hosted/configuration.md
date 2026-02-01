@@ -14,7 +14,8 @@ CLERK_PUBLISHABLE_KEY=pk_test_...
 VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
 
 # Agent
-AGENT_URL=http://localhost:8000
+# Local dev (running agent directly): http://localhost:8001
+AGENT_URL=http://localhost:8001
 
 # AI (required for monitoring agent)
 ANTHROPIC_API_KEY=your-anthropic-api-key

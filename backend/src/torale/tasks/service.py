@@ -8,10 +8,12 @@ This service consolidates:
 
 import asyncio
 import logging
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.date import DateTrigger
 
 from torale.core.database import Database
 from torale.scheduler import JOB_FUNC_REF
@@ -189,12 +191,13 @@ class TaskService:
         scheduler = get_scheduler()
         job_id = f"task-{task_id}"
         existing = await asyncio.to_thread(scheduler.get_job, job_id)
+        next_run = self._compute_next_run(schedule)
 
         if existing is not None:
             # Job exists, resume it and update trigger
             await asyncio.to_thread(scheduler.resume_job, job_id)
             await asyncio.to_thread(
-                scheduler.reschedule_job, job_id, trigger=CronTrigger.from_crontab(schedule)
+                scheduler.reschedule_job, job_id, trigger=DateTrigger(run_date=next_run)
             )
             logger.info(f"Resumed job {job_id}")
             return {"success": True, "schedule_action": "resumed", "error": None}
@@ -203,13 +206,25 @@ class TaskService:
         await asyncio.to_thread(
             scheduler.add_job,
             JOB_FUNC_REF,
-            trigger=CronTrigger.from_crontab(schedule),
+            trigger=DateTrigger(run_date=next_run),
             id=job_id,
             args=[str(task_id), str(user_id), task_name],
             replace_existing=True,
         )
         logger.info(f"Created job {job_id}")
         return {"success": True, "schedule_action": "created", "error": None}
+
+    def _compute_next_run(self, schedule: str | None) -> datetime:
+        now = datetime.now(UTC)
+        if schedule:
+            try:
+                trigger = CronTrigger.from_crontab(schedule, timezone=UTC)
+                next_time = trigger.get_next_fire_time(None, now)
+                if next_time and next_time > now:
+                    return next_time
+            except Exception as e:
+                logger.warning(f"Failed to parse schedule '{schedule}': {e}")
+        return now + timedelta(hours=24)
 
     async def _pause_job(self, task_id: UUID) -> dict:
         scheduler = get_scheduler()

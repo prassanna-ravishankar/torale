@@ -18,7 +18,7 @@ TASK_NAME = "Test Monitor"
 MODULE = "torale.scheduler.job"
 
 
-def _make_task_row(notify_behavior="once", last_known_state=None):
+def _make_task_row(notify_behavior="once", last_known_state=None, state="active"):
     return {
         "search_query": "iPhone release date",
         "condition_description": "Release date announced",
@@ -26,6 +26,7 @@ def _make_task_row(notify_behavior="once", last_known_state=None):
         "notify_behavior": notify_behavior,
         "notification_channels": ["email"],
         "last_known_state": last_known_state,
+        "state": state,
     }
 
 
@@ -133,7 +134,7 @@ class TestExecute:
 
     @pytest.mark.asyncio
     async def test_dynamic_reschedule(self, job_mocks):
-        """Agent returns next_run -> scheduler.modify_job called with correct datetime."""
+        """Agent returns next_run -> scheduler.add_job called with DateTrigger."""
         job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row(notify_behavior="always"))
         future_time = (datetime.now(UTC) + timedelta(hours=2)).isoformat()
         job_mocks.agent.return_value = _make_agent_response(notification=None, next_run=future_time)
@@ -145,9 +146,9 @@ class TestExecute:
 
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
-        mock_sched.modify_job.assert_called_once()
-        call_kwargs = mock_sched.modify_job.call_args
-        assert call_kwargs[0][0] == f"task-{TASK_ID}"
+        mock_sched.add_job.assert_called_once()
+        call_kwargs = mock_sched.add_job.call_args
+        assert call_kwargs.kwargs["id"] == f"task-{TASK_ID}"
 
     @pytest.mark.asyncio
     async def test_execute_task_job_delegates_to_execute(self, job_mocks):

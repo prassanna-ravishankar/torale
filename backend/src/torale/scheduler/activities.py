@@ -58,6 +58,7 @@ async def persist_execution_result(task_id: str, execution_id: str, agent_result
     change_summary = agent_result.get("change_summary", "")
     grounding_sources = agent_result.get("grounding_sources", [])
     evidence = agent_result.get("evidence", "")
+    last_known_state = {"evidence": evidence} if evidence else None
 
     async with db.acquire() as conn:
         async with conn.transaction():
@@ -85,7 +86,7 @@ async def persist_execution_result(task_id: str, execution_id: str, agent_result
                     last_execution_id = $3
                 WHERE id = $4
                 """,
-                evidence,
+                json.dumps(last_known_state) if last_known_state else None,
                 now_utc,
                 UUID(execution_id),
                 UUID(task_id),

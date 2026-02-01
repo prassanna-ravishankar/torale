@@ -3,7 +3,6 @@ import type {
   TaskCreatePayload,
   TaskExecution,
   TaskTemplate,
-  SuggestedTask,
   User,
   UserWithNotifications,
   WebhookConfig,
@@ -140,18 +139,6 @@ class ApiClient {
   async getTaskNotifications(taskId: string): Promise<TaskExecution[]> {
     const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/notifications`, {
       headers: await this.getAuthHeaders(),
-    })
-    return this.handleResponse(response)
-  }
-
-  async suggestTask(prompt: string, currentTask?: Partial<TaskCreatePayload>): Promise<SuggestedTask> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/suggest`, {
-      method: 'POST',
-      headers: await this.getAuthHeaders(),
-      body: JSON.stringify({
-        prompt,
-        current_task: currentTask
-      }),
     })
     return this.handleResponse(response)
   }

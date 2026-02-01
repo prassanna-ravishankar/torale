@@ -124,14 +124,6 @@ export interface TaskTemplate {
  * Response from the /api/v1/tasks/suggest endpoint
  * AI-generated task configuration from natural language
  */
-export interface SuggestedTask {
-  name: string;
-  search_query: string;
-  condition_description: string;
-  schedule: string;
-  notify_behavior: NotifyBehavior;
-}
-
 // Notification System Types
 
 /**

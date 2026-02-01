@@ -10,9 +10,14 @@ def parse_task_row(row) -> dict:
     task_dict = dict(row)
     # Parse last_known_state if it's a string
     if isinstance(task_dict.get("last_known_state"), str):
-        task_dict["last_known_state"] = (
-            json.loads(task_dict["last_known_state"]) if task_dict["last_known_state"] else None
-        )
+        raw_state = task_dict.get("last_known_state", "").strip()
+        if not raw_state:
+            task_dict["last_known_state"] = None
+        else:
+            try:
+                task_dict["last_known_state"] = json.loads(raw_state)
+            except json.JSONDecodeError:
+                task_dict["last_known_state"] = {"evidence": raw_state}
     # Parse notifications if it's a string
     if isinstance(task_dict.get("notifications"), str):
         task_dict["notifications"] = (

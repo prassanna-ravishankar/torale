@@ -81,34 +81,6 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Magic Input state
-  const [magicPrompt, setMagicPrompt] = useState("");
-  const [isMagicLoading, setIsMagicLoading] = useState(false);
-
-  const handleSuggest = async () => {
-    if (!magicPrompt.trim()) return;
-
-    setIsMagicLoading(true);
-    try {
-      const suggestion = await api.suggestTask(magicPrompt);
-
-      setName(suggestion.name);
-      setSearchQuery(suggestion.search_query);
-      setConditionDescription(suggestion.condition_description);
-      // Use suggested notify_behavior if it's once or always (skip track_state for new tasks)
-      const behavior = suggestion.notify_behavior as NotifyBehavior;
-      if (behavior === "once" || behavior === "always") {
-        setNotifyBehavior(behavior);
-      }
-
-      toast.success("Task configuration generated!");
-    } catch (error) {
-      console.error("Magic suggestion failed:", error);
-      toast.error("Failed to generate task configuration");
-    } finally {
-      setIsMagicLoading(false);
-    }
-  };
   const [error, setError] = useState("");
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
@@ -135,8 +107,6 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
       setNotifyBehavior("once");
       setValidationErrors({});
       setError("");
-      setMagicPrompt("");
-      setIsMagicLoading(false);
     }
   }, [open]);
 
@@ -234,41 +204,6 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Magic Input Section */}
-          <div className="bg-zinc-50 p-4 border-2 border-zinc-200 space-y-3">
-            <div className="flex items-center gap-2 text-sm font-bold font-grotesk text-zinc-900">
-              <Sparkles className="w-4 h-4" />
-              Magic Auto-Fill
-            </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="e.g. 'Notify me when PS5 Pro is in stock' or 'Tell me when GTA 6 release date is announced'"
-                value={magicPrompt}
-                onChange={(e) => setMagicPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSuggest();
-                  }
-                }}
-                className="flex-1 bg-background"
-              />
-              <Button
-                onClick={handleSuggest}
-                disabled={!magicPrompt.trim() || isMagicLoading}
-                variant="secondary"
-                className="shrink-0"
-              >
-                {isMagicLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4 mr-2" />
-                )}
-                {isMagicLoading ? "Dreaming..." : "Auto-Fill"}
-              </Button>
-            </div>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-6">
 
             {/* Template Selection */}
