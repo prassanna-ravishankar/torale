@@ -44,7 +44,7 @@ class NotificationConfig(BaseModel):
 
 
 class TaskBase(BaseModel):
-    name: str
+    name: str = "New Monitor"
     schedule: str = "0 */6 * * *"
     state: TaskState = TaskState.ACTIVE
 
@@ -58,10 +58,10 @@ class TaskBase(BaseModel):
 
 
 class TaskCreate(TaskBase):
-    """Create task - requires search_query and condition for grounded search"""
+    """Create task - requires search_query (or instructions) for grounded search"""
 
-    search_query: str  # Make required for creation
-    condition_description: str  # Make required for creation
+    search_query: str | None = None
+    condition_description: str | None = None
     run_immediately: bool = False  # Execute task immediately after creation
 
 

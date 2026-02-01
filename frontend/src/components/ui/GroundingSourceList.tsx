@@ -32,7 +32,7 @@ export const GroundingSourceList: React.FC<GroundingSourceListProps> = ({
             <ExternalLink className="h-4 w-4 shrink-0 mt-0.5 text-zinc-400 group-hover:text-brand-orange" />
             <div className="flex-1 min-w-0">
               <p className="text-sm text-zinc-700 group-hover:text-zinc-900 group-hover:underline break-words">
-                {source.title}
+                {source.title || new URL(source.url).hostname}
               </p>
             </div>
           </a>

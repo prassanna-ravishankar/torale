@@ -61,9 +61,7 @@ const getTemplateIcon = (templateName: string) => {
   return mapping ? mapping.icon : Sparkles;
 };
 
-const MIN_NAME_LENGTH = 3;
-const MIN_SEARCH_QUERY_LENGTH = 10;
-const MIN_CONDITION_DESCRIPTION_LENGTH = 10;
+const MIN_INSTRUCTIONS_LENGTH = 10;
 
 export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   open,
@@ -73,10 +71,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   // Form data
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("none");
-  const [name, setName] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [conditionDescription, setConditionDescription] = useState("");
-  const [notifyBehavior, setNotifyBehavior] = useState<NotifyBehavior>("once");
+  const [instructions, setInstructions] = useState("");
 
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,6 +87,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
         setTemplates(data);
       } catch (err) {
         console.error("Failed to load templates:", err);
+        toast.error("Failed to load templates. Please check your connection.");
       }
     };
     loadTemplates();
@@ -101,10 +97,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   useEffect(() => {
     if (!open) {
       setSelectedTemplateId("none");
-      setName("");
-      setSearchQuery("");
-      setConditionDescription("");
-      setNotifyBehavior("once");
+      setInstructions("");
       setValidationErrors({});
       setError("");
     }
@@ -120,11 +113,12 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
 
     const template = templates.find(t => t.id === templateId);
     if (template) {
-      setName(template.name);
-      setSearchQuery(template.search_query);
-      setConditionDescription(template.condition_description);
-      // Map template notify_behavior to simplified options
-      setNotifyBehavior(template.notify_behavior === "always" ? "always" : "once");
+      // Concatenate query and condition for the single input if they differ
+      if (template.condition_description && template.condition_description !== template.search_query) {
+        setInstructions(`${template.search_query}\n\nNotify when: ${template.condition_description}`);
+      } else {
+        setInstructions(template.search_query);
+      }
     }
   };
 
@@ -132,22 +126,10 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
 
-    if (!name.trim()) {
-      errors.name = "Task name is required";
-    } else if (name.length < MIN_NAME_LENGTH) {
-      errors.name = `Task name must be at least ${MIN_NAME_LENGTH} characters`;
-    }
-
-    if (!searchQuery.trim()) {
-      errors.searchQuery = "Search query is required";
-    } else if (searchQuery.length < MIN_SEARCH_QUERY_LENGTH) {
-      errors.searchQuery = "Please provide a more specific search query";
-    }
-
-    if (!conditionDescription.trim()) {
-      errors.conditionDescription = "Trigger condition is required";
-    } else if (conditionDescription.length < MIN_CONDITION_DESCRIPTION_LENGTH) {
-      errors.conditionDescription = "Please provide a more specific condition";
+    if (!instructions.trim()) {
+      errors.instructions = "Please describe what to monitor";
+    } else if (instructions.length < MIN_INSTRUCTIONS_LENGTH) {
+      errors.instructions = "Please provide more detail";
     }
 
     setValidationErrors(errors);
@@ -157,7 +139,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   // Task creation
   const handleCreateTask = async () => {
     if (!validate()) {
-      toast.error("Please fix the errors before creating");
+      toast.error("Please describe what to monitor");
       return;
     }
 
@@ -165,12 +147,15 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
     setIsSubmitting(true);
 
     try {
+      // We rely on the backend/agent to:
+      // 1. Infer the name (topic)
+      // 2. Infer the condition (from instructions)
+      // 3. Infer the schedule/behavior (next_run)
       const newTask = await api.createTask({
-        name,
-        search_query: searchQuery,
-        condition_description: conditionDescription,
+        search_query: instructions,
+        condition_description: instructions,
         schedule: "0 */6 * * *",
-        notify_behavior: notifyBehavior,
+        notify_behavior: "once",
         state: "active",
         run_immediately: true,
       });
@@ -199,7 +184,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
             Create Monitor
           </DialogTitle>
           <DialogDescription className="text-zinc-500">
-            Define what you want to track and when to notify you
+            Describe what you want to track. AI will handle the rest.
           </DialogDescription>
         </DialogHeader>
 
@@ -235,7 +220,11 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                             return (
                               <SelectItem key={template.id} value={template.id}>
                                 <div className="flex items-center gap-2">
-                                  <IconComponent className="h-4 w-4" />
+                                  {template.icon ? (
+                                    <span className="text-base leading-none">{template.icon}</span>
+                                  ) : (
+                                    <IconComponent className="h-4 w-4" />
+                                  )}
                                   {template.name}
                                 </div>
                               </SelectItem>
@@ -250,114 +239,30 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
             )}
 
             <div className="space-y-4">
-              {/* Task Name */}
+              {/* Instructions */}
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Monitor Name</Label>
-                <Input
-                  id="name"
-                  placeholder="e.g., iPhone 16 Release Monitor"
-                  value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    if (validationErrors.name) setValidationErrors(prev => ({ ...prev, name: "" }));
-                  }}
-                  disabled={isSubmitting}
-                  className={cn(validationErrors.name && "border-destructive")}
-                />
-                {validationErrors.name && (
-                  <p className="text-xs text-destructive flex items-center gap-1.5">
-                    <AlertCircle className="h-3 w-3" />
-                    {validationErrors.name}
-                  </p>
-                )}
-              </div>
-
-              {/* Search Query */}
-              <div className="space-y-2">
-                <Label htmlFor="searchQuery" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
-                  <Search className="h-3 w-3" />
+                <Label htmlFor="instructions" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
+                  <Bot className="h-3 w-3" />
                   What to Monitor
                 </Label>
                 <Textarea
-                  id="searchQuery"
-                  placeholder="e.g., When is the next iPhone being announced by Apple?"
-                  value={searchQuery}
+                  id="instructions"
+                  placeholder="e.g., Notify me when the iPhone 16 release date is announced..."
+                  value={instructions}
                   onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    if (validationErrors.searchQuery) setValidationErrors(prev => ({ ...prev, searchQuery: "" }));
+                    setInstructions(e.target.value);
+                    if (validationErrors.instructions) setValidationErrors(prev => ({ ...prev, instructions: "" }));
                   }}
                   disabled={isSubmitting}
-                  rows={3}
-                  className={cn("resize-none", validationErrors.searchQuery && "border-destructive")}
+                  rows={6}
+                  className={cn("resize-none font-medium text-lg p-4", validationErrors.instructions && "border-destructive")}
                 />
-                {validationErrors.searchQuery && (
+                {validationErrors.instructions && (
                   <p className="text-xs text-destructive flex items-center gap-1.5">
                     <AlertCircle className="h-3 w-3" />
-                    {validationErrors.searchQuery}
+                    {validationErrors.instructions}
                   </p>
                 )}
-              </div>
-
-              {/* Condition Description */}
-              <div className="space-y-2">
-                <Label htmlFor="condition" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
-                  <Bell className="h-3 w-3" />
-                  When to Notify
-                </Label>
-                <Textarea
-                  id="condition"
-                  placeholder="e.g., A specific release date or month is officially announced"
-                  value={conditionDescription}
-                  onChange={(e) => {
-                    setConditionDescription(e.target.value);
-                    if (validationErrors.conditionDescription) setValidationErrors(prev => ({ ...prev, conditionDescription: "" }));
-                  }}
-                  disabled={isSubmitting}
-                  rows={3}
-                  className={cn("resize-none", validationErrors.conditionDescription && "border-destructive")}
-                />
-                {validationErrors.conditionDescription && (
-                  <p className="text-xs text-destructive flex items-center gap-1.5">
-                    <AlertCircle className="h-3 w-3" />
-                    {validationErrors.conditionDescription}
-                  </p>
-                )}
-              </div>
-
-              {/* Notification Mode - inline toggle */}
-              <div className="flex items-center gap-3 p-3 bg-zinc-50 border-2 border-zinc-100">
-                <Bell className="h-4 w-4 text-zinc-500 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <Label className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider block mb-1">
-                    Notification Mode
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setNotifyBehavior("once")}
-                      className={cn(
-                        "text-xs px-3 py-1.5 border-2 font-mono transition-colors",
-                        notifyBehavior === "once"
-                          ? "border-zinc-900 bg-zinc-900 text-white"
-                          : "border-zinc-200 text-zinc-600 hover:border-zinc-400"
-                      )}
-                    >
-                      Notify once then stop
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setNotifyBehavior("always")}
-                      className={cn(
-                        "text-xs px-3 py-1.5 border-2 font-mono transition-colors",
-                        notifyBehavior === "always"
-                          ? "border-zinc-900 bg-zinc-900 text-white"
-                          : "border-zinc-200 text-zinc-600 hover:border-zinc-400"
-                      )}
-                    >
-                      Keep monitoring
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -376,7 +281,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
           </Button>
           <Button onClick={handleCreateTask} disabled={isSubmitting} className="shadow-brutalist">
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Monitor
+            Start Monitor
           </Button>
         </DialogFooter>
       </DialogContent>

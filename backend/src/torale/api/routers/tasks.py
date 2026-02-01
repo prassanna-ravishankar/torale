@@ -149,6 +149,15 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         task.notifications
     )
 
+    # Default condition to search_query if not provided
+    if not task.search_query:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Instruction (search_query) is required",
+        )
+
+    final_condition = task.condition_description or task.search_query
+
     # Create task in database
     query = """
         INSERT INTO tasks (
@@ -167,7 +176,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         task.schedule,
         task.state.value,
         task.search_query,
-        task.condition_description,
+        final_condition,
         task.notify_behavior,
         json.dumps(validated_notifications),
         extracted["notification_channels"],

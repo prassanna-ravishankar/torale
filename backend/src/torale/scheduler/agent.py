@@ -3,6 +3,7 @@
 Shared by the scheduler (job.py) and the suggest endpoint (tasks router).
 """
 
+import ast
 import asyncio
 import json
 import logging
@@ -137,7 +138,11 @@ def _parse_agent_response(poll_result: dict) -> dict:
 
     try:
         parsed = json.loads(text_content)
-    except (json.JSONDecodeError, TypeError) as e:
-        raise RuntimeError(f"Agent returned non-JSON response: {text_content[:200]}") from e
+    except (json.JSONDecodeError, TypeError):
+        # Agent sometimes returns Python dict repr (single quotes) instead of JSON
+        try:
+            parsed = ast.literal_eval(text_content)
+        except (ValueError, SyntaxError) as e:
+            raise RuntimeError(f"Agent returned non-JSON response: {text_content[:200]}") from e
 
     return parsed

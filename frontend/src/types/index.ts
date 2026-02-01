@@ -56,7 +56,7 @@ export interface Task {
  * Includes fields that are only used during creation and not returned in Task.
  */
 export interface TaskCreatePayload {
-  name: string;
+  name?: string;
   search_query: string;
   condition_description: string;
   schedule: string;
@@ -68,7 +68,7 @@ export interface TaskCreatePayload {
 
 export interface GroundingSource {
   url: string;
-  title: string;
+  title?: string;
 }
 
 export interface TaskExecution {

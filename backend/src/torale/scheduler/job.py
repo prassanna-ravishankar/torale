@@ -22,6 +22,8 @@ from torale.scheduler.activities import (
 )
 from torale.scheduler.agent import call_agent
 from torale.scheduler.scheduler import get_scheduler
+from urllib.parse import urlparse
+
 from torale.tasks import TaskState
 from torale.tasks.service import TaskService
 
@@ -145,9 +147,16 @@ async def _execute(
             last_state = json.dumps(last_state)
 
         prompt_parts = [
-            f"Monitor: {task['search_query']}",
-            f"Condition: {task['condition_description']}",
+            f"task_id: {task_id}",
+            f"user_id: {user_id}",
+            f"Task: {task['search_query']}",
         ]
+
+        # Only include condition if it adds new info
+        cond = task["condition_description"]
+        if cond and cond.strip() != task["search_query"].strip():
+            prompt_parts.append(f"Context: {cond}")
+
         if last_state:
             prompt_parts.append(f"Previous evidence: {last_state}")
 
@@ -161,6 +170,20 @@ async def _execute(
         notification = agent_response.get("notification")
         condition_met = notification is not None
         evidence = agent_response.get("evidence", "")
+        topic = agent_response.get("topic")
+
+        # Auto-name task if agent provided a topic and name is still the default
+        if topic and task["name"] == "New Monitor":
+            try:
+                await db.execute(
+                    "UPDATE tasks SET name = $1 WHERE id = $2",
+                    topic,
+                    uuid.UUID(task_id),
+                )
+                logger.info(f"Named task {task_id}: '{topic}'")
+            except Exception as e:
+                logger.error(f"Failed to name task {task_id}: {e}")
+
         sources = agent_response.get("sources", [])
         if not isinstance(sources, list):
             logger.warning(f"Agent returned non-list sources: {type(sources)}")
@@ -171,7 +194,12 @@ async def _execute(
         next_run = next_run_dt.isoformat() if next_run_dt else None
 
         change_summary = notification if condition_met else evidence
-        grounding_sources = [{"url": u} if isinstance(u, str) else u for u in sources]
+        def _source_entry(u):
+            if isinstance(u, str):
+                return {"url": u, "title": urlparse(u).netloc or u}
+            return u
+
+        grounding_sources = [_source_entry(u) for u in sources]
 
         await persist_execution_result(
             task_id=task_id,

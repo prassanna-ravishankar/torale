@@ -17,4 +17,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY . .
 RUN uv sync --frozen --no-dev
 
+RUN useradd -m agent && chown -R agent:agent /app
+USER agent
+
 CMD [".venv/bin/uvicorn", "agent:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -102,8 +102,9 @@ services:
       - MEM0_API_KEY=${MEM0_API_KEY}
     volumes:
       - ./torale-agent:/app
+      - /app/.venv
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
       retries: 3

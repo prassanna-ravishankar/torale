@@ -31,6 +31,7 @@ class MonitoringResponse(BaseModel):
     confidence: int = Field(ge=0, le=100, description="Confidence level 0-100")
     next_run: Optional[str] = Field(description="ISO timestamp for next check, or null if monitoring is complete")
     notification: Optional[str] = Field(description="Markdown message for the user, or null if nothing to report")
+    topic: Optional[str] = Field(default=None, description="A short, specific 3-5 word title for this monitor (e.g. 'iPhone 16 Release'), if one is needed.")
 
 
 harness = FastHarness(
@@ -41,6 +42,14 @@ harness = FastHarness(
 )
 
 step_logger = ConsoleStepLogger()
+
+# Check for required API keys
+if not os.getenv("ANTHROPIC_API_KEY"):
+    logger.warning("⚠️  ANTHROPIC_API_KEY is not set! Agent will likely fail.")
+if not os.getenv("PERPLEXITY_API_KEY"):
+    logger.warning("⚠️  PERPLEXITY_API_KEY is not set! Search capabilities will fail.")
+if not os.getenv("MEM0_API_KEY"):
+    logger.warning("⚠️  MEM0_API_KEY is not set! Memory capabilities will fail.")
 
 SYSTEM_PROMPT = """You are a search monitoring agent for Torale. You run as a scheduled API service - called periodically to check if a monitoring condition is met.
 
