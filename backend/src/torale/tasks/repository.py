@@ -43,7 +43,7 @@ class TaskRepository(BaseRepository):
             state: Task state (active/paused/completed)
             search_query: Search query for grounded search
             condition_description: Condition description
-            notify_behavior: Notification behavior (once/always/track_state)
+            notify_behavior: Notification behavior (once/always)
             notifications: List of notification configs
             notification_channels: List of channel types (email/webhook)
             notification_email: Email address for notifications

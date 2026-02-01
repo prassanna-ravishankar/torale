@@ -16,7 +16,6 @@ interface TaskConfigurationProps {
 const NOTIFY_BEHAVIOR_LABELS = {
   'once': 'Once only',
   'always': 'Every time',
-  'track_state': 'On changes'
 } as const;
 
 // Shared status rendering logic

@@ -40,19 +40,19 @@ TEST_EXPERIMENTS = [
         notify_behavior="always",
         category="availability",
     ),
-    # Date announcements (track_state behavior - notify on change)
+    # Date announcements (always behavior - notify on change)
     Experiment(
         search_query="When do swimming pool memberships open for summer 2025?",
         condition_description="Summer 2025 pool membership registration has opened",
         expected_outcome=False,  # Too early as of Jan 2025
-        notify_behavior="track_state",
+        notify_behavior="always",
         category="date_announcement",
     ),
     Experiment(
         search_query="When is the next Apple event scheduled?",
         condition_description="Apple has announced the date for their next event",
         expected_outcome=False,  # Depends on timing
-        notify_behavior="track_state",
+        notify_behavior="always",
         category="date_announcement",
     ),
     # Boolean facts (once behavior - simple yes/no)
@@ -147,4 +147,3 @@ BOOLEAN_FACT_EXPERIMENTS = [e for e in TEST_EXPERIMENTS if e.category == "boolea
 # Experiments grouped by notify behavior
 ONCE_EXPERIMENTS = [e for e in TEST_EXPERIMENTS if e.notify_behavior == "once"]
 ALWAYS_EXPERIMENTS = [e for e in TEST_EXPERIMENTS if e.notify_behavior == "always"]
-TRACK_STATE_EXPERIMENTS = [e for e in TEST_EXPERIMENTS if e.notify_behavior == "track_state"]

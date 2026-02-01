@@ -58,7 +58,6 @@ Confirm all settings before creating the task. You can edit any field before fin
 **Notification Behavior** - How often to notify:
 - **once** - Notify when condition first becomes true, then pause
 - **always** - Notify every time condition is met
-- **track_state** - Notify only on meaningful changes
 
 ## Run Immediately
 

@@ -53,7 +53,7 @@ CREATE TABLE tasks (
   -- Grounded search monitoring fields
   search_query TEXT,  -- "When is next iPhone release?"
   condition_description TEXT,  -- "A specific date has been announced"
-  notify_behavior TEXT DEFAULT 'once',  -- 'once', 'always', 'track_state'
+  notify_behavior TEXT DEFAULT 'once',  -- 'once', 'always'
   last_known_state JSONB,  -- Previous search results for comparison
   last_execution_id UUID REFERENCES task_executions(id),  -- Latest execution
 
@@ -115,7 +115,7 @@ CREATE TABLE task_templates (
   state TEXT NOT NULL DEFAULT 'active',  -- Template availability: 'active', 'paused'
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  CHECK (notify_behavior IN ('once', 'always', 'track_state')),
+  CHECK (notify_behavior IN ('once', 'always')),
   CHECK (state IN ('active', 'paused'))
 );
 ```

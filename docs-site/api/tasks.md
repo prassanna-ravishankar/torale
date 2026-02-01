@@ -74,7 +74,7 @@ curl -X POST https://api.torale.ai/api/v1/tasks/suggest \
       "search_query": "apartments for sale london e2 0fq",
       "condition_description": "Price below 450000 GBP",
       "schedule": "0 9 * * *",
-      "notify_behavior": "track_state"
+      "notify_behavior": "always"
     }
   }'
 ```
@@ -117,7 +117,7 @@ Content-Type: application/json
 | `search_query` | string | Yes | Search query for grounded search |
 | `condition_description` | string | Yes | Condition to evaluate |
 | `schedule` | string | Yes | Cron expression for execution schedule |
-| `notify_behavior` | string | No | `once`, `always`, or `track_state` (default: `once`) |
+| `notify_behavior` | string | No | `once` or `always` (default: `once`) |
 | `run_immediately` | boolean | No | Execute task immediately after creation (default: `false`) |
 
 **Response:** `201 Created`
@@ -328,7 +328,7 @@ Content-Type: application/json
   "search_query": "New search query",
   "condition_description": "New condition",
   "schedule": "0 */6 * * *",
-  "notify_behavior": "track_state",
+  "notify_behavior": "always",
   "state": "active"
 }
 ```
@@ -411,7 +411,7 @@ curl -X POST https://api.torale.ai/api/v1/tasks/550e8400-e29b-41d4-a716-44665544
 | `search_query` | string | Search query for grounded search |
 | `condition_description` | string | Condition to evaluate |
 | `schedule` | string | Cron expression |
-| `notify_behavior` | enum | `once`, `always`, or `track_state` |
+| `notify_behavior` | enum | `once` or `always` |
 | `state` | string | Task state: `active`, `paused`, or `completed` |
 | `last_known_state` | object | Previous execution state (for state tracking) |
 | `last_execution_id` | UUID | ID of the most recent execution |
@@ -440,7 +440,7 @@ curl -X POST https://api.torale.ai/api/v1/tasks/550e8400-e29b-41d4-a716-44665544
 
 ### Notify Behavior
 - **Required:** No (default: `once`)
-- **Valid values:** `once`, `always`, `track_state`
+- **Valid values:** `once`, `always`
 
 ### Name
 - **Required:** No (auto-generated if omitted)

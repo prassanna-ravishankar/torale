@@ -35,7 +35,7 @@ class TasksResource:
             search_query: Query to monitor (e.g., "When is iPhone 16 being released?")
             condition_description: Condition to trigger on (e.g., "A specific date is announced")
             schedule: Cron expression for task schedule (default: "0 9 * * *" = 9am daily)
-            notify_behavior: When to notify ("once", "always", or "track_state")
+            notify_behavior: When to notify ("once" or "always")
             notifications: List of notification configs
             state: Task state ("active" or "paused")
 

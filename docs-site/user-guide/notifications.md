@@ -8,8 +8,6 @@ Configure when and how you receive notifications.
 
 **always** - Notify every time the condition is met, regardless of previous notifications. Use for price monitoring where you want every update, or stock alerts where availability changes frequently.
 
-**track_state** - Compare current results with previous executions and notify only on meaningful changes (85% similarity threshold). Use for evolving information like news stories or price tracking with occasional updates.
-
 ## In-App Notifications
 
 View notifications in the dashboard by clicking the bell icon in the header. Notifications show:

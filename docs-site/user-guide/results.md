@@ -21,7 +21,6 @@ Each notification includes:
 - Concise answer (2-4 sentences)
 - Reasoning for why the condition was met
 - Source URLs where information was found
-- Change summary (for track_state behavior)
 
 ## Grounding Sources
 

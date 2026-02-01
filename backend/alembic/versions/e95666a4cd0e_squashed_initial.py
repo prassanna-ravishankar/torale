@@ -99,7 +99,7 @@ def upgrade() -> None:
             state TEXT NOT NULL DEFAULT 'active',
             state_changed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
             last_execution_id UUID REFERENCES task_executions(id) ON DELETE SET NULL,
-            CONSTRAINT check_notify_behavior CHECK (notify_behavior IN ('once', 'always', 'track_state')),
+            CONSTRAINT check_notify_behavior CHECK (notify_behavior IN ('once', 'always')),
             CONSTRAINT check_notification_channels CHECK (notification_channels <@ ARRAY['email', 'webhook']::TEXT[]),
             CONSTRAINT tasks_state_check CHECK (state IN ('active', 'paused', 'completed'))
         )
@@ -154,7 +154,7 @@ def upgrade() -> None:
             is_active BOOLEAN NOT NULL DEFAULT true,
             created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-            CONSTRAINT chk_templates_notify_behavior CHECK (notify_behavior IN ('once', 'always', 'track_state'))
+            CONSTRAINT chk_templates_notify_behavior CHECK (notify_behavior IN ('once', 'always'))
         )
     """)
     op.execute("CREATE INDEX idx_templates_category ON task_templates(category)")
@@ -197,7 +197,7 @@ def upgrade() -> None:
                 'Are tickets available for Taylor Swift Eras Tour 2025 dates?',
                 'New tour dates are announced or tickets become available for purchase',
                 '0 */4 * * *',
-                'track_state',
+                'always',
                 '{"model": "gemini-2.5-flash"}'::jsonb
             ),
             (

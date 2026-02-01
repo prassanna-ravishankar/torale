@@ -297,7 +297,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                 <p className="text-sm text-muted-foreground">
                   {task.notify_behavior === 'once' && 'Email when condition is met, then monitoring stops'}
                   {task.notify_behavior === 'always' && 'Email every time condition is met'}
-                  {task.notify_behavior === 'track_state' && 'Email only when information changes'}
                 </p>
               </div>
             </div>

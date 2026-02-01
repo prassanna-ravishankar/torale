@@ -9,7 +9,6 @@ from pydantic import BaseModel, ConfigDict, Field
 class NotifyBehavior(str, Enum):
     ONCE = "once"  # Notify once and auto-disable task
     ALWAYS = "always"  # Notify every time condition is met
-    TRACK_STATE = "track_state"  # Notify only when state changes
 
 
 class TaskState(str, Enum):
@@ -133,7 +132,7 @@ class TaskTemplateBase(BaseModel):
     search_query: str
     condition_description: str
     schedule: str
-    notify_behavior: NotifyBehavior = NotifyBehavior.TRACK_STATE
+    notify_behavior: NotifyBehavior = NotifyBehavior.ALWAYS
 
 
 class TaskTemplateCreate(TaskTemplateBase):

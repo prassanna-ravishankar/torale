@@ -50,7 +50,7 @@ def create_task(
     ),
     schedule: str = typer.Option("0 9 * * *", "--schedule", "-s", help="Cron schedule expression"),
     notify_behavior: str = typer.Option(
-        "once", "--notify-behavior", help="When to notify: once, always, track_state"
+        "once", "--notify-behavior", help="When to notify: once, always"
     ),
     webhook: str | None = typer.Option(None, "--webhook", "-w", help="Webhook URL to call"),
 ):

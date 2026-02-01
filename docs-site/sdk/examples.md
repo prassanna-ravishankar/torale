@@ -77,7 +77,7 @@ ai_regulation = client.tasks.create(
     search_query="What is the latest on California AI regulation SB-1047?",
     condition_description="New developments or official updates have been announced",
     schedule="0 9 * * *",  # Daily at 9 AM
-    notify_behavior="track_state"  # Only meaningful changes
+    notify_behavior="always"  # Notify on every match
 )
 ```
 

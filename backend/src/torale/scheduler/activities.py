@@ -173,9 +173,7 @@ async def send_email_notification(
         if custom_email in verified_emails:
             recipient_email = custom_email
         else:
-            logger.warning(
-                f"Custom notification email not verified for user {user_id}, using default"
-            )
+            logger.warning("Custom notification email not verified, using default")
 
     # Check spam limits (needs a raw connection for EmailVerificationService)
     async with db.acquire() as conn:
@@ -184,7 +182,7 @@ async def send_email_notification(
         )
 
     if not allowed:
-        logger.warning(f"Spam limit hit for user {user_id}: {error}")
+        logger.warning(f"Spam limit hit for task {task_id}: {error}")
         raise RuntimeError(f"Spam limit exceeded: {error}")
 
     # Send email via Novu
@@ -207,12 +205,12 @@ async def send_email_notification(
     email_error = None
 
     if novu_result["success"]:
-        logger.info(f"Email sent for task {task_id} (txn={novu_result.get('transaction_id')})")
+        logger.info(f"Email sent for task {task_id}")
     elif novu_result.get("skipped"):
         logger.info("Email notification skipped (Novu not configured)")
         email_status = "skipped"
     else:
-        logger.error(f"Failed to send email: {novu_result.get('error')}")
+        logger.error(f"Failed to send email for task {task_id}: {novu_result.get('error')}")
         email_status = "failed"
         email_error = str(novu_result.get("error"))
 

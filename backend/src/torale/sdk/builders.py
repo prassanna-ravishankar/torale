@@ -94,7 +94,7 @@ class MonitorBuilder:
         Args:
             email: Email address to notify
             webhook: Webhook URL to call
-            behavior: When to notify ("once", "always", or "track_state")
+            behavior: When to notify ("once" or "always")
             **kwargs: Additional notification configuration
 
         Returns:
