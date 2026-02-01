@@ -63,35 +63,37 @@ async def persist_execution_result(task_id: str, execution_id: str, agent_result
     grounding_sources = agent_result.get("grounding_sources", [])
     evidence = agent_result.get("evidence", "")
 
-    await db.execute(
-        """
-        UPDATE task_executions
-        SET status = $1, result = $2, completed_at = $3,
-            condition_met = $4, change_summary = $5, grounding_sources = $6
-        WHERE id = $7
-        """,
-        TaskStatus.SUCCESS.value,
-        json.dumps(agent_result),
-        now_utc,
-        condition_met,
-        change_summary,
-        json.dumps(grounding_sources),
-        UUID(execution_id),
-    )
+    async with db.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                """
+                UPDATE task_executions
+                SET status = $1, result = $2, completed_at = $3,
+                    condition_met = $4, change_summary = $5, grounding_sources = $6
+                WHERE id = $7
+                """,
+                TaskStatus.SUCCESS.value,
+                json.dumps(agent_result),
+                now_utc,
+                condition_met,
+                change_summary,
+                json.dumps(grounding_sources),
+                UUID(execution_id),
+            )
 
-    await db.execute(
-        """
-        UPDATE tasks
-        SET last_known_state = $1,
-            updated_at = $2,
-            last_execution_id = $3
-        WHERE id = $4
-        """,
-        evidence,
-        now_utc,
-        UUID(execution_id),
-        UUID(task_id),
-    )
+            await conn.execute(
+                """
+                UPDATE tasks
+                SET last_known_state = $1,
+                    updated_at = $2,
+                    last_execution_id = $3
+                WHERE id = $4
+                """,
+                evidence,
+                now_utc,
+                UUID(execution_id),
+                UUID(task_id),
+            )
 
 
 async def fetch_notification_context(task_id: str, execution_id: str, user_id: str) -> dict:

@@ -102,14 +102,8 @@ def _parse_agent_response(poll_result: dict) -> dict:
 
     try:
         parsed = json.loads(text_content)
-    except (json.JSONDecodeError, TypeError):
-        logger.warning(f"Agent returned non-JSON response, falling back: {text_content[:200]}")
-        parsed = {
-            "evidence": text_content,
-            "notification": None,
-            "confidence": "low",
-            "sources": [],
-        }
+    except (json.JSONDecodeError, TypeError) as e:
+        raise RuntimeError(f"Agent returned non-JSON response: {text_content[:200]}") from e
 
     return parsed
 
@@ -226,7 +220,7 @@ async def _execute(
                 if "webhook" in channels:
                     await send_webhook_notification(notification_context, enriched_result)
             except Exception as e:
-                logger.warning(f"Notification failed for task {task_id}: {e}")
+                logger.error(f"Notification failed for task {task_id}: {e}", exc_info=True)
 
         # Auto-complete if notify_behavior is "once" and condition met
         if condition_met and task["notify_behavior"] == "once":
@@ -252,16 +246,34 @@ async def _execute(
                     datetime.now(UTC),
                     uuid.UUID(execution_id),
                 )
-            except Exception:
-                logger.error(f"Failed to mark execution {execution_id} as failed")
+            except Exception as db_err:
+                logger.error(
+                    f"Failed to mark execution {execution_id} as failed: {db_err}",
+                    exc_info=True,
+                )
         raise
+
+
+_scheduled_tasks: set[asyncio.Task] = set()
+
+
+def _handle_scheduled_task_result(task: asyncio.Task) -> None:
+    """Log unhandled exceptions from scheduled task executions."""
+    _scheduled_tasks.discard(task)
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc:
+        logger.error(f"Scheduled task execution failed: {exc}", exc_info=exc)
 
 
 def execute_task_job(task_id: str, user_id: str, task_name: str) -> None:
     """Entry point for APScheduler cron jobs."""
-    asyncio.get_running_loop().create_task(
+    bg_task = asyncio.get_running_loop().create_task(
         _execute(task_id=task_id, execution_id=None, user_id=user_id, task_name=task_name)
     )
+    _scheduled_tasks.add(bg_task)
+    bg_task.add_done_callback(_handle_scheduled_task_result)
 
 
 async def execute_task_job_manual(
