@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from torale.tasks import NotificationConfig, NotifyBehavior, Task, TaskExecution
+from torale.tasks import NotificationConfig, NotifyBehavior, Task, TaskExecution, TaskState
 
 if TYPE_CHECKING:
     from torale.sdk.client import ToraleClient
@@ -25,7 +25,7 @@ class TasksResource:
         schedule: str = "0 9 * * *",
         notify_behavior: str | NotifyBehavior = NotifyBehavior.ONCE,
         notifications: list[dict | NotificationConfig] | None = None,
-        is_active: bool = True,
+        state: str | TaskState = TaskState.ACTIVE,
     ) -> Task:
         """
         Create a new monitoring task.
@@ -37,7 +37,7 @@ class TasksResource:
             schedule: Cron expression for task schedule (default: "0 9 * * *" = 9am daily)
             notify_behavior: When to notify ("once", "always", or "track_state")
             notifications: List of notification configs
-            is_active: Whether task is active
+            state: Task state ("active" or "paused")
 
         Returns:
             Created Task object
@@ -56,6 +56,10 @@ class TasksResource:
         if isinstance(notify_behavior, NotifyBehavior):
             notify_behavior = notify_behavior.value
 
+        # Convert state to string if enum
+        if isinstance(state, TaskState):
+            state = state.value
+
         # Convert NotificationConfig objects to dicts
         if notifications:
             notifications = [
@@ -69,7 +73,7 @@ class TasksResource:
             "schedule": schedule,
             "notify_behavior": notify_behavior,
             "notifications": notifications or [],
-            "is_active": is_active,
+            "state": state,
         }
 
         response = self.client.post("/api/v1/tasks/", json=data)
@@ -92,7 +96,7 @@ class TasksResource:
         """
         params = {}
         if active is not None:
-            params["is_active"] = active
+            params["state"] = TaskState.ACTIVE.value if active else TaskState.PAUSED.value
 
         response = self.client.get("/api/v1/tasks/", params=params)
         return [Task(**task_data) for task_data in response]
@@ -123,7 +127,7 @@ class TasksResource:
         schedule: str | None = None,
         notify_behavior: str | NotifyBehavior | None = None,
         notifications: list[dict | NotificationConfig] | None = None,
-        is_active: bool | None = None,
+        state: str | TaskState | None = None,
     ) -> Task:
         """
         Update task.
@@ -136,7 +140,7 @@ class TasksResource:
             schedule: New schedule
             notify_behavior: New notify behavior
             notifications: New notification configs
-            is_active: New active status
+            state: New task state ("active", "paused", "completed")
 
         Returns:
             Updated Task object
@@ -144,7 +148,7 @@ class TasksResource:
         Example:
             >>> task = client.tasks.update(
             ...     task_id="550e8400-e29b-41d4-a716-446655440000",
-            ...     is_active=False
+            ...     state="paused"
             ... )
         """
         data = {}
@@ -166,8 +170,10 @@ class TasksResource:
                 n.model_dump() if isinstance(n, NotificationConfig) else n for n in notifications
             ]
             data["notifications"] = notifications
-        if is_active is not None:
-            data["is_active"] = is_active
+        if state is not None:
+            if isinstance(state, TaskState):
+                state = state.value
+            data["state"] = state
 
         response = self.client.put(f"/api/v1/tasks/{task_id}", json=data)
         return Task(**response)

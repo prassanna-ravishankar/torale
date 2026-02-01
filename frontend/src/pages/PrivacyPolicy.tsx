@@ -87,7 +87,7 @@ export function PrivacyPolicy() {
               <p className="text-zinc-600 leading-relaxed mb-4">We automatically collect:</p>
               <ul className="list-disc pl-6 text-zinc-600 space-y-2">
                 <li><strong>System logs:</strong> API requests, error traces, performance metrics</li>
-                <li><strong>Temporal workflow data:</strong> Workflow execution IDs, schedule metadata, retry attempts</li>
+                <li><strong>Scheduling data:</strong> Job execution IDs, schedule metadata, retry attempts</li>
                 <li><strong>Aggregate statistics:</strong> Platform-wide metrics like total tasks, execution counts, popular queries</li>
                 <li><strong>IP addresses:</strong> For security, fraud prevention, and rate limiting (not linked to user profiles)</li>
               </ul>
@@ -116,7 +116,7 @@ export function PrivacyPolicy() {
               <ul className="list-disc pl-6 text-zinc-600 space-y-2 mb-4">
                 <li><strong>Clerk:</strong> Authentication, user management, session handling</li>
                 <li><strong>Google Cloud Platform:</strong> Hosting, compute infrastructure, managed databases</li>
-                <li><strong>Temporal Cloud:</strong> Workflow orchestration, task scheduling</li>
+                <li><strong>APScheduler:</strong> Cron-based task scheduling and execution</li>
                 <li><strong>AI Providers (Google Gemini, OpenAI, Anthropic):</strong> LLM inference for condition evaluation and answer generation</li>
               </ul>
               <p className="text-zinc-600 leading-relaxed mb-4">
@@ -168,7 +168,7 @@ export function PrivacyPolicy() {
                 <li>Task configurations (search queries, conditions, schedules)</li>
                 <li>Execution history (results, LLM responses, grounding sources)</li>
                 <li>Platform statistics (popular queries, error rates, system health)</li>
-                <li>Temporal workflow metadata (execution status, schedules)</li>
+                <li>Scheduling metadata (execution status, cron schedules)</li>
               </ul>
 
               <p className="text-zinc-600 leading-relaxed mb-4">

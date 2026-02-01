@@ -5,7 +5,7 @@ from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_temporal_e2e(client: AsyncClient):
+async def test_e2e(client: AsyncClient):
     # 1. Create task
     task_payload = {
         "name": "E2E Test Task (Pytest)",

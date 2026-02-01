@@ -1,43 +1,5 @@
 services:
   # ============================================
-  # Temporal Stack (Local Development Only)
-  # ============================================
-  # Production uses Temporal Cloud (us-central1.gcp.api.temporal.io:7233)
-  # Local dev uses self-hosted Temporal to match production workflows
-
-  temporal:
-    image: temporalio/auto-setup:latest
-    ports:
-      - "7233:7233"
-      - "8233:8233"
-    environment:
-      - DB=postgres12
-      - DB_PORT=5432
-      - POSTGRES_USER=temporal
-      - POSTGRES_PWD=temporal
-      - POSTGRES_SEEDS=temporal-postgres
-    depends_on:
-      - temporal-postgres
-
-  temporal-postgres:
-    image: postgres:14
-    environment:
-      POSTGRES_USER: temporal
-      POSTGRES_PASSWORD: temporal
-    volumes:
-      - temporal-postgres-data:/var/lib/postgresql/data
-
-  temporal-ui:
-    image: temporalio/ui:latest
-    ports:
-      - "8080:8080"
-    environment:
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
-    depends_on:
-      - temporal
-
-  # ============================================
   # Torale Database (Local Development)
   # ============================================
   # Production uses Cloud SQL PostgreSQL 16
@@ -105,8 +67,7 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
       - CLERK_PUBLISHABLE_KEY=${CLERK_PUBLISHABLE_KEY}
-      - TEMPORAL_HOST=temporal:7233
-      - TEMPORAL_NAMESPACE=default
+      - AGENT_URL=${AGENT_URL:-http://host.docker.internal:8001}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
@@ -125,35 +86,5 @@ services:
     volumes:
       - ./backend/src:/app/src
 
-  workers:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    environment:
-      - DATABASE_URL=postgresql://torale:torale@postgres:5432/torale
-      - SECRET_KEY=${SECRET_KEY}
-      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-      - CLERK_PUBLISHABLE_KEY=${CLERK_PUBLISHABLE_KEY}
-      - TEMPORAL_HOST=temporal:7233
-      - TEMPORAL_NAMESPACE=default
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - NOTIFICATION_API_KEY=${NOTIFICATION_API_KEY}
-      - NOVU_SECRET_KEY=${NOVU_SECRET_KEY}
-      - NOVU_WORKFLOW_ID=${NOVU_WORKFLOW_ID:-torale-condition-met}
-      - NOVU_VERIFICATION_WORKFLOW_ID=${NOVU_VERIFICATION_WORKFLOW_ID:-torale-email-verification}
-      - NOVU_API_URL=${NOVU_API_URL:-https://eu.api.novu.co}
-      - TORALE_NOAUTH=${TORALE_NOAUTH:-0}
-      - TORALE_NOAUTH_EMAIL=${TORALE_NOAUTH_EMAIL:-test@example.com}
-    depends_on:
-      - postgres
-      - temporal
-      - api
-    command: ["python", "-m", "torale.workers"]
-    volumes:
-      - ./backend/src:/app/src
-
 volumes:
-  temporal-postgres-data:
   postgres-data:

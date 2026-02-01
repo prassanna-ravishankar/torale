@@ -14,7 +14,11 @@ def _make_job_store_url() -> str:
     """Convert async database URL to sync for APScheduler 3.x SQLAlchemy job store."""
     url = settings.database_url
     # APScheduler 3.x uses sync SQLAlchemy, needs postgresql+psycopg2://
-    if url.startswith("postgresql://"):
+    if url.startswith("postgresql+asyncpg://"):
+        url = url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
+    elif url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+    elif url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
     return url
 

@@ -125,7 +125,7 @@ def list_tasks(
                     if len(task.search_query) > 40
                     else task.search_query,
                     task.schedule,
-                    "✓" if task.is_active else "✗",
+                    "✓" if task.state == "active" else "✗",
                     str(task.created_at)[:19],
                 )
 
@@ -150,7 +150,7 @@ def get_task(task_id: str):
             print(f"[cyan]Condition:[/cyan] {task.condition_description}")
             print(f"[cyan]Schedule:[/cyan] {task.schedule}")
             print(f"[cyan]Notify Behavior:[/cyan] {task.notify_behavior}")
-            print(f"[cyan]Active:[/cyan] {'Yes' if task.is_active else 'No'}")
+            print(f"[cyan]State:[/cyan] {task.state}")
             print(f"[cyan]Created:[/cyan] {task.created_at}")
 
             if task.notifications:
@@ -184,7 +184,7 @@ def update_task(
             if schedule is not None:
                 kwargs["schedule"] = schedule
             if active is not None:
-                kwargs["is_active"] = active
+                kwargs["state"] = "active" if active else "paused"
 
             if not kwargs:
                 print("[yellow]No updates specified.[/yellow]")
@@ -194,7 +194,7 @@ def update_task(
             print("[green]✓ Task updated successfully![/green]")
             print(f"[cyan]Name: {task.name}[/cyan]")
             print(f"[cyan]Schedule: {task.schedule}[/cyan]")
-            print(f"[cyan]Active: {'Yes' if task.is_active else 'No'}[/cyan]")
+            print(f"[cyan]State: {task.state}[/cyan]")
 
         except ToraleError as e:
             print(f"[red]✗ Failed to update task: {str(e)}[/red]")

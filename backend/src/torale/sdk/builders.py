@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from torale.tasks import NotifyBehavior, Task
+from torale.tasks import NotifyBehavior, Task, TaskState
 
 if TYPE_CHECKING:
     from torale.sdk import Torale
@@ -31,7 +31,7 @@ class MonitorBuilder:
         self._notify_behavior: NotifyBehavior = NotifyBehavior.ONCE
         self._notifications: list[dict] = []
         self._name: str | None = None
-        self._is_active: bool = True
+        self._state: TaskState = TaskState.ACTIVE
 
     def when(self, condition_description: str) -> MonitorBuilder:
         """
@@ -163,7 +163,7 @@ class MonitorBuilder:
         Example:
             >>> monitor("Query").when("condition").paused().create()
         """
-        self._is_active = False
+        self._state = TaskState.PAUSED
         return self
 
     def create(self) -> Task:
@@ -193,7 +193,7 @@ class MonitorBuilder:
             schedule=self._schedule,
             notify_behavior=self._notify_behavior,
             notifications=self._notifications,
-            is_active=self._is_active,
+            state=self._state,
         )
 
 

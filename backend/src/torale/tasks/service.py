@@ -82,7 +82,10 @@ class TaskService:
             return result
 
         except Exception as e:
-            await self._update_database_state(task_id, from_state)
+            try:
+                await self._update_database_state(task_id, from_state)
+            except Exception as rollback_err:
+                logger.error(f"Rollback failed for task {task_id}: {rollback_err}", exc_info=True)
             logger.error(f"State transition failed for task {task_id}, rolled back: {e}")
             raise
 

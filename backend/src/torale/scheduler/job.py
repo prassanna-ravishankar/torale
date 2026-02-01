@@ -102,10 +102,18 @@ async def _execute(
             task_id=task_id,
             execution_id=execution_id,
             agent_result={
+                # Frontend-expected shape
+                "summary": change_summary,
+                "sources": grounding_sources,
+                "metadata": {
+                    "changed": condition_met,
+                    "change_explanation": change_summary,
+                    "current_state": None,
+                },
+                # Agent-specific fields
                 "evidence": evidence,
                 "notification": notification,
                 "confidence": confidence,
-                "sources": sources,
                 "next_run": next_run,
                 "condition_met": condition_met,
                 "change_summary": change_summary,

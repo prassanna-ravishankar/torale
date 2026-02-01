@@ -6,7 +6,6 @@ testing all CRUD operations, notifications, and error handling.
 Prerequisites:
 - Local dev environment running (`just dev`)
 - TORALE_NOAUTH=1 environment variable set
-- Temporal scheduler workers running (required for schedule creation)
 
 Run with:
     # Run all tests (will auto-skip if API not available)
@@ -17,10 +16,6 @@ Run with:
 
 Note: These tests automatically skip if the API server isn't running (similar to
       test_gemini_integration.py). They're safe to run in CI.
-
-WARNING: Most tests create tasks which trigger Temporal schedule creation.
-         This requires Temporal scheduler workers to be running in self-hosted
-         Temporal (local dev). In production (Temporal Cloud), schedulers are managed.
 """
 
 import os
@@ -33,8 +28,7 @@ import pytest
 from torale.sdk import Torale
 from torale.sdk.exceptions import AuthenticationError, NotFoundError, ValidationError
 
-# NOTE: These tests create tasks which try to create Temporal schedules.
-# Temporal scheduler workers are now enabled in docker-compose.yml by default.
+# NOTE: These tests create tasks which create APScheduler jobs.
 
 
 def check_api_available() -> bool:
@@ -102,7 +96,7 @@ class TestSDKBasicOperations:
         assert task.search_query == "Test query"
         assert task.condition_description == "Test condition"
         assert task.schedule == "0 9 * * *"  # Default schedule
-        assert task.is_active is True
+        assert task.state == "active"
         assert task.created_at is not None
 
         # Cleanup
@@ -177,14 +171,14 @@ class TestSDKBasicOperations:
 
     def test_list_tasks_active_filter(self, sdk_client, test_task):
         """Test listing only active tasks."""
-        # Deactivate the test task
-        sdk_client.tasks.update(test_task.id, is_active=False)
+        # Pause the test task
+        sdk_client.tasks.update(test_task.id, state="paused")
 
-        # List active tasks - should not include our deactivated task
+        # List active tasks - should not include our paused task
         active_tasks = sdk_client.tasks.list(active=True)
         assert not any(t.id == test_task.id for t in active_tasks)
 
-        # List all tasks - should include our deactivated task
+        # List all tasks - should include our paused task
         all_tasks = sdk_client.tasks.list()
         assert any(t.id == test_task.id for t in all_tasks)
 
@@ -212,15 +206,15 @@ class TestSDKBasicOperations:
 
         assert updated_task.schedule == new_schedule
 
-    def test_update_task_active_status(self, sdk_client, test_task):
-        """Test activating/deactivating task."""
-        # Deactivate
-        updated_task = sdk_client.tasks.update(test_task.id, is_active=False)
-        assert updated_task.is_active is False
+    def test_update_task_state(self, sdk_client, test_task):
+        """Test pausing/resuming task."""
+        # Pause
+        updated_task = sdk_client.tasks.update(test_task.id, state="paused")
+        assert updated_task.state == "paused"
 
-        # Reactivate
-        updated_task = sdk_client.tasks.update(test_task.id, is_active=True)
-        assert updated_task.is_active is True
+        # Resume
+        updated_task = sdk_client.tasks.update(test_task.id, state="active")
+        assert updated_task.state == "active"
 
     def test_delete_task(self, sdk_client):
         """Test deleting a task."""

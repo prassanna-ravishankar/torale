@@ -27,28 +27,32 @@ async def sync_jobs_from_database() -> None:
     expected_job_ids = set()
 
     for row in rows:
-        task_id = str(row["id"])
-        job_id = f"task-{task_id}"
-        expected_job_ids.add(job_id)
+        try:
+            task_id = str(row["id"])
+            job_id = f"task-{task_id}"
+            expected_job_ids.add(job_id)
 
-        existing_job = scheduler.get_job(job_id)
+            existing_job = scheduler.get_job(job_id)
 
-        if existing_job is None:
-            scheduler.add_job(
-                _JOB_FUNC_REF,
-                trigger=CronTrigger.from_crontab(row["schedule"]),
-                id=job_id,
-                args=[task_id, str(row["user_id"]), row["name"]],
-                replace_existing=True,
-            )
-            if row["state"] == "paused":
-                scheduler.pause_job(job_id)
-            logger.info(f"Synced job {job_id} (state={row['state']})")
-        else:
-            if row["state"] == "paused" and existing_job.next_run_time is not None:
-                scheduler.pause_job(job_id)
-            elif row["state"] == "active" and existing_job.next_run_time is None:
-                scheduler.resume_job(job_id)
+            if existing_job is None:
+                scheduler.add_job(
+                    _JOB_FUNC_REF,
+                    trigger=CronTrigger.from_crontab(row["schedule"]),
+                    id=job_id,
+                    args=[task_id, str(row["user_id"]), row["name"]],
+                    replace_existing=True,
+                )
+                if row["state"] == "paused":
+                    scheduler.pause_job(job_id)
+                logger.info(f"Synced job {job_id} (state={row['state']})")
+            else:
+                if row["state"] == "paused" and existing_job.next_run_time is not None:
+                    scheduler.pause_job(job_id)
+                elif row["state"] == "active" and existing_job.next_run_time is None:
+                    scheduler.resume_job(job_id)
+        except Exception as e:
+            logger.error(f"Failed to sync job for task {row['id']}: {e}")
+            continue
 
     for job in scheduler.get_jobs():
         if job.id.startswith("task-") and job.id not in expected_job_ids:

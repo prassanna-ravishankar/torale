@@ -107,7 +107,7 @@ export function TermsOfService() {
                 <li><strong>Task Configurations:</strong> Search queries, condition descriptions, schedules, and notification preferences you have configured</li>
                 <li><strong>Execution History:</strong> Results from automated task executions, including LLM-generated answers, grounding sources, and condition evaluation outcomes</li>
                 <li><strong>System Metrics:</strong> Platform-wide statistics including popular search queries, execution success rates, and error logs</li>
-                <li><strong>Temporal Workflows:</strong> Workflow execution status, schedules, and debugging information for task orchestration</li>
+                <li><strong>Scheduling Data:</strong> Job execution status, schedules, and debugging information for task orchestration</li>
               </ul>
 
               <p className="text-zinc-600 leading-relaxed mb-4">
@@ -142,7 +142,7 @@ export function TermsOfService() {
                 <li><strong>AI/LLM Providers:</strong> Google Gemini (primary), OpenAI, Anthropic Claude</li>
                 <li><strong>Authentication:</strong> Clerk (user authentication and session management)</li>
                 <li><strong>Infrastructure:</strong> Google Cloud Platform (compute, database, orchestration)</li>
-                <li><strong>Workflow Orchestration:</strong> Temporal Cloud (task scheduling and execution)</li>
+                <li><strong>Task Scheduling:</strong> APScheduler (cron-based task scheduling and execution)</li>
               </ul>
               <p className="text-zinc-600 leading-relaxed mt-4">
                 Your search queries and monitored content may be transmitted to these providers for processing.

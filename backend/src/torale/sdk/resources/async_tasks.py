@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from torale.tasks import NotificationConfig, NotifyBehavior, Task, TaskExecution
+from torale.tasks import NotificationConfig, NotifyBehavior, Task, TaskExecution, TaskState
 
 if TYPE_CHECKING:
     from torale.sdk.async_client import ToraleAsyncClient
@@ -25,7 +25,7 @@ class AsyncTasksResource:
         schedule: str = "0 9 * * *",
         notify_behavior: str | NotifyBehavior = NotifyBehavior.ONCE,
         notifications: list[dict | NotificationConfig] | None = None,
-        is_active: bool = True,
+        state: str | TaskState = TaskState.ACTIVE,
     ) -> Task:
         """
         Create a new monitoring task (async).
@@ -37,7 +37,7 @@ class AsyncTasksResource:
             schedule: Cron expression
             notify_behavior: When to notify
             notifications: List of notification configs
-            is_active: Whether task is active
+            state: Task state ("active" or "paused")
 
         Returns:
             Created Task object
@@ -53,6 +53,9 @@ class AsyncTasksResource:
         if isinstance(notify_behavior, NotifyBehavior):
             notify_behavior = notify_behavior.value
 
+        if isinstance(state, TaskState):
+            state = state.value
+
         if notifications:
             notifications = [
                 n.model_dump() if isinstance(n, NotificationConfig) else n for n in notifications
@@ -65,7 +68,7 @@ class AsyncTasksResource:
             "schedule": schedule,
             "notify_behavior": notify_behavior,
             "notifications": notifications or [],
-            "is_active": is_active,
+            "state": state,
         }
 
         response = await self.client.post("/api/v1/tasks/", json=data)
@@ -83,7 +86,7 @@ class AsyncTasksResource:
         """
         params = {}
         if active is not None:
-            params["is_active"] = active
+            params["state"] = TaskState.ACTIVE.value if active else TaskState.PAUSED.value
 
         response = await self.client.get("/api/v1/tasks/", params=params)
         return [Task(**task_data) for task_data in response]
@@ -102,7 +105,7 @@ class AsyncTasksResource:
         schedule: str | None = None,
         notify_behavior: str | NotifyBehavior | None = None,
         notifications: list[dict | NotificationConfig] | None = None,
-        is_active: bool | None = None,
+        state: str | TaskState | None = None,
     ) -> Task:
         """Update task (async)."""
         data = {}
@@ -124,8 +127,10 @@ class AsyncTasksResource:
                 n.model_dump() if isinstance(n, NotificationConfig) else n for n in notifications
             ]
             data["notifications"] = notifications
-        if is_active is not None:
-            data["is_active"] = is_active
+        if state is not None:
+            if isinstance(state, TaskState):
+                state = state.value
+            data["state"] = state
 
         response = await self.client.put(f"/api/v1/tasks/{task_id}", json=data)
         return Task(**response)

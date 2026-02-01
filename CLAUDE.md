@@ -10,15 +10,15 @@ Torale is a **grounded search monitoring platform**. Users create tasks that wat
 
 ## Codebase
 
-**Stack**: Python FastAPI + React/TypeScript + GKE + Temporal Cloud + Clerk Auth + Gemini
+**Stack**: Python FastAPI + React/TypeScript + GKE + APScheduler + Clerk Auth + Gemini
 
 **Structure**:
 ```
 torale/
-├── backend/                 # Python FastAPI + Temporal workers
+├── backend/                 # Python FastAPI + APScheduler
 │   ├── src/torale/api/      # API endpoints
-│   ├── src/torale/workers/  # Temporal workflows
-│   ├── src/torale/executors/# Search + LLM logic
+│   ├── src/torale/scheduler/ # APScheduler jobs, activities, state sync
+│   ├── src/torale/tasks/    # Task domain models and state machine
 │   └── alembic/             # DB migrations
 ├── torale-agent/            # Monitoring agent (FastHarness + Claude Agent SDK)
 │   ├── agent.py             # Agent service entry point
@@ -39,7 +39,7 @@ torale/
 - `just test-integration` - Run integration tests
 - `just lint` - Run all linting (backend + frontend + TypeScript)
 
-**Architecture**: Frontend → FastAPI → Temporal (scheduling) → Workers → Gemini + Google Search → Notifications
+**Architecture**: Frontend → FastAPI → APScheduler (cron) → Agent → Gemini + Google Search → Notifications
 
 See `docs-site/architecture/` for detailed docs.
 

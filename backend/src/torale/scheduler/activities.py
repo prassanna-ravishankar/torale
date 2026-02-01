@@ -230,6 +230,9 @@ async def send_email_notification(
         email_error,
     )
 
+    if email_status == "failed":
+        raise RuntimeError(f"Email notification failed: {email_error}")
+
 
 async def send_webhook_notification(notification_context: dict, result: dict) -> None:
     """Send webhook notification."""
