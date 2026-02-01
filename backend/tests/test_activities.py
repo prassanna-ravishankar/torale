@@ -29,14 +29,12 @@ def _setup_db_mock(mock_db):
     """Set up mock_db with acquire() -> conn with transaction() context manager."""
     mock_conn = AsyncMock()
 
-    # transaction() is a sync call that returns an async context manager
     @asynccontextmanager
     async def fake_transaction():
         yield
 
     mock_conn.transaction = fake_transaction
 
-    # acquire() is an async context manager returning mock_conn
     acq = MagicMock()
     acq.__aenter__ = AsyncMock(return_value=mock_conn)
     acq.__aexit__ = AsyncMock(return_value=False)
@@ -49,7 +47,7 @@ class TestPersistExecutionResult:
     @pytest.mark.asyncio
     @patch(f"{MODULE}.db")
     async def test_writes_to_both_tables(self, mock_db):
-        """Writes to both task_executions and tasks tables in a transaction."""
+        """Writes to both task_executions and tasks tables atomically."""
         mock_conn = _setup_db_mock(mock_db)
 
         from torale.scheduler.activities import persist_execution_result
@@ -57,10 +55,9 @@ class TestPersistExecutionResult:
         await persist_execution_result(TASK_ID, EXECUTION_ID, _make_agent_result())
 
         assert mock_conn.execute.await_count == 2
-        # First call: UPDATE task_executions
+        mock_db.acquire.assert_called_once()
         first_call = mock_conn.execute.call_args_list[0]
         assert "task_executions" in first_call[0][0]
-        # Second call: UPDATE tasks
         second_call = mock_conn.execute.call_args_list[1]
         assert "tasks" in second_call[0][0]
 
@@ -80,28 +77,12 @@ class TestPersistExecutionResult:
 
         await persist_execution_result(TASK_ID, EXECUTION_ID, agent_result)
 
-        # task_executions UPDATE args: status, result, completed_at, condition_met, change_summary, grounding_sources, execution_id
         exec_call = mock_conn.execute.call_args_list[0]
         exec_args = exec_call[0]
         assert exec_args[4] is True  # condition_met
         assert exec_args[5] == "Price dropped"  # change_summary
-        assert json.loads(exec_args[6]) == [{"url": "https://apple.com"}]  # grounding_sources
+        assert json.loads(exec_args[6]) == [{"url": "https://apple.com"}]
 
-        # tasks UPDATE args: last_known_state, updated_at, last_execution_id, task_id
         task_call = mock_conn.execute.call_args_list[1]
         task_args = task_call[0]
         assert task_args[1] == "Price is $999"  # evidence -> last_known_state
-
-    @pytest.mark.asyncio
-    @patch(f"{MODULE}.db")
-    async def test_transaction_atomicity(self, mock_db):
-        """Both UPDATEs run inside the same transaction context manager."""
-        mock_conn = _setup_db_mock(mock_db)
-
-        from torale.scheduler.activities import persist_execution_result
-
-        await persist_execution_result(TASK_ID, EXECUTION_ID, _make_agent_result())
-
-        # Both executes happened on the same connection (inside transaction)
-        assert mock_conn.execute.await_count == 2
-        mock_db.acquire.assert_called_once()
