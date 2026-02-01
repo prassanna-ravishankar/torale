@@ -203,15 +203,8 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
-  async getTemporalWorkflows(): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/admin/temporal/workflows`, {
-      headers: await this.getAuthHeaders(),
-    })
-    return this.handleResponse(response)
-  }
-
-  async getTemporalSchedules(): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/admin/temporal/schedules`, {
+  async getSchedulerJobs(): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/admin/scheduler/jobs`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
