@@ -8,6 +8,7 @@ import json
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlparse
 
 from apscheduler.triggers.date import DateTrigger
 
@@ -22,8 +23,6 @@ from torale.scheduler.activities import (
 )
 from torale.scheduler.agent import call_agent
 from torale.scheduler.scheduler import get_scheduler
-from urllib.parse import urlparse
-
 from torale.tasks import TaskState
 from torale.tasks.service import TaskService
 
@@ -195,6 +194,7 @@ async def _execute(
         next_run = next_run_dt.isoformat() if next_run_dt else None
 
         change_summary = notification if condition_met else evidence
+
         def _source_entry(u):
             if isinstance(u, str):
                 return {"url": u, "title": urlparse(u).netloc or u}

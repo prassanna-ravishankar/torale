@@ -25,15 +25,16 @@ import api from "@/lib/api";
 import {
   Loader2,
   Sparkles,
-  Search,
-  Bell,
   AlertCircle,
-  Music,
-  Waves,
   Gamepad2,
-  Code2,
+  Rocket,
+  TrendingDown,
+  Eclipse,
+  Camera,
+  Smartphone,
+  TrainFront,
+  Briefcase,
   Bot,
-  Cpu,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from 'sonner';
@@ -45,20 +46,20 @@ interface TaskCreationDialogProps {
   onTaskCreated: (task: Task) => void;
 }
 
-// Icon mapping for templates
-const iconMappings = [
-  { keywords: ['concert', 'ticket', 'music'], icon: Music },
-  { keywords: ['swimming', 'pool', 'summer'], icon: Waves },
-  { keywords: ['ps5', 'playstation', 'stock'], icon: Gamepad2 },
-  { keywords: ['framework', 'react', 'code'], icon: Code2 },
-  { keywords: ['ai', 'gpt', 'model', 'robot'], icon: Bot },
-  { keywords: ['gpu', 'graphics', 'cpu', 'nvidia'], icon: Cpu },
-];
+// Icon mapping for templates by category
+const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  gaming: Gamepad2,
+  space: Rocket,
+  finance: TrendingDown,
+  nature: Eclipse,
+  photography: Camera,
+  tech: Smartphone,
+  travel: TrainFront,
+  careers: Briefcase,
+};
 
-const getTemplateIcon = (templateName: string) => {
-  const name = templateName.toLowerCase();
-  const mapping = iconMappings.find(m => m.keywords.some(k => name.includes(k)));
-  return mapping ? mapping.icon : Sparkles;
+const getTemplateIcon = (category: string) => {
+  return categoryIcons[category.toLowerCase()] ?? Sparkles;
 };
 
 const MIN_INSTRUCTIONS_LENGTH = 10;
@@ -216,15 +217,11 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                         <SelectGroup key={category}>
                           <SelectLabel>{category}</SelectLabel>
                           {categoryTemplates.map((template) => {
-                            const IconComponent = getTemplateIcon(template.name);
+                            const IconComponent = getTemplateIcon(template.category);
                             return (
                               <SelectItem key={template.id} value={template.id}>
                                 <div className="flex items-center gap-2">
-                                  {template.icon ? (
-                                    <span className="text-base leading-none">{template.icon}</span>
-                                  ) : (
-                                    <IconComponent className="h-4 w-4" />
-                                  )}
+                                  <IconComponent className="h-4 w-4" />
                                   {template.name}
                                 </div>
                               </SelectItem>

@@ -20,7 +20,6 @@ from torale.notifications import NotificationValidationError, validate_notificat
 from torale.scheduler.job import execute_task_job_manual
 from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import (
-    NotifyBehavior,
     Task,
     TaskCreate,
     TaskExecution,
@@ -237,7 +236,6 @@ async def list_tasks(
         rows = await db.fetch_all(query, user.id)
 
     return [parse_task_with_execution(row) for row in rows]
-
 
 
 def _handle_background_task_result(task: asyncio.Task) -> None:
