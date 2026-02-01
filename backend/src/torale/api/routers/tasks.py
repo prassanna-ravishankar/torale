@@ -4,12 +4,13 @@ import logging
 import secrets
 from uuid import UUID
 
+import httpx
+from apscheduler.jobstores.base import JobLookupError
 from asyncpg.exceptions import UniqueViolationError
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from torale.access import CurrentUser, OptionalUser
-from torale.api.dependencies import get_genai_client
 from torale.api.utils.task_parsers import (
     parse_execution_row,
     parse_task_row,
@@ -17,6 +18,7 @@ from torale.api.utils.task_parsers import (
 )
 from torale.core.database import Database, get_db
 from torale.notifications import NotificationValidationError, validate_notification
+from torale.scheduler.agent import call_agent
 from torale.scheduler.job import execute_task_job_manual
 from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import (
@@ -224,7 +226,6 @@ async def list_tasks(
 class SuggestTaskRequest(BaseModel):
     prompt: str = Field(..., description="Natural language description of the task")
     current_task: dict | None = Field(None, description="Current task configuration for context")
-    model: str = Field("gemini-2.0-flash-exp", description="Model to use for suggestion")
 
 
 class SuggestedTask(BaseModel):
@@ -243,97 +244,71 @@ class SuggestedTask(BaseModel):
 async def suggest_task(
     request: SuggestTaskRequest,
     user: CurrentUser,
-    genai_client=Depends(get_genai_client),
 ):
-    """
-    Suggest task configuration from natural language description.
-    """
-    from google.genai import types
-
-    # Use structured format with distinct roles to prevent prompt injection
-    # System instructions are in the first user message, user input is separate
+    """Suggest task configuration from natural language description."""
     if request.current_task:
-        system_instruction = """You are an expert at configuring web monitoring tasks.
-
-Based on the user's request, UPDATE the current task configuration.
-- If the user says "add river facing", append it to the search query (e.g. "apartments in NY" -> "apartments in NY river facing").
-- Keep existing context unless explicitly asked to change it.
-- Return the FULL updated configuration.
-
-JSON Response:"""
-
-        contents = [
-            {"role": "user", "parts": [{"text": system_instruction}]},
-            {
-                "role": "model",
-                "parts": [
-                    {
-                        "text": "Understood. I will return a JSON object with the required fields based on your update request."
-                    }
-                ],
-            },
-            {
-                "role": "user",
-                "parts": [
-                    {
-                        "text": f'Current Task Configuration:\n{json.dumps(request.current_task, indent=2)}\n\nUser Request: "{request.prompt}"'
-                    }
-                ],
-            },
-        ]
+        prompt = (
+            "You are an expert at configuring web monitoring tasks.\n"
+            "Based on the user's request, UPDATE the current task configuration.\n"
+            "Keep existing context unless explicitly asked to change it.\n"
+            "Return the FULL updated configuration as JSON with these fields: "
+            "name, search_query, condition_description, schedule (cron), notify_behavior (once|always|track_state).\n\n"
+            f"Current Task Configuration:\n{json.dumps(request.current_task, indent=2)}\n\n"
+            f'User Request: "{request.prompt}"'
+        )
     else:
-        system_instruction = """You are an expert at configuring web monitoring tasks.
-
-Based on the user's description, generate the optimal configuration for a monitoring task.
-
-IMPORTANT for notify_behavior:
-- If the user wants DAILY/WEEKLY/MONTHLY digests or summaries → use 'always' (notify every time)
-- If the user wants recurring alerts (stock, price, availability) → use 'always'
-- If the user wants ONE-TIME announcements (launch dates, event dates) → use 'once'
-
-JSON Response:"""
-
-        contents = [
-            {"role": "user", "parts": [{"text": system_instruction}]},
-            {
-                "role": "model",
-                "parts": [
-                    {"text": "Understood. I will return a JSON object with the required fields."}
-                ],
-            },
-            {"role": "user", "parts": [{"text": f'User Description: "{request.prompt}"'}]},
-        ]
+        prompt = (
+            "You are an expert at configuring web monitoring tasks.\n"
+            "Based on the user's description, generate the optimal configuration.\n"
+            "IMPORTANT for notify_behavior:\n"
+            "- Daily/weekly/monthly digests or recurring alerts → 'always'\n"
+            "- One-time announcements (launch dates, event dates) → 'once'\n"
+            "- Track changes over time → 'track_state'\n\n"
+            "Return JSON with these fields: "
+            "name, search_query, condition_description, schedule (cron), notify_behavior (once|always|track_state).\n\n"
+            f'User Description: "{request.prompt}"'
+        )
 
     try:
-        response = await genai_client.aio.models.generate_content(
-            model=request.model,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=SuggestedTask,
-            ),
-        )
-
-        # Log the AI response for debugging
-        suggestion = json.loads(response.text)
-        logger.info(f"Task suggestion for '{request.prompt}': {json.dumps(suggestion, indent=2)}")
-
+        result = await call_agent(prompt)
+        suggestion = SuggestedTask(**result)
+        logger.info(f"Task suggestion for '{request.prompt}': {suggestion.model_dump_json()}")
         return suggestion
 
-    except json.JSONDecodeError as e:
-        logger.error(
-            f"Failed to parse LLM JSON response for task suggestion: {response.text}", exc_info=e
-        )
+    except TimeoutError as e:
+        logger.error(f"Suggestion timed out for '{request.prompt}': {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to process AI suggestion. The format was invalid.",
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Suggestion timed out. Try a simpler description.",
+        ) from e
+    except httpx.ConnectError as e:
+        logger.error(f"Agent connection failed for suggestion: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Suggestion service temporarily unavailable.",
+        ) from e
+    except ValidationError as e:
+        logger.error(f"Failed to parse suggestion for '{request.prompt}': {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Could not parse suggestion. Try rephrasing.",
         ) from e
     except Exception as e:
-        logger.error(f"Failed to suggest task: {str(e)}", exc_info=e)
+        logger.error(f"Failed to suggest task: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate task suggestion. Please try again.",
         ) from e
+
+
+def _handle_background_task_result(task: asyncio.Task) -> None:
+    """Log unhandled exceptions from manual task executions."""
+    _background_tasks.discard(task)
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc:
+        logger.error(f"Background task execution failed: {exc}", exc_info=exc)
 
 
 async def _start_task_execution(
@@ -369,7 +344,7 @@ async def _start_task_execution(
         )
     )
     _background_tasks.add(bg_task)
-    bg_task.add_done_callback(_background_tasks.discard)
+    bg_task.add_done_callback(_handle_background_task_result)
     logger.info(f"Started execution {execution_row['id']} for task {task_id}")
 
     return dict(execution_row)
@@ -889,7 +864,7 @@ async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(g
         scheduler = get_scheduler()
         scheduler.remove_job(job_id)
         logger.info(f"Removed scheduler job {job_id}")
-    except Exception:
+    except JobLookupError:
         logger.info(f"Job {job_id} not found when deleting - already removed or never existed")
 
     # Delete task from database

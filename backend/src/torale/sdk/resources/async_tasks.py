@@ -152,38 +152,3 @@ class AsyncTasksResource:
             f"/api/v1/tasks/{task_id}/notifications", params={"limit": limit}
         )
         return [TaskExecution(**exec_data) for exec_data in response]
-
-    async def preview(
-        self,
-        search_query: str,
-        condition_description: str | None = None,
-        model: str = "gemini-2.0-flash-exp",
-    ) -> dict:
-        """
-        Preview a search query without creating a task (async).
-
-        Args:
-            search_query: The search query to test
-            condition_description: Condition to evaluate (optional)
-            model: Model to use for search
-
-        Returns:
-            dict with answer, condition_met, grounding_sources, etc.
-
-        Example:
-            >>> async with ToraleAsync() as client:
-            ...     result = await client.tasks.preview(
-            ...         search_query="When is iPhone 16 being released?",
-            ...         condition_description="A specific release date is announced"
-            ...     )
-            ...     print(result["answer"])
-        """
-        data = {
-            "search_query": search_query,
-            "model": model,
-        }
-
-        if condition_description:
-            data["condition_description"] = condition_description
-
-        return await self.client.post("/api/v1/tasks/preview", json=data)

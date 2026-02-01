@@ -9,6 +9,7 @@ This service consolidates:
 import logging
 from uuid import UUID
 
+from apscheduler.jobstores.base import JobLookupError
 from apscheduler.triggers.cron import CronTrigger
 
 from torale.core.database import Database
@@ -229,6 +230,6 @@ class TaskService:
             scheduler.remove_job(job_id)
             logger.info(f"Removed job {job_id}")
             return {"success": True, "schedule_action": "deleted", "error": None}
-        except Exception:
+        except JobLookupError:
             logger.info(f"Job {job_id} not found when removing - already deleted or never existed")
             return {"success": True, "schedule_action": "not_found_ok", "error": None}

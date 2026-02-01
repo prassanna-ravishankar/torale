@@ -31,7 +31,6 @@ class MonitorBuilder:
         self._notify_behavior: NotifyBehavior = NotifyBehavior.ONCE
         self._notifications: list[dict] = []
         self._name: str | None = None
-        self._config: dict = {"model": "gemini-2.0-flash-exp"}
         self._is_active: bool = True
 
     def when(self, condition_description: str) -> MonitorBuilder:
@@ -154,22 +153,6 @@ class MonitorBuilder:
         self._name = name
         return self
 
-    def with_config(self, **config) -> MonitorBuilder:
-        """
-        Set custom executor configuration.
-
-        Args:
-            **config: Configuration options (e.g., model="gemini-2.5-flash")
-
-        Returns:
-            Self for chaining
-
-        Example:
-            >>> monitor("Query").when("condition").with_config(model="gemini-2.5-flash")
-        """
-        self._config.update(config)
-        return self
-
     def paused(self) -> MonitorBuilder:
         """
         Create task in paused state (not active).
@@ -210,7 +193,6 @@ class MonitorBuilder:
             schedule=self._schedule,
             notify_behavior=self._notify_behavior,
             notifications=self._notifications,
-            config=self._config,
             is_active=self._is_active,
         )
 

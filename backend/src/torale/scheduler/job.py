@@ -7,105 +7,23 @@ Imports from activities (data access) and service (state machine) -- no circular
 import asyncio
 import json
 import logging
-import time
 import uuid
 from datetime import UTC, datetime
 
-import httpx
-
-from torale.core.config import settings
 from torale.core.database import db
-from torale.scheduler.scheduler import get_scheduler
-from torale.tasks import TaskState
-from torale.tasks.service import TaskService
-from torale.workers.activities import (
+from torale.scheduler.activities import (
     create_execution_record,
     fetch_notification_context,
     persist_execution_result,
     send_email_notification,
     send_webhook_notification,
 )
+from torale.scheduler.agent import call_agent
+from torale.scheduler.scheduler import get_scheduler
+from torale.tasks import TaskState
+from torale.tasks.service import TaskService
 
 logger = logging.getLogger(__name__)
-
-AGENT_TIMEOUT = 120  # seconds
-POLL_BACKOFF = [0.5, 1, 2, 4, 8, 16, 32]  # exponential backoff steps
-
-
-async def _call_agent(prompt: str) -> dict:
-    """Send task to torale-agent via A2A JSON-RPC and poll for result."""
-    message_id = f"msg-{uuid.uuid4().hex[:12]}"
-
-    async with httpx.AsyncClient(timeout=AGENT_TIMEOUT) as client:
-        send_payload = {
-            "jsonrpc": "2.0",
-            "id": "1",
-            "method": "message/send",
-            "params": {
-                "message": {
-                    "kind": "message",
-                    "messageId": message_id,
-                    "role": "user",
-                    "parts": [{"kind": "text", "text": prompt}],
-                }
-            },
-        }
-
-        resp = await client.post(settings.agent_url, json=send_payload)
-        resp.raise_for_status()
-        send_result = resp.json()
-
-        task_id = send_result.get("result", {}).get("id")
-        if not task_id:
-            raise RuntimeError(f"Agent did not return task_id: {send_result}")
-
-        deadline = time.monotonic() + AGENT_TIMEOUT
-        backoff_idx = 0
-        while time.monotonic() < deadline:
-            delay = POLL_BACKOFF[min(backoff_idx, len(POLL_BACKOFF) - 1)]
-            await asyncio.sleep(delay)
-            backoff_idx += 1
-
-            poll_payload = {
-                "jsonrpc": "2.0",
-                "id": "2",
-                "method": "tasks/get",
-                "params": {"id": task_id},
-            }
-
-            poll_resp = await client.post(settings.agent_url, json=poll_payload)
-            poll_resp.raise_for_status()
-            poll_result = poll_resp.json()
-
-            task_status = poll_result.get("result", {}).get("status", {})
-            state = task_status.get("state") if isinstance(task_status, dict) else task_status
-
-            if state == "completed":
-                return _parse_agent_response(poll_result)
-            elif state == "failed":
-                error = poll_result.get("result", {}).get("error", "Unknown agent error")
-                raise RuntimeError(f"Agent task failed: {error}")
-
-        raise TimeoutError(f"Agent did not complete within {AGENT_TIMEOUT}s")
-
-
-def _parse_agent_response(poll_result: dict) -> dict:
-    """Parse A2A response into monitoring result shape."""
-    result = poll_result.get("result", {})
-
-    text_content = ""
-    artifacts = result.get("artifacts", [])
-    for artifact in artifacts:
-        for part in artifact.get("parts", []):
-            if part.get("kind") == "text":
-                text_content += part.get("text", "")
-
-    try:
-        parsed = json.loads(text_content)
-    except (json.JSONDecodeError, TypeError) as e:
-        raise RuntimeError(f"Agent returned non-JSON response: {text_content[:200]}") from e
-
-    return parsed
 
 
 async def _complete_task(task_id: str) -> None:
@@ -167,7 +85,7 @@ async def _execute(
             prompt_parts.append(f"Previous evidence: {last_state}")
 
         # Call agent
-        agent_response = await _call_agent("\n".join(prompt_parts))
+        agent_response = await call_agent("\n".join(prompt_parts))
 
         # Map agent response to execution result
         notification = agent_response.get("notification")
@@ -196,6 +114,7 @@ async def _execute(
         )
 
         # Send notifications if condition met
+        notification_failed = False
         if condition_met and not suppress_notifications:
             try:
                 notification_context = await fetch_notification_context(
@@ -220,11 +139,17 @@ async def _execute(
                 if "webhook" in channels:
                     await send_webhook_notification(notification_context, enriched_result)
             except Exception as e:
+                notification_failed = True
                 logger.error(f"Notification failed for task {task_id}: {e}", exc_info=True)
 
         # Auto-complete if notify_behavior is "once" and condition met
         if condition_met and task["notify_behavior"] == "once":
-            await _complete_task(task_id)
+            if notification_failed:
+                logger.error(
+                    f"Skipping auto-complete for once-task {task_id} — notification delivery failed"
+                )
+            else:
+                await _complete_task(task_id)
 
         # Dynamic reschedule if agent returns next_run
         if next_run:
@@ -234,10 +159,12 @@ async def _execute(
                 scheduler.modify_job(job_id, next_run_time=datetime.fromisoformat(next_run))
                 logger.info(f"Rescheduled task {task_id} to {next_run}")
             except Exception as e:
-                logger.warning(f"Failed to reschedule task {task_id}: {e}")
+                logger.error(
+                    f"Failed to reschedule task {task_id} to {next_run}: {e}", exc_info=True
+                )
 
     except Exception as e:
-        logger.error(f"Task execution failed for {task_id}: {e}")
+        logger.error(f"Task execution failed for {task_id}: {e}", exc_info=True)
         if execution_id:
             try:
                 await db.execute(
