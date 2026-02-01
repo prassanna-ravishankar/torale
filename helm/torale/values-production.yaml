@@ -26,9 +26,6 @@ api:
       cpu: 500m
       memory: 512Mi
 
-worker:
-  enabled: false
-
 frontend:
   replicaCount: 1
   autoscaling:

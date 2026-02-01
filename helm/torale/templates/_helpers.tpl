@@ -65,22 +65,6 @@ app.kubernetes.io/component: api
 {{- end }}
 
 {{/*
-Worker specific labels
-*/}}
-{{- define "torale.worker.labels" -}}
-{{ include "torale.labels" . }}
-app.kubernetes.io/component: worker
-{{- end }}
-
-{{/*
-Worker selector labels
-*/}}
-{{- define "torale.worker.selectorLabels" -}}
-{{ include "torale.selectorLabels" . }}
-app.kubernetes.io/component: worker
-{{- end }}
-
-{{/*
 Frontend specific labels
 */}}
 {{- define "torale.frontend.labels" -}}
@@ -119,13 +103,6 @@ API image
 */}}
 {{- define "torale.api.image" -}}
 {{ .Values.image.registry }}/{{ .Values.image.repository }}/{{ .Values.api.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}
-{{- end }}
-
-{{/*
-Worker image
-*/}}
-{{- define "torale.worker.image" -}}
-{{ .Values.image.registry }}/{{ .Values.image.repository }}/{{ .Values.worker.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}
 {{- end }}
 
 {{/*

@@ -25,7 +25,6 @@ class Settings(BaseSettings):
 
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
-    google_api_key: str | None = None
 
     # Novu Cloud configuration
     novu_secret_key: str | None = None
@@ -36,9 +35,6 @@ class Settings(BaseSettings):
 
     gcp_project_id: str | None = None
     gcp_region: str = "us-central1"
-
-    # Default LLM model for Gemini provider
-    default_gemini_model: str = "gemini-2.5-flash"
 
     api_host: str = "0.0.0.0"
     api_port: int = 8000

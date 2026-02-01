@@ -152,10 +152,10 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
               >
                 <div className="bg-white border-2 border-zinc-200 rounded-sm p-4 mb-2 mt-[-8px]">
                   {/* Latest Result */}
-                  {lastExecution?.result?.answer ? (
+                  {lastExecution?.result?.summary ? (
                     <div className="mb-4">
                       <p className="text-sm text-zinc-700 leading-relaxed line-clamp-3">
-                        {lastExecution.result.answer}
+                        {lastExecution.result.summary}
                       </p>
                       <div className="flex items-center gap-3 mt-2">
                         <span className="text-xs font-mono text-zinc-500">Condition:</span>
@@ -200,10 +200,10 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
               >
                 <div className="bg-zinc-50 border-b-2 border-zinc-200 p-4 pl-12">
                   {/* Latest Result */}
-                  {lastExecution?.result?.answer ? (
+                  {lastExecution?.result?.summary ? (
                     <div className="mb-4">
                       <p className="text-sm text-zinc-700 leading-relaxed line-clamp-3">
-                        {lastExecution.result.answer}
+                        {lastExecution.result.summary}
                       </p>
                       <div className="flex items-center gap-3 mt-2">
                         <span className="text-xs font-mono text-zinc-500">Condition:</span>

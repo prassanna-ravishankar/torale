@@ -78,40 +78,6 @@ api:
     maxReplicas: 10
     targetCPUUtilizationPercentage: 70
 
-# Worker deployment (disabled — replaced by APScheduler in-process)
-worker:
-  enabled: false
-  replicaCount: 2
-
-  image:
-    name: torale-worker
-
-  # Cost optimization: Use Spot pods
-  nodeSelector:
-    cloud.google.com/gke-spot: "true"
-
-  tolerations:
-    - key: cloud.google.com/gke-spot
-      operator: Equal
-      value: "true"
-      effect: NoSchedule
-
-  # Right-size resources
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
-
-  # Horizontal Pod Autoscaler
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 70
-
 # Frontend deployment
 frontend:
   enabled: true

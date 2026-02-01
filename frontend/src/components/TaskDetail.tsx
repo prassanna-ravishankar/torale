@@ -352,9 +352,9 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               })}
             </span>
           </div>
-          {firstExecution.result?.answer && (
+          {firstExecution.result?.summary && (
             <p className="text-sm text-zinc-700 leading-relaxed line-clamp-3">
-              {firstExecution.result.answer}
+              {firstExecution.result.summary}
             </p>
           )}
           {firstExecution.condition_met !== undefined && (

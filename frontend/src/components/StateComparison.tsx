@@ -66,14 +66,14 @@ export const StateComparison: React.FC<StateComparisonProps> = ({ executions }) 
               )}
             </div>
 
-            {execution.result?.current_state && (
+            {execution.result?.metadata?.current_state && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {nextExecution?.result?.current_state && (
+                {nextExecution?.result?.metadata?.current_state && (
                   <div className="space-y-2">
                     <p className="text-sm">Previous State:</p>
                     <div className="p-3 bg-muted rounded-md">
                       <div className="text-xs text-muted-foreground space-y-1">
-                        {Object.entries(nextExecution.result.current_state).map(
+                        {Object.entries(nextExecution.result.metadata.current_state).map(
                           ([key, value]) => (
                             <div key={key}>
                               <span className="font-medium">{key}:</span>{" "}
@@ -90,14 +90,14 @@ export const StateComparison: React.FC<StateComparisonProps> = ({ executions }) 
 
                 <div className="space-y-2">
                   <p className="text-sm">
-                    {nextExecution?.result?.current_state ? "New State:" : "Current State:"}
+                    {nextExecution?.result?.metadata?.current_state ? "New State:" : "Current State:"}
                   </p>
                   <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
                     <div className="text-xs space-y-1">
-                      {Object.entries(execution.result.current_state).map(
+                      {Object.entries(execution.result.metadata.current_state).map(
                         ([key, value]) => {
                           const previousValue =
-                            nextExecution?.result?.current_state?.[key];
+                            nextExecution?.result?.metadata?.current_state?.[key];
                           const hasChanged =
                             previousValue !== undefined &&
                             JSON.stringify(previousValue) !== JSON.stringify(value);
@@ -124,9 +124,9 @@ export const StateComparison: React.FC<StateComparisonProps> = ({ executions }) 
               </div>
             )}
 
-            {execution.result?.answer && (
+            {execution.result?.summary && (
               <div className="mt-3 p-3 bg-muted rounded-md">
-                <p className="text-sm">{execution.result.answer}</p>
+                <p className="text-sm">{execution.result.summary}</p>
               </div>
             )}
           </Card>

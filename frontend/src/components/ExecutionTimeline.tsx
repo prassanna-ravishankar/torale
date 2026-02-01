@@ -79,11 +79,9 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
               </div>
 
               {/* Layer 2: PRIMARY INFO - Answer/Summary & Sources (Always Visible) */}
-              {(execution.result?.summary || execution.result?.answer) && (
+              {execution.result?.summary && (
                 <div className="mb-3 p-4 bg-white border-2 border-zinc-200">
-                  <SectionLabel className="mb-3">
-                    {execution.result?.summary ? "Summary" : "Answer"}
-                  </SectionLabel>
+                  <SectionLabel className="mb-3">Summary</SectionLabel>
                   <div className="text-sm prose prose-sm max-w-none">
                     <ReactMarkdown
                       components={{
@@ -97,7 +95,7 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
                         h3: ({ children }) => <h3 className="text-base font-grotesk font-bold mb-2 mt-2 text-zinc-900">{children}</h3>,
                       }}
                     >
-                      {execution.result.summary || execution.result.answer}
+                      {execution.result.summary}
                     </ReactMarkdown>
                   </div>
                 </div>
@@ -132,11 +130,11 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
                     </div>
                   )}
 
-                  {(execution.result?.metadata?.current_state || execution.result?.current_state) && (
+                  {execution.result?.metadata?.current_state && (
                     <div className="p-3 bg-zinc-900 border border-zinc-800">
                       <p className="text-[10px] font-mono uppercase text-zinc-500 tracking-wider mb-3">Current State (Dev)</p>
                       <div className="text-xs font-mono space-y-2">
-                        {Object.entries(execution.result?.metadata?.current_state || execution.result.current_state).map(
+                        {Object.entries(execution.result.metadata.current_state).map(
                           ([key, value]) => (
                             <div key={key} className="flex flex-col gap-1">
                               <span className="text-zinc-400">
