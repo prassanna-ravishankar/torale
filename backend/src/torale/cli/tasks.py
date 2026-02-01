@@ -53,7 +53,6 @@ def create_task(
         "once", "--notify-behavior", help="When to notify: once, always, track_state"
     ),
     webhook: str | None = typer.Option(None, "--webhook", "-w", help="Webhook URL to call"),
-    model: str = typer.Option("gemini-2.0-flash-exp", "--model", "-m", help="LLM model to use"),
 ):
     """
     Create a new monitoring task.
@@ -83,7 +82,6 @@ def create_task(
                 schedule=schedule,
                 notify_behavior=notify_behavior,
                 notifications=notifications,
-                config={"model": model},
             )
 
             print("[green]✓ Task created successfully![/green]")
@@ -223,9 +221,6 @@ def get_task(task_id: str):
                 print("[cyan]Notifications:[/cyan]")
                 for notif in task.notifications:
                     print(f"  - {notif.type}: {notif.address or notif.url}")
-
-            print("[cyan]Config:[/cyan]")
-            print(json.dumps(task.config, indent=2))
 
             if task.last_known_state:
                 print("[cyan]Last Known State:[/cyan]")

@@ -368,13 +368,9 @@ curl -X POST http://localhost:8000/api/v1/tasks \
   -d '{
     "name": "iPhone Release Monitor",
     "schedule": "0 9 * * *",
-    "executor_type": "llm_grounded_search",
     "search_query": "When is the next iPhone being released?",
     "condition_description": "A specific release date has been announced",
-    "notify_behavior": "once",
-    "config": {
-      "model": "gemini-2.0-flash-exp"
-    }
+    "notify_behavior": "once"
   }'
 ```
 

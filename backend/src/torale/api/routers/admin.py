@@ -93,9 +93,10 @@ async def get_platform_stats(
         text("""
         SELECT
             COUNT(*) as total_tasks,
-            SUM(CASE WHEN condition_met = true THEN 1 ELSE 0 END) as triggered_tasks
-        FROM tasks
-        WHERE state = 'active'
+            SUM(CASE WHEN e.condition_met = true THEN 1 ELSE 0 END) as triggered_tasks
+        FROM tasks t
+        LEFT JOIN task_executions e ON t.last_execution_id = e.id
+        WHERE t.state = 'active'
         """)
     )
     task_row = task_result.first()
@@ -128,12 +129,13 @@ async def get_platform_stats(
     popular_result = await session.execute(
         text("""
         SELECT
-            search_query,
+            t.search_query,
             COUNT(*) as task_count,
-            SUM(CASE WHEN condition_met = true THEN 1 ELSE 0 END) as triggered_count
-        FROM tasks
-        WHERE search_query IS NOT NULL
-        GROUP BY search_query
+            SUM(CASE WHEN e.condition_met = true THEN 1 ELSE 0 END) as triggered_count
+        FROM tasks t
+        LEFT JOIN task_executions e ON t.last_execution_id = e.id
+        WHERE t.search_query IS NOT NULL
+        GROUP BY t.search_query
         ORDER BY task_count DESC
         LIMIT 10
         """)
@@ -197,16 +199,17 @@ async def list_all_queries(
             t.condition_description,
             t.schedule,
             t.state,
-            t.condition_met,
+            le.condition_met as condition_met,
             t.created_at,
             u.email as user_email,
             COUNT(te.id) as execution_count,
             SUM(CASE WHEN te.condition_met = true THEN 1 ELSE 0 END) as trigger_count
         FROM tasks t
         JOIN users u ON u.id = t.user_id
+        LEFT JOIN task_executions le ON t.last_execution_id = le.id
         LEFT JOIN task_executions te ON te.task_id = t.id
         WHERE 1=1 {active_filter}
-        GROUP BY t.id, u.email
+        GROUP BY t.id, u.email, le.condition_met
         ORDER BY t.created_at DESC
         LIMIT :limit
         """),
@@ -221,7 +224,7 @@ async def list_all_queries(
             "condition_description": row[3],
             "schedule": row[4],
             "state": row[5],
-            "condition_met": row[6],
+            "condition_met": row[6] or False,
             "created_at": row[7].isoformat() if row[7] else None,
             "user_email": row[8],
             "execution_count": row[9] if row[9] else 0,

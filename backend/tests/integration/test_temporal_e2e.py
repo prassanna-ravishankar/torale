@@ -10,11 +10,9 @@ async def test_temporal_e2e(client: AsyncClient):
     task_payload = {
         "name": "E2E Test Task (Pytest)",
         "schedule": "0 9 * * *",
-        "executor_type": "llm_grounded_search",
         "search_query": "What is 2+2?",
         "condition_description": "A numerical answer is provided",
         "notify_behavior": "always",
-        "config": {"model": "gemini-2.0-flash-exp"},
     }
 
     response = await client.post("/api/v1/tasks", json=task_payload)

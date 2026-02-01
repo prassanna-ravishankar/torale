@@ -8,9 +8,6 @@ from torale.tasks import Task
 def parse_task_row(row) -> dict:
     """Parse a task row from the database, converting JSON strings to dicts"""
     task_dict = dict(row)
-    # Parse config if it's a string
-    if isinstance(task_dict.get("config"), str):
-        task_dict["config"] = json.loads(task_dict["config"])
     # Parse last_known_state if it's a string
     if isinstance(task_dict.get("last_known_state"), str):
         task_dict["last_known_state"] = (

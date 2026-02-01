@@ -79,21 +79,17 @@ async def persist_execution_result(task_id: str, execution_id: str, agent_result
         UUID(execution_id),
     )
 
-    new_last_notified_at = now_utc if condition_met else None
-
     await db.execute(
         """
         UPDATE tasks
         SET last_known_state = $1,
             updated_at = $2,
-            last_execution_id = $3,
-            last_notified_at = COALESCE($4, last_notified_at)
-        WHERE id = $5
+            last_execution_id = $3
+        WHERE id = $4
         """,
         evidence,
         now_utc,
         UUID(execution_id),
-        new_last_notified_at,
         UUID(task_id),
     )
 

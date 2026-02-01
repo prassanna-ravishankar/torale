@@ -252,10 +252,6 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
         condition_description: conditionDescription,
         schedule,
         notify_behavior: notifyBehavior,
-        executor_type: "llm_grounded_search",
-        config: {
-          search_provider: "google"
-        },
         state: "active",
         run_immediately: true,
       });

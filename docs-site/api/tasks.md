@@ -105,9 +105,6 @@ Content-Type: application/json
   "condition_description": "Apple has officially announced a specific release date",
   "schedule": "0 9 * * *",
   "notify_behavior": "once",
-  "config": {
-    "model": "gemini-2.0-flash-exp"
-  },
   "run_immediately": false
 }
 ```
@@ -121,7 +118,6 @@ Content-Type: application/json
 | `condition_description` | string | Yes | Condition to evaluate |
 | `schedule` | string | Yes | Cron expression for execution schedule |
 | `notify_behavior` | string | No | `once`, `always`, or `track_state` (default: `once`) |
-| `config` | object | No | Executor configuration |
 | `run_immediately` | boolean | No | Execute task immediately after creation (default: `false`) |
 
 **Response:** `201 Created`
@@ -135,15 +131,10 @@ Content-Type: application/json
   "condition_description": "Apple has officially announced a specific release date",
   "schedule": "0 9 * * *",
   "notify_behavior": "once",
-  "executor_type": "llm_grounded_search",
-  "config": {
-    "model": "gemini-2.0-flash-exp",
-    "search_provider": "google"
-  },
   "state": "active",
-  "condition_met": false,
   "last_known_state": null,
-  "last_notified_at": null,
+  "last_execution_id": null,
+  "last_execution": null,
   "created_at": "2024-01-15T10:30:00Z",
   "updated_at": "2024-01-15T10:30:00Z"
 }
@@ -177,10 +168,7 @@ Content-Type: application/json
 ```json
 {
   "search_query": "When is the next iPhone being released?",
-  "condition_description": "Apple has officially announced a specific release date",
-  "config": {
-    "model": "gemini-2.0-flash-exp"
-  }
+  "condition_description": "Apple has officially announced a specific release date"
 }
 ```
 
@@ -247,8 +235,9 @@ Authorization: Bearer {api_key}
       "schedule": "0 9 * * *",
       "notify_behavior": "once",
       "state": "active",
-      "condition_met": true,
-      "last_notified_at": "2024-01-15T14:23:45Z",
+      "last_known_state": null,
+      "last_execution_id": null,
+      "last_execution": null,
       "created_at": "2024-01-15T10:30:00Z",
       "updated_at": "2024-01-15T14:23:45Z"
     }
@@ -296,19 +285,19 @@ Authorization: Bearer {api_key}
   "condition_description": "Apple has officially announced a specific release date",
   "schedule": "0 9 * * *",
   "notify_behavior": "once",
-  "executor_type": "llm_grounded_search",
-  "config": {
-    "model": "gemini-2.0-flash-exp",
-    "search_provider": "google"
-  },
   "state": "active",
-  "condition_met": true,
   "last_known_state": {
     "answer": "iPhone 16 releases September 20, 2024",
-    "condition_met": true,
     "timestamp": "2024-01-15T14:23:45Z"
   },
-  "last_notified_at": "2024-01-15T14:23:45Z",
+  "last_execution_id": "880e8400-e29b-41d4-a716-446655440000",
+  "last_execution": {
+    "id": "880e8400-e29b-41d4-a716-446655440000",
+    "condition_met": true,
+    "status": "success",
+    "started_at": "2024-01-15T14:23:00Z",
+    "completed_at": "2024-01-15T14:23:45Z"
+  },
   "created_at": "2024-01-15T10:30:00Z",
   "updated_at": "2024-01-15T14:23:45Z"
 }
@@ -365,7 +354,7 @@ curl -X PUT https://api.torale.ai/api/v1/tasks/550e8400-e29b-41d4-a716-446655440
 
 ### Delete Task
 
-Delete a task and its Temporal schedule.
+Delete a task and its scheduled jobs.
 
 **Endpoint:** `DELETE /api/v1/tasks/{id}`
 
@@ -408,7 +397,7 @@ curl -X POST https://api.torale.ai/api/v1/tasks/550e8400-e29b-41d4-a716-44665544
   -H "Authorization: Bearer sk_..."
 ```
 
-**Note:** Execution happens asynchronously via Temporal. Check execution status using Executions API.
+**Note:** Execution happens asynchronously. Check execution status using Executions API.
 
 ## Task Object Schema
 
@@ -423,29 +412,12 @@ curl -X POST https://api.torale.ai/api/v1/tasks/550e8400-e29b-41d4-a716-44665544
 | `condition_description` | string | Condition to evaluate |
 | `schedule` | string | Cron expression |
 | `notify_behavior` | enum | `once`, `always`, or `track_state` |
-| `executor_type` | string | Always `llm_grounded_search` (MVP) |
-| `config` | object | Executor configuration |
-| `is_active` | boolean | Whether task is active |
-| `condition_met` | boolean | Whether condition was met in last execution |
+| `state` | string | Task state: `active`, `paused`, or `completed` |
 | `last_known_state` | object | Previous execution state (for state tracking) |
-| `last_notified_at` | timestamp | When last notification was sent |
+| `last_execution_id` | UUID | ID of the most recent execution |
+| `last_execution` | object | Embedded last execution summary (condition_met, status, etc.) |
 | `created_at` | timestamp | Task creation time |
 | `updated_at` | timestamp | Last update time |
-
-### Config Object
-
-Default configuration:
-```json
-{
-  "model": "gemini-2.0-flash-exp",
-  "search_provider": "google"
-}
-```
-
-**Available models:**
-- `gemini-2.0-flash-exp` (default, recommended)
-- `gpt-4-turbo` (fallback)
-- `claude-3-opus` (fallback)
 
 ## Validation Rules
 

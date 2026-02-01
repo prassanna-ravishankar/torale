@@ -159,8 +159,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
         condition_description: conditionDescription,
         schedule,
         notify_behavior: notifyBehavior,
-        executor_type: "llm_grounded_search",
-        config: {},
         state: "active"
       });
 

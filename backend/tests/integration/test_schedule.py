@@ -20,11 +20,9 @@ async def test_schedule_e2e(client: AsyncClient):
     task_payload = {
         "name": "Scheduled Test Task (Pytest)",
         "schedule": "* * * * *",
-        "executor_type": "llm_grounded_search",
         "search_query": "What is 1+1?",
         "condition_description": "A numerical answer is provided",
         "notify_behavior": "always",
-        "config": {"model": "gemini-2.0-flash-exp"},
         "is_active": True,
     }
 

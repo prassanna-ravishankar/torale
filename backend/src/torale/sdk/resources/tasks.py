@@ -25,7 +25,6 @@ class TasksResource:
         schedule: str = "0 9 * * *",
         notify_behavior: str | NotifyBehavior = NotifyBehavior.ONCE,
         notifications: list[dict | NotificationConfig] | None = None,
-        config: dict | None = None,
         is_active: bool = True,
     ) -> Task:
         """
@@ -38,7 +37,6 @@ class TasksResource:
             schedule: Cron expression for task schedule (default: "0 9 * * *" = 9am daily)
             notify_behavior: When to notify ("once", "always", or "track_state")
             notifications: List of notification configs
-            config: Executor configuration (default: {"model": "gemini-2.0-flash-exp"})
             is_active: Whether task is active
 
         Returns:
@@ -71,9 +69,7 @@ class TasksResource:
             "schedule": schedule,
             "notify_behavior": notify_behavior,
             "notifications": notifications or [],
-            "config": config or {"model": "gemini-2.0-flash-exp"},
             "is_active": is_active,
-            "executor_type": "llm_grounded_search",
         }
 
         response = self.client.post("/api/v1/tasks/", json=data)
@@ -127,7 +123,6 @@ class TasksResource:
         schedule: str | None = None,
         notify_behavior: str | NotifyBehavior | None = None,
         notifications: list[dict | NotificationConfig] | None = None,
-        config: dict | None = None,
         is_active: bool | None = None,
     ) -> Task:
         """
@@ -141,7 +136,6 @@ class TasksResource:
             schedule: New schedule
             notify_behavior: New notify behavior
             notifications: New notification configs
-            config: New config
             is_active: New active status
 
         Returns:
@@ -172,8 +166,6 @@ class TasksResource:
                 n.model_dump() if isinstance(n, NotificationConfig) else n for n in notifications
             ]
             data["notifications"] = notifications
-        if config is not None:
-            data["config"] = config
         if is_active is not None:
             data["is_active"] = is_active
 

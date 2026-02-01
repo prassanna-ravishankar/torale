@@ -9,8 +9,7 @@ State stored in `tasks.last_known_state` JSONB column:
 ```sql
 CREATE TABLE tasks (
   ...
-  last_known_state JSONB,  -- Can store dict or list depending on extraction schema
-  extraction_schema JSONB,  -- Agent-generated schema defining state structure
+  last_known_state JSONB,  -- Can store dict or list
   ...
 );
 ```
@@ -21,31 +20,7 @@ The `last_known_state` field can store either:
 - **Dictionary** - Single object with key-value pairs (e.g., `{"release_date": "2024-09-12", "confirmed": true}`)
 - **List** - Array of objects (e.g., `[{"event_date": "2026-04-01", "event_name": "Roadster"}, {...}]`)
 
-The structure is determined by the agent-generated `extraction_schema` for each task. This allows flexible monitoring of single items (product releases) or collections (upcoming events, price changes across products, etc.).
-
-### Agent-Determined Schemas
-
-On first execution, the LLM analyzes the task and generates an extraction schema defining what fields to track. This schema is persisted and reused for all subsequent executions, ensuring consistent structure across time.
-
-Example schema for tracking Tesla events:
-```json
-{
-  "event_date": {
-    "type": "date",
-    "description": "The announced or widely reported date of the next Tesla event"
-  },
-  "event_name": {
-    "type": "string",
-    "description": "Name or title of the upcoming Tesla event"
-  },
-  "is_date_confirmed": {
-    "type": "bool",
-    "description": "True if officially confirmed by Tesla"
-  }
-}
-```
-
-This schema can produce either a single object or an array, depending on what the LLM finds in search results.
+The structure is determined by the monitoring agent for each task, allowing flexible monitoring of single items (product releases) or collections (upcoming events, price changes across products, etc.).
 
 ## Comparison Algorithm
 

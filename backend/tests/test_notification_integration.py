@@ -39,8 +39,6 @@ def sample_task_with_notifications(sample_user):
     task.user_id = sample_user.id
     task.name = "Test Task"
     task.schedule = "0 9 * * *"
-    task.executor_type = "llm_grounded_search"
-    task.config = {"model": "gemini-2.0-flash-exp"}
     task.search_query = "Test query"
     task.condition_description = "Test condition"
     task.is_active = True

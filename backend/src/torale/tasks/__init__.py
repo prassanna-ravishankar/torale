@@ -1,11 +1,9 @@
 from .repository import TaskExecutionRepository, TaskRepository
 from .tasks import (
-    ExecutorType,
     NotificationConfig,
     NotifyBehavior,
     Task,
     TaskCreate,
-    TaskData,
     TaskExecution,
     TaskState,
     TaskStatus,
@@ -19,12 +17,10 @@ __all__ = [
     # Models
     "Task",
     "TaskCreate",
-    "TaskData",
     "TaskUpdate",
     "TaskExecution",
     "TaskState",
     "TaskStatus",
-    "ExecutorType",
     "NotifyBehavior",
     "NotificationConfig",
     "TaskTemplate",

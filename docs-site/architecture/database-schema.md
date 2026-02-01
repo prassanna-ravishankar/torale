@@ -48,20 +48,18 @@ CREATE TABLE tasks (
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   schedule TEXT NOT NULL, -- cron expression
-  executor_type TEXT NOT NULL DEFAULT 'llm_grounded_search',
-  config JSONB NOT NULL,
   state TEXT NOT NULL DEFAULT 'active',  -- 'active', 'paused', 'completed'
 
   -- Grounded search monitoring fields
   search_query TEXT,  -- "When is next iPhone release?"
   condition_description TEXT,  -- "A specific date has been announced"
   notify_behavior TEXT DEFAULT 'once',  -- 'once', 'always', 'track_state'
-  condition_met BOOLEAN DEFAULT false,
   last_known_state JSONB,  -- Previous search results for comparison
-  last_notified_at TIMESTAMP WITH TIME ZONE,
+  last_execution_id UUID REFERENCES task_executions(id),  -- Latest execution
 
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  state_changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   CHECK (state IN ('active', 'paused', 'completed'))
 );
 ```
@@ -114,7 +112,6 @@ CREATE TABLE task_templates (
   condition_description TEXT NOT NULL,  -- Template for condition description
   schedule TEXT NOT NULL DEFAULT '0 9 * * *',  -- Default cron schedule
   notify_behavior TEXT NOT NULL DEFAULT 'once',
-  config JSONB DEFAULT '{"model": "gemini-2.0-flash-exp"}',  -- Default executor config
   state TEXT NOT NULL DEFAULT 'active',  -- Template availability: 'active', 'paused'
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),

@@ -24,8 +24,6 @@ class TaskRepository(BaseRepository):
         user_id: UUID,
         name: str,
         schedule: str,
-        executor_type: str,
-        config: dict,
         state: str,
         search_query: str | None,
         condition_description: str | None,
@@ -35,7 +33,6 @@ class TaskRepository(BaseRepository):
         notification_email: str | None,
         webhook_url: str | None,
         webhook_secret: str | None,
-        extraction_schema: dict | None = None,
     ) -> dict:
         """Create a new task.
 
@@ -43,8 +40,6 @@ class TaskRepository(BaseRepository):
             user_id: User UUID
             name: Task name
             schedule: Cron expression
-            executor_type: Executor type (e.g., "llm_grounded_search")
-            config: Task configuration as dict
             state: Task state (active/paused/completed)
             search_query: Search query for grounded search
             condition_description: Condition description
@@ -54,7 +49,6 @@ class TaskRepository(BaseRepository):
             notification_email: Email address for notifications
             webhook_url: Webhook URL
             webhook_secret: Webhook secret
-            extraction_schema: Optional extraction schema
 
         Returns:
             Created task record dict
@@ -63,8 +57,6 @@ class TaskRepository(BaseRepository):
             "user_id": user_id,
             "name": name,
             "schedule": schedule,
-            "executor_type": executor_type,
-            "config": json.dumps(config),
             "state": state,
             "search_query": search_query,
             "condition_description": condition_description,
@@ -74,7 +66,6 @@ class TaskRepository(BaseRepository):
             "notification_email": notification_email,
             "webhook_url": webhook_url,
             "webhook_secret": webhook_secret,
-            "extraction_schema": json.dumps(extraction_schema) if extraction_schema else None,
         }
 
         sql, params = self._build_insert_query(self.tasks, data)
@@ -154,7 +145,6 @@ class TaskRepository(BaseRepository):
         task_id: UUID,
         name: str | None = None,
         schedule: str | None = None,
-        config: dict | None = None,
         state: str | None = None,
         search_query: str | None = None,
         condition_description: str | None = None,
@@ -171,7 +161,6 @@ class TaskRepository(BaseRepository):
             task_id: Task UUID
             name: New task name
             schedule: New schedule
-            config: New config dict
             state: New state
             search_query: New search query
             condition_description: New condition
@@ -191,8 +180,6 @@ class TaskRepository(BaseRepository):
             data["name"] = name
         if schedule is not None:
             data["schedule"] = schedule
-        if config is not None:
-            data["config"] = json.dumps(config)
         if state is not None:
             data["state"] = state
         if search_query is not None:

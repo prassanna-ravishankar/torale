@@ -116,15 +116,14 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         task.notifications
     )
 
-    # Create task in database (extraction_schema will be generated on first execution)
+    # Create task in database
     query = """
         INSERT INTO tasks (
-            user_id, name, schedule, executor_type, config, state,
+            user_id, name, schedule, state,
             search_query, condition_description, notify_behavior, notifications,
-            notification_channels, notification_email, webhook_url, webhook_secret,
-            extraction_schema
+            notification_channels, notification_email, webhook_url, webhook_secret
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING *
     """
 
@@ -133,8 +132,6 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         user.id,
         task.name,
         task.schedule,
-        task.executor_type,
-        json.dumps(task.config),
         task.state.value,
         task.search_query,
         task.condition_description,
@@ -144,7 +141,6 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         extracted["notification_email"],
         extracted["webhook_url"],
         extracted["webhook_secret"],
-        None,  # extraction_schema - generated on first execution
     )
 
     if not row:
@@ -678,12 +674,12 @@ async def fork_task(
                     # Create forked task (in PAUSED state, not public)
                     fork_query = """
                         INSERT INTO tasks (
-                            user_id, name, schedule, executor_type, config, state,
+                            user_id, name, schedule, state,
                             search_query, condition_description, notify_behavior, notifications,
                             notification_channels, notification_email, webhook_url, webhook_secret,
                             forked_from_task_id, is_public
                         )
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                         RETURNING *
                     """
 
@@ -692,8 +688,6 @@ async def fork_task(
                         user.id,
                         fork_name,
                         source["schedule"],
-                        source["executor_type"],
-                        source["config"],
                         TaskState.PAUSED.value,
                         source["search_query"],
                         source["condition_description"],
@@ -789,10 +783,7 @@ async def update_task(
         if field == "state":
             continue
 
-        if field == "config":
-            set_clauses.append(f"{field} = ${param_num}")
-            params.append(json.dumps(value))
-        elif field == "notifications":
+        if field == "notifications":
             set_clauses.append(f"{field} = ${param_num}")
             params.append(json.dumps(value))
         elif field == "notify_behavior":
