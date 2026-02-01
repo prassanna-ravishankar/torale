@@ -156,7 +156,7 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
         <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
         <h3 className="mb-2">No executions yet</h3>
         <p className="text-muted-foreground">
-          This task hasn't been executed yet. It will run according to its schedule.
+          This task hasn't been executed yet. It will run automatically.
         </p>
       </div>
     );

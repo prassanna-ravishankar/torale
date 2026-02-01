@@ -47,7 +47,7 @@ export function TermsOfService() {
                 large language models (LLMs), and sends notifications when specified criteria are met.
               </p>
               <p className="text-zinc-600 leading-relaxed">
-                The Service uses third-party AI providers (Google Gemini, OpenAI, Anthropic) to analyze web content
+                The Service uses third-party AI providers (Anthropic Claude, Perplexity) to analyze web content
                 and determine whether monitoring conditions have been satisfied.
               </p>
             </section>
@@ -139,7 +139,7 @@ export function TermsOfService() {
                 The Service integrates with third-party providers:
               </p>
               <ul className="list-disc pl-6 text-zinc-600 space-y-2">
-                <li><strong>AI/LLM Providers:</strong> Google Gemini (primary), OpenAI, Anthropic Claude</li>
+                <li><strong>AI/LLM Providers:</strong> Anthropic Claude (monitoring agent), Perplexity (search)</li>
                 <li><strong>Authentication:</strong> Clerk (user authentication and session management)</li>
                 <li><strong>Infrastructure:</strong> Google Cloud Platform (compute, database, orchestration)</li>
                 <li><strong>Task Scheduling:</strong> APScheduler (cron-based task scheduling and execution)</li>

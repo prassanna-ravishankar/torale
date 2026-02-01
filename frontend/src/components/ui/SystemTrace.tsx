@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, useScroll } from '@/lib/motion-compat';
-import { Clock, Eye, Cpu, Zap } from 'lucide-react';
+import { Clock, Search, Cpu, Brain } from 'lucide-react';
 
 /**
  * TerminalLog & SystemTrace - Scroll-triggered system trace visualization
@@ -15,12 +15,12 @@ interface LogEntry {
 
 const TerminalLog = ({ activeStep }: { activeStep: number }) => {
   const steps: LogEntry[] = [
-    { id: 1, cmd: "CRON_WAKE", msg: "Triggering scheduled job 0x81" },
-    { id: 1, cmd: "ALLOC", msg: "Worker node assigned (us-east)" },
-    { id: 2, cmd: "HTTP_GET", msg: "Target: competitor.com/pricing" },
-    { id: 2, cmd: "DOM_PARSE", msg: "Structuring HTML content..." },
-    { id: 3, cmd: "LLM_CTX", msg: "Injecting schema to context window" },
-    { id: 3, cmd: "INFERENCE", msg: "Analyzing diff... Match found." },
+    { id: 1, cmd: "SCHED_WAKE", msg: "Triggering scheduled job 0x81" },
+    { id: 1, cmd: "AGENT_CALL", msg: "Invoking monitoring agent" },
+    { id: 2, cmd: "SEARCH", msg: "Querying: competitor.com/pricing" },
+    { id: 2, cmd: "MEM_RECALL", msg: "Loading context from previous runs" },
+    { id: 3, cmd: "EVAL", msg: "Evaluating condition against evidence" },
+    { id: 3, cmd: "DECIDE", msg: "Analyzing diff... Match found." },
     { id: 4, cmd: "STATE", msg: "Writing to persistent log" },
     { id: 4, cmd: "NOTIFY", msg: "Webhook dispatched (200 OK)" }
   ];
@@ -68,31 +68,31 @@ export const SystemTrace = () => {
   const steps = [
     {
       id: 1,
-      title: "Reliable Orchestration",
-      description: "The machine starts here. Our distributed scheduler wakes up your agent exactly on time, every time. Guaranteed execution even if servers fail.",
+      title: "Scheduled Trigger",
+      description: "APScheduler wakes your agent on time, every time. Your monitoring runs like clockwork without any manual intervention.",
       icon: Clock,
-      detail: "Frequency: 5min"
+      detail: "Trigger: Cron"
     },
     {
       id: 2,
-      title: "Anti-Detect Browsing",
-      description: "We don't just 'curl'. We spin up headless browsers with sophisticated fingerprint rotation to view the web exactly like a human user.",
-      icon: Eye,
-      detail: "Mode: Stealth"
+      title: "Intelligent Search",
+      description: "Your agent searches the web via Perplexity with context from previous runs, finding exactly the information that matters.",
+      icon: Search,
+      detail: "Source: Perplexity"
     },
     {
       id: 3,
-      title: "Cognitive Processing",
-      description: "The raw HTML is noisy. We pass it through a reasoning engine that 'reads' the page and answers your specific questions (e.g., 'Is it in stock?').",
+      title: "Condition Evaluation",
+      description: "The agent evaluates if your condition is met, returning evidence with sources so you know exactly why it triggered.",
       icon: Cpu,
-      detail: "Reasoning: Enabled"
+      detail: "Model: Claude"
     },
     {
       id: 4,
-      title: "Stateful Action",
-      description: "Torale remembers the past. We only alert you when the answer *changes* (e.g., 'Out of Stock' -> 'In Stock'), reducing notification fatigue.",
-      icon: Zap,
-      detail: "Diff: Detected"
+      title: "Memory & Action",
+      description: "The agent remembers past checks and only notifies when something meaningful changes, reducing notification fatigue.",
+      icon: Brain,
+      detail: "Memory: Mem0"
     }
   ];
 
