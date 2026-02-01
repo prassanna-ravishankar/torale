@@ -52,7 +52,7 @@ _TASK_WITH_EXECUTION_QUERY = """
 
 async def _check_task_access(db: Database, task_id: UUID, user) -> dict:
     """Verify task exists and user has access (owner or public). Returns task row."""
-    row = await db.fetch_one("SELECT id, user_id, is_public FROM tasks WHERE id = $1", task_id)
+    row = await db.fetch_one("SELECT * FROM tasks WHERE id = $1", task_id)
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     is_owner = user is not None and row["user_id"] == user.id
@@ -454,11 +454,8 @@ async def fork_task(
     - Tracks original task via forked_from_task_id
     - User can optionally provide a new name
     """
-    # Verify access (owner or public)
-    await _check_task_access(db, task_id, user)
-
-    # Get the full source task (existence already verified by _check_task_access)
-    source = await db.fetch_one("SELECT * FROM tasks WHERE id = $1", task_id)
+    # Verify access and get the full source task in one query
+    source = await _check_task_access(db, task_id, user)
 
     is_owner = source["user_id"] == user.id
 

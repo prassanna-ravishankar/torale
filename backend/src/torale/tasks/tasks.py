@@ -147,6 +147,6 @@ class TaskTemplate(TaskTemplateBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    state: TaskState = TaskState.ACTIVE
+    is_active: bool = True
     created_at: datetime
     updated_at: datetime | None = None

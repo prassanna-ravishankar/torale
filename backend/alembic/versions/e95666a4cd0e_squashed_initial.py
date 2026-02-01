@@ -150,7 +150,6 @@ def upgrade() -> None:
             condition_description TEXT NOT NULL,
             schedule VARCHAR(100) NOT NULL,
             notify_behavior VARCHAR(50) NOT NULL,
-            config JSON DEFAULT '{"model": "gemini-2.5-flash"}'::json,
             is_active BOOLEAN NOT NULL DEFAULT true,
             created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -164,7 +163,7 @@ def upgrade() -> None:
     op.execute("""
         INSERT INTO task_templates (
             name, description, category, icon, search_query,
-            condition_description, schedule, notify_behavior, config
+            condition_description, schedule, notify_behavior
         )
         SELECT * FROM (VALUES
             (
@@ -175,8 +174,7 @@ def upgrade() -> None:
                 'When is the NVIDIA RTX 5090 graphics card being released?',
                 'A specific release date or pre-order date has been officially announced by NVIDIA',
                 '0 9 * * *',
-                'once',
-                '{"model": "gemini-2.5-flash"}'::jsonb
+                'once'
             ),
             (
                 'PS5 Pro Stock Alert',
@@ -186,8 +184,7 @@ def upgrade() -> None:
                 'Is PlayStation 5 Pro in stock at Best Buy?',
                 'PS5 Pro shows as in stock and available for purchase at BestBuy.com',
                 '0 */2 * * *',
-                'always',
-                '{"model": "gemini-2.5-flash"}'::jsonb
+                'always'
             ),
             (
                 'Concert Ticket Tracker',
@@ -197,8 +194,7 @@ def upgrade() -> None:
                 'Are tickets available for Taylor Swift Eras Tour 2025 dates?',
                 'New tour dates are announced or tickets become available for purchase',
                 '0 */4 * * *',
-                'always',
-                '{"model": "gemini-2.5-flash"}'::jsonb
+                'always'
             ),
             (
                 'AI Model Launch Watch',
@@ -208,8 +204,7 @@ def upgrade() -> None:
                 'Has OpenAI announced GPT-5 or when will it be released?',
                 'OpenAI has officially announced GPT-5 with a launch date or availability timeframe',
                 '0 8 * * *',
-                'once',
-                '{"model": "gemini-2.5-flash"}'::jsonb
+                'once'
             ),
             (
                 'Summer Program Registration',
@@ -219,8 +214,7 @@ def upgrade() -> None:
                 'When does registration open for summer 2026 community pool memberships?',
                 'Registration dates or early bird pricing for summer 2026 pool passes are announced',
                 '0 10 * * 1',
-                'once',
-                '{"model": "gemini-2.5-flash"}'::jsonb
+                'once'
             ),
             (
                 'Framework Release Tracker',
@@ -230,10 +224,9 @@ def upgrade() -> None:
                 'Has React 19 stable version been released?',
                 'React 19 stable version is officially released and available on npm',
                 '0 12 * * *',
-                'once',
-                '{"model": "gemini-2.5-flash"}'::jsonb
+                'once'
             )
-        ) AS v(name, description, category, icon, search_query, condition_description, schedule, notify_behavior, config)
+        ) AS v(name, description, category, icon, search_query, condition_description, schedule, notify_behavior)
         WHERE NOT EXISTS (SELECT 1 FROM task_templates LIMIT 1)
     """)
 

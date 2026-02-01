@@ -25,7 +25,7 @@ def upgrade() -> None:
     op.execute("""
         INSERT INTO task_templates (
             name, description, category, icon, search_query,
-            condition_description, schedule, notify_behavior, config
+            condition_description, schedule, notify_behavior
         )
         SELECT * FROM (VALUES
             (
@@ -36,8 +36,7 @@ def upgrade() -> None:
                 'Has Rockstar Games announced the specific release date for Grand Theft Auto VI?',
                 'A specific release date (day/month) is officially confirmed by Rockstar',
                 '0 12 * * *',
-                'once',
-                '{"model": "gemini-2.5-flash"}'::jsonb
+                'once'
             ),
             (
                 'SpaceX Starship Launch',
@@ -47,8 +46,7 @@ def upgrade() -> None:
                 'When is the next SpaceX Starship orbital flight test scheduled?',
                 'An official launch window or date is announced by SpaceX or FAA',
                 '0 9 * * *',
-                'once',
-                '{"model": "gemini-2.5-flash"}'::jsonb
+                'once'
             ),
             (
                 'Mortgage Rate Drop',
@@ -58,8 +56,7 @@ def upgrade() -> None:
                 'What is the current average 30-year fixed mortgage rate in the US?',
                 'The average rate drops below 5.5%',
                 '0 10 * * 1',
-                'once',
-                '{"model": "gemini-2.5-flash"}'::jsonb
+                'once'
             ),
             (
                 'Northern Lights London',
@@ -69,8 +66,7 @@ def upgrade() -> None:
                 'Is there a high probability of seeing the Northern Lights in Southern England/London tonight or tomorrow?',
                 'Forecast indicates high KP index or red alert for Southern UK visibility',
                 '0 16 * * *',
-                'always',
-                '{"model": "gemini-2.5-flash"}'::jsonb
+                'always'
             ),
             (
                 'Vintage Film Restock',
@@ -80,8 +76,7 @@ def upgrade() -> None:
                 'Is Kodak Gold 200 35mm film in stock at Analogue Wonderland or Parallax?',
                 'Film is listed as "In Stock" and available for purchase',
                 '0 */4 * * *',
-                'once',
-                '{"model": "gemini-2.5-flash"}'::jsonb
+                'once'
             ),
             (
                 'iPhone 18 Rumors',
@@ -91,8 +86,7 @@ def upgrade() -> None:
                 'What are the latest credible rumors and leaks for the iPhone 18 lineup?',
                 'New credible leaks about specs, design, or release timing from major sources',
                 '0 9 * * 5',
-                'always',
-                '{"model": "gemini-2.5-flash"}'::jsonb
+                'always'
             ),
             (
                 'Weekend Train Strikes',
@@ -102,8 +96,7 @@ def upgrade() -> None:
                 'Are there any rail strikes planned in the UK for this coming weekend?',
                 'Strikes are confirmed that affect major rail lines this weekend',
                 '0 10 * * 3',
-                'always',
-                '{"model": "gemini-2.5-flash"}'::jsonb
+                'always'
             ),
             (
                 'Anthropic Jobs',
@@ -113,10 +106,9 @@ def upgrade() -> None:
                 'Are there any open "Prompt Engineer" or "Research Engineer" roles at Anthropic in London?',
                 'A new job listing matching the title and location is found',
                 '0 9 * * *',
-                'once',
-                '{"model": "gemini-2.5-flash"}'::jsonb
+                'once'
             )
-        ) AS v(name, description, category, icon, search_query, condition_description, schedule, notify_behavior, config)
+        ) AS v(name, description, category, icon, search_query, condition_description, schedule, notify_behavior)
     """)
 
 
