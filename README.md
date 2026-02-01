@@ -33,9 +33,9 @@ Get started at **[torale.ai](https://torale.ai)** or see the [Quick Start](#quic
 ## How It Works
 
 1. **Create a monitoring task** with a search query and condition
-2. **Torale runs scheduled searches** via Google Search (grounded via Gemini)
-3. **LLM evaluates** if your condition is met based on search results
-4. **You get notified** when condition triggers (once, always, or on state change)
+2. **Agent searches the web** via Perplexity with cross-run memory (Mem0)
+3. **Agent evaluates** if your condition is met based on search results
+4. **You get notified** when condition triggers (once or always)
 
 ## Quick Start
 
@@ -336,13 +336,15 @@ uv sync
 cp .env.example .env
 ```
 Edit `.env` with your API keys:
-- **Google AI**: Get key from https://aistudio.google.com/app/apikey (required)
+- **Anthropic**: API key for the monitoring agent (required)
+- **Perplexity**: API key for agent search (required)
+- **Mem0**: API key for agent cross-run memory (required)
 - **Database**: PostgreSQL connection string (local default works)
 - **Secret Key**: Generate with `openssl rand -hex 32`
 
 #### 3. Start Services
 ```bash
-# Start all services (PostgreSQL + Temporal + API + Workers)
+# Start all services (PostgreSQL + API)
 docker compose up -d
 
 # Check status
@@ -418,51 +420,38 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 ### Local Development
 - **API**: FastAPI with Clerk authentication + API keys
 - **Database**: PostgreSQL 16 via Docker Compose
-- **Workers**: Temporal workflows (self-hosted via Docker Compose)
-- **Executor**: Grounded search + LLM condition evaluation
-- **Scheduler**: Temporal cron schedules
-- **Search**: Google Search via Gemini grounding
+- **Scheduler**: APScheduler with PostgreSQL job store
+- **Agent**: Claude-powered monitoring agent (Perplexity search + Mem0 memory)
 - **CLI**: Python typer with API key authentication
 
 ### Production (GKE)
 - **Infrastructure**: GKE Autopilot (clusterkit) in us-central1
 - **Database**: Cloud SQL PostgreSQL 16 (managed, zonal)
-- **Orchestration**: Temporal Cloud + GitHub Actions CI/CD
+- **Orchestration**: APScheduler + GitHub Actions CI/CD
 - **Cost**: Spot pods (60-91% savings), zonal Cloud SQL
 - **Domains**: api.torale.ai (API), torale.ai (Frontend)
 
 ## Features
 
 ### ✅ Implemented
-- Grounded search monitoring via Google Search
-- Intelligent condition evaluation (LLM-based)
-- Automatic scheduled execution (cron)
-- State tracking (no duplicate alerts)
+- Agent-powered search monitoring (Claude + Perplexity + Mem0)
+- Intelligent condition evaluation with grounded sources
+- APScheduler with agent-driven dynamic scheduling
 - User-configurable notify behavior:
   - `once`: Notify once, then auto-disable
   - `always`: Notify every time condition is met
-  - `track_state`: Notify only when state changes
 - In-app notifications endpoint
 - Task templates for common use cases
 - Clerk authentication (OAuth + email/password)
 - API key authentication for CLI
 - CLI for task management
-- Temporal Cloud integration (production)
 - Frontend dashboard with task management
 - GKE deployment with cost optimization
-- **Live Search Preview** - Test queries before creating tasks (#37)
-- **Immediate Task Execution** - Run monitoring tasks instantly after creation (#36)
-- **Fixed Grounding Source Display** - Clean domain names instead of Vertex AI redirect URLs (#38)
+- **Live Search Preview** - Test queries before creating tasks
+- **Immediate Task Execution** - Run monitoring tasks instantly after creation
 - **AI-Powered Task Creation** - "Magic Input" uses LLM to generate task configuration from natural language
 - **Context-Aware Task Refinement** - "Magic Refine" updates existing tasks while preserving context
-- **Visual Schedule Builder** - Custom schedule dialog with hourly/daily/weekly presets and cron support
-- **Simplified Task Creation UX** - Single-page form with progressive disclosure for advanced options
-- **Modernized Task Editing** - Consistent UX with creation dialog, includes Magic Refine
-- **Temporal Context for Change Detection** - Better change detection with LLM awareness of execution history
-
-### 🚧 In Progress
-- Historical state comparison UI
-- External notifications (email/SMS)
+- **Simplified Task Creation UX** - 3 fields + a toggle
 
 ### 📋 Future Roadmap
 - **Shareable Tasks**: Share monitoring tasks with rich OpenGraph previews
@@ -489,7 +478,7 @@ Systematic evaluation framework for comparing grounded search approaches. See [`
 
 ## Testing
 
-Torale has comprehensive unit, integration, and E2E tests covering Temporal workflows, grounded search, and scheduled execution.
+Torale has comprehensive unit, integration, and E2E tests covering the agent pipeline, scheduler, and API.
 
 ### Unit Tests
 
@@ -503,7 +492,7 @@ just lint               # Run ruff linting
 
 ### Integration Tests
 
-Integration tests require running services (PostgreSQL, Temporal, API, Workers) and support two authentication modes:
+Integration tests require running services (PostgreSQL, API) and support two authentication modes:
 
 **Option 1: No-Auth Mode (Recommended for Development)**
 
@@ -598,30 +587,27 @@ just k8s-setup      # Create Cloud SQL + IAM
 just k8s-secrets    # Create K8s secrets from .env
 
 # Manual deploy (if not using CI/CD)
-just k8s-deploy-all # Deploy Temporal + Torale
+just k8s-deploy-all # Deploy Torale
 
 # Manage
 just k8s-status     # Check deployment status
 just k8s-logs-api   # View API logs
-just k8s-logs-workers # View worker logs
 ```
 
 **Access:**
 - Frontend: https://torale.ai
 - API: https://api.torale.ai
-- Temporal UI: `just k8s-port-forward-temporal` → http://localhost:8080
-
 See [Kubernetes Deployment](https://docs.torale.ai/deployment/kubernetes) for detailed guide.
 
 ## How Grounded Search Works
 
 1. **Task Created**: User defines search query + condition to monitor
-2. **Scheduled Execution**: Temporal triggers task based on cron schedule
-3. **Grounded Search**: Gemini performs Google Search with grounding
-4. **LLM Evaluation**: LLM analyzes search results and evaluates condition
-5. **State Comparison**: Compares with `last_known_state` to detect changes
-6. **Notification**: If condition met (and not already notified), creates in-app notification
-7. **Auto-disable** (optional): If `notify_behavior = "once"`, task deactivates after first alert
+2. **Scheduled Execution**: APScheduler triggers task based on cron schedule
+3. **Agent Search**: Agent searches via Perplexity, uses Mem0 for cross-run memory
+4. **Condition Evaluation**: Agent evaluates if condition is met, returns evidence + sources
+5. **Notification**: If condition met → notifies via email/webhook
+6. **Auto-disable** (optional): If `notify_behavior = "once"`, task deactivates after first alert
+7. **Dynamic Reschedule**: Agent returns `next_run` to adjust check frequency
 
 ## Configuration
 
@@ -629,7 +615,6 @@ See [Kubernetes Deployment](https://docs.torale.ai/deployment/kubernetes) for de
 
 - **`once`**: Alert once when condition is first met, then auto-disable task
 - **`always`**: Alert every time condition is met (use with caution)
-- **`track_state`**: Alert only when underlying state changes (smart deduplication)
 
 ### Schedule Formats
 
@@ -698,12 +683,13 @@ DATABASE_URL=postgresql://torale:torale@localhost:5432/torale
 CLERK_SECRET_KEY=sk_test_...              # Backend: Verify Clerk tokens
 CLERK_PUBLISHABLE_KEY=pk_test_...         # Backend: Initialize Clerk client
 
-# Temporal
-TEMPORAL_HOST=localhost:7233
-TEMPORAL_NAMESPACE=default
+# Agent
+AGENT_URL=http://localhost:8000
 
-# AI (Gemini required for grounded search)
-GOOGLE_API_KEY=your-gemini-api-key
+# AI (required for monitoring agent)
+ANTHROPIC_API_KEY=your-anthropic-api-key
+PERPLEXITY_API_KEY=your-perplexity-api-key
+MEM0_API_KEY=your-mem0-api-key
 
 # Development/Testing (optional)
 TORALE_NOAUTH=1                            # Disable auth for local testing (DO NOT USE IN PRODUCTION)

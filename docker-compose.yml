@@ -70,7 +70,6 @@ services:
       - AGENT_URL=${AGENT_URL:-http://host.docker.internal:8001}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - NOTIFICATION_API_KEY=${NOTIFICATION_API_KEY}
       - NOVU_SECRET_KEY=${NOVU_SECRET_KEY}
       - NOVU_WORKFLOW_ID=${NOVU_WORKFLOW_ID:-torale-condition-met}

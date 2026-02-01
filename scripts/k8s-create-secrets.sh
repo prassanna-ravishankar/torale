@@ -49,25 +49,25 @@ prompt_if_missing() {
 echo "Checking required secrets..."
 echo ""
 
-prompt_if_missing "GOOGLE_API_KEY" "Enter your Google AI API key (required):" "true"
+prompt_if_missing "ANTHROPIC_API_KEY" "Enter your Anthropic API key (required - powers the monitoring agent):" "true"
+prompt_if_missing "PERPLEXITY_API_KEY" "Enter your Perplexity API key (required - agent uses for search):" "true"
 prompt_if_missing "SECRET_KEY" "Enter your JWT secret key (generate with: openssl rand -hex 32):" "true"
 prompt_if_missing "DB_PASSWORD" "Enter your database password:" "true"
 prompt_if_missing "CLERK_SECRET_KEY" "Enter your Clerk SECRET key (sk_live_... for production):" "true"
 prompt_if_missing "CLERK_PUBLISHABLE_KEY" "Enter your Clerk PUBLISHABLE key (pk_live_... for production):" "false"
-prompt_if_missing "TEMPORAL_API_KEY" "Enter your Temporal API key (required for Temporal Cloud):" "true"
 prompt_if_missing "NOVU_SECRET_KEY" "Enter your Novu SECRET key (production):" "true"
 
 # Optional secrets
+if [ -z "$MEM0_API_KEY" ]; then
+    echo ""
+    echo "Mem0 API key not set (optional - agent cross-run memory). Press Enter to skip or paste key:"
+    read -s MEM0_API_KEY
+fi
+
 if [ -z "$OPENAI_API_KEY" ]; then
     echo ""
     echo "OpenAI API key not set (optional). Press Enter to skip or paste key:"
     read -s OPENAI_API_KEY
-fi
-
-if [ -z "$ANTHROPIC_API_KEY" ]; then
-    echo ""
-    echo "Anthropic API key not set (optional). Press Enter to skip or paste key:"
-    read -s ANTHROPIC_API_KEY
 fi
 
 if [ -z "$NOTIFICATION_API_KEY" ]; then
@@ -89,14 +89,14 @@ kubectl delete secret "$SECRET_NAME" -n "$K8S_NAMESPACE" 2>/dev/null || true
 echo "Creating Kubernetes secret..."
 kubectl create secret generic "$SECRET_NAME" \
     --namespace="$K8S_NAMESPACE" \
-    --from-literal=GOOGLE_API_KEY="$GOOGLE_API_KEY" \
+    --from-literal=ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+    --from-literal=PERPLEXITY_API_KEY="$PERPLEXITY_API_KEY" \
     --from-literal=SECRET_KEY="$SECRET_KEY" \
     --from-literal=DB_PASSWORD="$DB_PASSWORD" \
     --from-literal=CLERK_SECRET_KEY="$CLERK_SECRET_KEY" \
-    --from-literal=TEMPORAL_API_KEY="$TEMPORAL_API_KEY" \
     --from-literal=NOVU_SECRET_KEY="$NOVU_SECRET_KEY" \
+    --from-literal=MEM0_API_KEY="${MEM0_API_KEY:-}" \
     --from-literal=OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
-    --from-literal=ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
     --from-literal=NOTIFICATION_API_KEY="${NOTIFICATION_API_KEY:-}"
 
 echo "✓ Secret '$SECRET_NAME' created in namespace '$K8S_NAMESPACE'"

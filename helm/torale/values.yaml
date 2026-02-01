@@ -257,13 +257,14 @@ secrets:
   # Create secrets using: just k8s-secrets
   # Or manually with kubectl:
   #   kubectl create secret generic torale-secrets -n torale \
-  #     --from-literal=GOOGLE_API_KEY="..." \
+  #     --from-literal=ANTHROPIC_API_KEY="..." \
+  #     --from-literal=PERPLEXITY_API_KEY="..." \
   #     --from-literal=SECRET_KEY="..." \
   #     --from-literal=DB_PASSWORD="..." \
   #     --from-literal=CLERK_SECRET_KEY="..." \
   #     --from-literal=NOVU_SECRET_KEY="..." \
+  #     --from-literal=MEM0_API_KEY="" \
   #     --from-literal=OPENAI_API_KEY="" \
-  #     --from-literal=ANTHROPIC_API_KEY="" \
   #     --from-literal=NOTIFICATION_API_KEY=""
   external: true
   name: torale-secrets

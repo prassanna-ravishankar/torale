@@ -6,7 +6,6 @@ echo "==============================================="
 echo ""
 
 K8S_NAMESPACE="torale"
-TEMPORAL_NAMESPACE="temporal"
 
 # Colors
 GREEN='\033[0;32m'
@@ -42,12 +41,6 @@ check_pods() {
     kubectl get pods -n "$namespace" -l "$label" 2>/dev/null || true
     echo ""
 }
-
-# Check Temporal pods
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "TEMPORAL SERVICES"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-check_pods "$TEMPORAL_NAMESPACE" "app.kubernetes.io/name=temporal"
 
 # Check Torale pods
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -134,7 +127,6 @@ fi
 echo ""
 echo "Port forwarding (for local access):"
 echo "  API:        just k8s-port-forward-api"
-echo "  Temporal:   just k8s-port-forward-temporal"
 echo ""
 
 echo "==============================================="
