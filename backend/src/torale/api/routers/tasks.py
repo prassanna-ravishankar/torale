@@ -36,6 +36,22 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
+_TASK_WITH_EXECUTION_QUERY = """
+    SELECT t.*,
+           u.username as creator_username,
+           e.id as exec_id,
+           e.condition_met as exec_condition_met,
+           e.started_at as exec_started_at,
+           e.completed_at as exec_completed_at,
+           e.status as exec_status,
+           e.result as exec_result,
+           e.change_summary as exec_change_summary,
+           e.grounding_sources as exec_grounding_sources
+    FROM tasks t
+    INNER JOIN users u ON t.user_id = u.id
+    LEFT JOIN task_executions e ON t.last_execution_id = e.id
+"""
+
 
 async def _check_task_access(db: Database, task_id: UUID, user) -> dict:
     """Verify task exists and user has access (owner or public). Returns task row."""
@@ -86,7 +102,7 @@ async def _validate_and_extract_notifications(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid notification: {str(e)}"
             ) from e
 
-    # Validate no duplicate notification types (PR #27 schema supports 1 email + 1 webhook max)
+    # Validate no duplicate notification types (supports 1 email + 1 webhook max)
     notification_types = [n.get("type") for n in validated_notifications]
     if len(notification_types) != len(set(notification_types)):
         raise HTTPException(
@@ -208,23 +224,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
 async def list_tasks(
     user: CurrentUser, state: TaskState | None = None, db: Database = Depends(get_db)
 ):
-    # Embed latest execution via LEFT JOIN for efficient status calculation
-    base_query = """
-        SELECT t.*,
-               u.username as creator_username,
-               e.id as exec_id,
-               e.condition_met as exec_condition_met,
-               e.started_at as exec_started_at,
-               e.completed_at as exec_completed_at,
-               e.status as exec_status,
-               e.result as exec_result,
-               e.change_summary as exec_change_summary,
-               e.grounding_sources as exec_grounding_sources
-        FROM tasks t
-        INNER JOIN users u ON t.user_id = u.id
-        LEFT JOIN task_executions e ON t.last_execution_id = e.id
-        WHERE t.user_id = $1
-    """
+    base_query = _TASK_WITH_EXECUTION_QUERY + " WHERE t.user_id = $1"
 
     if state is not None:
         query = base_query + " AND t.state = $2 ORDER BY t.created_at DESC"
@@ -372,24 +372,7 @@ async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get
     - If task is public: read-only access for anyone
     - Otherwise: 404
     """
-    # Embed latest execution via LEFT JOIN
-    query = """
-        SELECT t.*,
-               u.username as creator_username,
-               e.id as exec_id,
-               e.condition_met as exec_condition_met,
-               e.started_at as exec_started_at,
-               e.completed_at as exec_completed_at,
-               e.status as exec_status,
-               e.result as exec_result,
-               e.change_summary as exec_change_summary,
-               e.grounding_sources as exec_grounding_sources
-        FROM tasks t
-        INNER JOIN users u ON t.user_id = u.id
-        LEFT JOIN task_executions e ON t.last_execution_id = e.id
-        WHERE t.id = $1
-    """
-
+    query = _TASK_WITH_EXECUTION_QUERY + " WHERE t.id = $1"
     row = await db.fetch_one(query, task_id)
 
     if not row:
@@ -702,9 +685,10 @@ async def update_task(
         if extracted["webhook_secret"] is not None:
             update_data["webhook_secret"] = extracted["webhook_secret"]
 
-    # Build dynamic UPDATE query
+    # Build dynamic UPDATE query — track updated fields for rollback
     set_clauses = []
     params = []
+    updated_fields = []  # Track field names for rollback on transition failure
     param_num = 1
 
     for field, value in update_data.items():
@@ -722,6 +706,7 @@ async def update_task(
         else:
             set_clauses.append(f"{field} = ${param_num}")
             params.append(value)
+        updated_fields.append(field)
         param_num += 1
 
     # If only state is being updated, set_clauses will be empty
@@ -769,49 +754,41 @@ async def update_task(
                 f"Task {task_id} state transition: {current_state.value} → {new_state.value}"
             )
 
-        except InvalidTransitionError as e:
-            # Invalid transition - rollback database
-            logger.error(f"Invalid state transition for task {task_id}: {str(e)}. Rolling back.")
-            await db.execute(
-                "UPDATE tasks SET state = $1 WHERE id = $2",
-                existing["state"],
-                task_id,
+        except (InvalidTransitionError, Exception) as e:
+            # Rollback ALL fields updated in Phase 1, not just state
+            is_invalid = isinstance(e, InvalidTransitionError)
+            logger.error(
+                f"{'Invalid state transition' if is_invalid else 'Failed to transition task state'} "
+                f"for task {task_id}: {str(e)}. Rolling back."
             )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid state transition: {str(e)}",
-            ) from e
-        except Exception as e:
-            # Scheduler operation failed - rollback database
-            logger.error(f"Failed to transition task {task_id} state: {str(e)}. Rolling back.")
+
+            # Build dynamic rollback restoring all Phase 1 fields + state
+            rollback_clauses = ["state = $1"]
+            rollback_params: list = [existing["state"]]
+            rp = 2
+            for field in updated_fields:
+                rollback_clauses.append(f"{field} = ${rp}")
+                rollback_params.append(existing[field])
+                rp += 1
+            rollback_params.append(task_id)
+
             await db.execute(
-                "UPDATE tasks SET state = $1 WHERE id = $2",
-                existing["state"],
-                task_id,
+                f"UPDATE tasks SET {', '.join(rollback_clauses)} WHERE id = ${rp}",
+                *rollback_params,
             )
+
+            if is_invalid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid state transition: {str(e)}",
+                ) from e
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to change task state: {str(e)}. Task update rolled back.",
             ) from e
 
     # Re-fetch to get the latest state (avoids returning stale data after transitions)
-    fresh_query = """
-        SELECT t.*,
-               u.username as creator_username,
-               e.id as exec_id,
-               e.condition_met as exec_condition_met,
-               e.started_at as exec_started_at,
-               e.completed_at as exec_completed_at,
-               e.status as exec_status,
-               e.result as exec_result,
-               e.change_summary as exec_change_summary,
-               e.grounding_sources as exec_grounding_sources
-        FROM tasks t
-        INNER JOIN users u ON t.user_id = u.id
-        LEFT JOIN task_executions e ON t.last_execution_id = e.id
-        WHERE t.id = $1
-    """
-    fresh_row = await db.fetch_one(fresh_query, task_id)
+    fresh_row = await db.fetch_one(_TASK_WITH_EXECUTION_QUERY + " WHERE t.id = $1", task_id)
     if not fresh_row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
@@ -843,6 +820,10 @@ async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(g
         logger.info(f"Job {job_id} not found when deleting - already removed or never existed")
     except Exception as e:
         logger.error(f"Failed to remove scheduler job {job_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to remove scheduler job: {str(e)}",
+        ) from e
 
     # Delete task from database
     query = """

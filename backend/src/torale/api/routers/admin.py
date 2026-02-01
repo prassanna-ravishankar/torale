@@ -56,6 +56,7 @@ def parse_json_field(value: Any) -> Any:
         try:
             return json.loads(value) if value else None
         except json.JSONDecodeError:
+            logger.warning(f"Failed to parse JSON field: {value!r:.200}")
             return value
     return value
 
@@ -433,6 +434,7 @@ async def list_users(
     # Batch-fetch roles from Clerk to avoid N+1 query problem
     # Handle pagination to ensure we fetch all users
     role_map = {}
+    clerk_warnings: list[str] = []
     if clerk_client:
         try:
             # Clerk's default limit is 10, max is 500. Use higher limit for efficiency.
@@ -459,7 +461,7 @@ async def list_users(
 
         except Exception as e:
             logger.error(f"Failed to batch-fetch users from Clerk: {e}")
-            # Continue with a partially populated or empty role_map
+            clerk_warnings.append(f"Clerk role fetch failed: {e}. Roles may be incomplete.")
 
     users = []
     for row in result:
@@ -481,7 +483,7 @@ async def list_users(
     active_users = sum(1 for u in users if u["is_active"])
     max_users = getattr(settings, "max_users", 100)
 
-    return {
+    response = {
         "users": users,
         "capacity": {
             "used": active_users,
@@ -489,6 +491,9 @@ async def list_users(
             "available": max_users - active_users,
         },
     }
+    if clerk_warnings:
+        response["warnings"] = clerk_warnings
+    return response
 
 
 @router.patch("/users/{user_id}/deactivate")
@@ -726,8 +731,11 @@ async def bulk_update_user_roles(
                 )
                 clerk_users_map = {user.id: user for user in clerk_users_response.data}
             except Exception as e:
-                # Log warning but continue - will handle missing users individually
-                logger.warning(f"Clerk batch fetch failed: {e}")
+                logger.error(f"Clerk batch fetch failed: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=f"Failed to fetch users from Clerk: {e}",
+                ) from e
 
     # Prepare all update tasks for parallel execution
     update_tasks = []

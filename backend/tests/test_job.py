@@ -294,6 +294,42 @@ class TestExecute:
         assert call_kwargs[0][0] == f"task-{TASK_ID}"
 
     @pytest.mark.asyncio
+    @patch(f"{MODULE}.create_execution_record", new_callable=AsyncMock)
+    @patch(f"{MODULE}.TaskService")
+    @patch(f"{MODULE}.get_scheduler")
+    @patch(f"{MODULE}.send_webhook_notification", new_callable=AsyncMock)
+    @patch(f"{MODULE}.send_email_notification", new_callable=AsyncMock)
+    @patch(f"{MODULE}.fetch_notification_context", new_callable=AsyncMock)
+    @patch(f"{MODULE}.persist_execution_result", new_callable=AsyncMock)
+    @patch(f"{MODULE}.call_agent", new_callable=AsyncMock)
+    @patch(f"{MODULE}.db")
+    async def test_execute_task_job_delegates_to_execute(
+        self,
+        mock_db,
+        mock_agent,
+        mock_persist,
+        mock_fetch_ctx,
+        mock_email,
+        mock_webhook,
+        mock_scheduler,
+        mock_service_cls,
+        mock_create_exec,
+    ):
+        """execute_task_job delegates to _execute with execution_id=None."""
+        mock_db.execute = AsyncMock()
+        mock_db.fetch_one = AsyncMock(return_value=_make_task_row())
+        mock_agent.return_value = _make_agent_response()
+        mock_create_exec.return_value = EXECUTION_ID
+
+        from torale.scheduler.job import execute_task_job
+
+        await execute_task_job(TASK_ID, USER_ID, TASK_NAME)
+
+        # Should have called create_execution_record since execution_id=None
+        mock_create_exec.assert_awaited_once_with(TASK_ID)
+        mock_agent.assert_awaited_once()
+
+    @pytest.mark.asyncio
     @patch(f"{MODULE}.TaskService")
     @patch(f"{MODULE}.get_scheduler")
     @patch(f"{MODULE}.send_webhook_notification", new_callable=AsyncMock)

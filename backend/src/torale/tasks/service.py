@@ -14,6 +14,7 @@ from apscheduler.jobstores.base import JobLookupError
 from apscheduler.triggers.cron import CronTrigger
 
 from torale.core.database import Database
+from torale.scheduler import JOB_FUNC_REF
 from torale.scheduler.scheduler import get_scheduler
 from torale.tasks.tasks import TaskState
 
@@ -22,8 +23,6 @@ logger = logging.getLogger(__name__)
 
 class InvalidTransitionError(Exception):
     """Raised when attempting an invalid state transition."""
-
-    pass
 
 
 class TaskService:
@@ -166,7 +165,7 @@ class TaskService:
             try:
                 return int(result.split()[-1]) > 0
             except (ValueError, IndexError, AttributeError):
-                logger.warning(f"Could not parse affected rows from DB result: '{result}'")
+                logger.error(f"Could not parse affected rows from DB result: '{result}'")
                 return None
         else:
             await self.db.execute(
@@ -175,10 +174,6 @@ class TaskService:
                 task_id,
             )
             return True
-
-    # APScheduler resolves this string reference at runtime, avoiding a circular import.
-    # This is how APScheduler serializes jobs to the database anyway.
-    _JOB_FUNC_REF = "torale.scheduler.job:execute_task_job"
 
     async def _add_or_resume_job(
         self,
@@ -207,7 +202,7 @@ class TaskService:
         # Create new job
         await asyncio.to_thread(
             scheduler.add_job,
-            self._JOB_FUNC_REF,
+            JOB_FUNC_REF,
             trigger=CronTrigger.from_crontab(schedule),
             id=job_id,
             args=[str(task_id), str(user_id), task_name],

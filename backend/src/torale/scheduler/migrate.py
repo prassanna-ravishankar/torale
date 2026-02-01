@@ -4,11 +4,10 @@ from datetime import UTC, datetime
 from apscheduler.triggers.cron import CronTrigger
 
 from torale.core.database import db
+from torale.scheduler import JOB_FUNC_REF
 from torale.scheduler.scheduler import get_scheduler
 
 logger = logging.getLogger(__name__)
-
-_JOB_FUNC_REF = "torale.scheduler.job:execute_task_job"
 
 
 async def reap_stale_executions() -> None:
@@ -54,7 +53,7 @@ async def sync_jobs_from_database() -> None:
 
             if existing_job is None:
                 scheduler.add_job(
-                    _JOB_FUNC_REF,
+                    JOB_FUNC_REF,
                     trigger=CronTrigger.from_crontab(row["schedule"]),
                     id=job_id,
                     args=[task_id, str(row["user_id"]), row["name"]],

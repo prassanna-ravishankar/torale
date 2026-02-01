@@ -39,6 +39,8 @@ from torale.scheduler.migrate import reap_stale_executions, sync_jobs_from_datab
 
 logger = logging.getLogger(__name__)
 
+_startup_sync_ok = False
+
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses."""
@@ -88,8 +90,10 @@ async def lifespan(app: FastAPI):
     scheduler.start()
     logger.info("APScheduler started")
 
+    global _startup_sync_ok
     try:
         await sync_jobs_from_database()
+        _startup_sync_ok = True
         logger.info("Scheduler jobs synced from database")
     except Exception as e:
         logger.error(f"Failed to sync scheduler jobs from database: {e}", exc_info=True)
@@ -118,9 +122,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_CORS_ORIGINS = [
+    settings.frontend_url,
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -135,19 +145,12 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
-# Exception handler to ensure CORS headers are added to all responses, including errors
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """Add CORS headers to HTTP exception responses."""
+    """Return structured JSON for HTTP exceptions. CORS headers are handled by CORSMiddleware."""
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Allow-Methods": "*",
-            "Access-Control-Allow-Headers": "*",
-        },
     )
 
 
@@ -176,6 +179,17 @@ app.include_router(og.router, prefix="/api/v1")
 
 @app.get("/health")
 async def health_check():
+    scheduler = get_scheduler()
+    scheduler_running = scheduler.running
+    if not scheduler_running or not _startup_sync_ok:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "degraded",
+                "scheduler_running": scheduler_running,
+                "startup_sync_ok": _startup_sync_ok,
+            },
+        )
     return {"status": "healthy"}
 
 

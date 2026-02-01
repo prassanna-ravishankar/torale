@@ -4,7 +4,6 @@ Coordinates agent calls, DB persistence, notifications, and state transitions.
 Imports from activities (data access) and service (state machine) -- no circular deps.
 """
 
-import asyncio
 import json
 import logging
 import uuid
@@ -24,6 +23,18 @@ from torale.tasks import TaskState
 from torale.tasks.service import TaskService
 
 logger = logging.getLogger(__name__)
+
+
+async def _merge_execution_result(execution_id: str, data: dict) -> None:
+    """Merge additional keys into an execution's result JSONB column."""
+    try:
+        await db.execute(
+            "UPDATE task_executions SET result = COALESCE(result, '{}'::jsonb) || $1::jsonb WHERE id = $2",
+            json.dumps(data),
+            uuid.UUID(execution_id),
+        )
+    except Exception as e:
+        logger.error(f"Failed to merge execution result for {execution_id}: {e}", exc_info=True)
 
 
 async def _execute(
@@ -130,6 +141,9 @@ async def _execute(
                 notification_failed = True
                 logger.error(f"Notification failed for task {task_id}: {e}", exc_info=True)
 
+        if notification_failed:
+            await _merge_execution_result(execution_id, {"notification_failed": True})
+
         # Auto-complete if notify_behavior is "once" and condition met
         if condition_met and task["notify_behavior"] == "once":
             if notification_failed:
@@ -145,6 +159,7 @@ async def _execute(
                     logger.info(f"Task {task_id} auto-completed (notify_behavior=once)")
                 except Exception as e:
                     logger.error(f"Auto-complete failed for task {task_id}: {e}", exc_info=True)
+                    await _merge_execution_result(execution_id, {"auto_complete_failed": True})
 
         # Dynamic reschedule if agent returns next_run
         if next_run:
@@ -163,6 +178,7 @@ async def _execute(
                 logger.error(
                     f"Failed to reschedule task {task_id} to {next_run}: {e}", exc_info=True
                 )
+                await _merge_execution_result(execution_id, {"reschedule_failed": True})
 
     except Exception as e:
         logger.error(f"Task execution failed for {task_id}: {e}", exc_info=True)
@@ -182,26 +198,9 @@ async def _execute(
         raise
 
 
-_scheduled_tasks: set[asyncio.Task] = set()
-
-
-def _handle_scheduled_task_result(task: asyncio.Task) -> None:
-    """Log unhandled exceptions from scheduled task executions."""
-    _scheduled_tasks.discard(task)
-    if task.cancelled():
-        return
-    exc = task.exception()
-    if exc:
-        logger.error(f"Scheduled task execution failed: {exc}", exc_info=exc)
-
-
-def execute_task_job(task_id: str, user_id: str, task_name: str) -> None:
+async def execute_task_job(task_id: str, user_id: str, task_name: str) -> None:
     """Entry point for APScheduler cron jobs."""
-    bg_task = asyncio.get_running_loop().create_task(
-        _execute(task_id=task_id, execution_id=None, user_id=user_id, task_name=task_name)
-    )
-    _scheduled_tasks.add(bg_task)
-    bg_task.add_done_callback(_handle_scheduled_task_result)
+    await _execute(task_id=task_id, execution_id=None, user_id=user_id, task_name=task_name)
 
 
 async def execute_task_job_manual(
