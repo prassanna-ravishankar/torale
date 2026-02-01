@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/torale";
 import { ExecutionTimeline } from "@/components/ExecutionTimeline";
 import { TaskConfiguration } from "@/components/task/TaskConfiguration";
 import { getTaskStatus } from '@/lib/taskStatus';
+import { formatTimeUntil } from '@/lib/utils';
 import {
   ArrowLeft,
   Clock,
@@ -317,7 +318,15 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               <h1 className="font-grotesk text-2xl md:text-4xl font-bold truncate">{task.name}</h1>
               <StatusBadge variant={status.activityState} />
             </div>
-            <p className="text-zinc-500 text-sm truncate">{task.search_query}</p>
+            <div className="flex items-center gap-3 text-zinc-500 text-sm">
+              <span className="truncate">{task.search_query}</span>
+              {task.next_run_time && (
+                <span className="flex items-center gap-1 text-xs font-mono text-zinc-400 whitespace-nowrap">
+                  <Clock className="w-3 h-3" />
+                  Next check {formatTimeUntil(task.next_run_time)}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

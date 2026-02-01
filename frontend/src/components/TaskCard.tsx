@@ -3,7 +3,7 @@ import type { Task } from '@/types';
 import { StatusBadge, SectionLabel, ActionMenu, BrutalistCard, type Action } from '@/components/torale';
 import { Clock, Globe, Trash2, Play, Edit, Pause, Zap } from 'lucide-react';
 import { getTaskStatus } from '@/lib/taskStatus';
-import { formatTimeAgo, getTaskExecuteLabel } from '@/lib/utils';
+import { formatTimeAgo, formatTimeUntil, getTaskExecuteLabel } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,7 +62,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     },
     {
       id: 'toggle',
-      label: isTaskActive ? 'Pause Schedule' : 'Start Schedule',
+      label: isTaskActive ? 'Pause Monitoring' : 'Resume Monitoring',
       icon: isTaskActive ? Pause : Play,
       onClick: () => onToggle(task.id, isTaskActive ? 'paused' : 'active'),
       separator: true,
@@ -109,7 +109,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <button
             onClick={handleQuickToggle}
             className="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-sm transition-colors"
-            title={isTaskActive ? 'Pause Schedule' : 'Start Schedule'}
+            title={isTaskActive ? 'Pause Monitoring' : 'Resume Monitoring'}
           >
             {isTaskActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           </button>
@@ -117,8 +117,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </div>
       </div>
 
-      {/* Middle: Last Check */}
-      <div className="p-4 flex-1">
+      {/* Middle: Last Check + Next Check */}
+      <div className="p-4 flex-1 flex gap-6">
         <div>
           <SectionLabel className="mb-1">Last Check</SectionLabel>
           <div className="flex items-center gap-1.5 text-xs font-mono text-zinc-600">
@@ -128,6 +128,15 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               : 'Not run yet'}
           </div>
         </div>
+        {task.next_run_time && (
+          <div>
+            <SectionLabel className="mb-1">Next Check</SectionLabel>
+            <div className="flex items-center gap-1.5 text-xs font-mono text-zinc-600">
+              <Clock className="w-3 h-3" />
+              {formatTimeUntil(task.next_run_time)}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom: Footer with Status */}

@@ -188,7 +188,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
         search_query: searchQuery,
         condition_description: conditionDescription,
         notify_behavior: notifyBehavior,
-        // Preserve existing schedule — agent controls this via next_run
       });
 
       toast.success('Task updated successfully');

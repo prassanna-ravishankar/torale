@@ -1,4 +1,3 @@
-import { CronDisplay } from '@/components/ui/CronDisplay'
 import { Search, CheckCircle2, Play, Pause, User } from 'lucide-react'
 
 interface Query {
@@ -7,6 +6,7 @@ interface Query {
   search_query: string
   condition_description: string
   schedule: string
+  next_run_time: string | null
   is_active: boolean
   condition_met: boolean
   user_email: string
@@ -70,8 +70,12 @@ export function QueryCard({ query }: QueryCardProps) {
 
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-mono text-zinc-500 pl-11">
           <div>
-            <span className="text-zinc-400">Schedule:</span>{' '}
-            <CronDisplay cron={query.schedule} showRaw={false} className="text-xs text-zinc-700" />
+            <span className="text-zinc-400">Next Run:</span>{' '}
+            <span className="text-zinc-700">
+              {query.next_run_time
+                ? new Date(query.next_run_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                : '-'}
+            </span>
           </div>
           <div>
             <span className="text-zinc-400">Runs:</span>{' '}

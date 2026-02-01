@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from '@/lib/motion-compat';
 import type { Task } from '@/types';
 import { StatusBadge } from '@/components/torale';
 import { getTaskStatus } from '@/lib/taskStatus';
-import { formatTimeAgo } from '@/lib/utils';
+import { formatTimeAgo, formatTimeUntil } from '@/lib/utils';
 import { TaskActions } from './TaskActions';
 import {
   ChevronRight,
@@ -81,12 +81,20 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
             {task.search_query}
           </div>
           <div className="flex gap-4 text-xs text-zinc-600 pl-6">
-            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
               <Clock className="w-3 h-3 flex-shrink-0" />
               <span className="truncate">
                 {lastExecution ? formatTimeAgo(lastExecution.started_at) : 'Never'}
               </span>
             </div>
+            {task.next_run_time && (
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Clock className="w-3 h-3 flex-shrink-0" />
+                <span className="truncate text-zinc-400">
+                  Next: {formatTimeUntil(task.next_run_time)}
+                </span>
+              </div>
+            )}
           </div>
         </td>
 
@@ -121,6 +129,13 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
             </span>
           ) : (
             <span className="text-sm text-zinc-400">Never</span>
+          )}
+        </td>
+        <td className="hidden md:table-cell p-4">
+          {task.next_run_time ? (
+            <span className="text-sm text-zinc-500">{formatTimeUntil(task.next_run_time)}</span>
+          ) : (
+            <span className="text-sm text-zinc-400">-</span>
           )}
         </td>
       </motion.tr>
@@ -182,7 +197,7 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
       <AnimatePresence>
         {expanded && (
           <tr className="hidden md:table-row">
-            <td colSpan={3} className="p-0">
+            <td colSpan={4} className="p-0">
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}

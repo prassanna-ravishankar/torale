@@ -111,6 +111,9 @@ class Task(TaskBase):
     last_execution_id: UUID | None = None
     last_execution: TaskExecution | None = None  # Embedded from API query
 
+    # Next scheduled run time (injected from APScheduler, not stored in DB)
+    next_run_time: datetime | None = None
+
     # Immediate execution error (only set when run_immediately fails during creation)
     immediate_execution_error: str | None = None
 

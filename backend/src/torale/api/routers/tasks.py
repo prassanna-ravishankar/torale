@@ -222,6 +222,25 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
     return Task(**parse_task_row(row), immediate_execution_error=immediate_execution_error)
 
 
+def _get_next_run_times() -> dict[str, any]:
+    """Batch-fetch next_run_time for all APScheduler jobs, keyed by job ID."""
+    try:
+        scheduler = get_scheduler()
+        return {job.id: job.next_run_time for job in scheduler.get_jobs()}
+    except Exception:
+        logger.debug("Could not fetch scheduler jobs for next_run_time", exc_info=True)
+        return {}
+
+
+def _inject_next_run_time(task: Task, next_run_times: dict[str, any]) -> Task:
+    """Inject next_run_time from scheduler into a Task object."""
+    job_id = f"task-{task.id}"
+    nrt = next_run_times.get(job_id)
+    if nrt is not None:
+        task.next_run_time = nrt
+    return task
+
+
 @router.get("/", response_model=list[Task])
 async def list_tasks(
     user: CurrentUser, state: TaskState | None = None, db: Database = Depends(get_db)
@@ -235,7 +254,8 @@ async def list_tasks(
         query = base_query + " ORDER BY t.created_at DESC"
         rows = await db.fetch_all(query, user.id)
 
-    return [parse_task_with_execution(row) for row in rows]
+    next_run_times = _get_next_run_times()
+    return [_inject_next_run_time(parse_task_with_execution(row), next_run_times) for row in rows]
 
 
 def _handle_background_task_result(task: asyncio.Task) -> None:
@@ -316,6 +336,10 @@ async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get
         )
 
     task = parse_task_with_execution(row)
+
+    # Inject next_run_time for single task lookup
+    next_run_times = _get_next_run_times()
+    _inject_next_run_time(task, next_run_times)
 
     # TODO: Implement async view counting (see public_tasks.py)
     if is_public and not is_owner:

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { QueryCard } from './cards/QueryCard'
-import { CronDisplay } from '@/components/ui/CronDisplay'
 import { Loader2, Search, Zap } from 'lucide-react'
 import { SectionLabel, BrutalistCard, StatusBadge, BrutalistSwitch } from '@/components/torale'
 
@@ -11,6 +10,7 @@ interface Query {
   search_query: string
   condition_description: string
   schedule: string
+  next_run_time: string | null
   is_active: boolean
   condition_met: boolean
   created_at: string
@@ -101,7 +101,7 @@ export function QueriesTable() {
               <th className="text-left p-3"><SectionLabel>Name</SectionLabel></th>
               <th className="text-left p-3"><SectionLabel>Search Query</SectionLabel></th>
               <th className="text-left p-3"><SectionLabel>Condition</SectionLabel></th>
-              <th className="text-left p-3"><SectionLabel>Schedule</SectionLabel></th>
+              <th className="text-left p-3"><SectionLabel>Next Run</SectionLabel></th>
               <th className="text-left p-3"><SectionLabel>Status</SectionLabel></th>
               <th className="text-left p-3"><SectionLabel>Executions</SectionLabel></th>
               <th className="text-left p-3"><SectionLabel>Triggered</SectionLabel></th>
@@ -122,8 +122,10 @@ export function QueriesTable() {
                   <td className="p-3 text-sm font-mono text-zinc-900">{query.name}</td>
                   <td className="p-3 text-xs font-mono text-zinc-700 max-w-xs truncate">{query.search_query}</td>
                   <td className="p-3 text-xs text-zinc-500 max-w-xs truncate">{query.condition_description}</td>
-                  <td className="p-3 text-xs">
-                    <CronDisplay cron={query.schedule} showRaw={false} className="text-xs font-mono" />
+                  <td className="p-3 text-xs font-mono text-zinc-600">
+                    {query.next_run_time
+                      ? new Date(query.next_run_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                      : '-'}
                   </td>
                   <td className="p-3">
                     <div className="flex gap-1">

@@ -23,7 +23,6 @@ export interface Task {
   id: string;
   user_id: string;
   name: string;
-  schedule: string;
   search_query: string;
   condition_description: string;
   notify_behavior: NotifyBehavior;
@@ -34,6 +33,9 @@ export interface Task {
   // Latest execution reference
   last_execution_id: string | null;
   last_execution: TaskExecutionSummary | null;
+
+  // Next scheduled check (from APScheduler)
+  next_run_time: string | null;
 
   created_at: string;
   updated_at: string | null;
@@ -59,7 +61,6 @@ export interface TaskCreatePayload {
   name?: string;
   search_query: string;
   condition_description: string;
-  schedule: string;
   notify_behavior: NotifyBehavior;
   state: TaskState;
   run_immediately?: boolean;  // Execute task immediately after creation
@@ -113,7 +114,6 @@ export interface TaskTemplate {
   icon?: string;
   search_query: string;
   condition_description: string;
-  schedule: string;
   notify_behavior: NotifyBehavior;
   state: TaskState;
   created_at: string;
