@@ -45,7 +45,7 @@ class NotificationConfig(BaseModel):
 
 class TaskBase(BaseModel):
     name: str
-    schedule: str
+    schedule: str = "0 */6 * * *"
     state: TaskState = TaskState.ACTIVE
 
     # Grounded search fields
@@ -111,6 +111,9 @@ class Task(TaskBase):
     # Latest execution reference
     last_execution_id: UUID | None = None
     last_execution: TaskExecution | None = None  # Embedded from API query
+
+    # Immediate execution error (only set when run_immediately fails during creation)
+    immediate_execution_error: str | None = None
 
     # Shareable tasks fields
     is_public: bool = False

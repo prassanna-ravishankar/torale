@@ -130,35 +130,6 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
                     </div>
                   )}
 
-                  {execution.result?.metadata?.current_state && (
-                    <div className="p-3 bg-zinc-900 border border-zinc-800">
-                      <p className="text-[10px] font-mono uppercase text-zinc-500 tracking-wider mb-3">Current State (Dev)</p>
-                      <div className="text-xs font-mono space-y-2">
-                        {Object.entries(execution.result.metadata.current_state).map(
-                          ([key, value]) => (
-                            <div key={key} className="flex flex-col gap-1">
-                              <span className="text-zinc-400">
-                                {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-                              </span>
-                              {Array.isArray(value) ? (
-                                value.length > 3 ? (
-                                  <span className="text-zinc-300">{value.slice(0, 3).join(", ")} +{value.length - 3} more</span>
-                                ) : (
-                                  <span className="text-zinc-300">{value.join(", ")}</span>
-                                )
-                              ) : typeof value === "object" && value !== null ? (
-                                <pre className="text-xs p-2 bg-zinc-950 text-zinc-400 border border-zinc-800 overflow-x-auto">
-                                  {JSON.stringify(value, null, 2)}
-                                </pre>
-                              ) : (
-                                <span className="text-zinc-300">{String(value)}</span>
-                              )}
-                            </div>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </CollapsibleSection>
 

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import type { Task } from '@/types';
 import { StatusBadge, SectionLabel, ActionMenu, BrutalistCard, type Action } from '@/components/torale';
 import { Clock, Globe, Trash2, Play, Edit, Pause, Zap } from 'lucide-react';
-import { CronDisplay } from '@/components/ui/CronDisplay';
 import { getTaskStatus } from '@/lib/taskStatus';
 import { formatTimeAgo, getTaskExecuteLabel } from '@/lib/utils';
 import {
@@ -118,15 +117,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </div>
       </div>
 
-      {/* Middle: Metrics */}
-      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
-        <div>
-          <SectionLabel className="mb-1">Schedule</SectionLabel>
-          <div className="flex items-center gap-1.5 text-xs font-mono text-zinc-600">
-            <Clock className="w-3 h-3" />
-            <CronDisplay cron={task.schedule} className="text-xs font-mono" />
-          </div>
-        </div>
+      {/* Middle: Last Check */}
+      <div className="p-4 flex-1">
         <div>
           <SectionLabel className="mb-1">Last Check</SectionLabel>
           <div className="flex items-center gap-1.5 text-xs font-mono text-zinc-600">

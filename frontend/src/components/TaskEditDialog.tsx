@@ -11,13 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import type { Task, NotifyBehavior } from '@/types';
@@ -26,25 +19,15 @@ import {
   Sparkles,
   Search,
   Bell,
-  Clock,
   AlertCircle,
-  Zap,
-  Eye,
-  RotateCcw,
-  Calendar,
-  ChevronDown,
-  ChevronUp,
   Globe,
   Lock,
   Copy,
+  Eye,
   Users
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CustomScheduleDialog } from "@/components/ui/CustomScheduleDialog";
-import cronstrue from "cronstrue";
-import { localTimeToUTC, cronUTCToLocal } from "@/lib/timezoneUtils";
 import { BrutalistSwitch } from "@/components/torale";
 import { UsernamePickerModal } from "@/components/UsernamePickerModal";
 import { useAuth } from '@/contexts/AuthContext';
@@ -55,38 +38,6 @@ interface TaskEditDialogProps {
   task: Task | null;
   onSuccess: (task: Task) => void;
 }
-
-// Generate schedule options with UTC conversion for local times
-// Note: User sees "9:00 AM" but we store UTC equivalent
-const SIMPLE_SCHEDULE_OPTIONS = [
-  { value: "*/30 * * * *", label: "Every 30 minutes", icon: Zap },
-  { value: "0 */6 * * *", label: "Every 6 hours", icon: Clock },
-  { value: `${localTimeToUTC(9, 0).minute} ${localTimeToUTC(9, 0).hour} * * *`, label: "Daily at 9:00 AM", icon: Clock },
-  { value: `${localTimeToUTC(12, 0).minute} ${localTimeToUTC(12, 0).hour} * * *`, label: "Daily at noon", icon: Clock },
-  { value: `${localTimeToUTC(8, 0).minute} ${localTimeToUTC(8, 0).hour} * * 1`, label: "Weekly on Monday at 8:00 AM", icon: Clock },
-  { value: "custom", label: "Custom Schedule...", icon: Calendar },
-];
-
-const NOTIFY_BEHAVIORS = [
-  {
-    value: "once" as NotifyBehavior,
-    label: "Notify Once",
-    description: "Stop monitoring after first match",
-    icon: Bell,
-  },
-  {
-    value: "always" as NotifyBehavior,
-    label: "Always Notify",
-    description: "Alert every time condition is met",
-    icon: RotateCcw,
-  },
-  {
-    value: "track_state" as NotifyBehavior,
-    label: "Track Changes",
-    description: "Notify when information changes",
-    icon: Eye,
-  }
-];
 
 const MIN_NAME_LENGTH = 3;
 const MIN_SEARCH_QUERY_LENGTH = 10;
@@ -102,21 +53,16 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   const [name, setName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [conditionDescription, setConditionDescription] = useState('');
-  const [schedule, setSchedule] = useState('0 9 * * *');
-  const [notifyBehavior, setNotifyBehavior] = useState<NotifyBehavior>('track_state');
+  const [notifyBehavior, setNotifyBehavior] = useState<NotifyBehavior>('once');
 
   // UI state
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState("");
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Magic Input state
   const [magicPrompt, setMagicPrompt] = useState("");
   const [isMagicLoading, setIsMagicLoading] = useState(false);
-
-  // Custom Schedule Dialog state
-  const [isCustomScheduleOpen, setIsCustomScheduleOpen] = useState(false);
 
   // Sharing state
   const [isPublic, setIsPublic] = useState(false);
@@ -130,7 +76,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       setName(task.name);
       setSearchQuery(task.search_query || '');
       setConditionDescription(task.condition_description || '');
-      setSchedule(task.schedule);
       setNotifyBehavior(task.notify_behavior as NotifyBehavior);
       setIsPublic(task.is_public);
     }
@@ -141,10 +86,8 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
     if (!open) {
       setValidationErrors({});
       setError("");
-      setShowAdvanced(false);
       setMagicPrompt("");
       setIsMagicLoading(false);
-      setIsCustomScheduleOpen(false);
     }
   }, [open]);
 
@@ -157,7 +100,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
         name,
         search_query: searchQuery,
         condition_description: conditionDescription,
-        schedule,
+        schedule: task?.schedule || "0 */6 * * *",
         notify_behavior: notifyBehavior,
         state: "active"
       });
@@ -165,8 +108,11 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       setName(suggestion.name);
       setSearchQuery(suggestion.search_query);
       setConditionDescription(suggestion.condition_description);
-      setSchedule(suggestion.schedule);
-      setNotifyBehavior(suggestion.notify_behavior as NotifyBehavior);
+      // Use suggested notify_behavior if it's once or always
+      const behavior = suggestion.notify_behavior as NotifyBehavior;
+      if (behavior === "once" || behavior === "always") {
+        setNotifyBehavior(behavior);
+      }
 
       toast.success("Task configuration updated from suggestion!");
     } catch (error) {
@@ -180,7 +126,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   const handleVisibilityToggle = async (checked: boolean) => {
     if (!task) return;
 
-    // If trying to make public but no username, show username picker
     if (checked && !user?.username) {
       setShowUsernameModal(true);
       return;
@@ -198,7 +143,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
         toast.success('Task is now private');
       }
 
-      // Refresh task data
       onSuccess({ ...task, is_public: result.is_public, slug: result.slug });
     } catch (error) {
       console.error('Failed to toggle visibility:', error);
@@ -209,7 +153,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   };
 
   const handleUsernameSet = async (username: string) => {
-    // After username is set, try to make the task public again
     if (task) {
       setIsTogglingVisibility(true);
       try {
@@ -282,11 +225,8 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
         name,
         search_query: searchQuery,
         condition_description: conditionDescription,
-        schedule,
         notify_behavior: notifyBehavior,
-        // Note: We currently don't update notifications via this endpoint in the same way
-        // The backend update_task might need to handle notifications if we want to support it here
-        // For now, we'll assume notifications are handled separately or added to update_task
+        // Preserve existing schedule — agent controls this via next_run
       });
 
       toast.success('Task updated successfully');
@@ -423,126 +363,43 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
                 </p>
               )}
             </div>
-          </div>
 
-          {/* Progressive Disclosure: Advanced Options */}
-          <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced} className="space-y-2">
-            <div className="flex items-center justify-between">
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="p-0 h-auto font-medium text-muted-foreground hover:text-foreground">
-                  {showAdvanced ? (
-                    <span className="flex items-center gap-1">Hide Advanced Options <ChevronUp className="h-4 w-4" /></span>
-                  ) : (
-                    <span className="flex items-center gap-1">Show Advanced Options <ChevronDown className="h-4 w-4" /></span>
-                  )}
-                </Button>
-              </CollapsibleTrigger>
-            </div>
-
-            <CollapsibleContent className="space-y-4 pt-2 animate-in slide-in-from-top-2 fade-in duration-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-zinc-50 border-2 border-zinc-100">
-                {/* Schedule */}
-                <div className="space-y-2">
-                  <Label htmlFor="schedule" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
-                    <Clock className="h-3 w-3" />
-                    Check Frequency
-                  </Label>
-                  <div className="space-y-2">
-                    <Select
-                      value={SIMPLE_SCHEDULE_OPTIONS.some(o => o.value === schedule) ? schedule : "custom"}
-                      onValueChange={(val) => {
-                        if (val === "custom") {
-                          setIsCustomScheduleOpen(true);
-                        } else {
-                          setSchedule(val);
-                        }
-                      }}
-                      disabled={isUpdating}
-                    >
-                      <SelectTrigger id="schedule" className="h-9 bg-background">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SIMPLE_SCHEDULE_OPTIONS.map((option) => {
-                          const IconComponent = option.icon;
-                          return (
-                            <SelectItem key={option.value} value={option.value}>
-                              <div className="flex items-center gap-2">
-                                <IconComponent className="h-3.5 w-3.5" />
-                                {option.label}
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-
-                    {/* Custom Schedule Display & Edit */}
-                    {(!SIMPLE_SCHEDULE_OPTIONS.some(o => o.value === schedule) || schedule === "custom") && (
-                      <div className="animate-in slide-in-from-top-1 fade-in duration-200 flex items-center gap-2">
-                        <div className="flex-1 text-xs bg-muted px-3 py-2 rounded-md border font-mono truncate">
-                          {schedule === "custom" ? "No schedule selected" : schedule}
-                          <span className="ml-2 text-muted-foreground font-sans">
-                            ({(() => {
-                              try {
-                                // Convert UTC cron to local for display
-                                const localCron = cronUTCToLocal(schedule);
-                                return cronstrue.toString(localCron);
-                              } catch {
-                                return "Invalid cron";
-                              }
-                            })()})
-                          </span>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setIsCustomScheduleOpen(true)}
-                          className="h-9 px-3"
-                        >
-                          Edit
-                        </Button>
-                      </div>
+            {/* Notification Mode - inline toggle */}
+            <div className="flex items-center gap-3 p-3 bg-zinc-50 border-2 border-zinc-100">
+              <Bell className="h-4 w-4 text-zinc-500 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <Label className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider block mb-1">
+                  Notification Mode
+                </Label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNotifyBehavior("once")}
+                    className={cn(
+                      "text-xs px-3 py-1.5 border-2 font-mono transition-colors",
+                      notifyBehavior === "once"
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : "border-zinc-200 text-zinc-600 hover:border-zinc-400"
                     )}
-                  </div>
-                </div>
-
-                <CustomScheduleDialog
-                  open={isCustomScheduleOpen}
-                  onOpenChange={setIsCustomScheduleOpen}
-                  initialValue={SIMPLE_SCHEDULE_OPTIONS.some(o => o.value === schedule) ? "0 9 * * *" : schedule}
-                  onSave={(newSchedule) => {
-                    setSchedule(newSchedule);
-                  }}
-                />
-
-                {/* Notification Behavior */}
-                <div className="space-y-2">
-                  <Label htmlFor="notifyBehavior" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
-                    <Bell className="h-3 w-3" />
-                    Notification Mode
-                  </Label>
-                  <Select
-                    value={notifyBehavior}
-                    onValueChange={(value) => setNotifyBehavior(value as NotifyBehavior)}
-                    disabled={isUpdating}
                   >
-                    <SelectTrigger id="notifyBehavior" className="h-9 bg-background">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {NOTIFY_BEHAVIORS.map((behavior) => (
-                        <SelectItem key={behavior.value} value={behavior.value}>
-                          {behavior.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    Notify once then stop
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNotifyBehavior("always")}
+                    className={cn(
+                      "text-xs px-3 py-1.5 border-2 font-mono transition-colors",
+                      notifyBehavior === "always"
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : "border-zinc-200 text-zinc-600 hover:border-zinc-400"
+                    )}
+                  >
+                    Keep monitoring
+                  </button>
                 </div>
               </div>
-            </CollapsibleContent>
-          </Collapsible>
+            </div>
+          </div>
 
           {/* Sharing Section */}
           <div className="space-y-4 p-4 bg-zinc-50 border-2 border-zinc-200">

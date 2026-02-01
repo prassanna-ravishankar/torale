@@ -36,6 +36,18 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
+
+async def _check_task_access(db: Database, task_id: UUID, user) -> dict:
+    """Verify task exists and user has access (owner or public). Returns task row."""
+    row = await db.fetch_one("SELECT id, user_id, is_public FROM tasks WHERE id = $1", task_id)
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    is_owner = user is not None and row["user_id"] == user.id
+    if not is_owner and not row["is_public"]:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    return dict(row)
+
+
 _background_tasks: set[asyncio.Task] = set()
 
 
@@ -175,6 +187,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
             ) from e
 
     # Execute task immediately if requested
+    immediate_execution_error = None
     if task.run_immediately:
         try:
             await _start_task_execution(
@@ -185,10 +198,10 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
                 suppress_notifications=False,  # First run should notify
             )
         except Exception as e:
-            # Log error but don't fail task creation
-            logger.error(f"Failed to start immediate execution for task {task_id}: {str(e)}")
+            logger.error(f"Failed to start immediate execution for task {task_id}: {e}")
+            immediate_execution_error = str(e)
 
-    return Task(**parse_task_row(row))
+    return Task(**parse_task_row(row), immediate_execution_error=immediate_execution_error)
 
 
 @router.get("/", response_model=list[Task])
@@ -519,52 +532,6 @@ class ForkTaskRequest(BaseModel):
     name: str | None = Field(None, description="Optional new name for the forked task")
 
 
-def _prepare_fork_data(
-    source: dict, request: ForkTaskRequest, is_owner: bool
-) -> tuple[str, dict, str | None, str | None, str | None, list]:
-    """
-    Prepare fork data by determining name and scrubbing sensitive fields.
-
-    Args:
-        source: Source task database row
-        request: Fork request with optional custom name
-        is_owner: Whether the user forking is the task owner
-
-    Returns:
-        Tuple of (base_fork_name, notifications, notification_email, webhook_url, webhook_secret, notification_channels)
-    """
-    # Determine base name for forked task
-    base_fork_name = request.name if request.name else f"{source['name']} (Copy)"
-
-    # Scrub sensitive fields when forking another user's task
-    # Owner duplicating their own task can keep their settings
-    if is_owner:
-        # Keep all notification settings when duplicating own task
-        notifications = source["notifications"]
-        notification_email = source["notification_email"]
-        webhook_url = source["webhook_url"]
-        webhook_secret = source["webhook_secret"]
-        notification_channels = source["notification_channels"]
-    else:
-        # Scrub sensitive fields when forking someone else's task
-        # Database JSONB column expects JSON string. Using json.dumps([]) instead of []
-        # for explicit type clarity, though asyncpg would handle both.
-        notifications = json.dumps([])
-        notification_email = None
-        webhook_url = None
-        webhook_secret = None
-        notification_channels = []
-
-    return (
-        base_fork_name,
-        notifications,
-        notification_email,
-        webhook_url,
-        webhook_secret,
-        notification_channels,
-    )
-
-
 @router.post("/{task_id}/fork", response_model=Task)
 async def fork_task(
     task_id: UUID,
@@ -580,43 +547,30 @@ async def fork_task(
     - Tracks original task via forked_from_task_id
     - User can optionally provide a new name
     """
-    # Get the source task
-    source_query = """
-        SELECT t.*
-        FROM tasks t
-        WHERE t.id = $1
-    """
+    # Verify access (owner or public)
+    await _check_task_access(db, task_id, user)
 
-    source = await db.fetch_one(source_query, task_id)
-
+    # Get the full source task
+    source = await db.fetch_one("SELECT * FROM tasks WHERE id = $1", task_id)
     if not source:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
-    # Check if task is public or user owns it
     is_owner = source["user_id"] == user.id
-    is_public = source["is_public"]
 
-    if not is_public and not is_owner:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-
-    # Allow owners to fork (duplicate) their own tasks
-    # Frontend can show "Duplicate" for owners, "Fork" for others
-
-    # Prepare fork data: determine name and scrub sensitive fields
-    (
-        base_fork_name,
-        notifications,
-        notification_email,
-        webhook_url,
-        webhook_secret,
-        notification_channels,
-    ) = _prepare_fork_data(source, request, is_owner)
+    # Determine base name and notification fields (scrub sensitive data for non-owners)
+    base_fork_name = request.name if request.name else f"{source['name']} (Copy)"
+    if is_owner:
+        notifications = source["notifications"]
+        notification_email = source["notification_email"]
+        webhook_url = source["webhook_url"]
+        webhook_secret = source["webhook_secret"]
+        notification_channels = source["notification_channels"]
+    else:
+        notifications = json.dumps([])
+        notification_email = None
+        webhook_url = None
+        webhook_secret = None
+        notification_channels = []
 
     # Retry loop to handle race condition on task name uniqueness
     # Similar to slug generation logic - try up to 3 times with incremented counter
@@ -840,7 +794,28 @@ async def update_task(
                 detail=f"Failed to change task state: {str(e)}. Task update rolled back.",
             ) from e
 
-    return Task(**parse_task_row(row))
+    # Re-fetch to get the latest state (avoids returning stale data after transitions)
+    fresh_query = """
+        SELECT t.*,
+               u.username as creator_username,
+               e.id as exec_id,
+               e.condition_met as exec_condition_met,
+               e.started_at as exec_started_at,
+               e.completed_at as exec_completed_at,
+               e.status as exec_status,
+               e.result as exec_result,
+               e.change_summary as exec_change_summary,
+               e.grounding_sources as exec_grounding_sources
+        FROM tasks t
+        INNER JOIN users u ON t.user_id = u.id
+        LEFT JOIN task_executions e ON t.last_execution_id = e.id
+        WHERE t.id = $1
+    """
+    fresh_row = await db.fetch_one(fresh_query, task_id)
+    if not fresh_row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+
+    return parse_task_with_execution(fresh_row)
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -866,6 +841,8 @@ async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(g
         logger.info(f"Removed scheduler job {job_id}")
     except JobLookupError:
         logger.info(f"Job {job_id} not found when deleting - already removed or never existed")
+    except Exception as e:
+        logger.error(f"Failed to remove scheduler job {job_id}: {e}", exc_info=True)
 
     # Delete task from database
     query = """
@@ -890,17 +867,8 @@ async def execute_task(
     task_id: UUID,
     user: CurrentUser,
     db: Database = Depends(get_db),
-    suppress_notifications: bool = False,
 ):
-    """
-    Execute a task manually.
-
-    Args:
-        task_id: ID of the task to execute
-        suppress_notifications: If True, don't send notifications (preview mode)
-
-    This is used both for "Run Now" (preview) and scheduled executions.
-    """
+    """Execute a task manually (Run Now)."""
     # Verify task exists and belongs to user
     task_query = """
         SELECT id, name FROM tasks
@@ -921,7 +889,7 @@ async def execute_task(
         task_name=task["name"],
         user_id=str(user.id),
         db=db,
-        suppress_notifications=suppress_notifications,
+        suppress_notifications=False,
     )
 
     return TaskExecution(**parse_execution_row(row))
@@ -931,29 +899,7 @@ async def execute_task(
 async def get_task_executions(
     task_id: UUID, user: OptionalUser, limit: int = 100, db: Database = Depends(get_db)
 ):
-    # Verify task exists and check permissions
-    task_query = """
-        SELECT id, user_id, is_public FROM tasks
-        WHERE id = $1
-    """
-
-    task = await db.fetch_one(task_query, task_id)
-
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-
-    # Check permissions: owner has access, others only if public
-    is_owner = user is not None and task["user_id"] == user.id
-    is_public = task["is_public"]
-
-    if not is_owner and not is_public:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
+    await _check_task_access(db, task_id, user)
 
     # Get executions
     executions_query = """
@@ -977,29 +923,7 @@ async def get_task_notifications(
     Get task executions where the condition was met (notifications).
     This filters executions to only show when the monitoring condition triggered.
     """
-    # Verify task exists and check permissions
-    task_query = """
-        SELECT id, user_id, is_public FROM tasks
-        WHERE id = $1
-    """
-
-    task = await db.fetch_one(task_query, task_id)
-
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-
-    # Check permissions: owner has access, others only if public
-    is_owner = user is not None and task["user_id"] == user.id
-    is_public = task["is_public"]
-
-    if not is_owner and not is_public:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
+    await _check_task_access(db, task_id, user)
 
     # Get executions where condition_met is true
     notifications_query = """

@@ -1,9 +1,8 @@
 import React from 'react';
-import { Clock, Search, Bell, Mail, Webhook, CheckCircle } from 'lucide-react';
+import { Search, Bell, Mail, Webhook, CheckCircle } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InfoCard, CollapsibleSection, BrutalistSwitch } from "@/components/torale";
-import { CronDisplay } from "@/components/ui/CronDisplay";
 import { NotificationChannelBadges } from "@/components/notifications/NotificationChannelBadges";
 import type { Task } from '@/types';
 
@@ -69,15 +68,6 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
   // Compact list for mobile/tablet
   const configList = (
     <div className="space-y-3 p-4 bg-white border-t-2 border-zinc-200">
-      {/* Schedule */}
-      <div className="flex items-start gap-3">
-        <Clock className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">Schedule</div>
-          <CronDisplay cron={task.schedule} className="text-sm font-mono text-zinc-900" />
-        </div>
-      </div>
-
       {/* Trigger Condition */}
       <div className="flex items-start gap-3">
         <Search className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
@@ -133,11 +123,7 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
 
   // Card grid for desktop
   const configCards = (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <InfoCard icon={Clock} label="Schedule">
-        <CronDisplay cron={task.schedule} className="text-sm font-mono text-zinc-700" />
-      </InfoCard>
-
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
       <InfoCard icon={Search} label="Trigger Condition">
         <p className="text-sm text-zinc-700 leading-relaxed">{task.condition_description}</p>
       </InfoCard>

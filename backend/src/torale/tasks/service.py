@@ -6,6 +6,7 @@ This service consolidates:
 3. High-level business logic
 """
 
+import asyncio
 import logging
 from uuid import UUID
 
@@ -65,16 +66,16 @@ class TaskService:
 
         try:
             if to_state == TaskState.ACTIVE:
-                result = self._add_or_resume_job(
+                result = await self._add_or_resume_job(
                     task_id,
                     task_name=task_name,
                     user_id=user_id,
                     schedule=schedule,
                 )
             elif to_state == TaskState.PAUSED:
-                result = self._pause_job(task_id)
+                result = await self._pause_job(task_id)
             elif to_state == TaskState.COMPLETED:
-                result = self._remove_job(task_id)
+                result = await self._remove_job(task_id)
             else:
                 result = {"success": True, "schedule_action": "none", "error": None}
 
@@ -127,7 +128,7 @@ class TaskService:
         Unlike transition(), this does NOT update the DB state because
         the task is already being inserted as ACTIVE.
         """
-        return self._add_or_resume_job(
+        return await self._add_or_resume_job(
             task_id,
             task_name=task_name,
             user_id=user_id,
@@ -179,7 +180,7 @@ class TaskService:
     # This is how APScheduler serializes jobs to the database anyway.
     _JOB_FUNC_REF = "torale.scheduler.job:execute_task_job"
 
-    def _add_or_resume_job(
+    async def _add_or_resume_job(
         self,
         task_id: UUID,
         task_name: str | None = None,
@@ -192,17 +193,20 @@ class TaskService:
 
         scheduler = get_scheduler()
         job_id = f"task-{task_id}"
-        existing = scheduler.get_job(job_id)
+        existing = await asyncio.to_thread(scheduler.get_job, job_id)
 
         if existing is not None:
             # Job exists, resume it and update trigger
-            scheduler.resume_job(job_id)
-            scheduler.reschedule_job(job_id, trigger=CronTrigger.from_crontab(schedule))
+            await asyncio.to_thread(scheduler.resume_job, job_id)
+            await asyncio.to_thread(
+                scheduler.reschedule_job, job_id, trigger=CronTrigger.from_crontab(schedule)
+            )
             logger.info(f"Resumed job {job_id}")
             return {"success": True, "schedule_action": "resumed", "error": None}
 
         # Create new job
-        scheduler.add_job(
+        await asyncio.to_thread(
+            scheduler.add_job,
             self._JOB_FUNC_REF,
             trigger=CronTrigger.from_crontab(schedule),
             id=job_id,
@@ -212,25 +216,25 @@ class TaskService:
         logger.info(f"Created job {job_id}")
         return {"success": True, "schedule_action": "created", "error": None}
 
-    def _pause_job(self, task_id: UUID) -> dict:
+    async def _pause_job(self, task_id: UUID) -> dict:
         scheduler = get_scheduler()
         job_id = f"task-{task_id}"
-        existing = scheduler.get_job(job_id)
+        existing = await asyncio.to_thread(scheduler.get_job, job_id)
 
         if existing is None:
             logger.info(f"Job {job_id} not found when pausing - already deleted or never existed")
             return {"success": True, "schedule_action": "not_found_ok", "error": None}
 
-        scheduler.pause_job(job_id)
+        await asyncio.to_thread(scheduler.pause_job, job_id)
         logger.info(f"Paused job {job_id}")
         return {"success": True, "schedule_action": "paused", "error": None}
 
-    def _remove_job(self, task_id: UUID) -> dict:
+    async def _remove_job(self, task_id: UUID) -> dict:
         scheduler = get_scheduler()
         job_id = f"task-{task_id}"
 
         try:
-            scheduler.remove_job(job_id)
+            await asyncio.to_thread(scheduler.remove_job, job_id)
             logger.info(f"Removed job {job_id}")
             return {"success": True, "schedule_action": "deleted", "error": None}
         except JobLookupError:

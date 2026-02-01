@@ -26,25 +26,6 @@ from torale.tasks.service import TaskService
 logger = logging.getLogger(__name__)
 
 
-async def _complete_task(task_id: str) -> None:
-    """Mark task as completed via TaskService."""
-    row = await db.fetch_one("SELECT state FROM tasks WHERE id = $1", uuid.UUID(task_id))
-    if not row:
-        raise RuntimeError(f"Task {task_id} not found")
-
-    current_state = TaskState(row["state"])
-    if current_state != TaskState.ACTIVE:
-        logger.info(f"Task {task_id} is {current_state.value}, skipping completion")
-        return
-
-    task_service = TaskService(db=db)
-    result = await task_service.complete(
-        task_id=uuid.UUID(task_id),
-        current_state=current_state,
-    )
-    logger.info(f"Task {task_id} completed - schedule {result['schedule_action']}")
-
-
 async def _execute(
     task_id: str,
     execution_id: str | None,
@@ -87,11 +68,17 @@ async def _execute(
         # Call agent
         agent_response = await call_agent("\n".join(prompt_parts))
 
+        if not isinstance(agent_response, dict):
+            raise RuntimeError(f"Agent returned non-dict response: {type(agent_response)}")
+
         # Map agent response to execution result
         notification = agent_response.get("notification")
         condition_met = notification is not None
         evidence = agent_response.get("evidence", "")
         sources = agent_response.get("sources", [])
+        if not isinstance(sources, list):
+            logger.warning(f"Agent returned non-list sources: {type(sources)}")
+            sources = []
         confidence = agent_response.get("confidence", "medium")
         next_run = agent_response.get("next_run")
 
@@ -102,15 +89,6 @@ async def _execute(
             task_id=task_id,
             execution_id=execution_id,
             agent_result={
-                # Frontend-expected shape
-                "summary": change_summary,
-                "sources": grounding_sources,
-                "metadata": {
-                    "changed": condition_met,
-                    "change_explanation": change_summary,
-                    "current_state": None,
-                },
-                # Agent-specific fields
                 "evidence": evidence,
                 "notification": notification,
                 "confidence": confidence,
@@ -140,9 +118,11 @@ async def _execute(
                 }
 
                 if "email" in channels:
-                    await send_email_notification(
+                    email_delivered = await send_email_notification(
                         user_id, task_name, notification_context, enriched_result
                     )
+                    if not email_delivered:
+                        notification_failed = True
 
                 if "webhook" in channels:
                     await send_webhook_notification(notification_context, enriched_result)
@@ -157,15 +137,28 @@ async def _execute(
                     f"Skipping auto-complete for once-task {task_id} — notification delivery failed"
                 )
             else:
-                await _complete_task(task_id)
+                try:
+                    task_service = TaskService(db=db)
+                    await task_service.complete(
+                        task_id=uuid.UUID(task_id), current_state=TaskState.ACTIVE
+                    )
+                    logger.info(f"Task {task_id} auto-completed (notify_behavior=once)")
+                except Exception as e:
+                    logger.error(f"Auto-complete failed for task {task_id}: {e}", exc_info=True)
 
         # Dynamic reschedule if agent returns next_run
         if next_run:
             try:
-                scheduler = get_scheduler()
-                job_id = f"task-{task_id}"
-                scheduler.modify_job(job_id, next_run_time=datetime.fromisoformat(next_run))
-                logger.info(f"Rescheduled task {task_id} to {next_run}")
+                dt = datetime.fromisoformat(next_run)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=UTC)
+                if dt <= datetime.now(UTC):
+                    logger.warning(f"Agent returned past next_run {next_run}, ignoring")
+                else:
+                    scheduler = get_scheduler()
+                    job_id = f"task-{task_id}"
+                    scheduler.modify_job(job_id, next_run_time=dt)
+                    logger.info(f"Rescheduled task {task_id} to {next_run}")
             except Exception as e:
                 logger.error(
                     f"Failed to reschedule task {task_id} to {next_run}: {e}", exc_info=True

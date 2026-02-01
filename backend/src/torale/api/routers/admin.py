@@ -873,10 +873,17 @@ async def get_waitlist_stats(
     }
 
 
+class UpdateWaitlistEntryRequest(BaseModel):
+    """Request model for updating a waitlist entry."""
+
+    status: Literal["pending", "invited", "converted"] | None = None
+    notes: str | None = None
+
+
 @router.patch("/waitlist/{entry_id}")
 async def update_waitlist_entry(
     entry_id: UUID,
-    data: dict,
+    data: UpdateWaitlistEntryRequest,
     admin: ClerkUser = Depends(require_admin),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -889,16 +896,16 @@ async def update_waitlist_entry(
     updates = []
     params = {"entry_id": entry_id}
 
-    if "status" in data:
+    if data.status is not None:
         updates.append("status = :status")
-        params["status"] = data["status"]
-        if data["status"] == "invited":
+        params["status"] = data.status
+        if data.status == "invited":
             updates.append("invited_at = :invited_at")
             params["invited_at"] = datetime.now(UTC)
 
-    if "notes" in data:
+    if data.notes is not None:
         updates.append("notes = :notes")
-        params["notes"] = data["notes"]
+        params["notes"] = data.notes
 
     if not updates:
         raise HTTPException(

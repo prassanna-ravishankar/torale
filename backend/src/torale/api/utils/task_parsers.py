@@ -21,6 +21,18 @@ def parse_task_row(row) -> dict:
     return task_dict
 
 
+def _enrich_result_for_frontend(result: dict) -> None:
+    """Add frontend-compatible keys to agent result dict if missing."""
+    if "summary" not in result and "change_summary" in result:
+        result["summary"] = result["change_summary"]
+    if "metadata" not in result:
+        result["metadata"] = {
+            "changed": result.get("condition_met"),
+            "change_explanation": result.get("change_summary"),
+            "current_state": None,
+        }
+
+
 def parse_execution_row(row) -> dict:
     """Parse an execution row from the database, converting JSON strings to dicts"""
     exec_dict = dict(row)
@@ -32,6 +44,9 @@ def parse_execution_row(row) -> dict:
         exec_dict["grounding_sources"] = (
             json.loads(exec_dict["grounding_sources"]) if exec_dict["grounding_sources"] else None
         )
+    # Enrich result with frontend-compatible shape
+    if isinstance(exec_dict.get("result"), dict):
+        _enrich_result_for_frontend(exec_dict["result"])
     return exec_dict
 
 
@@ -61,6 +76,9 @@ def parse_task_with_execution(row) -> Task:
         exec_sources = row["exec_grounding_sources"]
         if isinstance(exec_sources, str):
             exec_sources = json.loads(exec_sources) if exec_sources else None
+
+        if isinstance(exec_result, dict):
+            _enrich_result_for_frontend(exec_result)
 
         task_dict["last_execution"] = {
             "id": row["exec_id"],

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from '@/lib/motion-compat';
 import type { Task } from '@/types';
 import { StatusBadge } from '@/components/torale';
-import { CronDisplay } from '@/components/ui/CronDisplay';
 import { getTaskStatus } from '@/lib/taskStatus';
 import { formatTimeAgo } from '@/lib/utils';
 import { TaskActions } from './TaskActions';
@@ -84,10 +83,6 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
           <div className="flex gap-4 text-xs text-zinc-600 pl-6">
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <Clock className="w-3 h-3 flex-shrink-0" />
-              <CronDisplay cron={task.schedule} className="truncate" showRaw={false} />
-            </div>
-            <div className="flex items-center gap-1.5 flex-1 min-w-0">
-              <Clock className="w-3 h-3 flex-shrink-0" />
               <span className="truncate">
                 {lastExecution ? formatTimeAgo(lastExecution.started_at) : 'Never'}
               </span>
@@ -113,9 +108,6 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
         </td>
         <td className="hidden md:table-cell p-4">
           <StatusBadge variant={status.activityState} />
-        </td>
-        <td className="hidden md:table-cell p-4">
-          <CronDisplay cron={task.schedule} className="text-sm font-mono text-zinc-600" showRaw={false} />
         </td>
         <td className="hidden md:table-cell p-4">
           {lastExecution ? (
@@ -176,7 +168,7 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                     onExecute={onExecute}
                     onToggle={onToggle}
                     onEdit={onEdit}
-                    onDelete={(id) => setShowDeleteDialog(true)}
+                    onDelete={() => setShowDeleteDialog(true)}
                     onViewDetails={onClick}
                   />
                 </div>
@@ -190,7 +182,7 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
       <AnimatePresence>
         {expanded && (
           <tr className="hidden md:table-row">
-            <td colSpan={4} className="p-0">
+            <td colSpan={3} className="p-0">
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
@@ -224,7 +216,7 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                     onExecute={onExecute}
                     onToggle={onToggle}
                     onEdit={onEdit}
-                    onDelete={(id) => setShowDeleteDialog(true)}
+                    onDelete={() => setShowDeleteDialog(true)}
                     onViewDetails={onClick}
                   />
                 </div>

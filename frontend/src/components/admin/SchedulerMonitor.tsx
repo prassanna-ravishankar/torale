@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { formatDistanceToNow } from 'date-fns'
 import { Loader2, Clock, Calendar } from 'lucide-react'
@@ -29,11 +29,7 @@ export function SchedulerMonitor() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadSchedulerData()
-  }, [])
-
-  const loadSchedulerData = async () => {
+  const loadSchedulerData = useCallback(async () => {
     try {
       setLoading(true)
       const data = await api.getSchedulerJobs()
@@ -47,7 +43,11 @@ export function SchedulerMonitor() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadSchedulerData()
+  }, [loadSchedulerData])
 
   if (loading) {
     return (

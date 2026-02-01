@@ -25,11 +25,7 @@ async def create_execution_record(task_id: str) -> str:
 
     Returns the new execution_id as a string.
     """
-    try:
-        task_uuid = UUID(task_id)
-    except ValueError as e:
-        logger.error(f"Invalid task_id format: {task_id}")
-        raise RuntimeError(f"Invalid task_id format: {task_id}") from e
+    task_uuid = UUID(task_id)
 
     row = await db.fetch_one(
         """
@@ -56,44 +52,49 @@ async def persist_execution_result(task_id: str, execution_id: str, agent_result
     - condition_met, change_summary, grounding_sources -> task_executions columns
     - Full agent_result -> result JSONB
     """
-    now_utc = datetime.now(UTC)
+    try:
+        now_utc = datetime.now(UTC)
 
-    condition_met = agent_result.get("condition_met", False)
-    change_summary = agent_result.get("change_summary", "")
-    grounding_sources = agent_result.get("grounding_sources", [])
-    evidence = agent_result.get("evidence", "")
+        condition_met = agent_result.get("condition_met", False)
+        change_summary = agent_result.get("change_summary", "")
+        grounding_sources = agent_result.get("grounding_sources", [])
+        evidence = agent_result.get("evidence", "")
 
-    async with db.acquire() as conn:
-        async with conn.transaction():
-            await conn.execute(
-                """
-                UPDATE task_executions
-                SET status = $1, result = $2, completed_at = $3,
-                    condition_met = $4, change_summary = $5, grounding_sources = $6
-                WHERE id = $7
-                """,
-                TaskStatus.SUCCESS.value,
-                json.dumps(agent_result),
-                now_utc,
-                condition_met,
-                change_summary,
-                json.dumps(grounding_sources),
-                UUID(execution_id),
-            )
+        async with db.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    UPDATE task_executions
+                    SET status = $1, result = $2, completed_at = $3,
+                        condition_met = $4, change_summary = $5, grounding_sources = $6
+                    WHERE id = $7
+                    """,
+                    TaskStatus.SUCCESS.value,
+                    json.dumps(agent_result),
+                    now_utc,
+                    condition_met,
+                    change_summary,
+                    json.dumps(grounding_sources),
+                    UUID(execution_id),
+                )
 
-            await conn.execute(
-                """
-                UPDATE tasks
-                SET last_known_state = $1,
-                    updated_at = $2,
-                    last_execution_id = $3
-                WHERE id = $4
-                """,
-                evidence,
-                now_utc,
-                UUID(execution_id),
-                UUID(task_id),
-            )
+                await conn.execute(
+                    """
+                    UPDATE tasks
+                    SET last_known_state = $1,
+                        updated_at = $2,
+                        last_execution_id = $3
+                    WHERE id = $4
+                    """,
+                    evidence,
+                    now_utc,
+                    UUID(execution_id),
+                    UUID(task_id),
+                )
+    except Exception as e:
+        raise RuntimeError(
+            f"Failed to persist execution result for task {task_id}, execution {execution_id}: {e}"
+        ) from e
 
 
 async def fetch_notification_context(task_id: str, execution_id: str, user_id: str) -> dict:
@@ -134,8 +135,12 @@ async def fetch_notification_context(task_id: str, execution_id: str, user_id: s
 
 async def send_email_notification(
     user_id: str, task_name: str, notification_context: dict, result: dict
-) -> None:
-    """Send email notification (welcome or condition met)."""
+) -> bool:
+    """Send email notification (welcome or condition met).
+
+    Returns True if delivered, False if skipped (e.g. Novu not configured).
+    Raises on failure.
+    """
     task = notification_context["task"]
     task_id = task["id"]
     execution_id = result.get("execution_id")
@@ -163,7 +168,7 @@ async def send_email_notification(
             task_id=str(task_id),
         )
         logger.info(f"Welcome email sent to {clerk_email}")
-        return
+        return True
 
     # Determine recipient email
     recipient_email = clerk_email
@@ -232,6 +237,8 @@ async def send_email_notification(
 
     if email_status == "failed":
         raise RuntimeError(f"Email notification failed: {email_error}")
+
+    return email_status == "success"
 
 
 async def send_webhook_notification(notification_context: dict, result: dict) -> None:

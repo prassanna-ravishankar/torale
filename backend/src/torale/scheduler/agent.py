@@ -45,7 +45,13 @@ async def call_agent(prompt: str) -> dict:
         except httpx.HTTPError as e:
             raise RuntimeError(f"Failed to send task to agent at {settings.agent_url}: {e}") from e
 
-        send_result = resp.json()
+        try:
+            send_result = resp.json()
+        except Exception as e:
+            raise RuntimeError(
+                f"Agent returned non-JSON response from {settings.agent_url} "
+                f"(status={resp.status_code}): {resp.text[:200]}"
+            ) from e
 
         task_id = send_result.get("result", {}).get("id")
         if not task_id:
@@ -86,7 +92,17 @@ async def call_agent(prompt: str) -> dict:
                     ) from e
                 continue
 
-            poll_result = poll_resp.json()
+            try:
+                poll_result = poll_resp.json()
+            except Exception as e:
+                consecutive_poll_failures += 1
+                logger.warning(f"Poll returned non-JSON response for agent task {task_id}: {e}")
+                if consecutive_poll_failures >= MAX_CONSECUTIVE_POLL_FAILURES:
+                    raise RuntimeError(
+                        f"Agent poll returned non-JSON {MAX_CONSECUTIVE_POLL_FAILURES} times "
+                        f"for task {task_id}"
+                    ) from e
+                continue
 
             task_status = poll_result.get("result", {}).get("status", {})
             state = task_status.get("state") if isinstance(task_status, dict) else task_status

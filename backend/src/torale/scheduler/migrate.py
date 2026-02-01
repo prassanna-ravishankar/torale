@@ -1,4 +1,5 @@
 import logging
+from datetime import UTC, datetime
 
 from apscheduler.triggers.cron import CronTrigger
 
@@ -8,6 +9,22 @@ from torale.scheduler.scheduler import get_scheduler
 logger = logging.getLogger(__name__)
 
 _JOB_FUNC_REF = "torale.scheduler.job:execute_task_job"
+
+
+async def reap_stale_executions() -> None:
+    """Mark executions stuck in 'running' state for >30 minutes as failed."""
+    result = await db.fetch_all(
+        """UPDATE task_executions
+           SET status = 'failed',
+               error_message = 'Reaped: execution stuck in running state',
+               completed_at = $1
+           WHERE status = 'running'
+             AND started_at < $1 - INTERVAL '30 minutes'
+           RETURNING id""",
+        datetime.now(UTC),
+    )
+    if result:
+        logger.warning(f"Reaped {len(result)} stale executions stuck in running state")
 
 
 async def sync_jobs_from_database() -> None:
@@ -25,6 +42,7 @@ async def sync_jobs_from_database() -> None:
     )
 
     expected_job_ids = set()
+    failed_count = 0
 
     for row in rows:
         try:
@@ -51,10 +69,16 @@ async def sync_jobs_from_database() -> None:
                 elif row["state"] == "active" and existing_job.next_run_time is None:
                     scheduler.resume_job(job_id)
         except Exception as e:
-            logger.error(f"Failed to sync job for task {row['id']}: {e}")
+            failed_count += 1
+            logger.error(f"Failed to sync job for task {row['id']}: {e}", exc_info=True)
             continue
 
     for job in scheduler.get_jobs():
         if job.id.startswith("task-") and job.id not in expected_job_ids:
             scheduler.remove_job(job.id)
             logger.info(f"Removed orphaned job {job.id}")
+
+    if failed_count:
+        logger.warning(f"Job sync completed with {failed_count} failures out of {len(rows)} tasks")
+    else:
+        logger.info(f"Job sync completed: {len(rows)} tasks synced, 0 failures")

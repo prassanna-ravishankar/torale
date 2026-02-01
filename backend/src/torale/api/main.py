@@ -35,7 +35,7 @@ from torale.core.config import settings
 from torale.core.database import db
 from torale.core.database_alchemy import get_async_session
 from torale.scheduler import get_scheduler
-from torale.scheduler.migrate import sync_jobs_from_database
+from torale.scheduler.migrate import reap_stale_executions, sync_jobs_from_database
 
 logger = logging.getLogger(__name__)
 
@@ -87,8 +87,21 @@ async def lifespan(app: FastAPI):
     scheduler = get_scheduler()
     scheduler.start()
     logger.info("APScheduler started")
-    await sync_jobs_from_database()
-    logger.info("Scheduler jobs synced from database")
+
+    try:
+        await sync_jobs_from_database()
+        logger.info("Scheduler jobs synced from database")
+    except Exception as e:
+        logger.error(f"Failed to sync scheduler jobs from database: {e}", exc_info=True)
+
+    # Register stale execution reaper (runs every 15 minutes)
+    scheduler.add_job(
+        reap_stale_executions,
+        trigger="interval",
+        minutes=15,
+        id="reap-stale-executions",
+        replace_existing=True,
+    )
 
     yield
 
