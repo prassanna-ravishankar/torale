@@ -128,5 +128,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `🚀 **Deployed to Staging!**\n\n- **URL**: https://staging.torale.ai\n- **API**: https://api.staging.torale.ai\n- **Commit**: \`${{ github.sha }}\``
+              body: `🚀 **Deployed to Staging!**\n\n- **URL**: https://staging.torale.ai\n- **API**: https://api-staging.torale.ai\n- **Commit**: \`${{ github.sha }}\``
             })

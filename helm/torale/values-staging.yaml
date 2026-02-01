@@ -3,8 +3,8 @@
 
 domains:
   frontend: staging.torale.ai
-  api: api.staging.torale.ai
-  docs: docs.staging.torale.ai
+  api: api-staging.torale.ai
+  docs: docs-staging.torale.ai
 
 # Clerk authentication (uses production Clerk app - same as production)
 clerk:
