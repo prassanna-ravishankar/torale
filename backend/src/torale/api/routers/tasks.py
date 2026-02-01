@@ -4,11 +4,10 @@ import logging
 import secrets
 from uuid import UUID
 
-import httpx
 from apscheduler.jobstores.base import JobLookupError
 from asyncpg.exceptions import UniqueViolationError
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
 from torale.access import CurrentUser, OptionalUser
 from torale.api.utils.task_parsers import (
@@ -18,7 +17,6 @@ from torale.api.utils.task_parsers import (
 )
 from torale.core.database import Database, get_db
 from torale.notifications import NotificationValidationError, validate_notification
-from torale.scheduler.agent import call_agent
 from torale.scheduler.job import execute_task_job_manual
 from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import (
@@ -149,13 +147,6 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         task.notifications
     )
 
-    # Default condition to search_query if not provided
-    if not task.search_query:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Instruction (search_query) is required",
-        )
-
     final_condition = task.condition_description or task.search_query
 
     # Create task in database
@@ -247,83 +238,6 @@ async def list_tasks(
 
     return [parse_task_with_execution(row) for row in rows]
 
-
-class SuggestTaskRequest(BaseModel):
-    prompt: str = Field(..., description="Natural language description of the task")
-    current_task: dict | None = Field(None, description="Current task configuration for context")
-
-
-class SuggestedTask(BaseModel):
-    name: str = Field(description="Short, memorable name for the task (e.g., 'PS5 Stock Monitor')")
-    search_query: str = Field(description="Google search query to monitor")
-    condition_description: str = Field(
-        description="Clear, 1-sentence description of what triggers a notification"
-    )
-    schedule: str = Field(description="Cron expression (e.g., '0 9 * * *' for daily at 9am)")
-    notify_behavior: NotifyBehavior = Field(
-        description="When to notify: 'always' (every run), 'once' (first time only), 'track_state' (on change)"
-    )
-
-
-@router.post("/suggest", response_model=SuggestedTask)
-async def suggest_task(
-    request: SuggestTaskRequest,
-    user: CurrentUser,
-):
-    """Suggest task configuration from natural language description."""
-    if request.current_task:
-        prompt = (
-            "You are an expert at configuring web monitoring tasks.\n"
-            "Based on the user's request, UPDATE the current task configuration.\n"
-            "Keep existing context unless explicitly asked to change it.\n"
-            "Return the FULL updated configuration as JSON with these fields: "
-            "name, search_query, condition_description, schedule (cron), notify_behavior (once|always|track_state).\n\n"
-            f"Current Task Configuration:\n{json.dumps(request.current_task, indent=2)}\n\n"
-            f'User Request: "{request.prompt}"'
-        )
-    else:
-        prompt = (
-            "You are an expert at configuring web monitoring tasks.\n"
-            "Based on the user's description, generate the optimal configuration.\n"
-            "IMPORTANT for notify_behavior:\n"
-            "- Daily/weekly/monthly digests or recurring alerts → 'always'\n"
-            "- One-time announcements (launch dates, event dates) → 'once'\n"
-            "- Track changes over time → 'track_state'\n\n"
-            "Return JSON with these fields: "
-            "name, search_query, condition_description, schedule (cron), notify_behavior (once|always|track_state).\n\n"
-            f'User Description: "{request.prompt}"'
-        )
-
-    try:
-        result = await call_agent(prompt)
-        suggestion = SuggestedTask(**result)
-        logger.info(f"Task suggestion for '{request.prompt}': {suggestion.model_dump_json()}")
-        return suggestion
-
-    except TimeoutError as e:
-        logger.error(f"Suggestion timed out for '{request.prompt}': {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail="Suggestion timed out. Try a simpler description.",
-        ) from e
-    except httpx.ConnectError as e:
-        logger.error(f"Agent connection failed for suggestion: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Suggestion service temporarily unavailable.",
-        ) from e
-    except ValidationError as e:
-        logger.error(f"Failed to parse suggestion for '{request.prompt}': {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Could not parse suggestion. Try rephrasing.",
-        ) from e
-    except Exception as e:
-        logger.error(f"Failed to suggest task: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to generate task suggestion. Please try again.",
-        ) from e
 
 
 def _handle_background_task_result(task: asyncio.Task) -> None:
@@ -545,10 +459,8 @@ async def fork_task(
     # Verify access (owner or public)
     await _check_task_access(db, task_id, user)
 
-    # Get the full source task
+    # Get the full source task (existence already verified by _check_task_access)
     source = await db.fetch_one("SELECT * FROM tasks WHERE id = $1", task_id)
-    if not source:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
     is_owner = source["user_id"] == user.id
 

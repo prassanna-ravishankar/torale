@@ -58,9 +58,9 @@ class TaskBase(BaseModel):
 
 
 class TaskCreate(TaskBase):
-    """Create task - requires search_query (or instructions) for grounded search"""
+    """Create task - requires search_query for grounded search"""
 
-    search_query: str | None = None
+    search_query: str
     condition_description: str | None = None
     run_immediately: bool = False  # Execute task immediately after creation
 

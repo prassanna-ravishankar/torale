@@ -180,6 +180,7 @@ async def _execute(
                     topic,
                     uuid.UUID(task_id),
                 )
+                task_name = topic
                 logger.info(f"Named task {task_id}: '{topic}'")
             except Exception as e:
                 logger.error(f"Failed to name task {task_id}: {e}")

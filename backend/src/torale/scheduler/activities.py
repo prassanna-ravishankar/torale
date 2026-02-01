@@ -138,7 +138,7 @@ async def send_email_notification(
     Raises on failure.
     """
     task = notification_context["task"]
-    task_id = task["id"]
+    task_id = str(task["id"])
     execution_id = result.get("execution_id")
     if not execution_id:
         raise RuntimeError("execution_id required for email notifications")
@@ -163,7 +163,7 @@ async def send_email_notification(
             },
             task_id=str(task_id),
         )
-        logger.info(f"Welcome email sent to {clerk_email}")
+        logger.info(f"Welcome email sent for task {task_id}")
         return True
 
     # Determine recipient email
@@ -174,8 +174,7 @@ async def send_email_notification(
             recipient_email = custom_email
         else:
             logger.warning(
-                f"Email {custom_email} not verified for user {user_id}. "
-                f"Using Clerk email instead: {clerk_email}"
+                f"Custom notification email not verified for user {user_id}, using default"
             )
 
     # Check spam limits (needs a raw connection for EmailVerificationService)
@@ -185,7 +184,7 @@ async def send_email_notification(
         )
 
     if not allowed:
-        logger.warning(f"Spam limit hit for {recipient_email}: {error}")
+        logger.warning(f"Spam limit hit for user {user_id}: {error}")
         raise RuntimeError(f"Spam limit exceeded: {error}")
 
     # Send email via Novu
@@ -208,7 +207,7 @@ async def send_email_notification(
     email_error = None
 
     if novu_result["success"]:
-        logger.info(f"Email sent to {recipient_email}: {novu_result.get('transaction_id')}")
+        logger.info(f"Email sent for task {task_id} (txn={novu_result.get('transaction_id')})")
     elif novu_result.get("skipped"):
         logger.info("Email notification skipped (Novu not configured)")
         email_status = "skipped"
@@ -241,7 +240,7 @@ async def send_webhook_notification(notification_context: dict, result: dict) ->
     """Send webhook notification."""
     task = notification_context["task"]
     execution = notification_context["execution"]
-    task_id = task["id"]
+    task_id = str(task["id"])
     execution_id = result.get("execution_id")
     if not execution_id:
         raise RuntimeError("execution_id required for webhook notifications")
@@ -280,7 +279,7 @@ async def send_webhook_notification(notification_context: dict, result: dict) ->
             http_status,
             1,
         )
-        logger.info(f"Webhook delivered to {webhook_url}")
+        logger.info(f"Webhook delivered for task {task_id}")
     else:
         next_retry = WebhookDeliveryService.get_next_retry_time(1)
         await db.execute(

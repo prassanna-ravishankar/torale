@@ -6,10 +6,7 @@
     },
     "mem0": {
       "command": "uvx",
-      "args": ["mem0-mcp-server"],
-      "env": {
-        "MEM0_DEFAULT_USER_ID": "local-debug"
-      }
+      "args": ["mem0-mcp-server"]
     },
     "perplexity": {
       "type": "stdio",
