@@ -78,40 +78,6 @@ api:
     maxReplicas: 10
     targetCPUUtilizationPercentage: 70
 
-# Worker deployment
-worker:
-  enabled: true
-  replicaCount: 2
-
-  image:
-    name: torale-worker
-
-  # Cost optimization: Use Spot pods
-  nodeSelector:
-    cloud.google.com/gke-spot: "true"
-
-  tolerations:
-    - key: cloud.google.com/gke-spot
-      operator: Equal
-      value: "true"
-      effect: NoSchedule
-
-  # Right-size resources
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
-
-  # Horizontal Pod Autoscaler
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 70
-
 # Frontend deployment
 frontend:
   enabled: true
@@ -238,14 +204,6 @@ cloudsql:
       cpu: 200m
       memory: 256Mi
 
-# Temporal configuration
-temporal:
-  # Can be overridden to point to Temporal Cloud
-  host: temporal.temporal.svc.cluster.local:7233
-  namespace: default
-  taskQueue: torale-tasks
-  uiUrl: https://cloud.temporal.io
-
 # Platform capacity limit for beta
 capacity:
   maxUsers: 100
@@ -299,14 +257,14 @@ secrets:
   # Create secrets using: just k8s-secrets
   # Or manually with kubectl:
   #   kubectl create secret generic torale-secrets -n torale \
-  #     --from-literal=GOOGLE_API_KEY="..." \
+  #     --from-literal=GEMINI_API_KEY="..." \
+  #     --from-literal=PERPLEXITY_API_KEY="..." \
   #     --from-literal=SECRET_KEY="..." \
   #     --from-literal=DB_PASSWORD="..." \
   #     --from-literal=CLERK_SECRET_KEY="..." \
-  #     --from-literal=TEMPORAL_API_KEY="..." \
   #     --from-literal=NOVU_SECRET_KEY="..." \
+  #     --from-literal=MEM0_API_KEY="" \
   #     --from-literal=OPENAI_API_KEY="" \
-  #     --from-literal=ANTHROPIC_API_KEY="" \
   #     --from-literal=NOTIFICATION_API_KEY=""
   external: true
   name: torale-secrets

@@ -11,10 +11,8 @@ data:
   DB_NAME: {{ .Values.database.name | quote }}
   DB_USER: {{ .Values.database.user | quote }}
 
-  # Temporal configuration
-  TEMPORAL_HOST: {{ .Values.temporal.host | quote }}
-  TEMPORAL_NAMESPACE: {{ .Values.temporal.namespace | quote }}
-  TEMPORAL_UI_URL: {{ .Values.temporal.uiUrl | quote }}
+  # Agent URL (torale-agent service)
+  AGENT_URL: {{ printf "http://%s-agent" (include "torale.fullname" .) | quote }}
 
   # API configuration
   API_URL: {{ printf "https://%s" .Values.domains.api | quote }}

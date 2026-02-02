@@ -166,8 +166,7 @@ def build_webhook_payload(
     Returns:
         WebhookPayload with standardized structure
     """
-    # Extract from new MonitoringResult structure
-    metadata = result.get("metadata", {})
+    notification_text = result.get("notification", "")
 
     return WebhookPayload(
         id=execution_id,
@@ -182,8 +181,8 @@ def build_webhook_payload(
             },
             "execution": {
                 "id": execution_id,
-                "condition_met": metadata.get("changed", False),
-                "change_summary": metadata.get("change_explanation", ""),
+                "notification": notification_text,
+                "change_summary": result.get("summary", ""),
                 "completed_at": str(execution.get("completed_at", "")),
             },
             "result": {

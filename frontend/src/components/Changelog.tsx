@@ -37,7 +37,7 @@ export default function Changelog() {
     <>
       <DynamicMeta
         title="Changelog - Torale Product Updates & Features"
-        description="Track every update to Torale's AI-powered web monitoring platform. New features, improvements, and fixes shipped weekly. See what's new in grounded search monitoring."
+        description="Track every update to Torale's AI-powered web monitoring platform. New features, improvements, and fixes shipped weekly."
         url="https://torale.ai/changelog"
         image="https://torale.ai/og-image.webp"
       />

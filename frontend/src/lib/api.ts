@@ -3,7 +3,6 @@ import type {
   TaskCreatePayload,
   TaskExecution,
   TaskTemplate,
-  SuggestedTask,
   User,
   UserWithNotifications,
   WebhookConfig,
@@ -144,18 +143,6 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
-  async suggestTask(prompt: string, currentTask?: Partial<TaskCreatePayload>): Promise<SuggestedTask> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/suggest`, {
-      method: 'POST',
-      headers: await this.getAuthHeaders(),
-      body: JSON.stringify({
-        prompt,
-        current_task: currentTask
-      }),
-    })
-    return this.handleResponse(response)
-  }
-
   // Template endpoints
   async getTemplates(category?: string): Promise<TaskTemplate[]> {
     const url = category
@@ -203,15 +190,8 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
-  async getTemporalWorkflows(): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/admin/temporal/workflows`, {
-      headers: await this.getAuthHeaders(),
-    })
-    return this.handleResponse(response)
-  }
-
-  async getTemporalSchedules(): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/admin/temporal/schedules`, {
+  async getSchedulerJobs(): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/admin/scheduler/jobs`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)

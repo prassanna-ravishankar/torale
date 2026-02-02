@@ -66,7 +66,7 @@ task = client.tasks.update(
 # Change notification behavior
 task = client.tasks.update(
     "task-id",
-    notify_behavior="track_state"
+    notify_behavior="always"
 )
 ```
 

@@ -137,8 +137,7 @@ export default withMermaid(
             { text: 'Task State Machine', link: '/architecture/task-state-machine' },
             { text: 'State Tracking', link: '/architecture/state-tracking' },
             { text: 'Database Schema', link: '/architecture/database-schema' },
-            { text: 'Executors', link: '/architecture/executors' },
-            { text: 'Temporal Workflows', link: '/architecture/temporal-workflows' }
+            { text: 'Executors', link: '/architecture/executors' }
           ]
         }
       ],

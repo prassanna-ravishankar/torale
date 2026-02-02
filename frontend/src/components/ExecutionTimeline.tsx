@@ -11,7 +11,6 @@ import {
 
 interface ExecutionTimelineProps {
   executions: TaskExecution[];
-  highlightNotifications?: boolean;
 }
 
 const getStatusIcon = (status: string) => {
@@ -37,20 +36,13 @@ const formatDate = (dateStr: string) => {
 
 interface ExecutionCardProps {
   execution: TaskExecution;
-  highlightNotifications: boolean;
 }
 
-const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotifications }) => {
+const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-          <BrutalistCard
-            className={
-              highlightNotifications && execution.condition_met
-                ? "border-emerald-500 bg-emerald-50/30"
-                : ""
-            }
-          >
+          <BrutalistCard>
             <div className="p-4">
               {/* Layer 1: Status Summary (Always Visible) */}
               <div className="flex items-center justify-between gap-4 mb-3">
@@ -67,9 +59,6 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
                       }
                     />
 
-                    {execution.condition_met && (
-                      <StatusBadge variant="met" />
-                    )}
                   </div>
                 </div>
 
@@ -79,11 +68,9 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
               </div>
 
               {/* Layer 2: PRIMARY INFO - Answer/Summary & Sources (Always Visible) */}
-              {(execution.result?.summary || execution.result?.answer) && (
+              {execution.result?.summary && (
                 <div className="mb-3 p-4 bg-white border-2 border-zinc-200">
-                  <SectionLabel className="mb-3">
-                    {execution.result?.summary ? "Summary" : "Answer"}
-                  </SectionLabel>
+                  <SectionLabel className="mb-3">Summary</SectionLabel>
                   <div className="text-sm prose prose-sm max-w-none">
                     <ReactMarkdown
                       components={{
@@ -97,7 +84,7 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
                         h3: ({ children }) => <h3 className="text-base font-grotesk font-bold mb-2 mt-2 text-zinc-900">{children}</h3>,
                       }}
                     >
-                      {execution.result.summary || execution.result.answer}
+                      {execution.result.summary}
                     </ReactMarkdown>
                   </div>
                 </div>
@@ -132,35 +119,6 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
                     </div>
                   )}
 
-                  {(execution.result?.metadata?.current_state || execution.result?.current_state) && (
-                    <div className="p-3 bg-zinc-900 border border-zinc-800">
-                      <p className="text-[10px] font-mono uppercase text-zinc-500 tracking-wider mb-3">Current State (Dev)</p>
-                      <div className="text-xs font-mono space-y-2">
-                        {Object.entries(execution.result?.metadata?.current_state || execution.result.current_state).map(
-                          ([key, value]) => (
-                            <div key={key} className="flex flex-col gap-1">
-                              <span className="text-zinc-400">
-                                {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-                              </span>
-                              {Array.isArray(value) ? (
-                                value.length > 3 ? (
-                                  <span className="text-zinc-300">{value.slice(0, 3).join(", ")} +{value.length - 3} more</span>
-                                ) : (
-                                  <span className="text-zinc-300">{value.join(", ")}</span>
-                                )
-                              ) : typeof value === "object" && value !== null ? (
-                                <pre className="text-xs p-2 bg-zinc-950 text-zinc-400 border border-zinc-800 overflow-x-auto">
-                                  {JSON.stringify(value, null, 2)}
-                                </pre>
-                              ) : (
-                                <span className="text-zinc-300">{String(value)}</span>
-                              )}
-                            </div>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </CollapsibleSection>
 
@@ -179,7 +137,6 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
 
 export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
   executions,
-  highlightNotifications = false,
 }) => {
   if (executions.length === 0) {
     return (
@@ -187,7 +144,7 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
         <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
         <h3 className="mb-2">No executions yet</h3>
         <p className="text-muted-foreground">
-          This task hasn't been executed yet. It will run according to its schedule.
+          This task hasn't been executed yet. It will run automatically.
         </p>
       </div>
     );
@@ -199,7 +156,6 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
         <ExecutionCard
           key={execution.id}
           execution={execution}
-          highlightNotifications={highlightNotifications}
         />
       ))}
     </div>

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from torale.tasks import NotificationConfig, NotifyBehavior, Task, TaskExecution
+from torale.tasks import NotificationConfig, NotifyBehavior, Task, TaskExecution, TaskState
 
 if TYPE_CHECKING:
     from torale.sdk.async_client import ToraleAsyncClient
@@ -22,11 +22,9 @@ class AsyncTasksResource:
         name: str,
         search_query: str,
         condition_description: str,
-        schedule: str = "0 9 * * *",
         notify_behavior: str | NotifyBehavior = NotifyBehavior.ONCE,
         notifications: list[dict | NotificationConfig] | None = None,
-        config: dict | None = None,
-        is_active: bool = True,
+        state: str | TaskState = TaskState.ACTIVE,
     ) -> Task:
         """
         Create a new monitoring task (async).
@@ -35,11 +33,9 @@ class AsyncTasksResource:
             name: Task name
             search_query: Query to monitor
             condition_description: Condition to trigger on
-            schedule: Cron expression
             notify_behavior: When to notify
             notifications: List of notification configs
-            config: Executor configuration
-            is_active: Whether task is active
+            state: Task state ("active" or "paused")
 
         Returns:
             Created Task object
@@ -55,6 +51,9 @@ class AsyncTasksResource:
         if isinstance(notify_behavior, NotifyBehavior):
             notify_behavior = notify_behavior.value
 
+        if isinstance(state, TaskState):
+            state = state.value
+
         if notifications:
             notifications = [
                 n.model_dump() if isinstance(n, NotificationConfig) else n for n in notifications
@@ -64,12 +63,9 @@ class AsyncTasksResource:
             "name": name,
             "search_query": search_query,
             "condition_description": condition_description,
-            "schedule": schedule,
             "notify_behavior": notify_behavior,
             "notifications": notifications or [],
-            "config": config or {"model": "gemini-2.0-flash-exp"},
-            "is_active": is_active,
-            "executor_type": "llm_grounded_search",
+            "state": state,
         }
 
         response = await self.client.post("/api/v1/tasks/", json=data)
@@ -87,7 +83,7 @@ class AsyncTasksResource:
         """
         params = {}
         if active is not None:
-            params["is_active"] = active
+            params["state"] = TaskState.ACTIVE.value if active else TaskState.PAUSED.value
 
         response = await self.client.get("/api/v1/tasks/", params=params)
         return [Task(**task_data) for task_data in response]
@@ -103,11 +99,9 @@ class AsyncTasksResource:
         name: str | None = None,
         search_query: str | None = None,
         condition_description: str | None = None,
-        schedule: str | None = None,
         notify_behavior: str | NotifyBehavior | None = None,
         notifications: list[dict | NotificationConfig] | None = None,
-        config: dict | None = None,
-        is_active: bool | None = None,
+        state: str | TaskState | None = None,
     ) -> Task:
         """Update task (async)."""
         data = {}
@@ -118,8 +112,6 @@ class AsyncTasksResource:
             data["search_query"] = search_query
         if condition_description is not None:
             data["condition_description"] = condition_description
-        if schedule is not None:
-            data["schedule"] = schedule
         if notify_behavior is not None:
             if isinstance(notify_behavior, NotifyBehavior):
                 notify_behavior = notify_behavior.value
@@ -129,10 +121,10 @@ class AsyncTasksResource:
                 n.model_dump() if isinstance(n, NotificationConfig) else n for n in notifications
             ]
             data["notifications"] = notifications
-        if config is not None:
-            data["config"] = config
-        if is_active is not None:
-            data["is_active"] = is_active
+        if state is not None:
+            if isinstance(state, TaskState):
+                state = state.value
+            data["state"] = state
 
         response = await self.client.put(f"/api/v1/tasks/{task_id}", json=data)
         return Task(**response)
@@ -159,38 +151,3 @@ class AsyncTasksResource:
             f"/api/v1/tasks/{task_id}/notifications", params={"limit": limit}
         )
         return [TaskExecution(**exec_data) for exec_data in response]
-
-    async def preview(
-        self,
-        search_query: str,
-        condition_description: str | None = None,
-        model: str = "gemini-2.0-flash-exp",
-    ) -> dict:
-        """
-        Preview a search query without creating a task (async).
-
-        Args:
-            search_query: The search query to test
-            condition_description: Condition to evaluate (optional)
-            model: Model to use for search
-
-        Returns:
-            dict with answer, condition_met, grounding_sources, etc.
-
-        Example:
-            >>> async with ToraleAsync() as client:
-            ...     result = await client.tasks.preview(
-            ...         search_query="When is iPhone 16 being released?",
-            ...         condition_description="A specific release date is announced"
-            ...     )
-            ...     print(result["answer"])
-        """
-        data = {
-            "search_query": search_query,
-            "model": model,
-        }
-
-        if condition_description:
-            data["condition_description"] = condition_description
-
-        return await self.client.post("/api/v1/tasks/preview", json=data)

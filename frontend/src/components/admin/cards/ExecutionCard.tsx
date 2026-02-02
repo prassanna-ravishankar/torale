@@ -12,7 +12,7 @@ interface Execution {
   status: string
   started_at: string
   completed_at: string | null
-  condition_met: boolean | null
+  notification: string | null
   grounding_sources: GroundingSource[]
   search_query: string
   user_email: string
@@ -64,17 +64,6 @@ export function ExecutionCard({ execution }: ExecutionCardProps) {
             </div>
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
               {getStatusBadge(execution.status)}
-              {execution.condition_met !== null && (
-                execution.condition_met ? (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] font-mono uppercase tracking-wider border border-emerald-200">
-                    Met
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center px-1.5 py-0.5 bg-zinc-50 text-zinc-600 text-[9px] font-mono uppercase tracking-wider border border-zinc-200">
-                    Not Met
-                  </span>
-                )
-              )}
             </div>
           </div>
         </div>

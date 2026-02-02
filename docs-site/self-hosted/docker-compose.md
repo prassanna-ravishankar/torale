@@ -14,15 +14,11 @@ just dev
 
 ## Services
 
-Docker Compose starts four services:
+Docker Compose starts these services:
 
 **postgres** - PostgreSQL 16 database for storing tasks and execution history
 
-**temporal** - Self-hosted Temporal server for workflow orchestration
-
-**api** - FastAPI server handling REST API requests
-
-**worker** - Temporal worker executing scheduled monitoring tasks
+**api** - FastAPI server with APScheduler handling REST API and scheduled tasks
 
 **frontend** - React SPA served by Vite dev server
 
@@ -31,8 +27,10 @@ Docker Compose starts four services:
 Required variables in `.env`:
 
 ```bash
-# Gemini API (required)
-GOOGLE_API_KEY=your-api-key
+# AI (required for monitoring agent)
+GEMINI_API_KEY=your-gemini-api-key
+PERPLEXITY_API_KEY=your-perplexity-api-key
+MEM0_API_KEY=your-mem0-api-key
 
 # Clerk authentication
 CLERK_SECRET_KEY=sk_test_...
@@ -41,10 +39,6 @@ VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
 
 # Database (pre-configured)
 DATABASE_URL=postgresql://torale:torale@postgres:5432/torale
-
-# Temporal (pre-configured)
-TEMPORAL_HOST=temporal:7233
-TEMPORAL_NAMESPACE=default
 ```
 
 ## Database Migrations
@@ -61,7 +55,6 @@ docker compose exec api alembic upgrade head
 
 - API: http://localhost:8000
 - Frontend: http://localhost:5173
-- Temporal UI: http://localhost:8080
 - PostgreSQL: localhost:5432
 
 ## Stopping Services
@@ -75,18 +68,14 @@ docker compose down -v
 
 ## Troubleshooting
 
-**Port conflicts** - Check if ports 5432, 7233, 8000, 8080, or 5173 are in use
+**Port conflicts** - Check if ports 5432, 8000, or 5173 are in use
 
 **Database connection failed** - Wait for postgres to be healthy before starting API
-
-**Temporal connection refused** - Ensure temporal service is running
 
 See logs:
 ```bash
 docker compose logs api
-docker compose logs worker
 docker compose logs postgres
-docker compose logs temporal
 ```
 
 ## Next Steps

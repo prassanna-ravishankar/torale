@@ -85,8 +85,6 @@ jobs:
           tags: |
             gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:${{ env.IMAGE_TAG }}
             gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:latest
-            ${{ matrix.component == 'api' && format('gcr.io/{0}/torale-worker:{1}', env.GCP_PROJECT_ID, env.IMAGE_TAG) || '' }}
-            ${{ matrix.component == 'api' && format('gcr.io/{0}/torale-worker:latest', env.GCP_PROJECT_ID) || '' }}
           cache-from: |
             type=gha
             type=registry,ref=gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:latest
@@ -134,7 +132,6 @@ jobs:
         run: |
           echo "✅ Verifying deployment..."
           kubectl rollout status deployment/torale-api -n torale --timeout=5m
-          kubectl rollout status deployment/torale-worker -n torale --timeout=5m
           kubectl rollout status deployment/torale-frontend -n torale --timeout=5m
           kubectl rollout status deployment/torale-docs -n torale --timeout=5m
           kubectl rollout status deployment/torale-agent -n torale --timeout=5m

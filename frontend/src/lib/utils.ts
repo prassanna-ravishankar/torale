@@ -52,6 +52,32 @@ export function formatDuration(
 }
 
 /**
+ * Format a future timestamp as relative time (e.g., "in 6h", "in 2d")
+ * @param dateString - ISO 8601 timestamp string
+ * @returns Formatted relative time string
+ */
+export function formatTimeUntil(dateString: string): string {
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) {
+    return 'Unknown';
+  }
+
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+  if (diffMs <= 0) return 'Soon';
+
+  const diffMins = Math.floor(diffMs / 60000);
+
+  const MINS_IN_HOUR = 60;
+  const MINS_IN_DAY = MINS_IN_HOUR * 24;
+
+  if (diffMins < 1) return 'Soon';
+  if (diffMins < MINS_IN_HOUR) return `in ${diffMins}m`;
+  if (diffMins < MINS_IN_DAY) return `in ${Math.floor(diffMins / MINS_IN_HOUR)}h`;
+  return `in ${Math.floor(diffMins / MINS_IN_DAY)}d`;
+}
+
+/**
  * Format timestamp as relative time (e.g., "2h ago", "Just now")
  * @param dateString - ISO 8601 timestamp string
  * @returns Formatted relative time string

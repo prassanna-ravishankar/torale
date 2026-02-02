@@ -6,8 +6,8 @@ Torale uses an explicit state machine to manage task lifecycle, replacing the pr
 
 Tasks can be in one of three states:
 
-- **`active`**: Task is running on schedule, Temporal schedule is unpaused
-- **`paused`**: Task is paused, Temporal schedule is paused (no executions)
+- **`active`**: Task is running on schedule, APScheduler job is active
+- **`paused`**: Task is paused, APScheduler job is paused (no executions)
 - **`completed`**: Task has finished (condition met with `notify_behavior="once"`)
 
 ## State Transitions
@@ -41,7 +41,7 @@ CREATE TABLE tasks (
 
 ### State Machine Class
 
-The `TaskStateMachine` class validates transitions and coordinates database + Temporal updates:
+The `TaskStateMachine` class validates transitions and coordinates database + scheduler updates:
 
 ```python
 from torale.core.task_state_machine import TaskStateMachine, TaskState
@@ -59,18 +59,18 @@ await state_machine.transition(
 )
 ```
 
-### Temporal Schedule Coordination
+### Scheduler Coordination
 
-State transitions automatically manage Temporal schedules:
+State transitions automatically manage APScheduler jobs:
 
-- **`active` → `paused`**: Pauses Temporal schedule (no new executions)
-- **`paused` → `active`**: Unpauses Temporal schedule (resumes executions)
-- **`active` → `completed`**: Deletes Temporal schedule
-- **`completed` → `active`**: Creates new Temporal schedule
+- **`active` → `paused`**: Pauses APScheduler job (no new executions)
+- **`paused` → `active`**: Resumes APScheduler job
+- **`active` → `completed`**: Removes APScheduler job
+- **`completed` → `active`**: Creates new APScheduler job
 
 ### Rollback on Failure
 
-If Temporal operations fail during transition, the database state is rolled back:
+If scheduler operations fail during transition, the database state is rolled back:
 
 ```python
 try:
@@ -146,7 +146,7 @@ When `notify_behavior="once"` and the condition is met:
 1. Task execution completes successfully
 2. Notification is sent
 3. Task state transitions to `completed`
-4. Temporal schedule is deleted
+4. APScheduler job is removed
 
 This prevents duplicate notifications for one-time alerts.
 
@@ -155,7 +155,7 @@ This prevents duplicate notifications for one-time alerts.
 When a user is deactivated (via admin endpoint):
 
 1. All user's tasks transition to `paused`
-2. All Temporal schedules are paused
+2. All APScheduler jobs are paused
 3. Tasks retain their data for potential reactivation
 
 ## Migration from `is_active`
@@ -172,8 +172,8 @@ The migration preserves all existing task states during the upgrade.
 - Clear semantics: "paused" vs "completed" vs "active"
 - No ambiguity about what `false` means
 
-### 2. **Temporal Schedule Consistency**
-- Database and Temporal always in sync
+### 2. **Scheduler Consistency**
+- Database and APScheduler always in sync
 - Automatic rollback on failures
 
 ### 3. **Better Notifications**
@@ -187,5 +187,4 @@ The migration preserves all existing task states during the upgrade.
 ## Next Steps
 
 - View [Database Schema](/architecture/database-schema)
-- Read [Temporal Workflows](/architecture/temporal-workflows)
 - Learn about [State Tracking](/architecture/state-tracking) (search results)

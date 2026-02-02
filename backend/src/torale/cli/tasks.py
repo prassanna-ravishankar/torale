@@ -48,12 +48,10 @@ def create_task(
     name: str | None = typer.Option(
         None, "--name", "-n", help="Task name (auto-generated if not provided)"
     ),
-    schedule: str = typer.Option("0 9 * * *", "--schedule", "-s", help="Cron schedule expression"),
     notify_behavior: str = typer.Option(
-        "once", "--notify-behavior", help="When to notify: once, always, track_state"
+        "once", "--notify-behavior", help="When to notify: once, always"
     ),
     webhook: str | None = typer.Option(None, "--webhook", "-w", help="Webhook URL to call"),
-    model: str = typer.Option("gemini-2.0-flash-exp", "--model", "-m", help="LLM model to use"),
 ):
     """
     Create a new monitoring task.
@@ -80,85 +78,18 @@ def create_task(
                 name=name,
                 search_query=query,
                 condition_description=condition,
-                schedule=schedule,
                 notify_behavior=notify_behavior,
                 notifications=notifications,
-                config={"model": model},
             )
 
             print("[green]✓ Task created successfully![/green]")
             print(f"[cyan]ID: {task.id}[/cyan]")
             print(f"[cyan]Name: {task.name}[/cyan]")
-            print(f"[cyan]Schedule: {task.schedule}[/cyan]")
             print(f"[cyan]Query: {task.search_query}[/cyan]")
             print(f"[cyan]Condition: {task.condition_description}[/cyan]")
 
         except ToraleError as e:
             print(f"[red]✗ Failed to create task: {str(e)}[/red]")
-            raise typer.Exit(1) from e
-
-
-@task_app.command("preview")
-def preview_search(
-    query: str = typer.Option(..., "--query", "-q", help="Search query to test"),
-    condition: str | None = typer.Option(
-        None,
-        "--condition",
-        "-c",
-        help="Condition to evaluate (optional, will be inferred if not provided)",
-    ),
-    model: str = typer.Option("gemini-2.0-flash-exp", "--model", "-m", help="LLM model to use"),
-):
-    """
-    Preview a search query without creating a task.
-
-    Test your search query and see results before committing to creating
-    a monitoring task. This is useful for validating your query and condition.
-
-    Example:
-        torale task preview \\
-            --query "When is iPhone 16 being released?" \\
-            --condition "A specific release date is announced"
-    """
-    with get_client() as client:
-        try:
-            result = client.tasks.preview(
-                search_query=query,
-                condition_description=condition,
-                model=model,
-            )
-
-            print("[green]✓ Search preview complete![/green]")
-            print()
-
-            # Display answer
-            print("[bold cyan]Answer:[/bold cyan]")
-            print(result["answer"])
-            print()
-
-            # Display condition status
-            if result["condition_met"]:
-                print("[bold green]✓ Condition MET[/bold green]")
-            else:
-                print("[bold yellow]✗ Condition NOT met[/bold yellow]")
-            print()
-
-            # Display inferred condition if applicable
-            if "inferred_condition" in result:
-                print("[bold cyan]Inferred Condition:[/bold cyan]")
-                print(result["inferred_condition"])
-                print()
-
-            # Display grounding sources
-            if result.get("grounding_sources"):
-                print("[bold cyan]Sources:[/bold cyan]")
-                for idx, source in enumerate(result["grounding_sources"], 1):
-                    print(f"{idx}. {source.get('title', 'Untitled')}")
-                    print(f"   {source.get('url', '')}")
-                print()
-
-        except ToraleError as e:
-            print(f"[red]✗ Failed to preview search: {str(e)}[/red]")
             raise typer.Exit(1) from e
 
 
@@ -179,7 +110,6 @@ def list_tasks(
             table.add_column("ID", style="cyan", no_wrap=True)
             table.add_column("Name", style="green")
             table.add_column("Query", style="yellow")
-            table.add_column("Schedule", style="magenta")
             table.add_column("Active", style="blue")
             table.add_column("Created", style="white")
 
@@ -190,8 +120,7 @@ def list_tasks(
                     task.search_query[:40] + "..."
                     if len(task.search_query) > 40
                     else task.search_query,
-                    task.schedule,
-                    "✓" if task.is_active else "✗",
+                    "✓" if task.state == "active" else "✗",
                     str(task.created_at)[:19],
                 )
 
@@ -214,18 +143,15 @@ def get_task(task_id: str):
             print(f"[cyan]Name:[/cyan] {task.name}")
             print(f"[cyan]Query:[/cyan] {task.search_query}")
             print(f"[cyan]Condition:[/cyan] {task.condition_description}")
-            print(f"[cyan]Schedule:[/cyan] {task.schedule}")
+            print(f"[cyan]State:[/cyan] {task.state}")
             print(f"[cyan]Notify Behavior:[/cyan] {task.notify_behavior}")
-            print(f"[cyan]Active:[/cyan] {'Yes' if task.is_active else 'No'}")
+            print(f"[cyan]State:[/cyan] {task.state}")
             print(f"[cyan]Created:[/cyan] {task.created_at}")
 
             if task.notifications:
                 print("[cyan]Notifications:[/cyan]")
                 for notif in task.notifications:
                     print(f"  - {notif.type}: {notif.address or notif.url}")
-
-            print("[cyan]Config:[/cyan]")
-            print(json.dumps(task.config, indent=2))
 
             if task.last_known_state:
                 print("[cyan]Last Known State:[/cyan]")
@@ -240,7 +166,6 @@ def get_task(task_id: str):
 def update_task(
     task_id: str,
     name: str | None = typer.Option(None, "--name", "-n"),
-    schedule: str | None = typer.Option(None, "--schedule", "-s"),
     active: bool | None = typer.Option(None, "--active/--inactive"),
 ):
     """Update a monitoring task."""
@@ -250,10 +175,8 @@ def update_task(
             kwargs = {}
             if name is not None:
                 kwargs["name"] = name
-            if schedule is not None:
-                kwargs["schedule"] = schedule
             if active is not None:
-                kwargs["is_active"] = active
+                kwargs["state"] = "active" if active else "paused"
 
             if not kwargs:
                 print("[yellow]No updates specified.[/yellow]")
@@ -262,8 +185,7 @@ def update_task(
             task = client.tasks.update(task_id, **kwargs)
             print("[green]✓ Task updated successfully![/green]")
             print(f"[cyan]Name: {task.name}[/cyan]")
-            print(f"[cyan]Schedule: {task.schedule}[/cyan]")
-            print(f"[cyan]Active: {'Yes' if task.is_active else 'No'}[/cyan]")
+            print(f"[cyan]State: {task.state}[/cyan]")
 
         except ToraleError as e:
             print(f"[red]✗ Failed to update task: {str(e)}[/red]")
@@ -324,7 +246,7 @@ def get_logs(
             table = Table(title=f"Execution Logs (Task: {task_id[:8]}...)")
             table.add_column("Execution ID", style="cyan", no_wrap=True)
             table.add_column("Status", style="green")
-            table.add_column("Condition Met", style="yellow")
+            table.add_column("Notification", style="yellow")
             table.add_column("Started", style="blue")
             table.add_column("Completed", style="white")
 
@@ -344,7 +266,9 @@ def get_logs(
                 table.add_row(
                     str(execution.id)[:8] + "...",
                     f"[{status_color}]{execution.status}[/{status_color}]",
-                    "✓" if execution.condition_met else "✗",
+                    execution.notification[:40] + "..."
+                    if execution.notification and len(execution.notification) > 40
+                    else (execution.notification or "—"),
                     str(execution.started_at)[:19] if execution.started_at else "-",
                     str(execution.completed_at)[:19] if execution.completed_at else "-",
                 )
@@ -378,7 +302,7 @@ def get_notifications(
             for notif in notifications:
                 table.add_row(
                     str(notif.id)[:8] + "...",
-                    notif.change_summary or "Condition met",
+                    notif.notification or notif.change_summary or "—",
                     str(notif.started_at)[:19] if notif.started_at else "-",
                 )
 

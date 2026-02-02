@@ -11,11 +11,6 @@ clerk:
 image:
   tag: latest  # Will be overridden by Cloud Build with commit SHA
 
-# Temporal Cloud configuration
-temporal:
-  host: us-central1.gcp.api.temporal.io:7233
-  namespace: quickstart-baldmaninc.g5zzo
-
 # Production resource sizing (minimal for startup)
 api:
   replicaCount: 1
@@ -30,20 +25,6 @@ api:
     limits:
       cpu: 500m
       memory: 512Mi
-
-worker:
-  replicaCount: 1
-  autoscaling:
-    minReplicas: 1
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 90
-  resources:
-    requests:
-      cpu: 25m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
 
 frontend:
   replicaCount: 1

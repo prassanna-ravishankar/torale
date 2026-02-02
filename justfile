@@ -8,7 +8,7 @@ default:
 
 # === Development ===
 
-# Start all services (API + Workers + Temporal + PostgreSQL)
+# Start all services (API + PostgreSQL)
 # Use TORALE_NOAUTH=1 for no-auth mode
 dev: build
     docker compose up
@@ -181,11 +181,9 @@ k8s-push:
     set -e
     echo "Building and pushing images..."
     docker build --platform=linux/amd64 -f backend/Dockerfile -t gcr.io/baldmaninc/torale-api:latest ./backend
-    docker tag gcr.io/baldmaninc/torale-api:latest gcr.io/baldmaninc/torale-worker:latest
     docker build --platform=linux/amd64 -f frontend/Dockerfile -t gcr.io/baldmaninc/torale-frontend:latest ./frontend
     docker build --platform=linux/amd64 -f torale-agent/Dockerfile -t gcr.io/baldmaninc/torale-agent:latest ./torale-agent
     docker push gcr.io/baldmaninc/torale-api:latest
-    docker push gcr.io/baldmaninc/torale-worker:latest
     docker push gcr.io/baldmaninc/torale-frontend:latest
     docker push gcr.io/baldmaninc/torale-agent:latest
 
@@ -208,10 +206,6 @@ k8s-logs-agent:
 # K8s port forward agent
 k8s-pf-agent:
     kubectl port-forward -n torale svc/torale-agent 8001:80
-
-# K8s port forward Temporal
-k8s-pf-temporal:
-    kubectl port-forward -n temporal svc/temporal-ui 8080:8080
 
 # Scale staging deployments to zero
 staging-down:

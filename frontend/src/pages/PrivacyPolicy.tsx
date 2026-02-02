@@ -59,8 +59,7 @@ export function PrivacyPolicy() {
                 <li><strong>Search queries:</strong> The questions or topics you want to monitor (e.g., "When is the iPhone 17 release?")</li>
                 <li><strong>Condition descriptions:</strong> Criteria you define for triggering notifications (e.g., "A specific date has been announced")</li>
                 <li><strong>Schedules:</strong> Cron expressions defining execution frequency</li>
-                <li><strong>Notification preferences:</strong> How you want to be notified (once, always, track_state)</li>
-                <li><strong>Executor configuration:</strong> AI model preferences (Gemini, GPT-4, Claude)</li>
+                <li><strong>Notification preferences:</strong> How you want to be notified (once, always)</li>
               </ul>
 
               <h3 className="text-xl font-bold font-grotesk text-zinc-900 mb-3 mt-6">2.3 Execution and Results Data</h3>
@@ -70,7 +69,7 @@ export function PrivacyPolicy() {
                 <li><strong>LLM-generated responses:</strong> Answers synthesized by AI models from search results</li>
                 <li><strong>Condition evaluation results:</strong> Boolean determination of whether your condition was met</li>
                 <li><strong>Grounding sources:</strong> URLs and metadata of web sources used to generate answers</li>
-                <li><strong>State tracking data:</strong> Historical snapshots used to detect changes between executions</li>
+                <li><strong>Agent memory:</strong> Cross-run context used for change detection</li>
                 <li><strong>Change summaries:</strong> Human-readable descriptions of what changed since the last execution</li>
               </ul>
 
@@ -87,7 +86,7 @@ export function PrivacyPolicy() {
               <p className="text-zinc-600 leading-relaxed mb-4">We automatically collect:</p>
               <ul className="list-disc pl-6 text-zinc-600 space-y-2">
                 <li><strong>System logs:</strong> API requests, error traces, performance metrics</li>
-                <li><strong>Temporal workflow data:</strong> Workflow execution IDs, schedule metadata, retry attempts</li>
+                <li><strong>Scheduling data:</strong> Job execution IDs, schedule metadata, retry attempts</li>
                 <li><strong>Aggregate statistics:</strong> Platform-wide metrics like total tasks, execution counts, popular queries</li>
                 <li><strong>IP addresses:</strong> For security, fraud prevention, and rate limiting (not linked to user profiles)</li>
               </ul>
@@ -116,8 +115,8 @@ export function PrivacyPolicy() {
               <ul className="list-disc pl-6 text-zinc-600 space-y-2 mb-4">
                 <li><strong>Clerk:</strong> Authentication, user management, session handling</li>
                 <li><strong>Google Cloud Platform:</strong> Hosting, compute infrastructure, managed databases</li>
-                <li><strong>Temporal Cloud:</strong> Workflow orchestration, task scheduling</li>
-                <li><strong>AI Providers (Google Gemini, OpenAI, Anthropic):</strong> LLM inference for condition evaluation and answer generation</li>
+                <li><strong>APScheduler:</strong> Cron-based task scheduling and execution</li>
+                <li><strong>AI Providers (Anthropic Claude, Perplexity):</strong> LLM inference for condition evaluation and answer generation</li>
               </ul>
               <p className="text-zinc-600 leading-relaxed mb-4">
                 <strong>Important:</strong> Your search queries and monitored content are transmitted to AI providers for processing.
@@ -168,7 +167,7 @@ export function PrivacyPolicy() {
                 <li>Task configurations (search queries, conditions, schedules)</li>
                 <li>Execution history (results, LLM responses, grounding sources)</li>
                 <li>Platform statistics (popular queries, error rates, system health)</li>
-                <li>Temporal workflow metadata (execution status, schedules)</li>
+                <li>Scheduling metadata (execution status, cron schedules)</li>
               </ul>
 
               <p className="text-zinc-600 leading-relaxed mb-4">

@@ -19,7 +19,7 @@ torale task create \
 | `--condition`, `-c` | Yes | Condition description |
 | `--schedule`, `-s` | Yes | Cron expression |
 | `--name`, `-n` | No | Task name (auto-generated if omitted) |
-| `--notify-behavior` | No | `once`, `always`, or `track_state` (default: `once`) |
+| `--notify-behavior` | No | `once` or `always` (default: `once`) |
 | `--run-immediately` | No | Execute immediately after creation |
 
 **Examples:**
@@ -131,7 +131,7 @@ Created:          2024-01-15 10:30:00 UTC
 torale task update <task-id> --schedule "0 */6 * * *"
 
 # Change notification behavior
-torale task update <task-id> --notify-behavior track_state
+torale task update <task-id> --notify-behavior always
 
 # Update name
 torale task update <task-id> --name "New Task Name"

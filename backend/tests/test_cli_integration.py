@@ -1,7 +1,7 @@
 """Integration tests for Torale CLI commands.
 
 These tests verify CLI commands work correctly with the API,
-testing task creation, preview, and authentication flows.
+testing task creation and authentication flows.
 
 Prerequisites:
 - Local dev environment running (`just dev`)
@@ -44,83 +44,6 @@ def cli_env():
     env["TORALE_NOAUTH"] = "1"
     env["TORALE_API_URL"] = "http://localhost:8000"
     return env
-
-
-class TestCLITaskPreview:
-    """Test 'torale task preview' command."""
-
-    def test_preview_command_exists(self):
-        """Test that preview command is registered."""
-        result = subprocess.run(
-            ["torale", "task", "--help"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-
-        assert result.returncode == 0
-        assert "preview" in result.stdout.lower()
-
-    def test_preview_command_requires_query(self, cli_env):
-        """Test that preview command requires --query parameter."""
-        result = subprocess.run(
-            ["torale", "task", "preview"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            env=cli_env,
-        )
-
-        # Should fail without required --query parameter
-        assert result.returncode != 0
-        # Error message should mention missing query
-        assert "--query" in result.stderr or "query" in result.stderr.lower()
-
-    def test_preview_command_with_query(self, cli_env):
-        """Test preview command with query parameter."""
-        # Note: This will fail if GOOGLE_API_KEY is not set
-        result = subprocess.run(
-            [
-                "torale",
-                "task",
-                "preview",
-                "--query",
-                "Test search query",
-                "--condition",
-                "Test condition",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            env=cli_env,
-        )
-
-        # Either succeeds with API key or fails gracefully
-        if "API key" in result.stderr or "not configured" in result.stderr:
-            pytest.skip("Google API key not configured")
-
-        # If it ran, check output contains expected sections
-        if result.returncode == 0:
-            assert "Answer:" in result.stdout or "answer" in result.stdout.lower()
-            assert "Condition" in result.stdout or "condition" in result.stdout.lower()
-
-    def test_preview_output_formatting(self, cli_env):
-        """Test that preview command formats output correctly."""
-        result = subprocess.run(
-            ["torale", "task", "preview", "--query", "Test query"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            env=cli_env,
-        )
-
-        # Skip if API key not configured
-        if "API key" in result.stderr or "not configured" in result.stderr:
-            pytest.skip("Google API key not configured")
-
-        # Verify output has structure (may fail without API key)
-        # At minimum, command should not crash
-        assert result.returncode in [0, 1]  # 0 = success, 1 = API error
 
 
 class TestCLITaskCreate:

@@ -30,7 +30,7 @@ class Experiment(BaseModel):
     search_query: str
     condition_description: str
     expected_outcome: bool | None  # None = dynamic ground truth (e.g., weather)
-    notify_behavior: Literal["once", "always", "track_state"] = "once"
+    notify_behavior: Literal["once", "always"] = "once"
     category: str  # e.g., "product_release", "availability", "boolean_fact", "weather"
 
 

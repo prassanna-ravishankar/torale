@@ -24,8 +24,6 @@ def sample_task():
     task.user_id = uuid4()
     task.name = "Test Task"
     task.schedule = "0 9 * * *"
-    task.executor_type = "llm_grounded_search"
-    task.config = {"model": "gemini-2.0-flash-exp"}
     task.search_query = "Test query"
     task.condition_description = "Test condition"
     task.is_active = True
@@ -261,11 +259,8 @@ class TestBuildWebhookPayload:
 
         exec_data = payload.data["execution"]
         assert exec_data["id"] == str(sample_execution.id)
-        assert exec_data["condition_met"] == sample_monitoring_result["metadata"]["changed"]
-        assert (
-            exec_data["change_summary"]
-            == sample_monitoring_result["metadata"]["change_explanation"]
-        )
+        assert exec_data["notification"] == sample_monitoring_result.get("notification", "")
+        assert exec_data["change_summary"] == sample_monitoring_result["summary"]
 
     def test_timestamp_format(self, sample_task, sample_execution, sample_monitoring_result):
         """Test timestamp is Unix timestamp."""

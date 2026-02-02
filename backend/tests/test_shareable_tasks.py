@@ -358,11 +358,9 @@ class TestPublicTaskAccess:
             "slug": "public-task",
             "view_count": 0,
             "subscriber_count": 0,
-            "config": "{}",
             "last_known_state": None,
             "notifications": "[]",
             "schedule": "0 9 * * *",
-            "executor_type": "llm_grounded_search",
             "search_query": "test query",
             "condition_description": "test condition",
             "notify_behavior": "always",
@@ -379,7 +377,7 @@ class TestPublicTaskAccess:
             "creator_username": "testuser",  # Add missing creator_username field
             # Execution fields (LEFT JOIN result - no execution)
             "exec_id": None,
-            "exec_condition_met": None,
+            "exec_notification": None,
             "exec_started_at": None,
             "exec_completed_at": None,
             "exec_status": None,
@@ -436,11 +434,9 @@ class TestPublicTaskAccess:
             "slug": None,
             "view_count": 0,
             "subscriber_count": 0,
-            "config": "{}",
             "last_known_state": None,
             "notifications": "[]",
             "schedule": "0 9 * * *",
-            "executor_type": "llm_grounded_search",
             "search_query": "test query",
             "condition_description": "test condition",
             "notify_behavior": "always",
@@ -457,7 +453,7 @@ class TestPublicTaskAccess:
             "creator_username": "testuser",  # Add missing creator_username field
             # Execution fields (LEFT JOIN result - no execution)
             "exec_id": None,
-            "exec_condition_met": None,
+            "exec_notification": None,
             "exec_started_at": None,
             "exec_completed_at": None,
             "exec_status": None,
@@ -497,8 +493,6 @@ class TestTaskForking:
             "name": "Original Task",
             "is_public": True,
             "schedule": "0 9 * * *",
-            "executor_type": "llm_grounded_search",
-            "config": '{"key": "value"}',
             "search_query": "test query",
             "condition_description": "test condition",
             "notify_behavior": "always",
@@ -516,8 +510,6 @@ class TestTaskForking:
             "user_id": mock_user.id,
             "name": "My Fork",
             "schedule": "0 9 * * *",
-            "executor_type": "llm_grounded_search",
-            "config": '{"key": "value"}',
             "state": "paused",
             "search_query": "test query",
             "condition_description": "test condition",
@@ -580,8 +572,6 @@ class TestTaskForking:
             "name": "Original Task",
             "is_public": True,
             "schedule": "0 9 * * *",
-            "executor_type": "llm_grounded_search",
-            "config": '{"key": "value"}',
             "search_query": "test query",
             "condition_description": "test condition",
             "notify_behavior": "always",
@@ -599,8 +589,6 @@ class TestTaskForking:
             "user_id": mock_user.id,
             "name": "My Duplicate",
             "schedule": "0 9 * * *",
-            "executor_type": "llm_grounded_search",
-            "config": '{"key": "value"}',
             "state": "paused",
             "search_query": "test query",
             "condition_description": "test condition",
@@ -647,8 +635,6 @@ class TestTaskForking:
             "name": "Original Task",
             "is_public": True,
             "schedule": "0 9 * * *",
-            "executor_type": "llm_grounded_search",
-            "config": "{}",
             "search_query": "test",
             "condition_description": "test",
             "notify_behavior": "always",
@@ -665,10 +651,8 @@ class TestTaskForking:
             "id": uuid4(),
             "user_id": mock_user.id,
             "name": "Original Task (Copy)",
-            "config": "{}",
             "notifications": "[]",
             "schedule": "0 9 * * *",
-            "executor_type": "llm_grounded_search",
             "state": "paused",
             "search_query": "test",
             "condition_description": "test",
@@ -715,8 +699,6 @@ class TestTaskForking:
             "name": "Original Task",
             "is_public": True,
             "schedule": "0 9 * * *",
-            "executor_type": "llm_grounded_search",
-            "config": '{"key": "value"}',
             "search_query": "test query",
             "condition_description": "test condition",
             "notify_behavior": "always",
@@ -734,8 +716,6 @@ class TestTaskForking:
             "user_id": mock_user.id,
             "name": "Forked Task",
             "schedule": "0 9 * * *",
-            "executor_type": "llm_grounded_search",
-            "config": '{"key": "value"}',
             "state": "paused",
             "search_query": "test query",
             "condition_description": "test condition",
@@ -769,13 +749,13 @@ class TestTaskForking:
         insert_args = insert_call[0]  # Positional args
 
         # The first arg is the query string. The subsequent args are the values.
-        # Positional args to fetchrow after query: user_id(1), name(2), schedule(3), executor_type(4),
-        # config(5), state(6), search_query(7), condition_description(8), notify_behavior(9),
-        # notifications(10), notification_channels(11), notification_email(12), webhook_url(13), webhook_secret(14)
-        assert insert_args[10] == json.dumps(
+        # Positional args to fetchrow after query: user_id(1), name(2), state(3),
+        # search_query(4), condition_description(5), notify_behavior(6),
+        # notifications(7), notification_channels(8), notification_email(9), webhook_url(10), webhook_secret(11)
+        assert insert_args[7] == json.dumps(
             []
         )  # notifications should be an empty JSON array string
-        assert insert_args[11] == []  # notification_channels should be empty list
-        assert insert_args[12] is None  # notification_email should be None
-        assert insert_args[13] is None  # webhook_url should be None
-        assert insert_args[14] is None  # webhook_secret should be None
+        assert insert_args[8] == []  # notification_channels should be empty list
+        assert insert_args[9] is None  # notification_email should be None
+        assert insert_args[10] is None  # webhook_url should be None
+        assert insert_args[11] is None  # webhook_secret should be None

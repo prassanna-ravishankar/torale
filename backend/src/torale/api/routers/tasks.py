@@ -1,41 +1,68 @@
+import asyncio
 import json
 import logging
 import secrets
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-import grpc
+from apscheduler.jobstores.base import JobLookupError
 from asyncpg.exceptions import UniqueViolationError
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from temporalio.client import Client
-from temporalio.service import RPCError
 
 from torale.access import CurrentUser, OptionalUser
-from torale.api.dependencies import get_genai_client
 from torale.api.utils.task_parsers import (
     parse_execution_row,
     parse_task_row,
     parse_task_with_execution,
 )
-from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.notifications import NotificationValidationError, validate_notification
+from torale.scheduler.job import execute_task_job_manual
+from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import (
-    NotifyBehavior,
     Task,
     TaskCreate,
     TaskExecution,
-    TaskExecutionRequest,
     TaskState,
     TaskUpdate,
 )
 from torale.tasks.service import InvalidTransitionError, TaskService
 from torale.utils.slug import generate_unique_slug
-from torale.workers.workflows import TaskExecutionWorkflow
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+_TASK_WITH_EXECUTION_QUERY = """
+    SELECT t.*,
+           u.username as creator_username,
+           e.id as exec_id,
+           e.notification as exec_notification,
+           e.started_at as exec_started_at,
+           e.completed_at as exec_completed_at,
+           e.status as exec_status,
+           e.result as exec_result,
+           e.change_summary as exec_change_summary,
+           e.grounding_sources as exec_grounding_sources
+    FROM tasks t
+    INNER JOIN users u ON t.user_id = u.id
+    LEFT JOIN task_executions e ON t.last_execution_id = e.id
+"""
+
+
+async def _check_task_access(db: Database, task_id: UUID, user) -> dict:
+    """Verify task exists and user has access (owner or public). Returns task row."""
+    row = await db.fetch_one("SELECT * FROM tasks WHERE id = $1", task_id)
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    is_owner = user is not None and row["user_id"] == user.id
+    if not is_owner and not row["is_public"]:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    return dict(row)
+
+
+_background_tasks: set[asyncio.Task] = set()
 
 
 async def _validate_and_extract_notifications(
@@ -73,7 +100,7 @@ async def _validate_and_extract_notifications(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid notification: {str(e)}"
             ) from e
 
-    # Validate no duplicate notification types (PR #27 schema supports 1 email + 1 webhook max)
+    # Validate no duplicate notification types (supports 1 email + 1 webhook max)
     notification_types = [n.get("type") for n in validated_notifications]
     if len(notification_types) != len(set(notification_types)):
         raise HTTPException(
@@ -100,6 +127,9 @@ async def _validate_and_extract_notifications(
                 webhook_secret = secrets.token_urlsafe(32)
             # else: webhook_secret stays None to preserve existing secret
 
+    if not notification_channels:
+        notification_channels = ["email"]
+
     extracted = {
         "notification_channels": notification_channels,
         "notification_email": notification_email,
@@ -110,22 +140,6 @@ async def _validate_and_extract_notifications(
     return validated_notifications, extracted
 
 
-async def get_temporal_client() -> Client:
-    """Get a Temporal client with proper authentication for Temporal Cloud or local dev."""
-    if settings.temporal_api_key:
-        return await Client.connect(
-            settings.temporal_host,
-            namespace=settings.temporal_namespace,
-            tls=True,
-            api_key=settings.temporal_api_key,
-        )
-    else:
-        return await Client.connect(
-            settings.temporal_host,
-            namespace=settings.temporal_namespace,
-        )
-
-
 @router.post("/", response_model=Task)
 async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depends(get_db)):
     # Validate notifications and extract fields for database
@@ -133,15 +147,17 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         task.notifications
     )
 
-    # Create task in database (extraction_schema will be generated on first execution)
+    final_condition = task.condition_description or task.search_query
+    initial_next_run = datetime.now(UTC) + timedelta(minutes=1)
+
+    # Create task in database
     query = """
         INSERT INTO tasks (
-            user_id, name, schedule, executor_type, config, state,
+            user_id, name, state, next_run,
             search_query, condition_description, notify_behavior, notifications,
-            notification_channels, notification_email, webhook_url, webhook_secret,
-            extraction_schema
+            notification_channels, notification_email, webhook_url, webhook_secret
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING *
     """
 
@@ -149,19 +165,16 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         query,
         user.id,
         task.name,
-        task.schedule,
-        task.executor_type,
-        json.dumps(task.config),
         task.state.value,
+        initial_next_run,
         task.search_query,
-        task.condition_description,
+        final_condition,
         task.notify_behavior,
         json.dumps(validated_notifications),
         extracted["notification_channels"],
         extracted["notification_email"],
         extracted["webhook_url"],
         extracted["webhook_secret"],
-        None,  # extraction_schema - generated on first execution
     )
 
     if not row:
@@ -172,7 +185,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
 
     task_id = str(row["id"])
 
-    # Create Temporal schedule for automatic execution if task is active
+    # Create APScheduler job for automatic execution if task is active
     if task.state == TaskState.ACTIVE:
         try:
             task_service = TaskService(db=db)
@@ -181,7 +194,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
                 task_id=UUID(task_id),
                 task_name=task.name,
                 user_id=user.id,
-                schedule=task.schedule,
+                next_run=initial_next_run,
             )
             logger.info(f"Successfully created schedule for task {task_id}")
         except Exception as e:
@@ -194,6 +207,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
             ) from e
 
     # Execute task immediately if requested
+    immediate_execution_error = None
     if task.run_immediately:
         try:
             await _start_task_execution(
@@ -204,33 +218,17 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
                 suppress_notifications=False,  # First run should notify
             )
         except Exception as e:
-            # Log error but don't fail task creation
-            logger.error(f"Failed to start immediate execution for task {task_id}: {str(e)}")
+            logger.error(f"Failed to start immediate execution for task {task_id}: {e}")
+            immediate_execution_error = str(e)
 
-    return Task(**parse_task_row(row))
+    return Task(**parse_task_row(row), immediate_execution_error=immediate_execution_error)
 
 
 @router.get("/", response_model=list[Task])
 async def list_tasks(
     user: CurrentUser, state: TaskState | None = None, db: Database = Depends(get_db)
 ):
-    # Embed latest execution via LEFT JOIN for efficient status calculation
-    base_query = """
-        SELECT t.*,
-               u.username as creator_username,
-               e.id as exec_id,
-               e.condition_met as exec_condition_met,
-               e.started_at as exec_started_at,
-               e.completed_at as exec_completed_at,
-               e.status as exec_status,
-               e.result as exec_result,
-               e.change_summary as exec_change_summary,
-               e.grounding_sources as exec_grounding_sources
-        FROM tasks t
-        INNER JOIN users u ON t.user_id = u.id
-        LEFT JOIN task_executions e ON t.last_execution_id = e.id
-        WHERE t.user_id = $1
-    """
+    base_query = _TASK_WITH_EXECUTION_QUERY + " WHERE t.user_id = $1"
 
     if state is not None:
         query = base_query + " AND t.state = $2 ORDER BY t.created_at DESC"
@@ -242,119 +240,14 @@ async def list_tasks(
     return [parse_task_with_execution(row) for row in rows]
 
 
-class SuggestTaskRequest(BaseModel):
-    prompt: str = Field(..., description="Natural language description of the task")
-    current_task: dict | None = Field(None, description="Current task configuration for context")
-    model: str = Field("gemini-2.0-flash-exp", description="Model to use for suggestion")
-
-
-class SuggestedTask(BaseModel):
-    name: str = Field(description="Short, memorable name for the task (e.g., 'PS5 Stock Monitor')")
-    search_query: str = Field(description="Google search query to monitor")
-    condition_description: str = Field(
-        description="Clear, 1-sentence description of what triggers a notification"
-    )
-    schedule: str = Field(description="Cron expression (e.g., '0 9 * * *' for daily at 9am)")
-    notify_behavior: NotifyBehavior = Field(
-        description="When to notify: 'always' (every run), 'once' (first time only), 'track_state' (on change)"
-    )
-
-
-@router.post("/suggest", response_model=SuggestedTask)
-async def suggest_task(
-    request: SuggestTaskRequest,
-    user: CurrentUser,
-    genai_client=Depends(get_genai_client),
-):
-    """
-    Suggest task configuration from natural language description.
-    """
-    from google.genai import types
-
-    # Use structured format with distinct roles to prevent prompt injection
-    # System instructions are in the first user message, user input is separate
-    if request.current_task:
-        system_instruction = """You are an expert at configuring web monitoring tasks.
-
-Based on the user's request, UPDATE the current task configuration.
-- If the user says "add river facing", append it to the search query (e.g. "apartments in NY" -> "apartments in NY river facing").
-- Keep existing context unless explicitly asked to change it.
-- Return the FULL updated configuration.
-
-JSON Response:"""
-
-        contents = [
-            {"role": "user", "parts": [{"text": system_instruction}]},
-            {
-                "role": "model",
-                "parts": [
-                    {
-                        "text": "Understood. I will return a JSON object with the required fields based on your update request."
-                    }
-                ],
-            },
-            {
-                "role": "user",
-                "parts": [
-                    {
-                        "text": f'Current Task Configuration:\n{json.dumps(request.current_task, indent=2)}\n\nUser Request: "{request.prompt}"'
-                    }
-                ],
-            },
-        ]
-    else:
-        system_instruction = """You are an expert at configuring web monitoring tasks.
-
-Based on the user's description, generate the optimal configuration for a monitoring task.
-
-IMPORTANT for notify_behavior:
-- If the user wants DAILY/WEEKLY/MONTHLY digests or summaries → use 'always' (notify every time)
-- If the user wants recurring alerts (stock, price, availability) → use 'always'
-- If the user wants ONE-TIME announcements (launch dates, event dates) → use 'once'
-
-JSON Response:"""
-
-        contents = [
-            {"role": "user", "parts": [{"text": system_instruction}]},
-            {
-                "role": "model",
-                "parts": [
-                    {"text": "Understood. I will return a JSON object with the required fields."}
-                ],
-            },
-            {"role": "user", "parts": [{"text": f'User Description: "{request.prompt}"'}]},
-        ]
-
-    try:
-        response = await genai_client.aio.models.generate_content(
-            model=request.model,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=SuggestedTask,
-            ),
-        )
-
-        # Log the AI response for debugging
-        suggestion = json.loads(response.text)
-        logger.info(f"Task suggestion for '{request.prompt}': {json.dumps(suggestion, indent=2)}")
-
-        return suggestion
-
-    except json.JSONDecodeError as e:
-        logger.error(
-            f"Failed to parse LLM JSON response for task suggestion: {response.text}", exc_info=e
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to process AI suggestion. The format was invalid.",
-        ) from e
-    except Exception as e:
-        logger.error(f"Failed to suggest task: {str(e)}", exc_info=e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to generate task suggestion. Please try again.",
-        ) from e
+def _handle_background_task_result(task: asyncio.Task) -> None:
+    """Log unhandled exceptions from manual task executions."""
+    _background_tasks.discard(task)
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc:
+        logger.error(f"Background task execution failed: {exc}", exc_info=exc)
 
 
 async def _start_task_execution(
@@ -364,26 +257,7 @@ async def _start_task_execution(
     db: Database,
     suppress_notifications: bool = False,
 ) -> dict:
-    """
-    Helper function to create execution record and start Temporal workflow.
-
-    This centralizes the logic for starting task executions, used by both
-    the create_task endpoint (when run_immediately=True) and the execute_task endpoint.
-
-    Args:
-        task_id: UUID of the task to execute
-        task_name: Name of the task
-        user_id: UUID of the user
-        db: Database connection
-        suppress_notifications: Whether to suppress notifications (preview mode)
-
-    Returns:
-        dict with execution record data
-
-    Raises:
-        HTTPException if execution creation or workflow start fails
-    """
-    # Create execution record
+    """Create execution record and launch agent-based execution in background."""
     execution_query = """
         INSERT INTO task_executions (task_id, status)
         VALUES ($1, $2)
@@ -398,34 +272,19 @@ async def _start_task_execution(
             detail="Failed to create execution record",
         )
 
-    # Start Temporal workflow
-    try:
-        client = await get_temporal_client()
-        await client.start_workflow(
-            TaskExecutionWorkflow.run,
-            TaskExecutionRequest(
-                task_id=task_id,
-                execution_id=str(execution_row["id"]),
-                user_id=user_id,
-                task_name=task_name,
-                suppress_notifications=suppress_notifications,
-            ),
-            id=f"task-{task_id}-{execution_row['id']}",
-            task_queue=settings.temporal_task_queue,
+    # Run agent execution in background (prevent GC via module-level set)
+    bg_task = asyncio.create_task(
+        execute_task_job_manual(
+            task_id=task_id,
+            execution_id=str(execution_row["id"]),
+            user_id=user_id,
+            task_name=task_name,
+            suppress_notifications=suppress_notifications,
         )
-        logger.info(f"Started execution {execution_row['id']} for task {task_id}")
-    except Exception as e:
-        # If workflow fails to start, update execution status
-        await db.execute(
-            "UPDATE task_executions SET status = $1, error_message = $2 WHERE id = $3",
-            "failed",
-            f"Failed to start workflow: {str(e)}",
-            execution_row["id"],
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to start execution workflow: {str(e)}",
-        ) from e
+    )
+    _background_tasks.add(bg_task)
+    bg_task.add_done_callback(_handle_background_task_result)
+    logger.info(f"Started execution {execution_row['id']} for task {task_id}")
 
     return dict(execution_row)
 
@@ -439,24 +298,7 @@ async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get
     - If task is public: read-only access for anyone
     - Otherwise: 404
     """
-    # Embed latest execution via LEFT JOIN
-    query = """
-        SELECT t.*,
-               u.username as creator_username,
-               e.id as exec_id,
-               e.condition_met as exec_condition_met,
-               e.started_at as exec_started_at,
-               e.completed_at as exec_completed_at,
-               e.status as exec_status,
-               e.result as exec_result,
-               e.change_summary as exec_change_summary,
-               e.grounding_sources as exec_grounding_sources
-        FROM tasks t
-        INNER JOIN users u ON t.user_id = u.id
-        LEFT JOIN task_executions e ON t.last_execution_id = e.id
-        WHERE t.id = $1
-    """
-
+    query = _TASK_WITH_EXECUTION_QUERY + " WHERE t.id = $1"
     row = await db.fetch_one(query, task_id)
 
     if not row:
@@ -599,52 +441,6 @@ class ForkTaskRequest(BaseModel):
     name: str | None = Field(None, description="Optional new name for the forked task")
 
 
-def _prepare_fork_data(
-    source: dict, request: ForkTaskRequest, is_owner: bool
-) -> tuple[str, dict, str | None, str | None, str | None, list]:
-    """
-    Prepare fork data by determining name and scrubbing sensitive fields.
-
-    Args:
-        source: Source task database row
-        request: Fork request with optional custom name
-        is_owner: Whether the user forking is the task owner
-
-    Returns:
-        Tuple of (base_fork_name, notifications, notification_email, webhook_url, webhook_secret, notification_channels)
-    """
-    # Determine base name for forked task
-    base_fork_name = request.name if request.name else f"{source['name']} (Copy)"
-
-    # Scrub sensitive fields when forking another user's task
-    # Owner duplicating their own task can keep their settings
-    if is_owner:
-        # Keep all notification settings when duplicating own task
-        notifications = source["notifications"]
-        notification_email = source["notification_email"]
-        webhook_url = source["webhook_url"]
-        webhook_secret = source["webhook_secret"]
-        notification_channels = source["notification_channels"]
-    else:
-        # Scrub sensitive fields when forking someone else's task
-        # Database JSONB column expects JSON string. Using json.dumps([]) instead of []
-        # for explicit type clarity, though asyncpg would handle both.
-        notifications = json.dumps([])
-        notification_email = None
-        webhook_url = None
-        webhook_secret = None
-        notification_channels = []
-
-    return (
-        base_fork_name,
-        notifications,
-        notification_email,
-        webhook_url,
-        webhook_secret,
-        notification_channels,
-    )
-
-
 @router.post("/{task_id}/fork", response_model=Task)
 async def fork_task(
     task_id: UUID,
@@ -660,43 +456,25 @@ async def fork_task(
     - Tracks original task via forked_from_task_id
     - User can optionally provide a new name
     """
-    # Get the source task
-    source_query = """
-        SELECT t.*
-        FROM tasks t
-        WHERE t.id = $1
-    """
+    # Verify access and get the full source task in one query
+    source = await _check_task_access(db, task_id, user)
 
-    source = await db.fetch_one(source_query, task_id)
-
-    if not source:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-
-    # Check if task is public or user owns it
     is_owner = source["user_id"] == user.id
-    is_public = source["is_public"]
 
-    if not is_public and not is_owner:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-
-    # Allow owners to fork (duplicate) their own tasks
-    # Frontend can show "Duplicate" for owners, "Fork" for others
-
-    # Prepare fork data: determine name and scrub sensitive fields
-    (
-        base_fork_name,
-        notifications,
-        notification_email,
-        webhook_url,
-        webhook_secret,
-        notification_channels,
-    ) = _prepare_fork_data(source, request, is_owner)
+    # Determine base name and notification fields (scrub sensitive data for non-owners)
+    base_fork_name = request.name if request.name else f"{source['name']} (Copy)"
+    if is_owner:
+        notifications = source["notifications"]
+        notification_email = source["notification_email"]
+        webhook_url = source["webhook_url"]
+        webhook_secret = source["webhook_secret"]
+        notification_channels = source["notification_channels"]
+    else:
+        notifications = json.dumps([])
+        notification_email = None
+        webhook_url = None
+        webhook_secret = None
+        notification_channels = []
 
     # Retry loop to handle race condition on task name uniqueness
     # Similar to slug generation logic - try up to 3 times with incremented counter
@@ -726,15 +504,15 @@ async def fork_task(
                             task_id,
                         )
 
-                    # Create forked task (in PAUSED state, not public)
+                    # Create forked task (in PAUSED state, not public, next_run=NULL)
                     fork_query = """
                         INSERT INTO tasks (
-                            user_id, name, schedule, executor_type, config, state,
+                            user_id, name, state,
                             search_query, condition_description, notify_behavior, notifications,
                             notification_channels, notification_email, webhook_url, webhook_secret,
                             forked_from_task_id, is_public
                         )
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                         RETURNING *
                     """
 
@@ -742,9 +520,6 @@ async def fork_task(
                         fork_query,
                         user.id,
                         fork_name,
-                        source["schedule"],
-                        source["executor_type"],
-                        source["config"],
                         TaskState.PAUSED.value,
                         source["search_query"],
                         source["condition_description"],
@@ -830,20 +605,18 @@ async def update_task(
         if extracted["webhook_secret"] is not None:
             update_data["webhook_secret"] = extracted["webhook_secret"]
 
-    # Build dynamic UPDATE query
+    # Build dynamic UPDATE query — track updated fields for rollback
     set_clauses = []
     params = []
+    updated_fields = []  # Track field names for rollback on transition failure
     param_num = 1
 
     for field, value in update_data.items():
-        # Skip state field - it's handled via TaskService below for Temporal sync
+        # Skip state field - it's handled via TaskService below for scheduler sync
         if field == "state":
             continue
 
-        if field == "config":
-            set_clauses.append(f"{field} = ${param_num}")
-            params.append(json.dumps(value))
-        elif field == "notifications":
+        if field == "notifications":
             set_clauses.append(f"{field} = ${param_num}")
             params.append(json.dumps(value))
         elif field == "notify_behavior":
@@ -853,6 +626,7 @@ async def update_task(
         else:
             set_clauses.append(f"{field} = ${param_num}")
             params.append(value)
+        updated_fields.append(field)
         param_num += 1
 
     # If only state is being updated, set_clauses will be empty
@@ -884,48 +658,61 @@ async def update_task(
         new_state = TaskState(update_data["state"])
 
         # Validate and execute transition using TaskService
-        # This handles DB update + Temporal side effects (pause/unpause/complete)
+        # This handles DB update + scheduler side effects (pause/resume/remove)
         try:
             task_service = TaskService(db=db)
             await task_service.transition(
-                task_id=UUID(task_id),
+                task_id=task_id,
                 from_state=current_state,
                 to_state=new_state,
                 user_id=user.id,
                 task_name=row["name"],
-                schedule=row["schedule"],
+                next_run=datetime.now(UTC) + timedelta(minutes=1),
             )
 
             logger.info(
                 f"Task {task_id} state transition: {current_state.value} → {new_state.value}"
             )
 
-        except InvalidTransitionError as e:
-            # Invalid transition - rollback database
-            logger.error(f"Invalid state transition for task {task_id}: {str(e)}. Rolling back.")
-            await db.execute(
-                "UPDATE tasks SET state = $1 WHERE id = $2",
-                existing["state"],
-                task_id,
+        except (InvalidTransitionError, Exception) as e:
+            # Rollback ALL fields updated in Phase 1, not just state
+            is_invalid = isinstance(e, InvalidTransitionError)
+            logger.error(
+                f"{'Invalid state transition' if is_invalid else 'Failed to transition task state'} "
+                f"for task {task_id}: {str(e)}. Rolling back."
             )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid state transition: {str(e)}",
-            ) from e
-        except Exception as e:
-            # Temporal operation failed - rollback database
-            logger.error(f"Failed to transition task {task_id} state: {str(e)}. Rolling back.")
+
+            # Build dynamic rollback restoring all Phase 1 fields + state
+            rollback_clauses = ["state = $1"]
+            rollback_params: list = [existing["state"]]
+            rp = 2
+            for field in updated_fields:
+                rollback_clauses.append(f"{field} = ${rp}")
+                rollback_params.append(existing[field])
+                rp += 1
+            rollback_params.append(task_id)
+
             await db.execute(
-                "UPDATE tasks SET state = $1 WHERE id = $2",
-                existing["state"],
-                task_id,
+                f"UPDATE tasks SET {', '.join(rollback_clauses)} WHERE id = ${rp}",
+                *rollback_params,
             )
+
+            if is_invalid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid state transition: {str(e)}",
+                ) from e
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to change task state: {str(e)}. Task update rolled back.",
             ) from e
 
-    return Task(**parse_task_row(row))
+    # Re-fetch to get the latest state (avoids returning stale data after transitions)
+    fresh_row = await db.fetch_one(_TASK_WITH_EXECUTION_QUERY + " WHERE t.id = $1", task_id)
+    if not fresh_row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+
+    return parse_task_with_execution(fresh_row)
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -943,36 +730,20 @@ async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(g
             detail="Task not found",
         )
 
-    # Delete Temporal schedule first (if it exists)
-    schedule_deleted = False
-    schedule_error = None
-    schedule_id = f"schedule-{task_id}"
-
+    # Remove APScheduler job (if it exists)
+    job_id = f"task-{task_id}"
     try:
-        client = await get_temporal_client()
-        schedule_handle = client.get_schedule_handle(schedule_id)
-        logger.info(f"Deleting Temporal schedule {schedule_id} for task {task_id}")
-        await schedule_handle.delete()
-        schedule_deleted = True
-        logger.info(f"Successfully deleted schedule {schedule_id}")
-    except RPCError as e:
-        if e.status == grpc.StatusCode.NOT_FOUND:
-            logger.info(f"Schedule {schedule_id} not found - already deleted or never existed")
-            schedule_deleted = True  # Schedule doesn't exist, safe to proceed
-        else:
-            logger.error(f"Failed to delete schedule {schedule_id}: {str(e)}")
-            schedule_error = e
+        scheduler = get_scheduler()
+        scheduler.remove_job(job_id)
+        logger.info(f"Removed scheduler job {job_id}")
+    except JobLookupError:
+        logger.info(f"Job {job_id} not found when deleting - already removed or never existed")
     except Exception as e:
-        # Catch any other unexpected errors
-        logger.error(f"Unexpected error when deleting schedule {schedule_id}: {str(e)}")
-        schedule_error = e
-
-    # Only delete from database if schedule was successfully deleted or doesn't exist
-    if not schedule_deleted:
+        logger.error(f"Failed to remove scheduler job {job_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete Temporal schedule: {str(schedule_error)}. Task not deleted to prevent orphaned schedule.",
-        ) from schedule_error
+            detail=f"Failed to remove scheduler job: {str(e)}",
+        ) from e
 
     # Delete task from database
     query = """
@@ -997,17 +768,8 @@ async def execute_task(
     task_id: UUID,
     user: CurrentUser,
     db: Database = Depends(get_db),
-    suppress_notifications: bool = False,
 ):
-    """
-    Execute a task manually.
-
-    Args:
-        task_id: ID of the task to execute
-        suppress_notifications: If True, don't send notifications (preview mode)
-
-    This is used both for "Run Now" (preview) and scheduled executions.
-    """
+    """Execute a task manually (Run Now)."""
     # Verify task exists and belongs to user
     task_query = """
         SELECT id, name FROM tasks
@@ -1028,7 +790,7 @@ async def execute_task(
         task_name=task["name"],
         user_id=str(user.id),
         db=db,
-        suppress_notifications=suppress_notifications,
+        suppress_notifications=False,
     )
 
     return TaskExecution(**parse_execution_row(row))
@@ -1038,29 +800,7 @@ async def execute_task(
 async def get_task_executions(
     task_id: UUID, user: OptionalUser, limit: int = 100, db: Database = Depends(get_db)
 ):
-    # Verify task exists and check permissions
-    task_query = """
-        SELECT id, user_id, is_public FROM tasks
-        WHERE id = $1
-    """
-
-    task = await db.fetch_one(task_query, task_id)
-
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-
-    # Check permissions: owner has access, others only if public
-    is_owner = user is not None and task["user_id"] == user.id
-    is_public = task["is_public"]
-
-    if not is_owner and not is_public:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
+    await _check_task_access(db, task_id, user)
 
     # Get executions
     executions_query = """
@@ -1084,35 +824,13 @@ async def get_task_notifications(
     Get task executions where the condition was met (notifications).
     This filters executions to only show when the monitoring condition triggered.
     """
-    # Verify task exists and check permissions
-    task_query = """
-        SELECT id, user_id, is_public FROM tasks
-        WHERE id = $1
-    """
+    await _check_task_access(db, task_id, user)
 
-    task = await db.fetch_one(task_query, task_id)
-
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-
-    # Check permissions: owner has access, others only if public
-    is_owner = user is not None and task["user_id"] == user.id
-    is_public = task["is_public"]
-
-    if not is_owner and not is_public:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-
-    # Get executions where condition_met is true
+    # Get executions where notification was sent
     notifications_query = """
         SELECT *
         FROM task_executions
-        WHERE task_id = $1 AND condition_met = true
+        WHERE task_id = $1 AND notification IS NOT NULL
         ORDER BY started_at DESC
         LIMIT $2
     """

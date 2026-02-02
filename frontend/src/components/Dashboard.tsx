@@ -233,8 +233,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
                 <tr>
                   <th className="p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider text-left">Monitor</th>
                   <th className="p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider text-left">Status</th>
-                  <th className="p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider text-left">Schedule</th>
                   <th className="p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider text-left">Last Run</th>
+                  <th className="p-4 text-[10px] font-mono uppercase text-zinc-400 tracking-wider text-left">Next Check</th>
                 </tr>
               </thead>
               <tbody>

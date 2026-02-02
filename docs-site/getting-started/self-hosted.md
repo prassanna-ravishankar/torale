@@ -23,16 +23,14 @@ Edit `.env` with your API keys:
 
 ```bash
 # Required
-GOOGLE_API_KEY=your-gemini-api-key
+GEMINI_API_KEY=your-gemini-api-key
+PERPLEXITY_API_KEY=your-perplexity-api-key
+MEM0_API_KEY=your-mem0-api-key
 CLERK_SECRET_KEY=your-clerk-secret
 CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
 
 # Database (pre-configured for Docker Compose)
 DATABASE_URL=postgresql://torale:torale@postgres:5432/torale
-
-# Temporal (pre-configured for Docker Compose)
-TEMPORAL_HOST=temporal:7233
-TEMPORAL_NAMESPACE=default
 ```
 
 ### Start Services
@@ -43,9 +41,7 @@ just dev
 
 This starts:
 - PostgreSQL database
-- Temporal server
-- API server (port 8000)
-- Temporal worker
+- API server with APScheduler (port 8000)
 - Frontend (port 5173)
 
 ### Verify
@@ -53,9 +49,6 @@ This starts:
 ```bash
 # Check API
 curl http://localhost:8000/health
-
-# Check Temporal UI
-open http://localhost:8080
 
 # Check frontend
 open http://localhost:5173
@@ -70,39 +63,34 @@ See the [Kubernetes Deployment Guide](/self-hosted/kubernetes) for complete setu
 **Requirements:**
 - Kubernetes cluster
 - PostgreSQL database (Cloud SQL or self-hosted)
-- Temporal Cloud account or self-hosted Temporal
 - Domain with DNS access
 
 ## Configuration
 
 ### Required API Keys
 
-**Gemini API** - Primary search provider
+**Gemini** - Powers the monitoring agent
 ```bash
-GOOGLE_API_KEY=...
+GEMINI_API_KEY=...
 ```
 
-Get your key at: [https://ai.google.dev](https://ai.google.dev)
+**Perplexity** - Agent search provider
+```bash
+PERPLEXITY_API_KEY=...
+```
 
-**Clerk Authentication** - User auth management
+**Mem0** - Agent cross-run memory
+```bash
+MEM0_API_KEY=...
+```
+
+**Clerk** - User auth management
 ```bash
 CLERK_SECRET_KEY=...
 CLERK_PUBLISHABLE_KEY=...
 ```
 
 Sign up at: [https://clerk.com](https://clerk.com)
-
-### Optional API Keys
-
-**OpenAI** - Fallback LLM
-```bash
-OPENAI_API_KEY=...
-```
-
-**Anthropic** - Fallback LLM
-```bash
-ANTHROPIC_API_KEY=...
-```
 
 ## Next Steps
 

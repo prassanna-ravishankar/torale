@@ -30,8 +30,6 @@ export type StatusVariant =
   | 'failed'
   | 'pending'
   | 'running'
-  | 'met'
-  | 'not_met'
   | 'triggered'
   | 'unknown';
 
@@ -101,20 +99,6 @@ const variantConfig: Record<
     border: 'border-amber-200',
     icon: <Clock className="h-3 w-3" />,
     label: 'Running',
-  },
-  met: {
-    bg: 'bg-emerald-50',
-    text: 'text-emerald-700',
-    border: 'border-emerald-200',
-    icon: <CheckCircle2 className="h-3 w-3" />,
-    label: 'Met',
-  },
-  not_met: {
-    bg: 'bg-zinc-50',
-    text: 'text-zinc-600',
-    border: 'border-zinc-200',
-    icon: null,
-    label: 'Not Met',
   },
   triggered: {
     bg: 'bg-emerald-50',

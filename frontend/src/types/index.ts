@@ -1,7 +1,6 @@
 export type TaskStatus = "pending" | "running" | "success" | "failed";
 export type TaskState = "active" | "paused" | "completed";
-export type NotifyBehavior = "once" | "always" | "track_state";
-export type ExecutorType = "llm_grounded_search";
+export type NotifyBehavior = "once" | "always";
 export type NotificationChannelType = "email" | "webhook";
 export type NotificationDeliveryStatus = "success" | "failed" | "retrying";
 
@@ -11,7 +10,7 @@ export type NotificationDeliveryStatus = "success" | "failed" | "retrying";
  */
 export interface TaskExecutionSummary {
   id: string;
-  condition_met: boolean;
+  notification: string | null;
   started_at: string;
   completed_at: string | null;
   status: TaskStatus;
@@ -24,23 +23,19 @@ export interface Task {
   id: string;
   user_id: string;
   name: string;
-  schedule: string;
-  executor_type: ExecutorType;
   search_query: string;
   condition_description: string;
   notify_behavior: NotifyBehavior;
-  config: Record<string, any>;
   state: TaskState;
 
-  // DEPRECATED: Use last_execution.condition_met instead (will be removed)
-  condition_met: boolean;
   last_known_state: Record<string, any> | null;
-  // DEPRECATED: Will be removed
-  last_notified_at: string | null;
 
-  // Latest execution reference (replaces sticky condition_met)
+  // Latest execution reference
   last_execution_id: string | null;
   last_execution: TaskExecutionSummary | null;
+
+  // Next scheduled check (persisted in DB, set by agent)
+  next_run: string | null;
 
   created_at: string;
   updated_at: string | null;
@@ -63,13 +58,10 @@ export interface Task {
  * Includes fields that are only used during creation and not returned in Task.
  */
 export interface TaskCreatePayload {
-  name: string;
+  name?: string;
   search_query: string;
   condition_description: string;
-  schedule: string;
   notify_behavior: NotifyBehavior;
-  executor_type: ExecutorType;
-  config: Record<string, any>;
   state: TaskState;
   run_immediately?: boolean;  // Execute task immediately after creation
   notifications?: NotificationConfig[];  // Notification configurations (optional)
@@ -77,7 +69,7 @@ export interface TaskCreatePayload {
 
 export interface GroundingSource {
   url: string;
-  title: string;
+  title?: string;
 }
 
 export interface TaskExecution {
@@ -87,7 +79,6 @@ export interface TaskExecution {
   started_at: string;
   completed_at: string | null;
   result: {
-    // New monitoring result format
     summary: string;
     sources: GroundingSource[];
     metadata: {
@@ -95,11 +86,8 @@ export interface TaskExecution {
       change_explanation: string | null;
       current_state: Record<string, any> | null;
     };
-    // Legacy fields for backward compatibility
-    answer?: string;
-    current_state?: Record<string, any> | null;
   } | null;
-  condition_met: boolean;
+  notification: string | null;
   change_summary: string | null;
   grounding_sources: GroundingSource[];
   error_message: string | null;
@@ -126,9 +114,7 @@ export interface TaskTemplate {
   icon?: string;
   search_query: string;
   condition_description: string;
-  schedule: string;
   notify_behavior: NotifyBehavior;
-  config: Record<string, any>;
   state: TaskState;
   created_at: string;
   updated_at: string | null;
@@ -138,14 +124,6 @@ export interface TaskTemplate {
  * Response from the /api/v1/tasks/suggest endpoint
  * AI-generated task configuration from natural language
  */
-export interface SuggestedTask {
-  name: string;
-  search_query: string;
-  condition_description: string;
-  schedule: string;
-  notify_behavior: NotifyBehavior;
-}
-
 // Notification System Types
 
 /**

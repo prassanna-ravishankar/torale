@@ -10,7 +10,7 @@ async def test_schedule_e2e(client: AsyncClient):
     Test automatic task scheduling (Cron).
     Simulates:
     1. Create task with 1-minute schedule
-    2. Wait for automatic execution by Temporal
+    2. Wait for automatic execution by APScheduler
     3. Verify execution success
     4. Test pause/unpause
     5. Cleanup
@@ -20,12 +20,10 @@ async def test_schedule_e2e(client: AsyncClient):
     task_payload = {
         "name": "Scheduled Test Task (Pytest)",
         "schedule": "* * * * *",
-        "executor_type": "llm_grounded_search",
         "search_query": "What is 1+1?",
         "condition_description": "A numerical answer is provided",
         "notify_behavior": "always",
-        "config": {"model": "gemini-2.0-flash-exp"},
-        "is_active": True,
+        "state": "active",
     }
 
     response = await client.post("/api/v1/tasks", json=task_payload)
@@ -61,14 +59,14 @@ async def test_schedule_e2e(client: AsyncClient):
 
         if not found_execution:
             pytest.fail(
-                "No automatic execution occurred within 90 seconds. Temporal schedule might not be working."
+                "No automatic execution occurred within 90 seconds. APScheduler might not be working."
             )
 
         # 3. Test pause/unpause
-        response = await client.put(f"/api/v1/tasks/{task_id}", json={"is_active": False})
+        response = await client.put(f"/api/v1/tasks/{task_id}", json={"state": "paused"})
         assert response.status_code == 200
         updated_task = response.json()
-        assert updated_task["is_active"] is False, "Failed to pause task"
+        assert updated_task["state"] == "paused", "Failed to pause task"
 
     finally:
         # 4. Cleanup

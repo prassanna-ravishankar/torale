@@ -295,7 +295,7 @@ export const WebhookConfigSection: React.FC = () => {
   "created_at": 1699564800,
   "data": {
     "task": { "id": "...", "name": "..." },
-    "execution": { "condition_met": true },
+    "execution": { "notification": "..." },
     "result": { "answer": "...", "sources": [...] }
   }
 }`}</pre>

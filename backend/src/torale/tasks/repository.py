@@ -23,9 +23,6 @@ class TaskRepository(BaseRepository):
         self,
         user_id: UUID,
         name: str,
-        schedule: str,
-        executor_type: str,
-        config: dict,
         state: str,
         search_query: str | None,
         condition_description: str | None,
@@ -35,26 +32,21 @@ class TaskRepository(BaseRepository):
         notification_email: str | None,
         webhook_url: str | None,
         webhook_secret: str | None,
-        extraction_schema: dict | None = None,
     ) -> dict:
         """Create a new task.
 
         Args:
             user_id: User UUID
             name: Task name
-            schedule: Cron expression
-            executor_type: Executor type (e.g., "llm_grounded_search")
-            config: Task configuration as dict
             state: Task state (active/paused/completed)
             search_query: Search query for grounded search
             condition_description: Condition description
-            notify_behavior: Notification behavior (once/always/track_state)
+            notify_behavior: Notification behavior (once/always)
             notifications: List of notification configs
             notification_channels: List of channel types (email/webhook)
             notification_email: Email address for notifications
             webhook_url: Webhook URL
             webhook_secret: Webhook secret
-            extraction_schema: Optional extraction schema
 
         Returns:
             Created task record dict
@@ -62,9 +54,6 @@ class TaskRepository(BaseRepository):
         data = {
             "user_id": user_id,
             "name": name,
-            "schedule": schedule,
-            "executor_type": executor_type,
-            "config": json.dumps(config),
             "state": state,
             "search_query": search_query,
             "condition_description": condition_description,
@@ -74,7 +63,6 @@ class TaskRepository(BaseRepository):
             "notification_email": notification_email,
             "webhook_url": webhook_url,
             "webhook_secret": webhook_secret,
-            "extraction_schema": json.dumps(extraction_schema) if extraction_schema else None,
         }
 
         sql, params = self._build_insert_query(self.tasks, data)
@@ -95,7 +83,7 @@ class TaskRepository(BaseRepository):
             self.tasks.star,
             self.users.username.as_("creator_username"),
             self.executions.id.as_("exec_id"),
-            self.executions.condition_met.as_("exec_condition_met"),
+            self.executions.notification.as_("exec_notification"),
             self.executions.started_at.as_("exec_started_at"),
             self.executions.completed_at.as_("exec_completed_at"),
             self.executions.status.as_("exec_status"),
@@ -132,7 +120,7 @@ class TaskRepository(BaseRepository):
             self.tasks.star,
             self.users.username.as_("creator_username"),
             self.executions.id.as_("exec_id"),
-            self.executions.condition_met.as_("exec_condition_met"),
+            self.executions.notification.as_("exec_notification"),
             self.executions.started_at.as_("exec_started_at"),
             self.executions.completed_at.as_("exec_completed_at"),
             self.executions.status.as_("exec_status"),
@@ -153,8 +141,6 @@ class TaskRepository(BaseRepository):
         self,
         task_id: UUID,
         name: str | None = None,
-        schedule: str | None = None,
-        config: dict | None = None,
         state: str | None = None,
         search_query: str | None = None,
         condition_description: str | None = None,
@@ -170,8 +156,6 @@ class TaskRepository(BaseRepository):
         Args:
             task_id: Task UUID
             name: New task name
-            schedule: New schedule
-            config: New config dict
             state: New state
             search_query: New search query
             condition_description: New condition
@@ -189,10 +173,6 @@ class TaskRepository(BaseRepository):
 
         if name is not None:
             data["name"] = name
-        if schedule is not None:
-            data["schedule"] = schedule
-        if config is not None:
-            data["config"] = json.dumps(config)
         if state is not None:
             data["state"] = state
         if search_query is not None:
@@ -408,7 +388,7 @@ class TaskExecutionRepository(BaseRepository):
         completed_at: str | None = None,
         result: dict | None = None,
         error_message: str | None = None,
-        condition_met: bool | None = None,
+        notification: str | None = None,
         change_summary: str | None = None,
         grounding_sources: list[dict] | None = None,
     ) -> dict:
@@ -420,7 +400,7 @@ class TaskExecutionRepository(BaseRepository):
             completed_at: Completion timestamp (use "NOW()" for current time)
             result: Result dict
             error_message: Error message
-            condition_met: Whether condition was met
+            notification: Notification text (if condition met)
             change_summary: Change summary text
             grounding_sources: List of grounding sources
 
@@ -435,8 +415,8 @@ class TaskExecutionRepository(BaseRepository):
             data["result"] = json.dumps(result)
         if error_message is not None:
             data["error_message"] = error_message
-        if condition_met is not None:
-            data["condition_met"] = condition_met
+        if notification is not None:
+            data["notification"] = notification
         if change_summary is not None:
             data["change_summary"] = change_summary
         if grounding_sources is not None:
@@ -512,7 +492,7 @@ class TaskExecutionRepository(BaseRepository):
     async def find_notifications(
         self, task_id: UUID, limit: int = 50, offset: int = 0
     ) -> list[dict]:
-        """Find executions where condition was met (notifications sent).
+        """Find executions where a notification was sent.
 
         Args:
             task_id: Task UUID
@@ -520,11 +500,11 @@ class TaskExecutionRepository(BaseRepository):
             offset: Pagination offset
 
         Returns:
-            List of execution records where condition_met = true
+            List of execution records where notification IS NOT NULL
         """
         query = PostgreSQLQuery.from_(self.executions).select("*")
         query = query.where(self.executions.task_id == Parameter("$1"))
-        query = query.where(self.executions.condition_met.eq(True))
+        query = query.where(self.executions.notification.isnotnull())
         query = query.orderby(self.executions.started_at, order=Order.desc)
         query = query.limit(limit).offset(offset)
 

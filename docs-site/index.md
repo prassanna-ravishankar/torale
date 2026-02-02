@@ -51,8 +51,8 @@ config:
 ---
 flowchart LR
     A[Task]
-    B[Temporal]
-    C[Search]
+    B[APScheduler]
+    C[Agent]
     D[Evaluate]
     E[Store]
 
@@ -60,10 +60,10 @@ flowchart LR
 ```
 
 **Core Components:**
-- **Grounded Search**: Google Search API via Gemini LLM with source attribution
-- **Temporal Workflows**: Cron-based scheduling with automatic retries and state management
-- **State Tracking**: Detects changes between executions to prevent duplicate notifications
-- **Condition Evaluation**: LLM-based determination of trigger condition status
+- **Monitoring Agent**: Gemini-powered agent (Pydantic AI) with Perplexity search and Mem0 memory
+- **APScheduler**: Cron-based scheduling with agent-driven dynamic rescheduling
+- **Condition Evaluation**: Agent determines if trigger condition is met, returns evidence + sources
+- **Notifications**: Email and webhook delivery when conditions are met
 
 ## Interfaces
 

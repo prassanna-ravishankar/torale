@@ -3,8 +3,8 @@
 
 domains:
   frontend: staging.torale.ai
-  api: api.staging.torale.ai
-  docs: docs.staging.torale.ai
+  api: api-staging.torale.ai
+  docs: docs-staging.torale.ai
 
 # Clerk authentication (uses production Clerk app - same as production)
 clerk:
@@ -12,12 +12,6 @@ clerk:
 
 image:
   tag: staging
-
-# Temporal Cloud configuration (same namespace, different task queue)
-temporal:
-  host: us-central1.gcp.api.temporal.io:7233
-  namespace: quickstart-baldmaninc.g5zzo
-  taskQueue: torale-staging
 
 # Staging resource sizing (minimal, no autoscaling)
 api:
@@ -31,18 +25,6 @@ api:
     limits:
       cpu: 500m
       memory: 512Mi
-
-worker:
-  replicaCount: 1
-  autoscaling:
-    enabled: false
-  resources:
-    requests:
-      cpu: 25m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
 
 frontend:
   replicaCount: 1
@@ -60,7 +42,7 @@ agent:
   replicaCount: 1
   resources:
     requests:
-      cpu: 25m
+      cpu: 100m
       memory: 128Mi
     limits:
       cpu: 200m

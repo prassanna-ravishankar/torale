@@ -69,8 +69,7 @@ DELETE /auth/api-keys/{id}              # Revoke key
 GET    /admin/stats                     # Platform statistics
 GET    /admin/queries                   # All user queries
 GET    /admin/executions                # All executions
-GET    /admin/temporal/workflows        # Temporal workflows
-GET    /admin/temporal/schedules        # Active schedules
+GET    /admin/scheduler/jobs             # APScheduler jobs
 GET    /admin/errors                    # Failed executions
 GET    /admin/users                     # User management
 PATCH  /admin/users/{id}/deactivate     # Deactivate user

@@ -55,8 +55,6 @@ Configure how you want to be notified:
 
 **always** - Get notified every time the condition is met
 
-**track_state** - Get notified only when meaningful changes are detected
-
 ## Next Steps
 
 - Read the [User Guide](/user-guide/dashboard) for detailed dashboard documentation

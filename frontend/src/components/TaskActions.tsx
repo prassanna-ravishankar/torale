@@ -107,7 +107,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
           variant="outline"
           size="sm"
           onClick={handleToggle}
-          title={isTaskActive ? 'Pause Schedule' : 'Start Schedule'}
+          title={isTaskActive ? 'Pause' : 'Resume'}
           className="gap-1.5"
         >
           {isTaskActive ? (
@@ -118,7 +118,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
           ) : (
             <>
               <Play className={iconSize} />
-              <span>Start</span>
+              <span>Resume</span>
             </>
           )}
         </Button>
@@ -180,12 +180,12 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
         {isTaskActive ? (
           <>
             <Pause className={`${iconSize} ${iconMargin}`} />
-            Pause Schedule
+            Pause
           </>
         ) : (
           <>
             <Play className={`${iconSize} ${iconMargin}`} />
-            Start Schedule
+            Resume
           </>
         )}
       </Button>

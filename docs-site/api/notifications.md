@@ -134,7 +134,6 @@ curl -X GET https://api.torale.ai/api/v1/notifications \
 | `condition_met` | boolean | Always `true` for notifications |
 | `answer` | string | Concise answer (2-4 sentences) |
 | `reasoning` | string | Why condition was met |
-| `change_summary` | string | What changed (track_state only) |
 | `grounding_sources` | array | Source URLs with metadata |
 | `created_at` | timestamp | When notification was created |
 

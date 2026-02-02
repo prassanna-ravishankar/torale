@@ -6,14 +6,9 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class ExecutorType(str, Enum):
-    LLM_GROUNDED_SEARCH = "llm_grounded_search"
-
-
 class NotifyBehavior(str, Enum):
-    ONCE = "once"  # Notify once and auto-disable task
+    ONCE = "once"  # Notify once per condition match
     ALWAYS = "always"  # Notify every time condition is met
-    TRACK_STATE = "track_state"  # Notify only when state changes
 
 
 class TaskState(str, Enum):
@@ -21,7 +16,7 @@ class TaskState(str, Enum):
 
     ACTIVE = "active"  # Monitoring on schedule
     PAUSED = "paused"  # User manually stopped
-    COMPLETED = "completed"  # Auto-stopped after notify_behavior="once" success
+    COMPLETED = "completed"  # Agent returned next_run=null
 
 
 class TaskStatus(str, Enum):
@@ -29,16 +24,6 @@ class TaskStatus(str, Enum):
     RUNNING = "running"
     SUCCESS = "success"
     FAILED = "failed"
-
-
-class TaskExecutionRequest(BaseModel):
-    """Request to execute a task via Temporal workflow."""
-
-    task_id: str
-    execution_id: str
-    user_id: str
-    task_name: str
-    suppress_notifications: bool = False  # For preview/manual runs
 
 
 # Notification Models
@@ -58,10 +43,7 @@ class NotificationConfig(BaseModel):
 
 
 class TaskBase(BaseModel):
-    name: str
-    schedule: str
-    executor_type: ExecutorType = ExecutorType.LLM_GROUNDED_SEARCH
-    config: dict
+    name: str = "New Monitor"
     state: TaskState = TaskState.ACTIVE
 
     # Grounded search fields
@@ -74,17 +56,15 @@ class TaskBase(BaseModel):
 
 
 class TaskCreate(TaskBase):
-    """Create task - requires search_query and condition for grounded search"""
+    """Create task - requires search_query for grounded search"""
 
-    search_query: str  # Make required for creation
-    condition_description: str  # Make required for creation
+    search_query: str
+    condition_description: str | None = None
     run_immediately: bool = False  # Execute task immediately after creation
 
 
 class TaskUpdate(BaseModel):
     name: str | None = None
-    schedule: str | None = None
-    config: dict | None = None
     state: TaskState | None = None
     search_query: str | None = None
     condition_description: str | None = None
@@ -99,7 +79,7 @@ class TaskExecutionBase(BaseModel):
     error_message: str | None = None
 
     # Grounded search execution fields
-    condition_met: bool | None = None
+    notification: str | None = None
     change_summary: str | None = None
     grounding_sources: list[dict] | None = None
 
@@ -123,15 +103,17 @@ class Task(TaskBase):
     state_changed_at: datetime  # When task state last changed
 
     # Grounded search state tracking
-    condition_met: bool = False  # DEPRECATED: Will be removed, use last_execution.condition_met
-    last_known_state: dict | list | None = (
-        None  # Can be dict or list depending on extraction schema
-    )
-    last_notified_at: datetime | None = None  # DEPRECATED: Will be removed
+    last_known_state: dict | list | None = None
 
-    # Latest execution reference (replaces sticky condition_met)
+    # Latest execution reference
     last_execution_id: UUID | None = None
     last_execution: TaskExecution | None = None  # Embedded from API query
+
+    # Next scheduled run time (persisted in DB, set by agent)
+    next_run: datetime | None = None
+
+    # Immediate execution error (only set when run_immediately fails during creation)
+    immediate_execution_error: str | None = None
 
     # Shareable tasks fields
     is_public: bool = False
@@ -150,9 +132,7 @@ class TaskTemplateBase(BaseModel):
     icon: str | None = None
     search_query: str
     condition_description: str
-    schedule: str
-    notify_behavior: NotifyBehavior = NotifyBehavior.TRACK_STATE
-    config: dict = {"model": "gemini-2.5-flash"}
+    notify_behavior: NotifyBehavior = NotifyBehavior.ALWAYS
 
 
 class TaskTemplateCreate(TaskTemplateBase):
@@ -167,20 +147,6 @@ class TaskTemplate(TaskTemplateBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    state: TaskState = TaskState.ACTIVE
+    is_active: bool = True
     created_at: datetime
     updated_at: datetime | None = None
-
-
-class TaskData(BaseModel):
-    """Data returned by get_task_data activity."""
-
-    task: dict = Field(description="Task record from database")
-    config: dict = Field(description="Parsed task configuration")
-    previous_state: dict | list | None = Field(
-        description="Previous monitoring state. Can be dict or list depending on extraction schema.",
-        default=None,
-    )
-    last_execution_datetime: datetime | None = Field(
-        description="Timestamp of last successful execution", default=None
-    )

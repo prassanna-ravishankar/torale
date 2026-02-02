@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from torale.tasks import NotificationConfig, NotifyBehavior, Task, TaskExecution
+from torale.tasks import NotificationConfig, NotifyBehavior, Task, TaskExecution, TaskState
 
 if TYPE_CHECKING:
     from torale.sdk.client import ToraleClient
@@ -22,11 +22,9 @@ class TasksResource:
         name: str,
         search_query: str,
         condition_description: str,
-        schedule: str = "0 9 * * *",
         notify_behavior: str | NotifyBehavior = NotifyBehavior.ONCE,
         notifications: list[dict | NotificationConfig] | None = None,
-        config: dict | None = None,
-        is_active: bool = True,
+        state: str | TaskState = TaskState.ACTIVE,
     ) -> Task:
         """
         Create a new monitoring task.
@@ -35,11 +33,9 @@ class TasksResource:
             name: Task name
             search_query: Query to monitor (e.g., "When is iPhone 16 being released?")
             condition_description: Condition to trigger on (e.g., "A specific date is announced")
-            schedule: Cron expression for task schedule (default: "0 9 * * *" = 9am daily)
-            notify_behavior: When to notify ("once", "always", or "track_state")
+            notify_behavior: When to notify ("once" or "always")
             notifications: List of notification configs
-            config: Executor configuration (default: {"model": "gemini-2.0-flash-exp"})
-            is_active: Whether task is active
+            state: Task state ("active" or "paused")
 
         Returns:
             Created Task object
@@ -58,6 +54,10 @@ class TasksResource:
         if isinstance(notify_behavior, NotifyBehavior):
             notify_behavior = notify_behavior.value
 
+        # Convert state to string if enum
+        if isinstance(state, TaskState):
+            state = state.value
+
         # Convert NotificationConfig objects to dicts
         if notifications:
             notifications = [
@@ -68,12 +68,9 @@ class TasksResource:
             "name": name,
             "search_query": search_query,
             "condition_description": condition_description,
-            "schedule": schedule,
             "notify_behavior": notify_behavior,
             "notifications": notifications or [],
-            "config": config or {"model": "gemini-2.0-flash-exp"},
-            "is_active": is_active,
-            "executor_type": "llm_grounded_search",
+            "state": state,
         }
 
         response = self.client.post("/api/v1/tasks/", json=data)
@@ -96,7 +93,7 @@ class TasksResource:
         """
         params = {}
         if active is not None:
-            params["is_active"] = active
+            params["state"] = TaskState.ACTIVE.value if active else TaskState.PAUSED.value
 
         response = self.client.get("/api/v1/tasks/", params=params)
         return [Task(**task_data) for task_data in response]
@@ -124,11 +121,9 @@ class TasksResource:
         name: str | None = None,
         search_query: str | None = None,
         condition_description: str | None = None,
-        schedule: str | None = None,
         notify_behavior: str | NotifyBehavior | None = None,
         notifications: list[dict | NotificationConfig] | None = None,
-        config: dict | None = None,
-        is_active: bool | None = None,
+        state: str | TaskState | None = None,
     ) -> Task:
         """
         Update task.
@@ -138,11 +133,9 @@ class TasksResource:
             name: New task name
             search_query: New search query
             condition_description: New condition description
-            schedule: New schedule
             notify_behavior: New notify behavior
             notifications: New notification configs
-            config: New config
-            is_active: New active status
+            state: New task state ("active", "paused", "completed")
 
         Returns:
             Updated Task object
@@ -150,7 +143,7 @@ class TasksResource:
         Example:
             >>> task = client.tasks.update(
             ...     task_id="550e8400-e29b-41d4-a716-446655440000",
-            ...     is_active=False
+            ...     state="paused"
             ... )
         """
         data = {}
@@ -161,8 +154,6 @@ class TasksResource:
             data["search_query"] = search_query
         if condition_description is not None:
             data["condition_description"] = condition_description
-        if schedule is not None:
-            data["schedule"] = schedule
         if notify_behavior is not None:
             if isinstance(notify_behavior, NotifyBehavior):
                 notify_behavior = notify_behavior.value
@@ -172,10 +163,10 @@ class TasksResource:
                 n.model_dump() if isinstance(n, NotificationConfig) else n for n in notifications
             ]
             data["notifications"] = notifications
-        if config is not None:
-            data["config"] = config
-        if is_active is not None:
-            data["is_active"] = is_active
+        if state is not None:
+            if isinstance(state, TaskState):
+                state = state.value
+            data["state"] = state
 
         response = self.client.put(f"/api/v1/tasks/{task_id}", json=data)
         return Task(**response)
@@ -237,60 +228,14 @@ class TasksResource:
             limit: Maximum number of notifications to return
 
         Returns:
-            List of TaskExecution objects where condition_met=True
+            List of TaskExecution objects where notification is present
 
         Example:
             >>> notifications = client.tasks.notifications("550e8400-e29b-41d4-a716-446655440000")
             >>> for notif in notifications:
-            ...     print(f"{notif.started_at}: {notif.change_summary}")
+            ...     print(f"{notif.started_at}: {notif.notification or notif.change_summary}")
         """
         response = self.client.get(
             f"/api/v1/tasks/{task_id}/notifications", params={"limit": limit}
         )
         return [TaskExecution(**exec_data) for exec_data in response]
-
-    def preview(
-        self,
-        search_query: str,
-        condition_description: str | None = None,
-        model: str = "gemini-2.0-flash-exp",
-    ) -> dict:
-        """
-        Preview a search query without creating a task.
-
-        Test your search query and see results before committing to creating
-        a monitoring task. This executes the grounded search but doesn't save
-        anything to the database.
-
-        Args:
-            search_query: The search query to test
-            condition_description: Condition to evaluate (optional, LLM will infer if not provided)
-            model: Model to use for search (default: gemini-2.0-flash-exp)
-
-        Returns:
-            dict with keys:
-                - answer: The search result answer
-                - condition_met: Whether the condition was met
-                - inferred_condition: LLM-inferred condition (if condition_description not provided)
-                - grounding_sources: List of source URLs with titles
-                - current_state: Current state dict
-
-        Example:
-            >>> result = client.tasks.preview(
-            ...     search_query="When is iPhone 16 being released?",
-            ...     condition_description="A specific release date is announced"
-            ... )
-            >>> print(result["answer"])
-            >>> print(f"Condition met: {result['condition_met']}")
-            >>> for source in result["grounding_sources"]:
-            ...     print(f"- {source['title']}: {source['url']}")
-        """
-        data = {
-            "search_query": search_query,
-            "model": model,
-        }
-
-        if condition_description:
-            data["condition_description"] = condition_description
-
-        return self.client.post("/api/v1/tasks/preview", json=data)

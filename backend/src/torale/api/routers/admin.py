@@ -11,12 +11,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from temporalio.client import Client
 
 from torale.access import ClerkUser, clerk_client, require_admin
 from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.core.database_alchemy import get_async_session
+from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import TaskState
 from torale.tasks.service import TaskService
 
@@ -50,28 +50,13 @@ class BulkUpdateUserRolesRequest(BaseModel):
     )
 
 
-async def get_temporal_client() -> Client:
-    """Get a Temporal client with proper authentication for Temporal Cloud or local dev."""
-    if settings.temporal_api_key:
-        return await Client.connect(
-            settings.temporal_host,
-            namespace=settings.temporal_namespace,
-            tls=True,
-            api_key=settings.temporal_api_key,
-        )
-    else:
-        return await Client.connect(
-            settings.temporal_host,
-            namespace=settings.temporal_namespace,
-        )
-
-
 def parse_json_field(value: Any) -> Any:
     """Parse JSON field if it's a string, otherwise return as-is."""
     if isinstance(value, str):
         try:
             return json.loads(value) if value else None
         except json.JSONDecodeError:
+            logger.warning(f"Failed to parse JSON field: {value!r:.200}")
             return value
     return value
 
@@ -109,9 +94,10 @@ async def get_platform_stats(
         text("""
         SELECT
             COUNT(*) as total_tasks,
-            SUM(CASE WHEN condition_met = true THEN 1 ELSE 0 END) as triggered_tasks
-        FROM tasks
-        WHERE state = 'active'
+            SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END) as triggered_tasks
+        FROM tasks t
+        LEFT JOIN task_executions e ON t.last_execution_id = e.id
+        WHERE t.state = 'active'
         """)
     )
     task_row = task_result.first()
@@ -144,12 +130,13 @@ async def get_platform_stats(
     popular_result = await session.execute(
         text("""
         SELECT
-            search_query,
+            t.search_query,
             COUNT(*) as task_count,
-            SUM(CASE WHEN condition_met = true THEN 1 ELSE 0 END) as triggered_count
-        FROM tasks
-        WHERE search_query IS NOT NULL
-        GROUP BY search_query
+            SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END) as triggered_count
+        FROM tasks t
+        LEFT JOIN task_executions e ON t.last_execution_id = e.id
+        WHERE t.search_query IS NOT NULL
+        GROUP BY t.search_query
         ORDER BY task_count DESC
         LIMIT 10
         """)
@@ -199,8 +186,8 @@ async def list_all_queries(
 
     Returns array of tasks with:
     - User email
-    - Task details (name, query, condition, schedule)
-    - Execution statistics (count, trigger count, condition_met)
+    - Task details (name, query, condition, next_run)
+    - Execution statistics (count, trigger count, notification)
     """
     active_filter = "AND t.state = 'active'" if active_only else ""
 
@@ -211,18 +198,19 @@ async def list_all_queries(
             t.name,
             t.search_query,
             t.condition_description,
-            t.schedule,
+            t.next_run,
             t.state,
-            t.condition_met,
+            le.notification as last_notification,
             t.created_at,
             u.email as user_email,
             COUNT(te.id) as execution_count,
-            SUM(CASE WHEN te.condition_met = true THEN 1 ELSE 0 END) as trigger_count
+            SUM(CASE WHEN te.notification IS NOT NULL THEN 1 ELSE 0 END) as trigger_count
         FROM tasks t
         JOIN users u ON u.id = t.user_id
+        LEFT JOIN task_executions le ON t.last_execution_id = le.id
         LEFT JOIN task_executions te ON te.task_id = t.id
         WHERE 1=1 {active_filter}
-        GROUP BY t.id, u.email
+        GROUP BY t.id, u.email, le.notification
         ORDER BY t.created_at DESC
         LIMIT :limit
         """),
@@ -235,9 +223,9 @@ async def list_all_queries(
             "name": row[1],
             "search_query": row[2],
             "condition_description": row[3],
-            "schedule": row[4],
+            "next_run": row[4].isoformat() if row[4] else None,
             "state": row[5],
-            "condition_met": row[6],
+            "has_notification": row[6] is not None,
             "created_at": row[7].isoformat() if row[7] else None,
             "user_email": row[8],
             "execution_count": row[9] if row[9] else 0,
@@ -292,7 +280,7 @@ async def list_recent_executions(
             te.completed_at,
             te.result,
             te.error_message,
-            te.condition_met,
+            te.notification,
             te.change_summary,
             te.grounding_sources,
             t.search_query,
@@ -316,7 +304,7 @@ async def list_recent_executions(
             "completed_at": row[4].isoformat() if row[4] else None,
             "result": parse_json_field(row[5]),
             "error_message": row[6],
-            "condition_met": row[7],
+            "notification": row[7],
             "change_summary": row[8],
             "grounding_sources": parse_json_field(row[9]),
             "search_query": row[10],
@@ -328,117 +316,26 @@ async def list_recent_executions(
     return {"executions": executions, "total": len(executions)}
 
 
-@router.get("/temporal/workflows")
-async def list_temporal_workflows(
+@router.get("/scheduler/jobs")
+async def list_scheduler_jobs(
     admin: ClerkUser = Depends(require_admin),
 ):
-    """
-    List recent Temporal workflow executions.
+    """List all APScheduler jobs with their state."""
+    scheduler = get_scheduler()
+    jobs = []
 
-    Returns:
-    - Workflow ID and run ID
-    - Workflow type (e.g., TaskExecutionWorkflow)
-    - Status (RUNNING, COMPLETED, FAILED, TIMED_OUT)
-    - Start/close timestamps
-    - Execution duration
-    - UI URL (clickable link to Temporal UI)
-    """
-    try:
-        client = await get_temporal_client()
+    for job in scheduler.get_jobs():
+        jobs.append(
+            {
+                "id": job.id,
+                "name": job.name,
+                "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+                "paused": job.next_run_time is None,
+                "trigger": str(job.trigger),
+            }
+        )
 
-        # Use configured Temporal UI URL
-        temporal_ui_base = settings.temporal_ui_url
-
-        # List recent workflows (last 100)
-        workflows = []
-        async for workflow in client.list_workflows(
-            f"ExecutionTime >= '{(datetime.now(UTC) - timedelta(hours=24)).isoformat()}'"
-        ):
-            # Construct UI URL: {base}/namespaces/{namespace}/workflows/{workflow_id}/{run_id}/history
-            ui_url = f"{temporal_ui_base}/namespaces/{settings.temporal_namespace}/workflows/{workflow.id}/{workflow.run_id}/history"
-
-            workflows.append(
-                {
-                    "workflow_id": workflow.id,
-                    "run_id": workflow.run_id,
-                    "workflow_type": workflow.workflow_type,
-                    "status": workflow.status.name,
-                    "start_time": workflow.start_time.isoformat() if workflow.start_time else None,
-                    "close_time": workflow.close_time.isoformat() if workflow.close_time else None,
-                    "execution_time": workflow.execution_time.isoformat()
-                    if workflow.execution_time
-                    else None,
-                    "ui_url": ui_url,
-                }
-            )
-
-            # Limit to 100 workflows
-            if len(workflows) >= 100:
-                break
-
-        return {"workflows": workflows, "total": len(workflows)}
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch Temporal workflows: {str(e)}",
-        ) from e
-
-
-@router.get("/temporal/schedules")
-async def list_temporal_schedules(
-    admin: ClerkUser = Depends(require_admin),
-):
-    """
-    List all active Temporal schedules.
-
-    Returns:
-    - Schedule ID (matches task ID)
-    - Cron spec
-    - Next scheduled run time
-    - Paused/running status
-    - Recent action count
-    """
-    try:
-        client = await get_temporal_client()
-
-        schedules = []
-        schedule_iterator = await client.list_schedules()
-        async for schedule in schedule_iterator:
-            handle = client.get_schedule_handle(schedule.id)
-            desc = await handle.describe()
-
-            # Extract cron spec
-            cron_spec = None
-            if desc.schedule.spec and desc.schedule.spec.cron_expressions:
-                cron_spec = desc.schedule.spec.cron_expressions[0]
-
-            # Get memo data from description (memo is an async method)
-            try:
-                memo_data = await desc.memo()
-            except Exception:
-                memo_data = {}
-
-            schedules.append(
-                {
-                    "schedule_id": schedule.id,
-                    "spec": cron_spec,
-                    "paused": desc.schedule.state.paused,
-                    "next_run": None,  # Would need to compute from cron
-                    "recent_actions": len(desc.info.recent_actions)
-                    if desc.info.recent_actions
-                    else 0,
-                    "created_at": memo_data.get("created_at") if memo_data else None,
-                }
-            )
-
-        return {"schedules": schedules, "total": len(schedules)}
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch Temporal schedules: {str(e)}",
-        ) from e
+    return {"jobs": jobs, "total": len(jobs)}
 
 
 @router.get("/errors")
@@ -525,7 +422,7 @@ async def list_users(
             u.created_at,
             COUNT(DISTINCT t.id) as task_count,
             COUNT(te.id) as total_executions,
-            SUM(CASE WHEN te.condition_met = true THEN 1 ELSE 0 END) as conditions_met_count
+            SUM(CASE WHEN te.notification IS NOT NULL THEN 1 ELSE 0 END) as notifications_count
         FROM users u
         LEFT JOIN tasks t ON t.user_id = u.id
         LEFT JOIN task_executions te ON te.task_id = t.id
@@ -537,6 +434,7 @@ async def list_users(
     # Batch-fetch roles from Clerk to avoid N+1 query problem
     # Handle pagination to ensure we fetch all users
     role_map = {}
+    clerk_warnings: list[str] = []
     if clerk_client:
         try:
             # Clerk's default limit is 10, max is 500. Use higher limit for efficiency.
@@ -563,7 +461,7 @@ async def list_users(
 
         except Exception as e:
             logger.error(f"Failed to batch-fetch users from Clerk: {e}")
-            # Continue with a partially populated or empty role_map
+            clerk_warnings.append(f"Clerk role fetch failed: {e}. Roles may be incomplete.")
 
     users = []
     for row in result:
@@ -575,7 +473,7 @@ async def list_users(
             "created_at": row[4].isoformat() if row[4] else None,
             "task_count": row[5] if row[5] else 0,
             "total_executions": row[6] if row[6] else 0,
-            "conditions_met_count": row[7] if row[7] else 0,
+            "notifications_count": row[7] if row[7] else 0,
             "role": role_map.get(row[2]),  # Get role from pre-fetched map
         }
 
@@ -585,7 +483,7 @@ async def list_users(
     active_users = sum(1 for u in users if u["is_active"])
     max_users = getattr(settings, "max_users", 100)
 
-    return {
+    response = {
         "users": users,
         "capacity": {
             "used": active_users,
@@ -593,6 +491,9 @@ async def list_users(
             "available": max_users - active_users,
         },
     }
+    if clerk_warnings:
+        response["warnings"] = clerk_warnings
+    return response
 
 
 @router.patch("/users/{user_id}/deactivate")
@@ -830,8 +731,11 @@ async def bulk_update_user_roles(
                 )
                 clerk_users_map = {user.id: user for user in clerk_users_response.data}
             except Exception as e:
-                # Log warning but continue - will handle missing users individually
-                logger.warning(f"Clerk batch fetch failed: {e}")
+                logger.error(f"Clerk batch fetch failed: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=f"Failed to fetch users from Clerk: {e}",
+                ) from e
 
     # Prepare all update tasks for parallel execution
     update_tasks = []
@@ -977,10 +881,17 @@ async def get_waitlist_stats(
     }
 
 
+class UpdateWaitlistEntryRequest(BaseModel):
+    """Request model for updating a waitlist entry."""
+
+    status: Literal["pending", "invited", "converted"] | None = None
+    notes: str | None = None
+
+
 @router.patch("/waitlist/{entry_id}")
 async def update_waitlist_entry(
     entry_id: UUID,
-    data: dict,
+    data: UpdateWaitlistEntryRequest,
     admin: ClerkUser = Depends(require_admin),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -993,16 +904,16 @@ async def update_waitlist_entry(
     updates = []
     params = {"entry_id": entry_id}
 
-    if "status" in data:
+    if data.status is not None:
         updates.append("status = :status")
-        params["status"] = data["status"]
-        if data["status"] == "invited":
+        params["status"] = data.status
+        if data.status == "invited":
             updates.append("invited_at = :invited_at")
             params["invited_at"] = datetime.now(UTC)
 
-    if "notes" in data:
+    if data.notes is not None:
         updates.append("notes = :notes")
-        params["notes"] = data["notes"]
+        params["notes"] = data.notes
 
     if not updates:
         raise HTTPException(

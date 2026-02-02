@@ -21,7 +21,7 @@ interface Execution {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   result: any
   error_message: string | null
-  condition_met: boolean | null
+  notification: string | null
   change_summary: string | null
   grounding_sources: GroundingSource[]
   search_query: string
@@ -144,7 +144,7 @@ export function ExecutionsTable() {
               <th className="text-left p-3"><SectionLabel>User</SectionLabel></th>
               <th className="text-left p-3"><SectionLabel>Query</SectionLabel></th>
               <th className="text-left p-3"><SectionLabel>Status</SectionLabel></th>
-              <th className="text-left p-3"><SectionLabel>Condition</SectionLabel></th>
+              <th className="text-left p-3"><SectionLabel>Notification</SectionLabel></th>
               <th className="text-left p-3"><SectionLabel>Started</SectionLabel></th>
               <th className="text-left p-3"><SectionLabel>Duration</SectionLabel></th>
               <th className="text-left p-3"><SectionLabel>Sources</SectionLabel></th>
@@ -166,10 +166,8 @@ export function ExecutionsTable() {
                   <td className="p-3">
                     <StatusBadge variant={execution.status} />
                   </td>
-                  <td className="p-3">
-                    {execution.condition_met !== null && (
-                      <StatusBadge variant={execution.condition_met ? 'met' : 'not_met'} />
-                    )}
+                  <td className="p-3 text-xs font-mono text-zinc-600 max-w-xs truncate">
+                    {execution.notification || '—'}
                   </td>
                   <td className="p-3 text-xs font-mono text-zinc-500">
                     {execution.started_at

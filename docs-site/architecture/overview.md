@@ -9,11 +9,11 @@ User ──► Frontend (torale.ai)
               ↓
          API (api.torale.ai) ──► Cloud SQL PostgreSQL
               ↓                   (Auth + DB + State)
-         Temporal Cloud
+         APScheduler
               ↓
-         Workers (GKE) ──► Gemini + Google Search
-              └──► In-app Notifications
-                   State comparison & condition evaluation
+         Agent ──► Perplexity Search + Mem0 Memory
+              └──► Notifications (email/webhook)
+                   Condition evaluation & evidence
 ```
 
 ## Tech Stack
@@ -21,7 +21,7 @@ User ──► Frontend (torale.ai)
 ### Backend
 - **Python FastAPI** - REST API server
 - **PostgreSQL 16** - Cloud SQL managed database
-- **Temporal Cloud** - Workflow orchestration
+- **APScheduler** - In-process job scheduling with PostgreSQL job store
 - **UV** - Fast Python package manager
 
 ### Frontend
@@ -30,9 +30,9 @@ User ──► Frontend (torale.ai)
 - **Clerk** - Authentication (OAuth + email/password)
 
 ### AI & Search
-- **Google Gemini** - Primary LLM with grounded search
-- **Google Search API** - Via Gemini grounding
-- **OpenAI/Anthropic** - Fallback models
+- **Gemini** - Monitoring agent (via Pydantic AI)
+- **Perplexity** - Web search
+- **Mem0** - Cross-run agent memory
 
 ### Infrastructure
 - **GKE Autopilot** - Kubernetes cluster
@@ -52,35 +52,23 @@ FastAPI application handling:
 
 **Location:** `backend/src/torale/api/`
 
-### 2. Workers
-Temporal workers executing scheduled tasks:
-- Cron-based execution via Temporal schedules
-- Grounded search with condition evaluation
-- State comparison and change detection
-- Notification triggering
+### 2. Scheduler
+APScheduler with PostgreSQL job store:
+- Cron-based task execution
+- Dynamic rescheduling via agent `next_run`
+- Job state sync on startup
 
-**Location:** `backend/src/torale/workers/`
+**Location:** `backend/src/torale/scheduler/`
 
-### 3. Providers & Pipeline
-Monitoring execution architecture:
-- **Providers** - Pluggable implementations (Gemini, OpenAI, Claude)
-  - `SchemaProvider` - Generates task-specific schemas
-  - `ExtractionProvider` - Extracts structured data
-  - `ComparisonProvider` - Semantic state comparison
-  - `SearchProvider` - Grounded search
-- **Pipeline** - Coordinates execution flow
-  - Schema generation → Extraction → Hash pre-filter → Semantic comparison
-- **Structured Agency** - Agents design schemas, extract semantically
+### 3. Monitoring Agent
+Gemini-powered agent service (Pydantic AI):
+- Perplexity search for web monitoring
+- Mem0 for cross-run memory and context
+- Returns structured evidence, sources, confidence, and notifications
 
-**Locations:** `backend/src/torale/providers/`, `backend/src/torale/pipelines/`
+**Location:** `torale-agent/`
 
-### 4. Legacy Executors
-Deprecated execution engine (being migrated to providers):
-- `GroundedSearchExecutor` - Monolithic executor
-
-**Location:** `backend/src/torale/executors/`
-
-### 5. Frontend
+### 4. Frontend
 React SPA with:
 - Clerk authentication
 - Task creation wizard
@@ -103,46 +91,36 @@ Python CLI using Typer:
 ### Task Creation
 1. User creates task via dashboard/CLI/SDK
 2. API validates and stores in PostgreSQL
-3. Temporal schedule created with cron expression
+3. APScheduler job created with cron expression
 4. Task becomes active and ready for execution
 
 ### Task Execution
-1. Temporal triggers workflow at scheduled time
-2. Worker picks up task from queue
-3. Executor performs grounded search:
-   - Queries Google Search via Gemini
-   - LLM evaluates condition
-   - Extracts and filters sources
-4. State comparison with `last_known_state`
-5. Notification sent if condition met and changed
+1. APScheduler triggers job at scheduled time
+2. Backend calls the monitoring agent
+3. Agent searches via Perplexity, checks Mem0 memory
+4. Agent evaluates condition, returns evidence + sources
+5. Notification sent if condition met
 6. Execution result stored in database
+7. Agent's `next_run` dynamically reschedules the job
 
 ### Notification Flow
-1. Condition evaluation determines if met
-2. State comparison checks for meaningful changes
-3. Notification behavior rules applied:
-   - `once` - Notify once, then pause task
+1. Agent determines if condition is met
+2. Notification behavior rules applied:
+   - `once` - Notify once, then complete task
    - `always` - Notify every time
-   - `track_state` - Notify on changes only
-4. Notification stored in database
-5. User views in dashboard
+3. Notification sent via email/webhook
+4. User views in dashboard
 
 ## Scalability
 
 ### Horizontal Scaling
 - **API**: 2-10 replicas (HPA based on CPU)
-- **Workers**: 2-10 replicas (HPA based on CPU)
 - **Frontend**: 2-10 replicas (HPA based on CPU)
 
 ### Database
 - Cloud SQL with automated backups
 - Connection pooling via Cloud SQL Proxy
 - Read replicas for scaling (future)
-
-### Temporal
-- Temporal Cloud handles workflow orchestration
-- Automatic retry and error handling
-- Durable execution across failures
 
 ## Security
 
@@ -182,8 +160,6 @@ All services use Spot VMs:
 
 ## Next Steps
 
-- Learn about [Providers & Pipelines](/architecture/providers-and-pipelines)
-- Understand [Temporal Workflows](/architecture/temporal-workflows)
 - Learn about [Grounded Search](/architecture/grounded-search)
 - Explore [State Tracking](/architecture/state-tracking)
 - View [Database Schema](/architecture/database-schema)

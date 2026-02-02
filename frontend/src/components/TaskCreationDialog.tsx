@@ -20,37 +20,25 @@ import {
   SelectGroup,
   SelectLabel,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import type { NotifyBehavior, TaskTemplate, Task } from "@/types";
 import api from "@/lib/api";
 import {
   Loader2,
   Sparkles,
-  Search,
-  Bell,
-  Clock,
   AlertCircle,
-  Zap,
-  Eye,
-  RotateCcw,
-  Music,
-  Waves,
   Gamepad2,
-  Code2,
+  Rocket,
+  TrendingDown,
+  Eclipse,
+  Camera,
+  Smartphone,
+  TrainFront,
+  Briefcase,
   Bot,
-  Cpu,
-  Calendar,
-  ChevronDown,
-  ChevronUp
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CustomScheduleDialog } from "@/components/ui/CustomScheduleDialog";
-import cronstrue from "cronstrue";
-import { localTimeToUTC, cronUTCToLocal } from "@/lib/timezoneUtils";
 
 interface TaskCreationDialogProps {
   open: boolean;
@@ -58,57 +46,23 @@ interface TaskCreationDialogProps {
   onTaskCreated: (task: Task) => void;
 }
 
-// Icon mapping for templates
-const iconMappings = [
-  { keywords: ['concert', 'ticket', 'music'], icon: Music },
-  { keywords: ['swimming', 'pool', 'summer'], icon: Waves },
-  { keywords: ['ps5', 'playstation', 'stock'], icon: Gamepad2 },
-  { keywords: ['framework', 'react', 'code'], icon: Code2 },
-  { keywords: ['ai', 'gpt', 'model', 'robot'], icon: Bot },
-  { keywords: ['gpu', 'graphics', 'cpu', 'nvidia'], icon: Cpu },
-];
-
-const getTemplateIcon = (templateName: string) => {
-  const name = templateName.toLowerCase();
-  const mapping = iconMappings.find(m => m.keywords.some(k => name.includes(k)));
-  return mapping ? mapping.icon : Sparkles;
+// Icon mapping for templates by category
+const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  gaming: Gamepad2,
+  space: Rocket,
+  finance: TrendingDown,
+  nature: Eclipse,
+  photography: Camera,
+  tech: Smartphone,
+  travel: TrainFront,
+  careers: Briefcase,
 };
 
-// Generate schedule options with UTC conversion for local times
-// Note: User sees "9:00 AM" but we store UTC equivalent (handles minute offsets like India UTC+5:30)
-const SIMPLE_SCHEDULE_OPTIONS = [
-  { value: "*/30 * * * *", label: "Every 30 minutes", icon: Zap },
-  { value: "0 */6 * * *", label: "Every 6 hours", icon: Clock },
-  { value: `${localTimeToUTC(9, 0).minute} ${localTimeToUTC(9, 0).hour} * * *`, label: "Daily at 9:00 AM", icon: Clock },
-  { value: `${localTimeToUTC(12, 0).minute} ${localTimeToUTC(12, 0).hour} * * *`, label: "Daily at noon", icon: Clock },
-  { value: `${localTimeToUTC(8, 0).minute} ${localTimeToUTC(8, 0).hour} * * 1`, label: "Weekly on Monday at 8:00 AM", icon: Clock },
-  { value: "custom", label: "Custom Schedule...", icon: Calendar },
-];
+const getTemplateIcon = (category: string) => {
+  return categoryIcons[category.toLowerCase()] ?? Sparkles;
+};
 
-const NOTIFY_BEHAVIORS = [
-  {
-    value: "once" as NotifyBehavior,
-    label: "Notify Once",
-    description: "Stop monitoring after first match",
-    icon: Bell,
-  },
-  {
-    value: "always" as NotifyBehavior,
-    label: "Always Notify",
-    description: "Alert every time condition is met",
-    icon: RotateCcw,
-  },
-  {
-    value: "track_state" as NotifyBehavior,
-    label: "Track Changes",
-    description: "Notify when information changes",
-    icon: Eye,
-  }
-];
-
-const MIN_NAME_LENGTH = 3;
-const MIN_SEARCH_QUERY_LENGTH = 10;
-const MIN_CONDITION_DESCRIPTION_LENGTH = 10;
+const MIN_INSTRUCTIONS_LENGTH = 10;
 
 export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   open,
@@ -118,46 +72,13 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   // Form data
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("none");
-  const [name, setName] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [conditionDescription, setConditionDescription] = useState("");
-  const [schedule, setSchedule] = useState("0 9 * * *");
-  const [notifyBehavior, setNotifyBehavior] = useState<NotifyBehavior>("track_state");
+  const [instructions, setInstructions] = useState("");
 
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Magic Input state
-  const [magicPrompt, setMagicPrompt] = useState("");
-  const [isMagicLoading, setIsMagicLoading] = useState(false);
-
-  // Custom Schedule Dialog state
-  const [isCustomScheduleOpen, setIsCustomScheduleOpen] = useState(false);
-
-  const handleSuggest = async () => {
-    if (!magicPrompt.trim()) return;
-
-    setIsMagicLoading(true);
-    try {
-      const suggestion = await api.suggestTask(magicPrompt);
-
-      setName(suggestion.name);
-      setSearchQuery(suggestion.search_query);
-      setConditionDescription(suggestion.condition_description);
-      setSchedule(suggestion.schedule);
-      setNotifyBehavior(suggestion.notify_behavior as NotifyBehavior);
-
-      toast.success("Task configuration generated!");
-    } catch (error) {
-      console.error("Magic suggestion failed:", error);
-      toast.error("Failed to generate task configuration");
-    } finally {
-      setIsMagicLoading(false);
-    }
-  };
   const [error, setError] = useState("");
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Fetch templates on mount
   useEffect(() => {
@@ -167,6 +88,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
         setTemplates(data);
       } catch (err) {
         console.error("Failed to load templates:", err);
+        toast.error("Failed to load templates. Please check your connection.");
       }
     };
     loadTemplates();
@@ -176,17 +98,9 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   useEffect(() => {
     if (!open) {
       setSelectedTemplateId("none");
-      setName("");
-      setSearchQuery("");
-      setConditionDescription("");
-      setSchedule("0 9 * * *");
-      setNotifyBehavior("track_state");
+      setInstructions("");
       setValidationErrors({});
       setError("");
-      setShowAdvanced(false);
-      setMagicPrompt(""); // Reset magic prompt
-      setIsMagicLoading(false); // Reset magic loading
-      setIsCustomScheduleOpen(false);
     }
   }, [open]);
 
@@ -195,17 +109,17 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
     setSelectedTemplateId(templateId);
 
     if (!templateId || templateId === "none") {
-      // Don't clear fields if user just wants to switch back to "custom" to edit
       return;
     }
 
     const template = templates.find(t => t.id === templateId);
     if (template) {
-      setName(template.name);
-      setSearchQuery(template.search_query);
-      setConditionDescription(template.condition_description);
-      setSchedule(template.schedule);
-      setNotifyBehavior(template.notify_behavior);
+      // Concatenate query and condition for the single input if they differ
+      if (template.condition_description && template.condition_description !== template.search_query) {
+        setInstructions(`${template.search_query}\n\nNotify when: ${template.condition_description}`);
+      } else {
+        setInstructions(template.search_query);
+      }
     }
   };
 
@@ -213,22 +127,10 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
 
-    if (!name.trim()) {
-      errors.name = "Task name is required";
-    } else if (name.length < MIN_NAME_LENGTH) {
-      errors.name = `Task name must be at least ${MIN_NAME_LENGTH} characters`;
-    }
-
-    if (!searchQuery.trim()) {
-      errors.searchQuery = "Search query is required";
-    } else if (searchQuery.length < MIN_SEARCH_QUERY_LENGTH) {
-      errors.searchQuery = "Please provide a more specific search query";
-    }
-
-    if (!conditionDescription.trim()) {
-      errors.conditionDescription = "Trigger condition is required";
-    } else if (conditionDescription.length < MIN_CONDITION_DESCRIPTION_LENGTH) {
-      errors.conditionDescription = "Please provide a more specific condition";
+    if (!instructions.trim()) {
+      errors.instructions = "Please describe what to monitor";
+    } else if (instructions.length < MIN_INSTRUCTIONS_LENGTH) {
+      errors.instructions = "Please provide more detail";
     }
 
     setValidationErrors(errors);
@@ -238,7 +140,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   // Task creation
   const handleCreateTask = async () => {
     if (!validate()) {
-      toast.error("Please fix the errors before creating");
+      toast.error("Please describe what to monitor");
       return;
     }
 
@@ -246,21 +148,18 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
     setIsSubmitting(true);
 
     try {
+      // We rely on the backend/agent to:
+      // 1. Infer the name (topic)
+      // 2. Infer the condition (from instructions)
+      // 3. Determine next_run timing
       const newTask = await api.createTask({
-        name,
-        search_query: searchQuery,
-        condition_description: conditionDescription,
-        schedule,
-        notify_behavior: notifyBehavior,
-        executor_type: "llm_grounded_search",
-        config: {
-          search_provider: "google"
-        },
+        search_query: instructions,
+        condition_description: instructions,
+        notify_behavior: "once",
         state: "active",
         run_immediately: true,
       });
 
-      // Close dialog and navigate to task detail page
       onTaskCreated(newTask);
       onOpenChange(false);
     } catch (err) {
@@ -285,46 +184,11 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
             Create Monitor
           </DialogTitle>
           <DialogDescription className="text-zinc-500">
-            Define what you want to track and when to notify you
+            Describe what you want to track. AI will handle the rest.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Magic Input Section */}
-          <div className="bg-zinc-50 p-4 border-2 border-zinc-200 space-y-3">
-            <div className="flex items-center gap-2 text-sm font-bold font-grotesk text-zinc-900">
-              <Sparkles className="w-4 h-4" />
-              Magic Auto-Fill
-            </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="e.g. 'Notify me when PS5 Pro is in stock' or 'Tell me when GTA 6 release date is announced'"
-                value={magicPrompt}
-                onChange={(e) => setMagicPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSuggest();
-                  }
-                }}
-                className="flex-1 bg-background"
-              />
-              <Button
-                onClick={handleSuggest}
-                disabled={!magicPrompt.trim() || isMagicLoading}
-                variant="secondary"
-                className="shrink-0"
-              >
-                {isMagicLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4 mr-2" />
-                )}
-                {isMagicLoading ? "Dreaming..." : "Auto-Fill"}
-              </Button>
-            </div>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-6">
 
             {/* Template Selection */}
@@ -352,7 +216,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                         <SelectGroup key={category}>
                           <SelectLabel>{category}</SelectLabel>
                           {categoryTemplates.map((template) => {
-                            const IconComponent = getTemplateIcon(template.name);
+                            const IconComponent = getTemplateIcon(template.category);
                             return (
                               <SelectItem key={template.id} value={template.id}>
                                 <div className="flex items-center gap-2">
@@ -371,221 +235,32 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
             )}
 
             <div className="space-y-4">
-              {/* Task Name */}
+              {/* Instructions */}
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Monitor Name</Label>
-                <Input
-                  id="name"
-                  placeholder="e.g., iPhone 16 Release Monitor"
-                  value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    if (validationErrors.name) setValidationErrors(prev => ({ ...prev, name: "" }));
-                  }}
-                  disabled={isSubmitting}
-                  className={cn(validationErrors.name && "border-destructive")}
-                />
-                {validationErrors.name && (
-                  <p className="text-xs text-destructive flex items-center gap-1.5">
-                    <AlertCircle className="h-3 w-3" />
-                    {validationErrors.name}
-                  </p>
-                )}
-              </div>
-
-              {/* Search Query */}
-              <div className="space-y-2">
-                <Label htmlFor="searchQuery" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
-                  <Search className="h-3 w-3" />
+                <Label htmlFor="instructions" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
+                  <Bot className="h-3 w-3" />
                   What to Monitor
                 </Label>
                 <Textarea
-                  id="searchQuery"
-                  placeholder="e.g., When is the next iPhone being announced by Apple?"
-                  value={searchQuery}
+                  id="instructions"
+                  placeholder="e.g., Notify me when the iPhone 16 release date is announced..."
+                  value={instructions}
                   onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    if (validationErrors.searchQuery) setValidationErrors(prev => ({ ...prev, searchQuery: "" }));
+                    setInstructions(e.target.value);
+                    if (validationErrors.instructions) setValidationErrors(prev => ({ ...prev, instructions: "" }));
                   }}
                   disabled={isSubmitting}
-                  rows={3}
-                  className={cn("resize-none", validationErrors.searchQuery && "border-destructive")}
+                  rows={6}
+                  className={cn("resize-none font-medium text-lg p-4", validationErrors.instructions && "border-destructive")}
                 />
-                {validationErrors.searchQuery && (
+                {validationErrors.instructions && (
                   <p className="text-xs text-destructive flex items-center gap-1.5">
                     <AlertCircle className="h-3 w-3" />
-                    {validationErrors.searchQuery}
-                  </p>
-                )}
-              </div>
-
-              {/* Condition Description */}
-              <div className="space-y-2">
-                <Label htmlFor="condition" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
-                  <Bell className="h-3 w-3" />
-                  When to Notify
-                </Label>
-                <Textarea
-                  id="condition"
-                  placeholder="e.g., A specific release date or month is officially announced"
-                  value={conditionDescription}
-                  onChange={(e) => {
-                    setConditionDescription(e.target.value);
-                    if (validationErrors.conditionDescription) setValidationErrors(prev => ({ ...prev, conditionDescription: "" }));
-                  }}
-                  disabled={isSubmitting}
-                  rows={3}
-                  className={cn("resize-none", validationErrors.conditionDescription && "border-destructive")}
-                />
-                {validationErrors.conditionDescription && (
-                  <p className="text-xs text-destructive flex items-center gap-1.5">
-                    <AlertCircle className="h-3 w-3" />
-                    {validationErrors.conditionDescription}
+                    {validationErrors.instructions}
                   </p>
                 )}
               </div>
             </div>
-
-            {/* Progressive Disclosure: Advanced Options */}
-            <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="p-0 h-auto font-medium text-muted-foreground hover:text-foreground">
-                    {showAdvanced ? (
-                      <span className="flex items-center gap-1">Hide Advanced Options <ChevronUp className="h-4 w-4" /></span>
-                    ) : (
-                      <span className="flex items-center gap-1">Show Advanced Options <ChevronDown className="h-4 w-4" /></span>
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
-                {!showAdvanced && (
-                  <span className="text-xs text-muted-foreground">
-                    {(() => {
-                      // Show current schedule frequency
-                      const scheduleOption = SIMPLE_SCHEDULE_OPTIONS.find(o => o.value === schedule);
-                      const scheduleLabel = scheduleOption?.label || (() => {
-                        try {
-                          const localCron = cronUTCToLocal(schedule);
-                          return cronstrue.toString(localCron);
-                        } catch {
-                          return "Custom";
-                        }
-                      })();
-
-                      // Show current notify behavior
-                      const behaviorOption = NOTIFY_BEHAVIORS.find(b => b.value === notifyBehavior);
-                      const behaviorLabel = behaviorOption?.label || notifyBehavior;
-
-                      return `${scheduleLabel}, ${behaviorLabel}`;
-                    })()}
-                  </span>
-                )}
-              </div>
-
-              <CollapsibleContent className="space-y-4 pt-2 animate-in slide-in-from-top-2 fade-in duration-200">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-zinc-50 border-2 border-zinc-100">
-                  {/* Schedule */}
-                  <div className="space-y-2">
-                    <Label htmlFor="schedule" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
-                      <Clock className="h-3 w-3" />
-                      Check Frequency
-                    </Label>
-                    <div className="space-y-2">
-                      <Select
-                        value={SIMPLE_SCHEDULE_OPTIONS.some(o => o.value === schedule) ? schedule : "custom"}
-                        onValueChange={(val) => {
-                          if (val === "custom") {
-                            setIsCustomScheduleOpen(true);
-                          } else {
-                            setSchedule(val);
-                          }
-                        }}
-                        disabled={isSubmitting}
-                      >
-                        <SelectTrigger id="schedule" className="h-9 bg-background">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SIMPLE_SCHEDULE_OPTIONS.map((option) => {
-                            const IconComponent = option.icon;
-                            return (
-                              <SelectItem key={option.value} value={option.value}>
-                                <div className="flex items-center gap-2">
-                                  <IconComponent className="h-3.5 w-3.5" />
-                                  {option.label}
-                                </div>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-
-                      {/* Custom Schedule Display & Edit */}
-                      {(!SIMPLE_SCHEDULE_OPTIONS.some(o => o.value === schedule) || schedule === "custom") && (
-                        <div className="animate-in slide-in-from-top-1 fade-in duration-200 flex items-center gap-2">
-                          <div className="flex-1 text-xs bg-muted px-3 py-2 rounded-md border font-mono truncate">
-                            {schedule === "custom" ? "No schedule selected" : schedule}
-                            <span className="ml-2 text-muted-foreground font-sans">
-                              ({(() => {
-                                try {
-                                  // Convert UTC cron to local for display
-                                  const localCron = cronUTCToLocal(schedule);
-                                  return cronstrue.toString(localCron);
-                                } catch {
-                                  return "Invalid cron";
-                                }
-                              })()})
-                            </span>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setIsCustomScheduleOpen(true)}
-                            className="h-9 px-3"
-                          >
-                            Edit
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <CustomScheduleDialog
-                    open={isCustomScheduleOpen}
-                    onOpenChange={setIsCustomScheduleOpen}
-                    initialValue={SIMPLE_SCHEDULE_OPTIONS.some(o => o.value === schedule) ? "0 9 * * *" : schedule}
-                    onSave={(newSchedule) => {
-                      setSchedule(newSchedule);
-                    }}
-                  />
-
-                  {/* Notification Behavior */}
-                  <div className="space-y-2">
-                    <Label htmlFor="notifyBehavior" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
-                      <Bell className="h-3 w-3" />
-                      Notification Mode
-                    </Label>
-                    <Select
-                      value={notifyBehavior}
-                      onValueChange={(value) => setNotifyBehavior(value as NotifyBehavior)}
-                      disabled={isSubmitting}
-                    >
-                      <SelectTrigger id="notifyBehavior" className="h-9 bg-background">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {NOTIFY_BEHAVIORS.map((behavior) => (
-                          <SelectItem key={behavior.value} value={behavior.value}>
-                            {behavior.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
 
             {error && (
               <Alert variant="destructive">
@@ -602,7 +277,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
           </Button>
           <Button onClick={handleCreateTask} disabled={isSubmitting} className="shadow-brutalist">
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Monitor
+            Start Monitor
           </Button>
         </DialogFooter>
       </DialogContent>

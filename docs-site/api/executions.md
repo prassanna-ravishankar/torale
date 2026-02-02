@@ -142,7 +142,6 @@ curl -X GET https://api.torale.ai/api/v1/tasks/550e8400-e29b-41d4-a716-446655440
 | `completed_at` | timestamp | When execution completed (null if running) |
 | `condition_met` | boolean | Whether trigger condition was met |
 | `result` | object | Execution result with answer, reasoning, etc. |
-| `change_summary` | string | What changed from last execution (track_state only) |
 | `grounding_sources` | array | Source URLs with metadata |
 | `error_message` | string | Error details if status is `failed` |
 | `created_at` | timestamp | Execution creation time |
@@ -190,7 +189,7 @@ Execution completed successfully.
 Execution encountered an error.
 
 **error_message:** Contains error details
-**Retry behavior:** Temporal automatically retries (up to 3 times)
+**Retry behavior:** Failed executions will be retried on the next scheduled run
 
 ## Usage Examples
 
@@ -322,40 +321,8 @@ When `status: "failed"`:
 
 **What this means:**
 - Execution encountered an error
-- Temporal will automatically retry (up to 3 times)
+- Failed executions will be retried on the next scheduled run
 - Check error_message for details
-
-## Change Summaries
-
-Available when using `notify_behavior: track_state`.
-
-**First execution:**
-```json
-{
-  "change_summary": "Initial execution - no previous state to compare"
-}
-```
-
-**No change:**
-```json
-{
-  "change_summary": "No significant changes detected (98% similar)"
-}
-```
-
-**Change detected:**
-```json
-{
-  "change_summary": "Price dropped from $499 to $449 (10% decrease)"
-}
-```
-
-**Significant change:**
-```json
-{
-  "change_summary": "Release date changed from 'Q2 2024' to 'June 15, 2024' - specific date now confirmed"
-}
-```
 
 ## Grounding Sources
 

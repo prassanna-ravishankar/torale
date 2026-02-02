@@ -44,6 +44,8 @@ env/
 *~
 .DS_Store
 .playwright-mcp/
+.gemini-clipboard/
+.mcp.json
 
 # Testing
 .coverage

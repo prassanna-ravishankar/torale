@@ -28,26 +28,12 @@ services:
     ports:
       - "5432:5432"
 
-  temporal:
-    image: temporalio/auto-setup:latest
-    ports:
-      - "7233:7233"
-      - "8080:8080"
-
   api:
     build: ./backend
     ports:
       - "8000:8000"
     depends_on:
       - postgres
-      - temporal
-
-  worker:
-    build: ./backend
-    command: python -m torale.workers
-    depends_on:
-      - postgres
-      - temporal
 ```
 
 ## Configuration
@@ -55,7 +41,9 @@ services:
 See `.env.example` for all environment variables.
 
 **Required:**
-- `GOOGLE_API_KEY` - Gemini API key
+- `GEMINI_API_KEY` - Powers the monitoring agent
+- `PERPLEXITY_API_KEY` - Agent search provider
+- `MEM0_API_KEY` - Agent cross-run memory
 - `CLERK_SECRET_KEY` - Clerk authentication
 - `DATABASE_URL` - PostgreSQL connection string
 

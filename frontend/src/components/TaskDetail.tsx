@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import type { Task, TaskExecution } from '@/types'
 import api from '@/lib/api'
@@ -7,11 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/torale";
 import { ExecutionTimeline } from "@/components/ExecutionTimeline";
-import { StateComparison } from "@/components/StateComparison";
-import { CronDisplay } from "@/components/ui/CronDisplay";
 import { TaskConfiguration } from "@/components/task/TaskConfiguration";
-import { CollapsibleSection } from "@/components/torale";
 import { getTaskStatus } from '@/lib/taskStatus';
+import { formatTimeUntil } from '@/lib/utils';
 import {
   ArrowLeft,
   Clock,
@@ -54,7 +53,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isJustCreated = searchParams.get('justCreated') === 'true';
-  const tabFromUrl = searchParams.get('tab') as 'executions' | 'notifications' | 'changes' | null;
+  const tabFromUrl = searchParams.get('tab') as 'executions' | 'notifications' | null;
 
   const [task, setTask] = useState<Task | null>(null);
   const [executions, setExecutions] = useState<TaskExecution[]>([]);
@@ -63,7 +62,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   const [isExecuting, setIsExecuting] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "executions");
   const [configExpanded, setConfigExpanded] = useState(false);
-  const [lastKnownStateExpanded, setLastKnownStateExpanded] = useState(false);
   const [isForking, setIsForking] = useState(false);
 
   const loadData = useCallback(async (skipLoadingState = false) => {
@@ -128,7 +126,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   const handleToggle = async () => {
     if (!task) return;
     try {
-      // Toggle between active and paused (completed tasks handled separately with badge)
       const newState = task.state === 'active' ? 'paused' : 'active';
       await api.updateTask(taskId, { state: newState });
       await loadData();
@@ -169,7 +166,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
     try {
       const forkedTask = await api.forkTask(taskId);
       toast.success('Task copied to your dashboard!');
-      // Redirect to the new task's detail page for a smoother SPA experience
       navigate(`/tasks/${forkedTask.id}?justCreated=true`);
     } catch (error) {
       console.error("Failed to fork task:", error);
@@ -275,7 +271,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             <div className="flex items-center gap-3">
               <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-sm text-muted-foreground">
-                Next check: <CronDisplay cron={task.schedule} className="inline" />
+                Checks run automatically
               </span>
             </div>
           </div>
@@ -295,7 +291,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               <div className="flex items-start gap-2">
                 <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 <p className="text-sm text-muted-foreground">
-                  Automated checks <CronDisplay cron={task.schedule} className="inline lowercase" />
+                  Automated checks — frequency determined by AI
                 </p>
               </div>
               <div className="flex items-start gap-2">
@@ -303,7 +299,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                 <p className="text-sm text-muted-foreground">
                   {task.notify_behavior === 'once' && 'Email when condition is met, then monitoring stops'}
                   {task.notify_behavior === 'always' && 'Email every time condition is met'}
-                  {task.notify_behavior === 'track_state' && 'Email only when information changes'}
                 </p>
               </div>
             </div>
@@ -324,7 +319,20 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               <h1 className="font-grotesk text-2xl md:text-4xl font-bold truncate">{task.name}</h1>
               <StatusBadge variant={status.activityState} />
             </div>
-            <p className="text-zinc-500 text-sm truncate">{task.search_query}</p>
+            <div className="flex items-center gap-3 text-zinc-500 text-sm">
+              <span className="truncate">{task.search_query}</span>
+              {task.next_run ? (
+                <span className="flex items-center gap-1 text-xs font-mono text-zinc-400 whitespace-nowrap">
+                  <Clock className="w-3 h-3" />
+                  Next check {formatTimeUntil(task.next_run)}
+                </span>
+              ) : task.state === 'completed' ? (
+                <span className="flex items-center gap-1 text-xs font-mono text-zinc-400 whitespace-nowrap">
+                  <Clock className="w-3 h-3" />
+                  Monitoring complete
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -352,15 +360,19 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               })}
             </span>
           </div>
-          {firstExecution.result?.answer && (
-            <p className="text-sm text-zinc-700 leading-relaxed line-clamp-3">
-              {firstExecution.result.answer}
-            </p>
-          )}
-          {firstExecution.condition_met !== undefined && (
-            <div className="mt-3 pt-3 border-zinc-100 flex items-center justify-between">
-              <span className="text-xs font-mono text-zinc-500">Condition</span>
-              <StatusBadge variant={firstExecution.condition_met ? 'met' : 'not_met'} size="sm" />
+          {firstExecution.result?.summary && (
+            <div className="text-sm text-zinc-700 leading-relaxed line-clamp-3 prose prose-sm max-w-none">
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => <p className="mb-0 leading-relaxed text-zinc-700">{children}</p>,
+                  ul: ({ children }) => <ul className="list-disc pl-5 mb-0 space-y-0">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal pl-5 mb-0 space-y-0">{children}</ol>,
+                  li: ({ children }) => <li className="text-sm leading-relaxed text-zinc-700">{children}</li>,
+                  strong: ({ children }) => <strong className="font-bold text-zinc-900">{children}</strong>,
+                }}
+              >
+                {firstExecution.result.summary}
+              </ReactMarkdown>
             </div>
           )}
         </div>
@@ -447,38 +459,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         onToggle={handleToggle}
       />
 
-      {task.last_known_state && (
-        <CollapsibleSection
-          title="Last Known State (Dev)"
-          open={lastKnownStateExpanded}
-          onOpenChange={setLastKnownStateExpanded}
-          variant="dark"
-        >
-          <div className="bg-zinc-900 border-t-0 border border-zinc-800 p-4">
-            <div className="text-xs font-mono space-y-2 overflow-x-auto">
-              {Object.entries(task.last_known_state).map(([key, value]) => (
-                <div key={key} className="flex flex-col gap-1">
-                  <span className="text-zinc-400">{key.replace(/_/g, ' ')}</span>
-                  {Array.isArray(value) ? (
-                    value.length > 3 ? (
-                      <span className="text-zinc-300 break-words">{value.slice(0, 3).join(", ")} +{value.length - 3} more</span>
-                    ) : (
-                      <span className="text-zinc-300 break-words">{value.join(", ")}</span>
-                    )
-                  ) : typeof value === "object" && value !== null ? (
-                    <pre className="text-xs p-2 bg-zinc-950 text-zinc-400 border border-zinc-800 overflow-x-auto">
-                      {JSON.stringify(value, null, 2)}
-                    </pre>
-                  ) : (
-                    <span className="text-zinc-300 break-words">{String(value)}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </CollapsibleSection>
-      )}
-
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="sticky top-0 z-10 bg-zinc-50 pb-2 -mx-8 px-8">
           <div className="relative">
@@ -489,7 +469,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               <TabsTrigger value="notifications">
                 Notifications <span className="text-xs text-zinc-500 ml-1.5">({notifications.length})</span>
               </TabsTrigger>
-              <TabsTrigger value="changes">State Changes</TabsTrigger>
             </TabsList>
             {/* Scroll hint gradient */}
             <div className="absolute top-0 right-0 h-full w-12 bg-gradient-to-l from-zinc-50 to-transparent pointer-events-none" />
@@ -503,12 +482,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         <TabsContent value="notifications" className="mt-6">
           <ExecutionTimeline
             executions={notifications}
-            highlightNotifications={true}
           />
-        </TabsContent>
-
-        <TabsContent value="changes" className="mt-6">
-          <StateComparison executions={executions} />
         </TabsContent>
       </Tabs>
     </div>
