@@ -1,6 +1,6 @@
 # Agent Architecture
 
-Torale uses a Claude-powered monitoring agent instead of the previous multi-provider pipeline.
+Torale uses a Gemini-powered monitoring agent (Pydantic AI) instead of the previous multi-provider pipeline.
 
 ## Architecture Overview
 
@@ -9,7 +9,7 @@ APScheduler (cron trigger)
     ↓
 Backend (job.py orchestrator)
     ↓
-Agent (Claude + MCP tools)
+Agent (Gemini + Pydantic AI tools)
     ↓
 Structured Response → Persist + Notify + Reschedule
 ```

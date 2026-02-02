@@ -23,7 +23,7 @@ Edit `.env` with your API keys:
 
 ```bash
 # Required
-ANTHROPIC_API_KEY=your-anthropic-api-key
+GEMINI_API_KEY=your-gemini-api-key
 PERPLEXITY_API_KEY=your-perplexity-api-key
 MEM0_API_KEY=your-mem0-api-key
 CLERK_SECRET_KEY=your-clerk-secret
@@ -69,9 +69,9 @@ See the [Kubernetes Deployment Guide](/self-hosted/kubernetes) for complete setu
 
 ### Required API Keys
 
-**Anthropic** - Powers the monitoring agent
+**Gemini** - Powers the monitoring agent
 ```bash
-ANTHROPIC_API_KEY=...
+GEMINI_API_KEY=...
 ```
 
 **Perplexity** - Agent search provider

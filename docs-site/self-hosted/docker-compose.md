@@ -28,7 +28,7 @@ Required variables in `.env`:
 
 ```bash
 # AI (required for monitoring agent)
-ANTHROPIC_API_KEY=your-anthropic-api-key
+GEMINI_API_KEY=your-gemini-api-key
 PERPLEXITY_API_KEY=your-perplexity-api-key
 MEM0_API_KEY=your-mem0-api-key
 

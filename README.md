@@ -336,7 +336,7 @@ uv sync
 cp .env.example .env
 ```
 Edit `.env` with your API keys:
-- **Anthropic**: API key for the monitoring agent (required)
+- **Gemini**: API key for the monitoring agent (required)
 - **Perplexity**: API key for agent search (required)
 - **Mem0**: API key for agent cross-run memory (required)
 - **Database**: PostgreSQL connection string (local default works)
@@ -421,7 +421,7 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 - **API**: FastAPI with Clerk authentication + API keys
 - **Database**: PostgreSQL 16 via Docker Compose
 - **Scheduler**: APScheduler with PostgreSQL job store
-- **Agent**: Claude-powered monitoring agent (Perplexity search + Mem0 memory)
+- **Agent**: Gemini-powered monitoring agent via Pydantic AI (Perplexity search + Mem0 memory)
 - **CLI**: Python typer with API key authentication
 
 ### Production (GKE)
@@ -434,7 +434,7 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 ## Features
 
 ### ✅ Implemented
-- Agent-powered search monitoring (Claude + Perplexity + Mem0)
+- Agent-powered search monitoring (Gemini + Perplexity + Mem0)
 - Intelligent condition evaluation with grounded sources
 - APScheduler with agent-driven dynamic scheduling
 - User-configurable notify behavior:
@@ -687,7 +687,7 @@ CLERK_PUBLISHABLE_KEY=pk_test_...         # Backend: Initialize Clerk client
 AGENT_URL=http://localhost:8000
 
 # AI (required for monitoring agent)
-ANTHROPIC_API_KEY=your-anthropic-api-key
+GEMINI_API_KEY=your-gemini-api-key
 PERPLEXITY_API_KEY=your-perplexity-api-key
 MEM0_API_KEY=your-mem0-api-key
 

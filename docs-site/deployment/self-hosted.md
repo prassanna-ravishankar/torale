@@ -41,7 +41,7 @@ services:
 See `.env.example` for all environment variables.
 
 **Required:**
-- `ANTHROPIC_API_KEY` - Powers the monitoring agent
+- `GEMINI_API_KEY` - Powers the monitoring agent
 - `PERPLEXITY_API_KEY` - Agent search provider
 - `MEM0_API_KEY` - Agent cross-run memory
 - `CLERK_SECRET_KEY` - Clerk authentication

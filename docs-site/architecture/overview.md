@@ -30,7 +30,7 @@ User ──► Frontend (torale.ai)
 - **Clerk** - Authentication (OAuth + email/password)
 
 ### AI & Search
-- **Claude** - Monitoring agent (via Anthropic API)
+- **Gemini** - Monitoring agent (via Pydantic AI)
 - **Perplexity** - Web search
 - **Mem0** - Cross-run agent memory
 
@@ -61,7 +61,7 @@ APScheduler with PostgreSQL job store:
 **Location:** `backend/src/torale/scheduler/`
 
 ### 3. Monitoring Agent
-Claude-powered agent service:
+Gemini-powered agent service (Pydantic AI):
 - Perplexity search for web monitoring
 - Mem0 for cross-run memory and context
 - Returns structured evidence, sources, confidence, and notifications

@@ -18,7 +18,7 @@ VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
 AGENT_URL=http://localhost:8001
 
 # AI (required for monitoring agent)
-ANTHROPIC_API_KEY=your-anthropic-api-key
+GEMINI_API_KEY=your-gemini-api-key
 PERPLEXITY_API_KEY=your-perplexity-api-key
 MEM0_API_KEY=your-mem0-api-key
 ```
@@ -63,7 +63,7 @@ Deploy secrets before Helm:
 
 ```bash
 kubectl create secret generic torale-secrets -n torale \
-  --from-literal=ANTHROPIC_API_KEY="..." \
+  --from-literal=GEMINI_API_KEY="..." \
   --from-literal=PERPLEXITY_API_KEY="..." \
   --from-literal=CLERK_SECRET_KEY="..." \
   --from-literal=DB_PASSWORD="..."

@@ -15,7 +15,7 @@ flowchart TB
     Frontend[Frontend<br/>React + TypeScript]
     API[API Service<br/>FastAPI + APScheduler]
     DB[(PostgreSQL<br/>Cloud SQL)]
-    Agent[Monitoring Agent<br/>Claude + Perplexity + Mem0]
+    Agent[Monitoring Agent<br/>Gemini + Perplexity + Mem0]
     Notif[Notifications<br/>Email/Webhook]
 
     User --> Frontend
@@ -34,7 +34,7 @@ Connects to PostgreSQL via Cloud SQL Proxy sidecar in Kubernetes, or direct conn
 
 ## Monitoring Agent
 
-Claude-powered agent that searches the web via Perplexity, uses Mem0 for cross-run memory, evaluates conditions, and returns structured results (evidence, sources, confidence, notifications).
+Gemini-powered agent (Pydantic AI) that searches the web via Perplexity, uses Mem0 for cross-run memory, evaluates conditions, and returns structured results (evidence, sources, confidence, notifications).
 
 ## Database Schema
 

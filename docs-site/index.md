@@ -60,7 +60,7 @@ flowchart LR
 ```
 
 **Core Components:**
-- **Monitoring Agent**: Claude-powered agent with Perplexity search and Mem0 memory
+- **Monitoring Agent**: Gemini-powered agent (Pydantic AI) with Perplexity search and Mem0 memory
 - **APScheduler**: Cron-based scheduling with agent-driven dynamic rescheduling
 - **Condition Evaluation**: Agent determines if trigger condition is met, returns evidence + sources
 - **Notifications**: Email and webhook delivery when conditions are met

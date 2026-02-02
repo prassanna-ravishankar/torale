@@ -172,7 +172,7 @@ async def execute_with_context(self, task):
 ### Primary Model
 ```python
 {
-  "model": "gemini-2.0-flash-exp",
+  "model": "gemini-3-flash-preview",
   "search_provider": "google",
   "temperature": 0.7,
   "max_output_tokens": 512
@@ -188,7 +188,6 @@ async def execute_with_context(self, task):
 ### Fallback Models
 If Gemini unavailable:
 1. OpenAI GPT-4 Turbo + web search
-2. Anthropic Claude 3 + web scraping
 
 ## Performance
 

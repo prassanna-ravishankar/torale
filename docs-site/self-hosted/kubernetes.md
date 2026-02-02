@@ -71,7 +71,7 @@ Create secrets manually before deployment:
 
 ```bash
 kubectl create secret generic torale-secrets -n torale \
-  --from-literal=ANTHROPIC_API_KEY="..." \
+  --from-literal=GEMINI_API_KEY="..." \
   --from-literal=PERPLEXITY_API_KEY="..." \
   --from-literal=CLERK_SECRET_KEY="..." \
   --from-literal=DB_PASSWORD="..."
