@@ -42,11 +42,11 @@ agent:
   replicaCount: 1
   resources:
     requests:
-      cpu: 25m
-      memory: 128Mi
+      cpu: 100m
+      memory: 512Mi
     limits:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 500m
+      memory: 1Gi
 
 # Staging database (separate from production)
 database:

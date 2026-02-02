@@ -6,25 +6,32 @@ Create Date: 2026-02-02 00:10:45.780817
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "82cdf3d44858"
-down_revision: Union[str, Sequence[str], None] = "af3fbab7ddc8"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = "af3fbab7ddc8"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
     """Drop columns removed in v3 that still exist in pre-squash databases."""
-    op.drop_column("tasks", "config")
-    op.drop_column("tasks", "executor_type")
-    op.drop_column("tasks", "extraction_schema")
-    op.drop_column("task_templates", "config")
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+
+    task_cols = {c["name"] for c in inspector.get_columns("tasks")}
+    for col in ("config", "executor_type", "extraction_schema"):
+        if col in task_cols:
+            op.drop_column("tasks", col)
+
+    template_cols = {c["name"] for c in inspector.get_columns("task_templates")}
+    if "config" in template_cols:
+        op.drop_column("task_templates", "config")
 
 
 def downgrade() -> None:
