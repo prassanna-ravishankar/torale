@@ -1,7 +1,6 @@
 import logging
 from datetime import UTC, datetime, timedelta
 
-from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 
 from torale.core.database import db
@@ -36,7 +35,7 @@ async def sync_jobs_from_database() -> None:
     scheduler = get_scheduler()
 
     rows = await db.fetch_all(
-        """SELECT id, user_id, name, schedule, state
+        """SELECT id, user_id, name, next_run, state
            FROM tasks
            WHERE state IN ('active', 'paused')"""
     )
@@ -46,16 +45,6 @@ async def sync_jobs_from_database() -> None:
 
     now = datetime.now(UTC)
 
-    def _compute_next_run(schedule: str) -> datetime:
-        try:
-            trigger = CronTrigger.from_crontab(schedule, timezone=UTC)
-            next_time = trigger.get_next_fire_time(None, now)
-            if next_time and next_time > now:
-                return next_time
-        except Exception as e:
-            logger.warning(f"Failed to parse schedule '{schedule}': {e}")
-        return now + timedelta(hours=24)
-
     for row in rows:
         try:
             task_id = str(row["id"])
@@ -63,7 +52,11 @@ async def sync_jobs_from_database() -> None:
             expected_job_ids.add(job_id)
 
             existing_job = scheduler.get_job(job_id)
-            next_run = _compute_next_run(row["schedule"])
+
+            # Use next_run from DB; fallback to now + 24h if null
+            next_run = row["next_run"]
+            if next_run is None or next_run <= now:
+                next_run = now + timedelta(hours=24)
 
             if existing_job is None:
                 scheduler.add_job(

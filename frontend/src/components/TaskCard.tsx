@@ -128,15 +128,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               : 'Not run yet'}
           </div>
         </div>
-        {task.next_run_time && (
-          <div>
-            <SectionLabel className="mb-1">Next Check</SectionLabel>
-            <div className="flex items-center gap-1.5 text-xs font-mono text-zinc-600">
-              <Clock className="w-3 h-3" />
-              {formatTimeUntil(task.next_run_time)}
-            </div>
+        <div>
+          <SectionLabel className="mb-1">Next Check</SectionLabel>
+          <div className="flex items-center gap-1.5 text-xs font-mono text-zinc-600">
+            <Clock className="w-3 h-3" />
+            {task.next_run ? formatTimeUntil(task.next_run) : '—'}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Bottom: Footer with Status */}

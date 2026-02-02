@@ -2,8 +2,6 @@
 
 import logging
 
-from cron_descriptor import Options, get_description
-
 from torale.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -170,7 +168,6 @@ class NovuService:
         search_query: str,
         condition_description: str,
         notify_behavior: str,
-        schedule: str,
         first_execution_result: dict | None,
         task_id: str,
     ) -> dict:
@@ -217,12 +214,7 @@ class NovuService:
                     for s in first_execution_result["grounding_sources"][:5]
                 ]
 
-            # Human-readable schedule using cron-descriptor
-            # Use verbose mode to include frequency (e.g., "Every day at 09:00 AM")
-            options = Options()
-            options.use_24hour_time_format = False
-            options.verbose = True
-            schedule_description = get_description(schedule, options)
+            schedule_description = "Frequency determined by AI based on topic"
 
             # Trigger welcome workflow
             response = await self._client.trigger_async(

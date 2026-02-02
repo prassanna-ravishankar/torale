@@ -148,14 +148,12 @@ def example_4_create_task():
         name="iPhone 16 Release Monitor",
         search_query="When is iPhone 16 being released?",
         condition_description="A specific release date or month has been officially announced",
-        schedule="0 9 * * *",  # Daily at 9 AM
         notify_behavior="once",  # Notify only once when condition is met
     )
 
     print("✓ Task created successfully!")
     print(f"\n  📝 Name: {task.name}")
     print(f"  🆔 ID: {task.id}")
-    print(f"  ⏰ Schedule: {task.schedule} (Daily at 9 AM)")
     print(f"  🎯 Condition: {task.condition_description}")
     print(f"  🔔 Notify: {task.notify_behavior}")
 
@@ -175,7 +173,6 @@ def example_5_fluent_api():
     task = (
         client.monitor("Bitcoin price today")
         .when("Price exceeds $50,000")
-        .check_every("0 */6 * * *")  # Every 6 hours
         .notify(behavior="once")  # Notify once when condition is met
         .create()
     )
@@ -184,7 +181,6 @@ def example_5_fluent_api():
     print(f"\n  📝 Name: {task.name}")
     print(f"  🔍 Query: {task.search_query}")
     print(f"  🎯 Condition: {task.condition_description}")
-    print("  ⏰ Schedule: Every 6 hours")
 
     return task
 
@@ -203,21 +199,18 @@ def example_6_task_webhooks():
         name="PS5 Stock Monitor",
         search_query="Is PS5 back in stock at Best Buy?",
         condition_description="PS5 is available for purchase",
-        schedule="0 */2 * * *",  # Every 2 hours
         notifications=[{"type": "webhook", "url": "https://myapp.com/webhooks/ps5-alert"}],
     )
 
     print("✓ Task created with webhook!")
     print(f"\n  📝 Name: {task.name}")
     print("  🔔 Webhook: https://myapp.com/webhooks/ps5-alert")
-    print("  ⏰ Schedule: Every 2 hours")
 
     # Method 2: Fluent API with webhook
     print("\n\nCreating task with webhook (Fluent API)...")
     task2 = (
         client.monitor("iPhone 16 Pro release date")
         .when("A specific release date is announced")
-        .check_every("0 9 * * *")  # Daily at 9am
         .notify(webhook="https://myapp.com/webhooks/iphone")
         .create()
     )
@@ -225,7 +218,6 @@ def example_6_task_webhooks():
     print("✓ Task created with fluent API!")
     print(f"\n  📝 Name: {task2.name}")
     print("  🔔 Webhook: https://myapp.com/webhooks/iphone")
-    print("  ⏰ Schedule: Daily at 9am")
 
 
 def example_7_task_operations():

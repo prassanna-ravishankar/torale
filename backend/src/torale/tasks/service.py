@@ -12,7 +12,6 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from apscheduler.jobstores.base import JobLookupError
-from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 
 from torale.core.database import Database
@@ -43,7 +42,7 @@ class TaskService:
         to_state: TaskState,
         user_id: UUID | None = None,
         task_name: str | None = None,
-        schedule: str | None = None,
+        next_run: datetime | None = None,
     ) -> dict:
         """Execute a state transition with validation and scheduler side effects."""
         if not self._is_valid_transition(from_state, to_state):
@@ -71,7 +70,7 @@ class TaskService:
                     task_id,
                     task_name=task_name,
                     user_id=user_id,
-                    schedule=schedule,
+                    next_run=next_run,
                 )
             elif to_state == TaskState.PAUSED:
                 result = await self._pause_job(task_id)
@@ -97,16 +96,18 @@ class TaskService:
         current_state: TaskState,
         user_id: UUID,
         task_name: str,
-        schedule: str,
+        next_run: datetime | None = None,
     ) -> dict:
         """Activate a task (transition to ACTIVE state)."""
+        if next_run is None:
+            next_run = datetime.now(UTC) + timedelta(minutes=1)
         return await self.transition(
             task_id,
             current_state,
             TaskState.ACTIVE,
             user_id=user_id,
             task_name=task_name,
-            schedule=schedule,
+            next_run=next_run,
         )
 
     async def pause(self, task_id: UUID, current_state: TaskState) -> dict:
@@ -122,18 +123,20 @@ class TaskService:
         task_id: UUID,
         task_name: str,
         user_id: UUID,
-        schedule: str,
+        next_run: datetime | None = None,
     ) -> dict:
         """Create an APScheduler job for a newly created task.
 
         Unlike transition(), this does NOT update the DB state because
         the task is already being inserted as ACTIVE.
         """
+        if next_run is None:
+            next_run = datetime.now(UTC) + timedelta(minutes=1)
         return await self._add_or_resume_job(
             task_id,
             task_name=task_name,
             user_id=user_id,
-            schedule=schedule,
+            next_run=next_run,
         )
 
     # Internal Helpers
@@ -182,16 +185,15 @@ class TaskService:
         task_id: UUID,
         task_name: str | None = None,
         user_id: UUID | None = None,
-        schedule: str | None = None,
+        next_run: datetime | None = None,
     ) -> dict:
         """Add a new job or resume an existing paused one."""
-        if not all([task_name, user_id, schedule]):
-            raise ValueError("Cannot activate task: missing task_name, user_id, or schedule")
+        if not all([task_name, user_id, next_run]):
+            raise ValueError("Cannot activate task: missing task_name, user_id, or next_run")
 
         scheduler = get_scheduler()
         job_id = f"task-{task_id}"
         existing = await asyncio.to_thread(scheduler.get_job, job_id)
-        next_run = self._compute_next_run(schedule)
 
         if existing is not None:
             # Job exists, resume it and update trigger
@@ -200,31 +202,26 @@ class TaskService:
                 scheduler.reschedule_job, job_id, trigger=DateTrigger(run_date=next_run)
             )
             logger.info(f"Resumed job {job_id}")
-            return {"success": True, "schedule_action": "resumed", "error": None}
+        else:
+            # Create new job
+            await asyncio.to_thread(
+                scheduler.add_job,
+                JOB_FUNC_REF,
+                trigger=DateTrigger(run_date=next_run),
+                id=job_id,
+                args=[str(task_id), str(user_id), task_name],
+                replace_existing=True,
+            )
+            logger.info(f"Created job {job_id}")
 
-        # Create new job
-        await asyncio.to_thread(
-            scheduler.add_job,
-            JOB_FUNC_REF,
-            trigger=DateTrigger(run_date=next_run),
-            id=job_id,
-            args=[str(task_id), str(user_id), task_name],
-            replace_existing=True,
+        # Persist next_run to DB
+        await self.db.execute(
+            "UPDATE tasks SET next_run = $1 WHERE id = $2",
+            next_run,
+            task_id,
         )
-        logger.info(f"Created job {job_id}")
-        return {"success": True, "schedule_action": "created", "error": None}
 
-    def _compute_next_run(self, schedule: str | None) -> datetime:
-        now = datetime.now(UTC)
-        if schedule:
-            try:
-                trigger = CronTrigger.from_crontab(schedule, timezone=UTC)
-                next_time = trigger.get_next_fire_time(None, now)
-                if next_time and next_time > now:
-                    return next_time
-            except Exception as e:
-                logger.warning(f"Failed to parse schedule '{schedule}': {e}")
-        return now + timedelta(hours=24)
+        return {"success": True, "schedule_action": "created", "error": None}
 
     async def _pause_job(self, task_id: UUID) -> dict:
         scheduler = get_scheduler()

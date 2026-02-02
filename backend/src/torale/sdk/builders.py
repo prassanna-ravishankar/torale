@@ -18,7 +18,6 @@ class MonitorBuilder:
         >>> from torale import monitor
         >>> task = (monitor("iPhone 16 release date")
         ...     .when("specific date is announced")
-        ...     .check_every("6 hours")
         ...     .notify(email="me@example.com", webhook="https://myapp.com/alert")
         ...     .create())
     """
@@ -27,7 +26,6 @@ class MonitorBuilder:
         self.client = client
         self._search_query = search_query
         self._condition_description: str | None = None
-        self._schedule: str = "0 9 * * *"  # Default: 9am daily
         self._notify_behavior: NotifyBehavior = NotifyBehavior.ONCE
         self._notifications: list[dict] = []
         self._name: str | None = None
@@ -47,38 +45,6 @@ class MonitorBuilder:
             >>> monitor("Bitcoin price").when("price exceeds $50,000")
         """
         self._condition_description = condition_description
-        return self
-
-    def check_every(self, schedule: str) -> MonitorBuilder:
-        """
-        Set how often to check the condition.
-
-        Args:
-            schedule: Cron expression or human-readable schedule.
-                Supports:
-                - Cron: "0 9 * * *" (9am daily)
-                - Human: "5 minutes", "1 hour", "6 hours", "1 day"
-
-        Returns:
-            Self for chaining
-
-        Example:
-            >>> monitor("PS5 stock").when("in stock").check_every("5 minutes")
-            >>> monitor("News").when("new article").check_every("0 */6 * * *")  # Every 6 hours
-        """
-        # Convert human-readable to cron if needed
-        if "minute" in schedule.lower():
-            minutes = schedule.split()[0]
-            self._schedule = f"*/{minutes} * * * *"
-        elif "hour" in schedule.lower():
-            hours = schedule.split()[0]
-            self._schedule = f"0 */{hours} * * *"
-        elif "day" in schedule.lower():
-            self._schedule = "0 9 * * *"  # 9am daily
-        else:
-            # Assume it's already a cron expression
-            self._schedule = schedule
-
         return self
 
     def notify(
@@ -190,7 +156,6 @@ class MonitorBuilder:
             name=name,
             search_query=self._search_query,
             condition_description=self._condition_description,
-            schedule=self._schedule,
             notify_behavior=self._notify_behavior,
             notifications=self._notifications,
             state=self._state,
@@ -212,7 +177,6 @@ def monitor(search_query: str, client: Torale | None = None) -> MonitorBuilder:
         >>> from torale import monitor
         >>> task = (monitor("When is iPhone 16 being released?")
         ...     .when("A specific date is announced")
-        ...     .check_every("6 hours")
         ...     .notify(email="me@example.com")
         ...     .create())
     """

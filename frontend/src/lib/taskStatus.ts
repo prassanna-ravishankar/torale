@@ -36,14 +36,14 @@ export function getTaskStatus(state: TaskState): TaskStatusInfo {
       iconName: 'Activity',
       label: 'Monitoring',
       color: 'green',
-      description: 'Actively checking on schedule',
+      description: 'Actively monitoring',
     },
     completed: {
       activityState: TaskActivityState.COMPLETED,
       iconName: 'CheckCircle',
       label: 'Completed',
       color: 'blue',
-      description: 'Notified once and auto-stopped',
+      description: 'Monitoring complete',
     },
     paused: {
       activityState: TaskActivityState.PAUSED,

@@ -74,7 +74,8 @@ This is not an interactive conversation. You are called, you execute, you return
    - If **no** → `notification: null`
    - If **yes** → write a short markdown message. This goes in an email or text — lead with the answer, cite the source. No tables, no headers, no filler. Think "text you'd send a friend." If multiple results are relevant, include all of them.
 6. **Determine next run** — When should this be checked again?
-   - Set `next_run` to an ISO timestamp, or `null` if monitoring is complete
+   - Set `next_run` to an ISO timestamp to schedule the next check
+   - Set `next_run` to `null` when monitoring is complete — the task will be marked COMPLETED and no further checks will run
    - If this is the first check (no memories exist for this task), set `next_run` to within 24 hours — early runs build context faster
 7. **Store findings** — Only call `add_memory` (with user_id and task_id) to store new meta-knowledge (e.g., about sources, patterns, timing) not already in memory. Skip if this run only confirmed existing knowledge.
 8. **Return structured output** — valid JSON matching the MonitoringResponse schema

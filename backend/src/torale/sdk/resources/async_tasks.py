@@ -22,7 +22,6 @@ class AsyncTasksResource:
         name: str,
         search_query: str,
         condition_description: str,
-        schedule: str = "0 9 * * *",
         notify_behavior: str | NotifyBehavior = NotifyBehavior.ONCE,
         notifications: list[dict | NotificationConfig] | None = None,
         state: str | TaskState = TaskState.ACTIVE,
@@ -34,7 +33,6 @@ class AsyncTasksResource:
             name: Task name
             search_query: Query to monitor
             condition_description: Condition to trigger on
-            schedule: Cron expression
             notify_behavior: When to notify
             notifications: List of notification configs
             state: Task state ("active" or "paused")
@@ -65,7 +63,6 @@ class AsyncTasksResource:
             "name": name,
             "search_query": search_query,
             "condition_description": condition_description,
-            "schedule": schedule,
             "notify_behavior": notify_behavior,
             "notifications": notifications or [],
             "state": state,
@@ -102,7 +99,6 @@ class AsyncTasksResource:
         name: str | None = None,
         search_query: str | None = None,
         condition_description: str | None = None,
-        schedule: str | None = None,
         notify_behavior: str | NotifyBehavior | None = None,
         notifications: list[dict | NotificationConfig] | None = None,
         state: str | TaskState | None = None,
@@ -116,8 +112,6 @@ class AsyncTasksResource:
             data["search_query"] = search_query
         if condition_description is not None:
             data["condition_description"] = condition_description
-        if schedule is not None:
-            data["schedule"] = schedule
         if notify_behavior is not None:
             if isinstance(notify_behavior, NotifyBehavior):
                 notify_behavior = notify_behavior.value

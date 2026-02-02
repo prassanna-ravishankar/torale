@@ -151,7 +151,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
       // We rely on the backend/agent to:
       // 1. Infer the name (topic)
       // 2. Infer the condition (from instructions)
-      // 3. Infer the schedule/behavior (next_run)
+      // 3. Determine next_run timing
       const newTask = await api.createTask({
         search_query: instructions,
         condition_description: instructions,
