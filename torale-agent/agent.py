@@ -12,6 +12,7 @@ from mem0 import AsyncMemoryClient
 from perplexity import AsyncPerplexity
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, ModelRetry
+from pydantic_ai.models.google import GoogleModelSettings
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -126,6 +127,9 @@ agent = Agent(
     "google-gla:gemini-3-flash-preview",
     output_type=str,
     instructions=instructions,
+    model_settings=GoogleModelSettings(
+        google_thinking_config={"thinking_level": "low", "include_thoughts": True},
+    ),
 )
 
 
