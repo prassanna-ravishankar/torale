@@ -50,6 +50,11 @@ spec:
             secretKeyRef:
               name: {{ .Values.secrets.name }}
               key: PERPLEXITY_API_KEY
+        - name: LOGFIRE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.name }}
+              key: LOGFIRE_TOKEN
         livenessProbe:
           httpGet:
             path: /health

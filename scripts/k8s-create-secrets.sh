@@ -76,6 +76,12 @@ if [ -z "$NOTIFICATION_API_KEY" ]; then
     read -s NOTIFICATION_API_KEY
 fi
 
+if [ -z "$LOGFIRE_TOKEN" ]; then
+    echo ""
+    echo "Logfire token not set (optional - agent observability). Press Enter to skip or paste token:"
+    read -s LOGFIRE_TOKEN
+fi
+
 echo ""
 echo ""
 
@@ -97,7 +103,8 @@ kubectl create secret generic "$SECRET_NAME" \
     --from-literal=NOVU_SECRET_KEY="$NOVU_SECRET_KEY" \
     --from-literal=MEM0_API_KEY="${MEM0_API_KEY:-}" \
     --from-literal=OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
-    --from-literal=NOTIFICATION_API_KEY="${NOTIFICATION_API_KEY:-}"
+    --from-literal=NOTIFICATION_API_KEY="${NOTIFICATION_API_KEY:-}" \
+    --from-literal=LOGFIRE_TOKEN="${LOGFIRE_TOKEN:-}"
 
 echo "✓ Secret '$SECRET_NAME' created in namespace '$K8S_NAMESPACE'"
 echo ""

@@ -13,12 +13,13 @@ dependencies = [
     "perplexityai>=0.27.0",
     "python-dotenv>=1.0.0",
     "uvicorn>=0.34.0",
+    "logfire>=4.21.0",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["."]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest>=7.0",
     "ruff>=0.1.0",

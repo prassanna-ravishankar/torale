@@ -6,6 +6,7 @@ import os
 from datetime import UTC, datetime
 from typing import Optional
 
+import logfire
 from dotenv import load_dotenv
 from mem0 import AsyncMemoryClient
 from perplexity import AsyncPerplexity
@@ -16,6 +17,9 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 load_dotenv()
+
+logfire.configure()
+logfire.instrument_pydantic_ai()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,8 +34,8 @@ class MonitoringResponse(BaseModel):
     evidence: str = Field(description="Internal reasoning and audit trail (not user-facing)")
     sources: list[str] = Field(description="URLs backing the evidence")
     confidence: int = Field(ge=0, le=100, description="Confidence level 0-100")
-    next_run: Optional[str] = Field(description="ISO timestamp for next check, or null if monitoring is complete")
-    notification: Optional[str] = Field(description="Markdown message for the user, or null if nothing to report")
+    next_run: Optional[str] = Field(default=None, description="ISO timestamp for next check, or null if monitoring is complete")
+    notification: Optional[str] = Field(default=None, description="Markdown message for the user, or null if nothing to report")
     topic: Optional[str] = Field(default=None, description="A short, specific 3-5 word title for this monitor (e.g. 'iPhone 16 Release'), if one is needed.")
 
 
@@ -71,7 +75,7 @@ This is not an interactive conversation. You are called, you execute, you return
    - Try multiple queries if needed
 5. **Decide: is this notification-worthy?**
    - Compare findings against the user's intent and what memory already knows
-   - If **no** → `notification: null`
+   - If **no** → omit the `notification` field entirely
    - If **yes** → write a short markdown message. This goes in an email or text — lead with the answer, cite the source. No tables, no headers, no filler. Think "text you'd send a friend." If multiple results are relevant, include all of them.
 6. **Determine next run** — When should this be checked again?
    - Set `next_run` to an ISO timestamp to schedule the next check
@@ -107,7 +111,7 @@ Return ONLY valid JSON matching this schema (no markdown fences, no extra text):
   "sources": ["url1", "url2"],
   "confidence": 0-100,
   "next_run": "ISO timestamp or null if done",
-  "notification": "Markdown message or null if nothing to report",
+  "notification": "(include ONLY if notification-worthy) Markdown message for the user",
   "topic": "Short title for the monitor (optional, null if not needed)"
 }"""
 
