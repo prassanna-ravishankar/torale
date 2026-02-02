@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class NotifyBehavior(str, Enum):
-    ONCE = "once"  # Notify once and auto-disable task
+    ONCE = "once"  # Notify once per condition match
     ALWAYS = "always"  # Notify every time condition is met
 
 
@@ -16,7 +16,7 @@ class TaskState(str, Enum):
 
     ACTIVE = "active"  # Monitoring on schedule
     PAUSED = "paused"  # User manually stopped
-    COMPLETED = "completed"  # Auto-stopped after notify_behavior="once" success
+    COMPLETED = "completed"  # Agent returned next_run=null
 
 
 class TaskStatus(str, Enum):
@@ -44,7 +44,6 @@ class NotificationConfig(BaseModel):
 
 class TaskBase(BaseModel):
     name: str = "New Monitor"
-    schedule: str = "0 */6 * * *"
     state: TaskState = TaskState.ACTIVE
 
     # Grounded search fields
@@ -66,7 +65,6 @@ class TaskCreate(TaskBase):
 
 class TaskUpdate(BaseModel):
     name: str | None = None
-    schedule: str | None = None
     state: TaskState | None = None
     search_query: str | None = None
     condition_description: str | None = None
@@ -81,7 +79,7 @@ class TaskExecutionBase(BaseModel):
     error_message: str | None = None
 
     # Grounded search execution fields
-    condition_met: bool | None = None
+    notification: str | None = None
     change_summary: str | None = None
     grounding_sources: list[dict] | None = None
 
@@ -111,8 +109,8 @@ class Task(TaskBase):
     last_execution_id: UUID | None = None
     last_execution: TaskExecution | None = None  # Embedded from API query
 
-    # Next scheduled run time (injected from APScheduler, not stored in DB)
-    next_run_time: datetime | None = None
+    # Next scheduled run time (persisted in DB, set by agent)
+    next_run: datetime | None = None
 
     # Immediate execution error (only set when run_immediately fails during creation)
     immediate_execution_error: str | None = None
@@ -134,7 +132,6 @@ class TaskTemplateBase(BaseModel):
     icon: str | None = None
     search_query: str
     condition_description: str
-    schedule: str
     notify_behavior: NotifyBehavior = NotifyBehavior.ALWAYS
 
 

@@ -10,7 +10,7 @@ export type NotificationDeliveryStatus = "success" | "failed" | "retrying";
  */
 export interface TaskExecutionSummary {
   id: string;
-  condition_met: boolean;
+  notification: string | null;
   started_at: string;
   completed_at: string | null;
   status: TaskStatus;
@@ -34,8 +34,8 @@ export interface Task {
   last_execution_id: string | null;
   last_execution: TaskExecutionSummary | null;
 
-  // Next scheduled check (from APScheduler)
-  next_run_time: string | null;
+  // Next scheduled check (persisted in DB, set by agent)
+  next_run: string | null;
 
   created_at: string;
   updated_at: string | null;
@@ -87,7 +87,7 @@ export interface TaskExecution {
       current_state: Record<string, any> | null;
     };
   } | null;
-  condition_met: boolean;
+  notification: string | null;
   change_summary: string | null;
   grounding_sources: GroundingSource[];
   error_message: string | null;

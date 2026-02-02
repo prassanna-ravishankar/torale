@@ -1,14 +1,13 @@
-import { Search, CheckCircle2, Play, Pause, User } from 'lucide-react'
+import { Search, Play, Pause, User } from 'lucide-react'
 
 interface Query {
   id: string
   name: string
   search_query: string
   condition_description: string
-  schedule: string
-  next_run_time: string | null
+  next_run: string | null
   is_active: boolean
-  condition_met: boolean
+  has_notification: boolean
   user_email: string
   execution_count: number
   trigger_count: number
@@ -46,12 +45,6 @@ export function QueryCard({ query }: QueryCardProps) {
                   Inactive
                 </span>
               )}
-              {query.condition_met && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] font-mono uppercase tracking-wider border border-emerald-200">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Met
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -72,8 +65,8 @@ export function QueryCard({ query }: QueryCardProps) {
           <div>
             <span className="text-zinc-400">Next Run:</span>{' '}
             <span className="text-zinc-700">
-              {query.next_run_time
-                ? new Date(query.next_run_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+              {query.next_run
+                ? new Date(query.next_run).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
                 : '-'}
             </span>
           </div>

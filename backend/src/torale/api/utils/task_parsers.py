@@ -32,7 +32,7 @@ def _enrich_result_for_frontend(result: dict) -> None:
         result["summary"] = result["change_summary"]
     if "metadata" not in result:
         result["metadata"] = {
-            "changed": result.get("condition_met"),
+            "changed": result.get("notification") is not None,
             "change_explanation": result.get("change_summary"),
             "current_state": None,
         }
@@ -61,7 +61,7 @@ def parse_task_with_execution(row) -> Task:
 
     This helper extracts duplicate logic from list_tasks and get_task endpoints.
     Expects row from query that joins tasks with task_executions, using aliases:
-    - exec_id, exec_condition_met, exec_started_at, etc.
+    - exec_id, exec_notification, exec_started_at, etc.
 
     Args:
         row: Database row with task fields and optional execution fields (prefixed with exec_)
@@ -88,7 +88,7 @@ def parse_task_with_execution(row) -> Task:
         task_dict["last_execution"] = {
             "id": row["exec_id"],
             "task_id": task_dict["id"],
-            "condition_met": row["exec_condition_met"],
+            "notification": row["exec_notification"],
             "started_at": row["exec_started_at"],
             "completed_at": row["exec_completed_at"],
             "status": row["exec_status"],

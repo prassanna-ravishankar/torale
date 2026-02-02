@@ -9,10 +9,9 @@ interface Query {
   name: string
   search_query: string
   condition_description: string
-  schedule: string
-  next_run_time: string | null
+  next_run: string | null
   is_active: boolean
-  condition_met: boolean
+  has_notification: boolean
   created_at: string
   user_email: string
   execution_count: number
@@ -123,15 +122,12 @@ export function QueriesTable() {
                   <td className="p-3 text-xs font-mono text-zinc-700 max-w-xs truncate">{query.search_query}</td>
                   <td className="p-3 text-xs text-zinc-500 max-w-xs truncate">{query.condition_description}</td>
                   <td className="p-3 text-xs font-mono text-zinc-600">
-                    {query.next_run_time
-                      ? new Date(query.next_run_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                    {query.next_run
+                      ? new Date(query.next_run).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
                       : '-'}
                   </td>
                   <td className="p-3">
-                    <div className="flex gap-1">
-                      <StatusBadge variant={query.is_active ? 'active' : 'paused'} />
-                      {query.condition_met && <StatusBadge variant="met" />}
-                    </div>
+                    <StatusBadge variant={query.is_active ? 'active' : 'paused'} />
                   </td>
                   <td className="p-3 text-sm font-mono text-zinc-900">{query.execution_count}</td>
                   <td className="p-3">

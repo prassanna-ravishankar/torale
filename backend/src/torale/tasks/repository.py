@@ -23,7 +23,6 @@ class TaskRepository(BaseRepository):
         self,
         user_id: UUID,
         name: str,
-        schedule: str,
         state: str,
         search_query: str | None,
         condition_description: str | None,
@@ -39,7 +38,6 @@ class TaskRepository(BaseRepository):
         Args:
             user_id: User UUID
             name: Task name
-            schedule: Cron expression
             state: Task state (active/paused/completed)
             search_query: Search query for grounded search
             condition_description: Condition description
@@ -56,7 +54,6 @@ class TaskRepository(BaseRepository):
         data = {
             "user_id": user_id,
             "name": name,
-            "schedule": schedule,
             "state": state,
             "search_query": search_query,
             "condition_description": condition_description,
@@ -86,7 +83,7 @@ class TaskRepository(BaseRepository):
             self.tasks.star,
             self.users.username.as_("creator_username"),
             self.executions.id.as_("exec_id"),
-            self.executions.condition_met.as_("exec_condition_met"),
+            self.executions.notification.as_("exec_notification"),
             self.executions.started_at.as_("exec_started_at"),
             self.executions.completed_at.as_("exec_completed_at"),
             self.executions.status.as_("exec_status"),
@@ -123,7 +120,7 @@ class TaskRepository(BaseRepository):
             self.tasks.star,
             self.users.username.as_("creator_username"),
             self.executions.id.as_("exec_id"),
-            self.executions.condition_met.as_("exec_condition_met"),
+            self.executions.notification.as_("exec_notification"),
             self.executions.started_at.as_("exec_started_at"),
             self.executions.completed_at.as_("exec_completed_at"),
             self.executions.status.as_("exec_status"),
@@ -144,7 +141,6 @@ class TaskRepository(BaseRepository):
         self,
         task_id: UUID,
         name: str | None = None,
-        schedule: str | None = None,
         state: str | None = None,
         search_query: str | None = None,
         condition_description: str | None = None,
@@ -160,7 +156,6 @@ class TaskRepository(BaseRepository):
         Args:
             task_id: Task UUID
             name: New task name
-            schedule: New schedule
             state: New state
             search_query: New search query
             condition_description: New condition
@@ -178,8 +173,6 @@ class TaskRepository(BaseRepository):
 
         if name is not None:
             data["name"] = name
-        if schedule is not None:
-            data["schedule"] = schedule
         if state is not None:
             data["state"] = state
         if search_query is not None:
@@ -395,7 +388,7 @@ class TaskExecutionRepository(BaseRepository):
         completed_at: str | None = None,
         result: dict | None = None,
         error_message: str | None = None,
-        condition_met: bool | None = None,
+        notification: str | None = None,
         change_summary: str | None = None,
         grounding_sources: list[dict] | None = None,
     ) -> dict:
@@ -407,7 +400,7 @@ class TaskExecutionRepository(BaseRepository):
             completed_at: Completion timestamp (use "NOW()" for current time)
             result: Result dict
             error_message: Error message
-            condition_met: Whether condition was met
+            notification: Notification text (if condition met)
             change_summary: Change summary text
             grounding_sources: List of grounding sources
 
@@ -422,8 +415,8 @@ class TaskExecutionRepository(BaseRepository):
             data["result"] = json.dumps(result)
         if error_message is not None:
             data["error_message"] = error_message
-        if condition_met is not None:
-            data["condition_met"] = condition_met
+        if notification is not None:
+            data["notification"] = notification
         if change_summary is not None:
             data["change_summary"] = change_summary
         if grounding_sources is not None:
@@ -499,7 +492,7 @@ class TaskExecutionRepository(BaseRepository):
     async def find_notifications(
         self, task_id: UUID, limit: int = 50, offset: int = 0
     ) -> list[dict]:
-        """Find executions where condition was met (notifications sent).
+        """Find executions where a notification was sent.
 
         Args:
             task_id: Task UUID
@@ -507,11 +500,11 @@ class TaskExecutionRepository(BaseRepository):
             offset: Pagination offset
 
         Returns:
-            List of execution records where condition_met = true
+            List of execution records where notification IS NOT NULL
         """
         query = PostgreSQLQuery.from_(self.executions).select("*")
         query = query.where(self.executions.task_id == Parameter("$1"))
-        query = query.where(self.executions.condition_met.eq(True))
+        query = query.where(self.executions.notification.isnotnull())
         query = query.orderby(self.executions.started_at, order=Order.desc)
         query = query.limit(limit).offset(offset)
 

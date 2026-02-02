@@ -22,7 +22,6 @@ class TasksResource:
         name: str,
         search_query: str,
         condition_description: str,
-        schedule: str = "0 9 * * *",
         notify_behavior: str | NotifyBehavior = NotifyBehavior.ONCE,
         notifications: list[dict | NotificationConfig] | None = None,
         state: str | TaskState = TaskState.ACTIVE,
@@ -34,7 +33,6 @@ class TasksResource:
             name: Task name
             search_query: Query to monitor (e.g., "When is iPhone 16 being released?")
             condition_description: Condition to trigger on (e.g., "A specific date is announced")
-            schedule: Cron expression for task schedule (default: "0 9 * * *" = 9am daily)
             notify_behavior: When to notify ("once" or "always")
             notifications: List of notification configs
             state: Task state ("active" or "paused")
@@ -70,7 +68,6 @@ class TasksResource:
             "name": name,
             "search_query": search_query,
             "condition_description": condition_description,
-            "schedule": schedule,
             "notify_behavior": notify_behavior,
             "notifications": notifications or [],
             "state": state,
@@ -124,7 +121,6 @@ class TasksResource:
         name: str | None = None,
         search_query: str | None = None,
         condition_description: str | None = None,
-        schedule: str | None = None,
         notify_behavior: str | NotifyBehavior | None = None,
         notifications: list[dict | NotificationConfig] | None = None,
         state: str | TaskState | None = None,
@@ -137,7 +133,6 @@ class TasksResource:
             name: New task name
             search_query: New search query
             condition_description: New condition description
-            schedule: New schedule
             notify_behavior: New notify behavior
             notifications: New notification configs
             state: New task state ("active", "paused", "completed")
@@ -159,8 +154,6 @@ class TasksResource:
             data["search_query"] = search_query
         if condition_description is not None:
             data["condition_description"] = condition_description
-        if schedule is not None:
-            data["schedule"] = schedule
         if notify_behavior is not None:
             if isinstance(notify_behavior, NotifyBehavior):
                 notify_behavior = notify_behavior.value
@@ -235,12 +228,12 @@ class TasksResource:
             limit: Maximum number of notifications to return
 
         Returns:
-            List of TaskExecution objects where condition_met=True
+            List of TaskExecution objects where notification is present
 
         Example:
             >>> notifications = client.tasks.notifications("550e8400-e29b-41d4-a716-446655440000")
             >>> for notif in notifications:
-            ...     print(f"{notif.started_at}: {notif.change_summary}")
+            ...     print(f"{notif.started_at}: {notif.notification or notif.change_summary}")
         """
         response = self.client.get(
             f"/api/v1/tasks/{task_id}/notifications", params={"limit": limit}

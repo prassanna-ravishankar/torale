@@ -49,12 +49,12 @@ async def persist_execution_result(task_id: str, execution_id: str, agent_result
 
     Maps agent response fields:
     - evidence -> last_known_state (narrative string replaces structured JSON)
-    - condition_met, change_summary, grounding_sources -> task_executions columns
+    - notification, change_summary, grounding_sources -> task_executions columns
     - Full agent_result -> result JSONB
     """
     now_utc = datetime.now(UTC)
 
-    condition_met = agent_result.get("condition_met", False)
+    notification_text = agent_result.get("notification")
     change_summary = agent_result.get("change_summary", "")
     grounding_sources = agent_result.get("grounding_sources", [])
     evidence = agent_result.get("evidence", "")
@@ -66,13 +66,13 @@ async def persist_execution_result(task_id: str, execution_id: str, agent_result
                 """
                 UPDATE task_executions
                 SET status = $1, result = $2, completed_at = $3,
-                    condition_met = $4, change_summary = $5, grounding_sources = $6
+                    notification = $4, change_summary = $5, grounding_sources = $6
                 WHERE id = $7
                 """,
                 TaskStatus.SUCCESS.value,
                 json.dumps(agent_result),
                 now_utc,
-                condition_met,
+                notification_text,
                 change_summary,
                 json.dumps(grounding_sources),
                 UUID(execution_id),
@@ -155,10 +155,9 @@ async def send_email_notification(
             search_query=task["search_query"],
             condition_description=task["condition_description"],
             notify_behavior=task["notify_behavior"],
-            schedule=task["schedule"],
             first_execution_result={
                 "answer": result.get("summary", ""),
-                "condition_met": result.get("metadata", {}).get("changed", False),
+                "condition_met": result.get("notification") is not None,
                 "grounding_sources": result.get("sources", []),
             },
             task_id=str(task_id),
@@ -188,7 +187,7 @@ async def send_email_notification(
     # Send email via Novu
     answer = result.get("summary", "")
     sources = result.get("sources", [])
-    change_summary = result.get("metadata", {}).get("change_explanation", "")
+    change_summary = result.get("notification") or result.get("summary", "")
 
     novu_result = await novu_service.send_condition_met_notification(
         subscriber_id=recipient_email,

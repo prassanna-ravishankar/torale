@@ -320,12 +320,17 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             </div>
             <div className="flex items-center gap-3 text-zinc-500 text-sm">
               <span className="truncate">{task.search_query}</span>
-              {task.next_run_time && (
+              {task.next_run ? (
                 <span className="flex items-center gap-1 text-xs font-mono text-zinc-400 whitespace-nowrap">
                   <Clock className="w-3 h-3" />
-                  Next check {formatTimeUntil(task.next_run_time)}
+                  Next check {formatTimeUntil(task.next_run)}
                 </span>
-              )}
+              ) : task.state === 'completed' ? (
+                <span className="flex items-center gap-1 text-xs font-mono text-zinc-400 whitespace-nowrap">
+                  <Clock className="w-3 h-3" />
+                  Monitoring complete
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
@@ -358,12 +363,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             <p className="text-sm text-zinc-700 leading-relaxed line-clamp-3">
               {firstExecution.result.summary}
             </p>
-          )}
-          {firstExecution.condition_met !== undefined && (
-            <div className="mt-3 pt-3 border-zinc-100 flex items-center justify-between">
-              <span className="text-xs font-mono text-zinc-500">Condition</span>
-              <StatusBadge variant={firstExecution.condition_met ? 'met' : 'not_met'} size="sm" />
-            </div>
           )}
         </div>
       )}
@@ -472,7 +471,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         <TabsContent value="notifications" className="mt-6">
           <ExecutionTimeline
             executions={notifications}
-            highlightNotifications={true}
           />
         </TabsContent>
       </Tabs>

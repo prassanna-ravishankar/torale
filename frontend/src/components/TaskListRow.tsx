@@ -87,11 +87,11 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                 {lastExecution ? formatTimeAgo(lastExecution.started_at) : 'Never'}
               </span>
             </div>
-            {task.next_run_time && (
+            {task.next_run && (
               <div className="flex items-center gap-1.5 min-w-0">
                 <Clock className="w-3 h-3 flex-shrink-0" />
                 <span className="truncate text-zinc-400">
-                  Next: {formatTimeUntil(task.next_run_time)}
+                  Next: {formatTimeUntil(task.next_run)}
                 </span>
               </div>
             )}
@@ -132,8 +132,8 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
           )}
         </td>
         <td className="hidden md:table-cell p-4">
-          {task.next_run_time ? (
-            <span className="text-sm text-zinc-500">{formatTimeUntil(task.next_run_time)}</span>
+          {task.next_run ? (
+            <span className="text-sm text-zinc-500">{formatTimeUntil(task.next_run)}</span>
           ) : (
             <span className="text-sm text-zinc-400">-</span>
           )}
@@ -164,13 +164,6 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                       <p className="text-sm text-zinc-700 leading-relaxed line-clamp-3">
                         {lastExecution.result.summary}
                       </p>
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className="text-xs font-mono text-zinc-500">Condition:</span>
-                        <StatusBadge
-                          variant={lastExecution.condition_met ? 'met' : 'not_met'}
-                          size="sm"
-                        />
-                      </div>
                     </div>
                   ) : (
                     <p className="text-sm text-zinc-500 mb-4">No results yet</p>
@@ -212,13 +205,6 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
                       <p className="text-sm text-zinc-700 leading-relaxed line-clamp-3">
                         {lastExecution.result.summary}
                       </p>
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className="text-xs font-mono text-zinc-500">Condition:</span>
-                        <StatusBadge
-                          variant={lastExecution.condition_met ? 'met' : 'not_met'}
-                          size="sm"
-                        />
-                      </div>
                     </div>
                   ) : (
                     <p className="text-sm text-zinc-500 mb-4">No results yet</p>

@@ -63,6 +63,7 @@ def _parse_next_run(value: str | None) -> datetime | None:
 
 
 def _resolve_next_run(value: str | None) -> datetime:
+    """Resolve a next_run string to a future datetime. Falls back to now + 24h."""
     now = datetime.now(UTC)
     dt = _parse_next_run(value)
     if dt is None or dt <= now:
@@ -74,25 +75,26 @@ async def _schedule_next_run(
     task_id: str,
     user_id: str,
     task_name: str,
-    next_run_value: str | None,
+    next_run_dt: datetime,
     execution_id: str | None,
 ) -> None:
+    """Schedule an APScheduler job and persist next_run to DB."""
     try:
-        row = await db.fetch_one("SELECT state FROM tasks WHERE id = $1", uuid.UUID(task_id))
-        if not row or row["state"] != TaskState.ACTIVE.value:
-            return
-
-        run_date = _resolve_next_run(next_run_value)
         scheduler = get_scheduler()
         job_id = f"task-{task_id}"
         scheduler.add_job(
             JOB_FUNC_REF,
-            trigger=DateTrigger(run_date=run_date),
+            trigger=DateTrigger(run_date=next_run_dt),
             id=job_id,
             args=[task_id, user_id, task_name],
             replace_existing=True,
         )
-        logger.info(f"Scheduled task {task_id} next run at {run_date.isoformat()}")
+        await db.execute(
+            "UPDATE tasks SET next_run = $1 WHERE id = $2",
+            next_run_dt,
+            uuid.UUID(task_id),
+        )
+        logger.info(f"Scheduled task {task_id} next run at {next_run_dt.isoformat()}")
     except Exception as e:
         logger.error(f"Failed to schedule next run for task {task_id}: {e}", exc_info=True)
         if execution_id:
@@ -123,6 +125,7 @@ async def _execute(
         execution_id = await create_execution_record(task_id)
 
     next_run_value: str | None = None
+    execution_succeeded = False
 
     try:
         await db.execute(
@@ -167,7 +170,6 @@ async def _execute(
 
         # Map agent response to execution result
         notification = agent_response.get("notification")
-        condition_met = notification is not None
         evidence = agent_response.get("evidence", "")
         topic = agent_response.get("topic")
 
@@ -193,7 +195,7 @@ async def _execute(
         next_run_dt = _parse_next_run(next_run_value)
         next_run = next_run_dt.isoformat() if next_run_dt else None
 
-        change_summary = notification if condition_met else evidence
+        change_summary = notification or evidence
 
         def _source_entry(u):
             if isinstance(u, str):
@@ -210,15 +212,14 @@ async def _execute(
                 "notification": notification,
                 "confidence": confidence,
                 "next_run": next_run,
-                "condition_met": condition_met,
                 "change_summary": change_summary,
                 "grounding_sources": grounding_sources,
             },
         )
 
-        # Send notifications if condition met
+        # Send notifications if notification text present
         notification_failed = False
-        if condition_met and not suppress_notifications:
+        if notification and not suppress_notifications:
             try:
                 notification_context = await fetch_notification_context(
                     task_id, execution_id, user_id
@@ -230,7 +231,7 @@ async def _execute(
                     "execution_id": execution_id,
                     "summary": change_summary,
                     "sources": grounding_sources,
-                    "metadata": {"changed": True, "change_explanation": change_summary},
+                    "notification": notification,
                     "is_first_execution": False,
                 }
 
@@ -250,22 +251,7 @@ async def _execute(
         if notification_failed:
             await _merge_execution_result(execution_id, {"notification_failed": True})
 
-        # Auto-complete if notify_behavior is "once" and condition met
-        if condition_met and task["notify_behavior"] == "once":
-            if notification_failed:
-                logger.error(
-                    f"Skipping auto-complete for once-task {task_id} — notification delivery failed"
-                )
-            else:
-                try:
-                    task_service = TaskService(db=db)
-                    await task_service.complete(
-                        task_id=uuid.UUID(task_id), current_state=TaskState.ACTIVE
-                    )
-                    logger.info(f"Task {task_id} auto-completed (notify_behavior=once)")
-                except Exception as e:
-                    logger.error(f"Auto-complete failed for task {task_id}: {e}", exc_info=True)
-                    await _merge_execution_result(execution_id, {"auto_complete_failed": True})
+        execution_succeeded = True
 
     except Exception as e:
         logger.error(f"Task execution failed for {task_id}: {e}", exc_info=True)
@@ -284,13 +270,41 @@ async def _execute(
                 )
         raise
     finally:
-        await _schedule_next_run(
-            task_id=task_id,
-            user_id=user_id,
-            task_name=task_name,
-            next_run_value=next_run_value,
-            execution_id=execution_id,
-        )
+        if execution_succeeded and next_run_value is None:
+            # Agent returned next_run=null → monitoring complete
+            try:
+                task_service = TaskService(db=db)
+                await task_service.complete(
+                    task_id=uuid.UUID(task_id), current_state=TaskState.ACTIVE
+                )
+                await db.execute(
+                    "UPDATE tasks SET next_run = NULL WHERE id = $1",
+                    uuid.UUID(task_id),
+                )
+                logger.info(f"Task {task_id} completed (agent returned next_run=null)")
+            except Exception as e:
+                logger.error(f"Auto-complete failed for task {task_id}: {e}", exc_info=True)
+                await _merge_execution_result(execution_id, {"auto_complete_failed": True})
+        elif execution_succeeded:
+            # Agent returned a next_run date → schedule next check
+            resolved_dt = _resolve_next_run(next_run_value)
+            await _schedule_next_run(
+                task_id=task_id,
+                user_id=user_id,
+                task_name=task_name,
+                next_run_dt=resolved_dt,
+                execution_id=execution_id,
+            )
+        else:
+            # Execution failed → retry in 1 hour, don't complete
+            retry_dt = datetime.now(UTC) + timedelta(hours=1)
+            await _schedule_next_run(
+                task_id=task_id,
+                user_id=user_id,
+                task_name=task_name,
+                next_run_dt=retry_dt,
+                execution_id=execution_id,
+            )
 
 
 async def execute_task_job(task_id: str, user_id: str, task_name: str) -> None:

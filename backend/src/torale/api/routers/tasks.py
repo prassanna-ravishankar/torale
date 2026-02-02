@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import secrets
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from apscheduler.jobstores.base import JobLookupError
@@ -37,7 +38,7 @@ _TASK_WITH_EXECUTION_QUERY = """
     SELECT t.*,
            u.username as creator_username,
            e.id as exec_id,
-           e.condition_met as exec_condition_met,
+           e.notification as exec_notification,
            e.started_at as exec_started_at,
            e.completed_at as exec_completed_at,
            e.status as exec_status,
@@ -147,11 +148,12 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
     )
 
     final_condition = task.condition_description or task.search_query
+    initial_next_run = datetime.now(UTC) + timedelta(minutes=1)
 
     # Create task in database
     query = """
         INSERT INTO tasks (
-            user_id, name, schedule, state,
+            user_id, name, state, next_run,
             search_query, condition_description, notify_behavior, notifications,
             notification_channels, notification_email, webhook_url, webhook_secret
         )
@@ -163,8 +165,8 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
         query,
         user.id,
         task.name,
-        task.schedule,
         task.state.value,
+        initial_next_run,
         task.search_query,
         final_condition,
         task.notify_behavior,
@@ -192,7 +194,7 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
                 task_id=UUID(task_id),
                 task_name=task.name,
                 user_id=user.id,
-                schedule=task.schedule,
+                next_run=initial_next_run,
             )
             logger.info(f"Successfully created schedule for task {task_id}")
         except Exception as e:
@@ -222,25 +224,6 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
     return Task(**parse_task_row(row), immediate_execution_error=immediate_execution_error)
 
 
-def _get_next_run_times() -> dict[str, any]:
-    """Batch-fetch next_run_time for all APScheduler jobs, keyed by job ID."""
-    try:
-        scheduler = get_scheduler()
-        return {job.id: job.next_run_time for job in scheduler.get_jobs()}
-    except Exception:
-        logger.debug("Could not fetch scheduler jobs for next_run_time", exc_info=True)
-        return {}
-
-
-def _inject_next_run_time(task: Task, next_run_times: dict[str, any]) -> Task:
-    """Inject next_run_time from scheduler into a Task object."""
-    job_id = f"task-{task.id}"
-    nrt = next_run_times.get(job_id)
-    if nrt is not None:
-        task.next_run_time = nrt
-    return task
-
-
 @router.get("/", response_model=list[Task])
 async def list_tasks(
     user: CurrentUser, state: TaskState | None = None, db: Database = Depends(get_db)
@@ -254,8 +237,7 @@ async def list_tasks(
         query = base_query + " ORDER BY t.created_at DESC"
         rows = await db.fetch_all(query, user.id)
 
-    next_run_times = _get_next_run_times()
-    return [_inject_next_run_time(parse_task_with_execution(row), next_run_times) for row in rows]
+    return [parse_task_with_execution(row) for row in rows]
 
 
 def _handle_background_task_result(task: asyncio.Task) -> None:
@@ -336,10 +318,6 @@ async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get
         )
 
     task = parse_task_with_execution(row)
-
-    # Inject next_run_time for single task lookup
-    next_run_times = _get_next_run_times()
-    _inject_next_run_time(task, next_run_times)
 
     # TODO: Implement async view counting (see public_tasks.py)
     if is_public and not is_owner:
@@ -526,15 +504,15 @@ async def fork_task(
                             task_id,
                         )
 
-                    # Create forked task (in PAUSED state, not public)
+                    # Create forked task (in PAUSED state, not public, next_run=NULL)
                     fork_query = """
                         INSERT INTO tasks (
-                            user_id, name, schedule, state,
+                            user_id, name, state,
                             search_query, condition_description, notify_behavior, notifications,
                             notification_channels, notification_email, webhook_url, webhook_secret,
                             forked_from_task_id, is_public
                         )
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                         RETURNING *
                     """
 
@@ -542,7 +520,6 @@ async def fork_task(
                         fork_query,
                         user.id,
                         fork_name,
-                        source["schedule"],
                         TaskState.PAUSED.value,
                         source["search_query"],
                         source["condition_description"],
@@ -690,7 +667,7 @@ async def update_task(
                 to_state=new_state,
                 user_id=user.id,
                 task_name=row["name"],
-                schedule=row["schedule"],
+                next_run=datetime.now(UTC) + timedelta(minutes=1),
             )
 
             logger.info(
@@ -849,11 +826,11 @@ async def get_task_notifications(
     """
     await _check_task_access(db, task_id, user)
 
-    # Get executions where condition_met is true
+    # Get executions where notification was sent
     notifications_query = """
         SELECT *
         FROM task_executions
-        WHERE task_id = $1 AND condition_met = true
+        WHERE task_id = $1 AND notification IS NOT NULL
         ORDER BY started_at DESC
         LIMIT $2
     """

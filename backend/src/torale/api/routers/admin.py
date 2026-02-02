@@ -94,7 +94,7 @@ async def get_platform_stats(
         text("""
         SELECT
             COUNT(*) as total_tasks,
-            SUM(CASE WHEN e.condition_met = true THEN 1 ELSE 0 END) as triggered_tasks
+            SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END) as triggered_tasks
         FROM tasks t
         LEFT JOIN task_executions e ON t.last_execution_id = e.id
         WHERE t.state = 'active'
@@ -132,7 +132,7 @@ async def get_platform_stats(
         SELECT
             t.search_query,
             COUNT(*) as task_count,
-            SUM(CASE WHEN e.condition_met = true THEN 1 ELSE 0 END) as triggered_count
+            SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END) as triggered_count
         FROM tasks t
         LEFT JOIN task_executions e ON t.last_execution_id = e.id
         WHERE t.search_query IS NOT NULL
@@ -186,8 +186,8 @@ async def list_all_queries(
 
     Returns array of tasks with:
     - User email
-    - Task details (name, query, condition, schedule)
-    - Execution statistics (count, trigger count, condition_met)
+    - Task details (name, query, condition, next_run)
+    - Execution statistics (count, trigger count, notification)
     """
     active_filter = "AND t.state = 'active'" if active_only else ""
 
@@ -198,19 +198,19 @@ async def list_all_queries(
             t.name,
             t.search_query,
             t.condition_description,
-            t.schedule,
+            t.next_run,
             t.state,
-            le.condition_met as condition_met,
+            le.notification as last_notification,
             t.created_at,
             u.email as user_email,
             COUNT(te.id) as execution_count,
-            SUM(CASE WHEN te.condition_met = true THEN 1 ELSE 0 END) as trigger_count
+            SUM(CASE WHEN te.notification IS NOT NULL THEN 1 ELSE 0 END) as trigger_count
         FROM tasks t
         JOIN users u ON u.id = t.user_id
         LEFT JOIN task_executions le ON t.last_execution_id = le.id
         LEFT JOIN task_executions te ON te.task_id = t.id
         WHERE 1=1 {active_filter}
-        GROUP BY t.id, u.email, le.condition_met
+        GROUP BY t.id, u.email, le.notification
         ORDER BY t.created_at DESC
         LIMIT :limit
         """),
@@ -223,9 +223,9 @@ async def list_all_queries(
             "name": row[1],
             "search_query": row[2],
             "condition_description": row[3],
-            "schedule": row[4],
+            "next_run": row[4].isoformat() if row[4] else None,
             "state": row[5],
-            "condition_met": row[6] or False,
+            "has_notification": row[6] is not None,
             "created_at": row[7].isoformat() if row[7] else None,
             "user_email": row[8],
             "execution_count": row[9] if row[9] else 0,
@@ -280,7 +280,7 @@ async def list_recent_executions(
             te.completed_at,
             te.result,
             te.error_message,
-            te.condition_met,
+            te.notification,
             te.change_summary,
             te.grounding_sources,
             t.search_query,
@@ -304,7 +304,7 @@ async def list_recent_executions(
             "completed_at": row[4].isoformat() if row[4] else None,
             "result": parse_json_field(row[5]),
             "error_message": row[6],
-            "condition_met": row[7],
+            "notification": row[7],
             "change_summary": row[8],
             "grounding_sources": parse_json_field(row[9]),
             "search_query": row[10],
@@ -422,7 +422,7 @@ async def list_users(
             u.created_at,
             COUNT(DISTINCT t.id) as task_count,
             COUNT(te.id) as total_executions,
-            SUM(CASE WHEN te.condition_met = true THEN 1 ELSE 0 END) as conditions_met_count
+            SUM(CASE WHEN te.notification IS NOT NULL THEN 1 ELSE 0 END) as notifications_count
         FROM users u
         LEFT JOIN tasks t ON t.user_id = u.id
         LEFT JOIN task_executions te ON te.task_id = t.id
@@ -473,7 +473,7 @@ async def list_users(
             "created_at": row[4].isoformat() if row[4] else None,
             "task_count": row[5] if row[5] else 0,
             "total_executions": row[6] if row[6] else 0,
-            "conditions_met_count": row[7] if row[7] else 0,
+            "notifications_count": row[7] if row[7] else 0,
             "role": role_map.get(row[2]),  # Get role from pre-fetched map
         }
 

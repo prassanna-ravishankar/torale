@@ -377,7 +377,7 @@ class TestPublicTaskAccess:
             "creator_username": "testuser",  # Add missing creator_username field
             # Execution fields (LEFT JOIN result - no execution)
             "exec_id": None,
-            "exec_condition_met": None,
+            "exec_notification": None,
             "exec_started_at": None,
             "exec_completed_at": None,
             "exec_status": None,
@@ -453,7 +453,7 @@ class TestPublicTaskAccess:
             "creator_username": "testuser",  # Add missing creator_username field
             # Execution fields (LEFT JOIN result - no execution)
             "exec_id": None,
-            "exec_condition_met": None,
+            "exec_notification": None,
             "exec_started_at": None,
             "exec_completed_at": None,
             "exec_status": None,

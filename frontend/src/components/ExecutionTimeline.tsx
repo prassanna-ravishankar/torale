@@ -11,7 +11,6 @@ import {
 
 interface ExecutionTimelineProps {
   executions: TaskExecution[];
-  highlightNotifications?: boolean;
 }
 
 const getStatusIcon = (status: string) => {
@@ -37,20 +36,13 @@ const formatDate = (dateStr: string) => {
 
 interface ExecutionCardProps {
   execution: TaskExecution;
-  highlightNotifications: boolean;
 }
 
-const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotifications }) => {
+const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-          <BrutalistCard
-            className={
-              highlightNotifications && execution.condition_met
-                ? "border-emerald-500 bg-emerald-50/30"
-                : ""
-            }
-          >
+          <BrutalistCard>
             <div className="p-4">
               {/* Layer 1: Status Summary (Always Visible) */}
               <div className="flex items-center justify-between gap-4 mb-3">
@@ -67,9 +59,6 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
                       }
                     />
 
-                    {execution.condition_met && (
-                      <StatusBadge variant="met" />
-                    )}
                   </div>
                 </div>
 
@@ -148,7 +137,6 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution, highlightNotif
 
 export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
   executions,
-  highlightNotifications = false,
 }) => {
   if (executions.length === 0) {
     return (
@@ -168,7 +156,6 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
         <ExecutionCard
           key={execution.id}
           execution={execution}
-          highlightNotifications={highlightNotifications}
         />
       ))}
     </div>

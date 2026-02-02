@@ -124,7 +124,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
 
               <SearchPreview
                 answer={execution.result.summary}
-                conditionMet={execution.condition_met || false}
+                conditionMet={!!execution.notification}
                 conditionDescription={task.condition_description}
                 groundingSources={execution.grounding_sources || []}
                 currentState={execution.result.metadata?.current_state}
