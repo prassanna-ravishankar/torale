@@ -1,10 +1,8 @@
 FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
 
-# System deps: curl for health checks, nodejs+npm for perplexity MCP (npx)
+# System deps: curl for health checks
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    nodejs \
-    npm \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

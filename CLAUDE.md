@@ -20,11 +20,8 @@ torale/
 │   ├── src/torale/scheduler/ # APScheduler jobs, activities, state sync
 │   ├── src/torale/tasks/    # Task domain models and state machine
 │   └── alembic/             # DB migrations
-├── torale-agent/            # Monitoring agent (FastHarness + Claude Agent SDK)
-│   ├── agent.py             # Agent service entry point
-│   ├── CLAUDE.md            # Agent workflow definition
-│   ├── .mcp.json            # MCP tool config (datetime, mem0, perplexity)
-│   └── .claude/settings.json# Agent permissions
+├── torale-agent/            # Monitoring agent (Pydantic AI + Gemini)
+│   └── agent.py             # Agent service entry point (A2A server)
 ├── frontend/                # React + TypeScript + Vite
 │   └── src/components/      # UI components
 │       └── torale/          # Design system components
@@ -39,7 +36,7 @@ torale/
 - `just test-integration` - Run integration tests
 - `just lint` - Run all linting (backend + frontend + TypeScript)
 
-**Architecture**: Frontend → FastAPI → APScheduler (cron) → Agent → Gemini + Google Search → Notifications
+**Architecture**: Frontend → FastAPI → APScheduler (cron) → Agent → Gemini + Perplexity Search → Notifications
 
 See `docs-site/architecture/` for detailed docs.
 
@@ -104,9 +101,7 @@ refactor: code change that neither fixes nor adds
 
 | What | Where |
 |------|-------|
-| Agent service (experimental v3) | `torale-agent/agent.py` |
-| Agent workflow | `torale-agent/CLAUDE.md` |
-| Agent MCP tools | `torale-agent/.mcp.json` |
+| Agent service | `torale-agent/agent.py` |
 | Agent run | `just dev-noauth` (included in docker compose) or `cd torale-agent && uv run uvicorn agent:app --host 0.0.0.0 --port 8001` |
 | Agent call | `curl -X POST http://localhost:8001/ -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"1","method":"message/send","params":{"message":{"kind":"message","messageId":"msg-001","role":"user","parts":[{"kind":"text","text":"YOUR PROMPT"}]}}}'` |
 | Agent poll | `curl -X POST http://localhost:8001/ -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"2","method":"tasks/get","params":{"id":"TASK_ID"}}'` |

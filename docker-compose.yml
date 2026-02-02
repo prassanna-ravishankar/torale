@@ -69,7 +69,6 @@ services:
       - CLERK_PUBLISHABLE_KEY=${CLERK_PUBLISHABLE_KEY}
       - AGENT_URL=${AGENT_URL:-http://agent:8000}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - NOTIFICATION_API_KEY=${NOTIFICATION_API_KEY}
       - NOVU_SECRET_KEY=${NOVU_SECRET_KEY}
       - NOVU_WORKFLOW_ID=${NOVU_WORKFLOW_ID:-torale-condition-met}
@@ -88,7 +87,7 @@ services:
   # ============================================
   # Torale Agent (Local Development)
   # ============================================
-  # Claude-powered monitoring agent (A2A JSON-RPC)
+  # Gemini-powered monitoring agent (A2A JSON-RPC)
 
   agent:
     build:
@@ -97,7 +96,7 @@ services:
     ports:
       - "8001:8000"
     environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
       - MEM0_API_KEY=${MEM0_API_KEY}
     volumes:

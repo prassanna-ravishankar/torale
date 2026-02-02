@@ -35,11 +35,11 @@ spec:
         env:
         - name: AGENT_URL
           value: "http://{{ include "torale.fullname" . }}-agent:80"
-        - name: ANTHROPIC_API_KEY
+        - name: GEMINI_API_KEY
           valueFrom:
             secretKeyRef:
               name: {{ .Values.secrets.name }}
-              key: ANTHROPIC_API_KEY
+              key: GEMINI_API_KEY
         - name: MEM0_API_KEY
           valueFrom:
             secretKeyRef:
