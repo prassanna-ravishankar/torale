@@ -749,13 +749,13 @@ class TestTaskForking:
         insert_args = insert_call[0]  # Positional args
 
         # The first arg is the query string. The subsequent args are the values.
-        # Positional args to fetchrow after query: user_id(1), name(2), schedule(3),
-        # state(4), search_query(5), condition_description(6), notify_behavior(7),
-        # notifications(8), notification_channels(9), notification_email(10), webhook_url(11), webhook_secret(12)
-        assert insert_args[8] == json.dumps(
+        # Positional args to fetchrow after query: user_id(1), name(2), state(3),
+        # search_query(4), condition_description(5), notify_behavior(6),
+        # notifications(7), notification_channels(8), notification_email(9), webhook_url(10), webhook_secret(11)
+        assert insert_args[7] == json.dumps(
             []
         )  # notifications should be an empty JSON array string
-        assert insert_args[9] == []  # notification_channels should be empty list
-        assert insert_args[10] is None  # notification_email should be None
-        assert insert_args[11] is None  # webhook_url should be None
-        assert insert_args[12] is None  # webhook_secret should be None
+        assert insert_args[8] == []  # notification_channels should be empty list
+        assert insert_args[9] is None  # notification_email should be None
+        assert insert_args[10] is None  # webhook_url should be None
+        assert insert_args[11] is None  # webhook_secret should be None

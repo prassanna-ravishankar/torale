@@ -19,7 +19,6 @@ def _make_agent_result():
         "notification": None,
         "confidence": "high",
         "next_run": None,
-        "condition_met": False,
         "change_summary": "No changes detected",
         "grounding_sources": [{"url": "https://example.com"}],
     }
@@ -64,12 +63,12 @@ class TestPersistExecutionResult:
     @pytest.mark.asyncio
     @patch(f"{MODULE}.db")
     async def test_field_mapping(self, mock_db):
-        """evidence -> last_known_state, condition_met/change_summary/grounding_sources mapped."""
+        """evidence -> last_known_state, notification/change_summary/grounding_sources mapped."""
         mock_conn = _setup_db_mock(mock_db)
 
         agent_result = _make_agent_result()
         agent_result["evidence"] = "Price is $999"
-        agent_result["condition_met"] = True
+        agent_result["notification"] = "Price dropped!"
         agent_result["change_summary"] = "Price dropped"
         agent_result["grounding_sources"] = [{"url": "https://apple.com"}]
 
@@ -79,7 +78,7 @@ class TestPersistExecutionResult:
 
         exec_call = mock_conn.execute.call_args_list[0]
         exec_args = exec_call[0]
-        assert exec_args[4] is True  # condition_met
+        assert exec_args[4] == "Price dropped!"  # notification
         assert exec_args[5] == "Price dropped"  # change_summary
         assert json.loads(exec_args[6]) == [{"url": "https://apple.com"}]
 

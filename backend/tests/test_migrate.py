@@ -1,6 +1,6 @@
 """Tests for scheduler migration functions (sync_jobs_from_database, reap_stale_executions)."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -9,12 +9,12 @@ import pytest
 MODULE = "torale.scheduler.migrate"
 
 
-def _make_task_row(state="active", schedule="0 9 * * *"):
+def _make_task_row(state="active", next_run=None):
     return {
         "id": uuid4(),
         "user_id": uuid4(),
         "name": "Test Task",
-        "schedule": schedule,
+        "next_run": next_run or (datetime.now(UTC) + timedelta(hours=24)),
         "state": state,
     }
 

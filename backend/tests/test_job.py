@@ -10,6 +10,8 @@ from uuid import uuid4
 
 import pytest
 
+from torale.scheduler.job import _execute, execute_task_job
+
 TASK_ID = str(uuid4())
 EXECUTION_ID = str(uuid4())
 USER_ID = str(uuid4())
@@ -17,20 +19,22 @@ TASK_NAME = "Test Monitor"
 
 MODULE = "torale.scheduler.job"
 
+FUTURE = "2099-01-01T00:00:00Z"
 
-def _make_task_row(notify_behavior="once", last_known_state=None, state="active"):
+
+def _make_task_row(last_known_state=None):
     return {
         "search_query": "iPhone release date",
         "condition_description": "Release date announced",
         "name": TASK_NAME,
-        "notify_behavior": notify_behavior,
+        "notify_behavior": "once",
         "notification_channels": ["email"],
         "last_known_state": last_known_state,
-        "state": state,
+        "state": "active",
     }
 
 
-def _make_agent_response(notification=None, evidence="no changes", next_run=None):
+def _make_agent_response(notification=None, evidence="no changes", next_run=FUTURE):
     return {
         "evidence": evidence,
         "notification": notification,
@@ -42,27 +46,24 @@ def _make_agent_response(notification=None, evidence="no changes", next_run=None
 
 class TestExecute:
     @pytest.mark.asyncio
-    async def test_condition_not_met(self, job_mocks):
-        """Agent returns no notification -> no notifications sent, no completion."""
+    async def test_no_notification_skips_notify(self, job_mocks):
+        """Agent returns no notification -> no notifications sent."""
         job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
-        job_mocks.agent.return_value = _make_agent_response(notification=None)
-
-        from torale.scheduler.job import _execute
+        job_mocks.agent.return_value = _make_agent_response()
 
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
         job_mocks.persist.assert_awaited_once()
-        agent_result = job_mocks.persist.call_args.kwargs["agent_result"]
-        assert agent_result["condition_met"] is False
         job_mocks.email.assert_not_awaited()
         job_mocks.webhook.assert_not_awaited()
-        job_mocks.service_cls.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_condition_met_once_completes(self, job_mocks):
-        """notify_behavior=once + condition met -> notification sent + task completed."""
-        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row(notify_behavior="once"))
-        job_mocks.agent.return_value = _make_agent_response(notification="Release date is Sept 9")
+    async def test_next_run_none_completes_task(self, job_mocks):
+        """Agent returns next_run=null -> task completed after notification."""
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
+        job_mocks.agent.return_value = _make_agent_response(
+            notification="Release date is Sept 9", next_run=None
+        )
         job_mocks.fetch_ctx.return_value = {"notification_channels": ["email"]}
         job_mocks.email.return_value = True
 
@@ -70,22 +71,18 @@ class TestExecute:
         mock_service.complete = AsyncMock()
         job_mocks.service_cls.return_value = mock_service
 
-        from torale.scheduler.job import _execute
-
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
         job_mocks.email.assert_awaited_once()
         mock_service.complete.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_condition_met_always_no_complete(self, job_mocks):
-        """notify_behavior=always + condition met -> notification sent, NOT completed."""
-        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row(notify_behavior="always"))
+    async def test_next_run_set_does_not_complete(self, job_mocks):
+        """Agent returns next_run -> notification sent, NOT completed."""
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
         job_mocks.agent.return_value = _make_agent_response(notification="Price dropped")
         job_mocks.fetch_ctx.return_value = {"notification_channels": ["email"]}
         job_mocks.email.return_value = True
-
-        from torale.scheduler.job import _execute
 
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
@@ -93,18 +90,38 @@ class TestExecute:
         job_mocks.service_cls.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_notification_failure_blocks_complete(self, job_mocks):
-        """Notification raises -> task NOT completed."""
-        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row(notify_behavior="once"))
+    async def test_notification_failure_still_reschedules(self, job_mocks):
+        """Notification raises -> execution still succeeds, next run still scheduled."""
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
         job_mocks.agent.return_value = _make_agent_response(notification="Condition met")
         job_mocks.fetch_ctx.return_value = {"notification_channels": ["email"]}
         job_mocks.email.side_effect = RuntimeError("SMTP error")
 
-        from torale.scheduler.job import _execute
+        mock_sched = MagicMock()
+        job_mocks.scheduler.return_value = mock_sched
 
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
         job_mocks.service_cls.assert_not_called()
+        mock_sched.add_job.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_next_run_none_completes_even_if_notification_fails(self, job_mocks):
+        """next_run=null + notification failure -> task still completes."""
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
+        job_mocks.agent.return_value = _make_agent_response(
+            notification="Condition met", next_run=None
+        )
+        job_mocks.fetch_ctx.return_value = {"notification_channels": ["email"]}
+        job_mocks.email.side_effect = RuntimeError("SMTP error")
+
+        mock_service = MagicMock()
+        mock_service.complete = AsyncMock()
+        job_mocks.service_cls.return_value = mock_service
+
+        await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
+
+        mock_service.complete.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_agent_failure_marks_failed(self, job_mocks):
@@ -112,13 +129,11 @@ class TestExecute:
         job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
         job_mocks.agent.side_effect = RuntimeError("Agent unreachable")
 
-        from torale.scheduler.job import _execute
-
         with pytest.raises(RuntimeError, match="Agent unreachable"):
             await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
-        fail_call = job_mocks.db.execute.call_args_list[-1]
-        assert "failed" in str(fail_call)
+        execute_calls = job_mocks.db.execute.call_args_list
+        assert any("failed" in str(call) for call in execute_calls)
 
     @pytest.mark.asyncio
     async def test_double_failure_logged(self, job_mocks):
@@ -127,22 +142,18 @@ class TestExecute:
         job_mocks.db.execute = AsyncMock(side_effect=[None, Exception("DB down")])
         job_mocks.agent.side_effect = RuntimeError("Agent error")
 
-        from torale.scheduler.job import _execute
-
         with pytest.raises(RuntimeError, match="Agent error"):
             await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
     @pytest.mark.asyncio
     async def test_dynamic_reschedule(self, job_mocks):
         """Agent returns next_run -> scheduler.add_job called with DateTrigger."""
-        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row(notify_behavior="always"))
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
         future_time = (datetime.now(UTC) + timedelta(hours=2)).isoformat()
-        job_mocks.agent.return_value = _make_agent_response(notification=None, next_run=future_time)
+        job_mocks.agent.return_value = _make_agent_response(next_run=future_time)
 
         mock_sched = MagicMock()
         job_mocks.scheduler.return_value = mock_sched
-
-        from torale.scheduler.job import _execute
 
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
@@ -159,8 +170,6 @@ class TestExecute:
         with patch(f"{MODULE}.create_execution_record", new_callable=AsyncMock) as mock_create_exec:
             mock_create_exec.return_value = EXECUTION_ID
 
-            from torale.scheduler.job import execute_task_job
-
             await execute_task_job(TASK_ID, USER_ID, TASK_NAME)
 
             mock_create_exec.assert_awaited_once_with(TASK_ID)
@@ -173,8 +182,6 @@ class TestExecute:
             return_value=_make_task_row(last_known_state="No announcement yet")
         )
         job_mocks.agent.return_value = _make_agent_response()
-
-        from torale.scheduler.job import _execute
 
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 

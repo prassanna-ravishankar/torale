@@ -1,5 +1,6 @@
 """Tests for TaskService - state transition and orchestration logic."""
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -22,7 +23,7 @@ def task_data():
         "task_id": uuid4(),
         "task_name": "Test Task",
         "user_id": uuid4(),
-        "schedule": "0 9 * * *",
+        "next_run": datetime.now(UTC) + timedelta(hours=24),
     }
 
 
@@ -70,7 +71,7 @@ class TestTaskService:
                 to_state=to_state,
                 user_id=task_data["user_id"],
                 task_name=task_data["task_name"],
-                schedule=task_data["schedule"],
+                next_run=task_data["next_run"],
             )
 
             assert result["success"] is True
