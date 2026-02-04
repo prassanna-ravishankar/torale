@@ -382,7 +382,6 @@ class TestPublicTaskAccess:
             "exec_completed_at": None,
             "exec_status": None,
             "exec_result": None,
-            "exec_change_summary": None,
             "exec_grounding_sources": None,
         }
 
@@ -458,7 +457,6 @@ class TestPublicTaskAccess:
             "exec_completed_at": None,
             "exec_status": None,
             "exec_result": None,
-            "exec_change_summary": None,
             "exec_grounding_sources": None,
         }
 

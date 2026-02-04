@@ -67,7 +67,6 @@ async def list_public_tasks(
                e.completed_at as exec_completed_at,
                e.status as exec_status,
                e.result as exec_result,
-               e.change_summary as exec_change_summary,
                e.grounding_sources as exec_grounding_sources
         FROM tasks t
         INNER JOIN users u ON t.user_id = u.id
@@ -135,7 +134,6 @@ async def get_public_task_by_vanity_url(
                e.completed_at as exec_completed_at,
                e.status as exec_status,
                e.result as exec_result,
-               e.change_summary as exec_change_summary,
                e.grounding_sources as exec_grounding_sources
         FROM tasks t
         INNER JOIN users u ON t.user_id = u.id

@@ -80,7 +80,6 @@ class TaskExecutionBase(BaseModel):
 
     # Grounded search execution fields
     notification: str | None = None
-    change_summary: str | None = None
     grounding_sources: list[dict] | None = None
 
 

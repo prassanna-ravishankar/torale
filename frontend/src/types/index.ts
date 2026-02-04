@@ -15,7 +15,6 @@ export interface TaskExecutionSummary {
   completed_at: string | null;
   status: TaskStatus;
   result: Record<string, any> | null;
-  change_summary: string | null;
   grounding_sources: GroundingSource[] | null;
 }
 
@@ -88,7 +87,6 @@ export interface TaskExecution {
     };
   } | null;
   notification: string | null;
-  change_summary: string | null;
   grounding_sources: GroundingSource[];
   error_message: string | null;
 }

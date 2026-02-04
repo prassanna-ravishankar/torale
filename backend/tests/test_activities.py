@@ -19,7 +19,6 @@ def _make_agent_result():
         "notification": None,
         "confidence": "high",
         "next_run": None,
-        "change_summary": "No changes detected",
         "grounding_sources": [{"url": "https://example.com"}],
     }
 
@@ -63,13 +62,12 @@ class TestPersistExecutionResult:
     @pytest.mark.asyncio
     @patch(f"{MODULE}.db")
     async def test_field_mapping(self, mock_db):
-        """evidence -> last_known_state, notification/change_summary/grounding_sources mapped."""
+        """evidence -> last_known_state, notification/grounding_sources mapped."""
         mock_conn = _setup_db_mock(mock_db)
 
         agent_result = _make_agent_result()
         agent_result["evidence"] = "Price is $999"
         agent_result["notification"] = "Price dropped!"
-        agent_result["change_summary"] = "Price dropped"
         agent_result["grounding_sources"] = [{"url": "https://apple.com"}]
 
         from torale.scheduler.activities import persist_execution_result
@@ -79,8 +77,7 @@ class TestPersistExecutionResult:
         exec_call = mock_conn.execute.call_args_list[0]
         exec_args = exec_call[0]
         assert exec_args[4] == "Price dropped!"  # notification
-        assert exec_args[5] == "Price dropped"  # change_summary
-        assert json.loads(exec_args[6]) == [{"url": "https://apple.com"}]
+        assert json.loads(exec_args[5]) == [{"url": "https://apple.com"}]
 
         task_call = mock_conn.execute.call_args_list[1]
         task_args = task_call[0]

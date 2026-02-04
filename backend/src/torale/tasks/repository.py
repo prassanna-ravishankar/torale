@@ -88,7 +88,6 @@ class TaskRepository(BaseRepository):
             self.executions.completed_at.as_("exec_completed_at"),
             self.executions.status.as_("exec_status"),
             self.executions.result.as_("exec_result"),
-            self.executions.change_summary.as_("exec_change_summary"),
             self.executions.grounding_sources.as_("exec_grounding_sources"),
         )
 
@@ -125,7 +124,6 @@ class TaskRepository(BaseRepository):
             self.executions.completed_at.as_("exec_completed_at"),
             self.executions.status.as_("exec_status"),
             self.executions.result.as_("exec_result"),
-            self.executions.change_summary.as_("exec_change_summary"),
             self.executions.grounding_sources.as_("exec_grounding_sources"),
         )
 
@@ -389,7 +387,6 @@ class TaskExecutionRepository(BaseRepository):
         result: dict | None = None,
         error_message: str | None = None,
         notification: str | None = None,
-        change_summary: str | None = None,
         grounding_sources: list[dict] | None = None,
     ) -> dict:
         """Update execution record.
@@ -401,7 +398,6 @@ class TaskExecutionRepository(BaseRepository):
             result: Result dict
             error_message: Error message
             notification: Notification text (if condition met)
-            change_summary: Change summary text
             grounding_sources: List of grounding sources
 
         Returns:
@@ -417,8 +413,6 @@ class TaskExecutionRepository(BaseRepository):
             data["error_message"] = error_message
         if notification is not None:
             data["notification"] = notification
-        if change_summary is not None:
-            data["change_summary"] = change_summary
         if grounding_sources is not None:
             data["grounding_sources"] = json.dumps(grounding_sources)
 

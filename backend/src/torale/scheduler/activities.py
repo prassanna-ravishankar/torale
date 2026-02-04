@@ -49,13 +49,12 @@ async def persist_execution_result(task_id: str, execution_id: str, agent_result
 
     Maps agent response fields:
     - evidence -> last_known_state (narrative string replaces structured JSON)
-    - notification, change_summary, grounding_sources -> task_executions columns
+    - notification, grounding_sources -> task_executions columns
     - Full agent_result -> result JSONB
     """
     now_utc = datetime.now(UTC)
 
     notification_text = agent_result.get("notification")
-    change_summary = agent_result.get("change_summary", "")
     grounding_sources = agent_result.get("grounding_sources", [])
     evidence = agent_result.get("evidence", "")
     last_known_state = {"evidence": evidence} if evidence else None
@@ -66,14 +65,13 @@ async def persist_execution_result(task_id: str, execution_id: str, agent_result
                 """
                 UPDATE task_executions
                 SET status = $1, result = $2, completed_at = $3,
-                    notification = $4, change_summary = $5, grounding_sources = $6
-                WHERE id = $7
+                    notification = $4, grounding_sources = $5
+                WHERE id = $6
                 """,
                 TaskStatus.SUCCESS.value,
                 json.dumps(agent_result),
                 now_utc,
                 notification_text,
-                change_summary,
                 json.dumps(grounding_sources),
                 UUID(execution_id),
             )
@@ -187,14 +185,12 @@ async def send_email_notification(
     # Send email via Novu
     answer = result.get("summary", "")
     sources = result.get("sources", [])
-    change_summary = result.get("notification") or result.get("summary", "")
 
     novu_result = await novu_service.send_condition_met_notification(
         subscriber_id=recipient_email,
         task_name=task_name,
         search_query=task.get("search_query", ""),
         answer=answer,
-        change_summary=change_summary,
         grounding_sources=sources,
         task_id=str(task_id),
         execution_id=execution_id,
