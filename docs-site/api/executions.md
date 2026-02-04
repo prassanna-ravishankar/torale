@@ -46,7 +46,6 @@ Authorization: Bearer {api_key}
         "reasoning": "The condition is met because Apple's official press release confirms a specific release date.",
         "condition_met": true
       },
-      "change_summary": "New information: Release date announced as September 20, 2024",
       "grounding_sources": [
         {
           "uri": "https://www.apple.com/newsroom/2024/09/apple-announces-iphone-16/",
@@ -105,7 +104,6 @@ Authorization: Bearer {api_key}
     "condition_met": true,
     "sources_count": 3
   },
-  "change_summary": "New information: Release date announced as September 20, 2024. Previous state indicated no official date.",
   "grounding_sources": [
     {
       "uri": "https://www.apple.com/newsroom/2024/09/apple-announces-iphone-16/",
@@ -406,10 +404,10 @@ else:
 # Get recent executions
 executions = client.tasks.get_executions(task_id, limit=5)
 
-# Check for state changes
+# Check for notifications
 for execution in executions:
-    if execution.change_summary:
-        print(f"Change detected: {execution.change_summary}")
+    if execution.notification:
+        print(f"Notification: {execution.notification}")
 ```
 
 ### Check for Errors
@@ -429,7 +427,7 @@ for execution in failed:
 
 1. **Check regularly** - Monitor execution history for failures
 2. **Review sources** - Verify grounding sources are reputable
-3. **Analyze changes** - Use change_summary to understand evolution
+3. **Analyze changes** - Use notification field to understand what triggered alerts
 4. **Track status** - Watch for failed executions
 
 ### Debugging

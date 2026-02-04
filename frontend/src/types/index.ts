@@ -82,7 +82,6 @@ export interface TaskExecution {
     sources: GroundingSource[];
     metadata: {
       changed: boolean;
-      change_explanation: string | null;
       current_state: Record<string, any> | null;
     };
   } | null;
