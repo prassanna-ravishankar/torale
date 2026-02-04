@@ -1,22 +1,20 @@
 import { useState } from 'react'
 import { Navigate, Link } from 'react-router-dom'
 import { OverviewStats } from '@/components/admin/OverviewStats'
-import { QueriesTable } from '@/components/admin/QueriesTable'
+import { TasksTable } from '@/components/admin/TasksTable'
 import { ExecutionsTable } from '@/components/admin/ExecutionsTable'
-import { SchedulerMonitor } from '@/components/admin/SchedulerMonitor'
 import { ErrorsList } from '@/components/admin/ErrorsList'
 import { UsersTable } from '@/components/admin/UsersTable'
 import { WaitlistTable } from '@/components/admin/WaitlistTable'
-import { Shield, BarChart3, Search, Activity, Clock, AlertTriangle, Users, UserPlus, Loader2 } from 'lucide-react'
+import { Shield, BarChart3, Search, Activity, AlertTriangle, Users, UserPlus, Loader2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
-type AdminTab = 'overview' | 'queries' | 'executions' | 'scheduler' | 'errors' | 'users' | 'waitlist'
+type AdminTab = 'overview' | 'tasks' | 'executions' | 'errors' | 'users' | 'waitlist'
 
 const tabs: { id: AdminTab; label: string; icon: typeof Shield }[] = [
   { id: 'overview', label: 'Overview', icon: BarChart3 },
-  { id: 'queries', label: 'Queries', icon: Search },
+  { id: 'tasks', label: 'Tasks', icon: Search },
   { id: 'executions', label: 'Executions', icon: Activity },
-  { id: 'scheduler', label: 'Scheduler', icon: Clock },
   { id: 'errors', label: 'Errors', icon: AlertTriangle },
   { id: 'users', label: 'Users', icon: Users },
   { id: 'waitlist', label: 'Waitlist', icon: UserPlus },
@@ -90,9 +88,8 @@ export function Admin() {
         {/* Tab Content */}
         <div>
           {activeTab === 'overview' && <OverviewStats />}
-          {activeTab === 'queries' && <QueriesTable />}
+          {activeTab === 'tasks' && <TasksTable />}
           {activeTab === 'executions' && <ExecutionsTable />}
-          {activeTab === 'scheduler' && <SchedulerMonitor />}
           {activeTab === 'errors' && <ErrorsList />}
           {activeTab === 'users' && <UsersTable />}
           {activeTab === 'waitlist' && <WaitlistTable />}

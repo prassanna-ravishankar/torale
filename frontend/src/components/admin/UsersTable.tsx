@@ -11,6 +11,7 @@ import { api } from '@/lib/api'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
 import { UserCard } from './cards/UserCard'
+import { RoleBadge } from './RoleBadge'
 import {
   Loader2,
   Users,
@@ -18,7 +19,6 @@ import {
   UserCog,
   X,
   ChevronDown,
-  CheckCircle2,
   Shield,
   Code2,
   User,
@@ -28,27 +28,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { SectionLabel, BrutalistCard, StatusBadge } from '@/components/torale'
-
-interface UserData {
-  id: string
-  email: string
-  clerk_user_id: string
-  is_active: boolean
-  created_at: string
-  task_count: number
-  total_executions: number
-  conditions_met_count: number
-  role?: string | null
-}
-
-interface UsersDataResponse {
-  users: UserData[]
-  capacity: {
-    used: number
-    total: number
-    available: number
-  }
-}
+import type { UserData, UsersDataResponse } from './types'
 
 export function UsersTable() {
   const { user: currentUser } = useAuth()
@@ -193,31 +173,6 @@ export function UsersTable() {
     { value: 'admin', label: 'Admin', icon: Shield },
   ]
 
-  const getRoleBadge = (role?: string | null) => {
-    if (role === 'admin') {
-      return (
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-50 text-red-700 text-[10px] font-mono uppercase tracking-wider border border-red-200">
-          <Shield className="h-3 w-3" />
-          Admin
-        </span>
-      )
-    }
-    if (role === 'developer') {
-      return (
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-mono uppercase tracking-wider border border-blue-200">
-          <Code2 className="h-3 w-3" />
-          Developer
-        </span>
-      )
-    }
-    return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-zinc-50 text-zinc-600 text-[10px] font-mono uppercase tracking-wider border border-zinc-200">
-        <User className="h-3 w-3" />
-        User
-      </span>
-    )
-  }
-
   if (loading) {
     return (
       <BrutalistCard className="flex items-center justify-center h-64">
@@ -346,7 +301,7 @@ export function UsersTable() {
                 <th className="text-left p-3"><SectionLabel>Joined</SectionLabel></th>
                 <th className="text-left p-3"><SectionLabel icon={ListChecks}>Tasks</SectionLabel></th>
                 <th className="text-left p-3"><SectionLabel icon={Activity}>Runs</SectionLabel></th>
-                <th className="text-left p-3"><SectionLabel icon={Zap}>Triggered</SectionLabel></th>
+                <th className="text-left p-3"><SectionLabel icon={Zap}>Notifications</SectionLabel></th>
                 <th className="text-left p-3"><SectionLabel>Actions</SectionLabel></th>
               </tr>
             </thead>
@@ -384,7 +339,7 @@ export function UsersTable() {
                           )}
                         </div>
                       </td>
-                      <td className="p-3">{getRoleBadge(user.role)}</td>
+                      <td className="p-3"><RoleBadge role={user.role} size="md" /></td>
                       <td className="p-3">
                         <StatusBadge variant={user.is_active ? 'active' : 'paused'} />
                       </td>
@@ -398,7 +353,7 @@ export function UsersTable() {
                       <td className="p-3">
                         <span className="inline-flex items-center gap-1 text-sm font-mono text-emerald-600">
                           <Zap className="h-3 w-3" />
-                          {user.conditions_met_count}
+                          {user.notifications_count}
                         </span>
                       </td>
                       <td className="p-3">
