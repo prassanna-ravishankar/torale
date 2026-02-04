@@ -11,11 +11,11 @@ interface Execution {
   status: string
   started_at: string | null
   completed_at: string | null
-  result: any
+  result: Record<string, unknown> | null
   error_message: string | null
   notification: string | null
   change_summary: string | null
-  grounding_sources: any[] | null
+  grounding_sources: unknown[] | null
   search_query: string
   user_email: string
 }
@@ -156,7 +156,7 @@ function ExecutionRow({ execution }: { execution: Execution }) {
         )}
         {confidence != null && (
           <span className="text-[10px] font-mono text-zinc-500">
-            conf: {typeof confidence === 'number' ? `${(confidence * 100).toFixed(0)}%` : confidence}
+            conf: {typeof confidence === 'number' ? `${(confidence * 100).toFixed(0)}%` : String(confidence)}
           </span>
         )}
         {sourceCount > 0 && (
