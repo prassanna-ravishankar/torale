@@ -204,13 +204,15 @@ async def list_all_queries(
             t.created_at,
             u.email as user_email,
             COUNT(te.id) as execution_count,
-            SUM(CASE WHEN te.notification IS NOT NULL THEN 1 ELSE 0 END) as trigger_count
+            SUM(CASE WHEN te.notification IS NOT NULL THEN 1 ELSE 0 END) as trigger_count,
+            t.last_known_state,
+            t.state_changed_at
         FROM tasks t
         JOIN users u ON u.id = t.user_id
         LEFT JOIN task_executions le ON t.last_execution_id = le.id
         LEFT JOIN task_executions te ON te.task_id = t.id
         WHERE 1=1 {active_filter}
-        GROUP BY t.id, u.email, le.notification
+        GROUP BY t.id, u.email, le.notification, t.last_known_state, t.state_changed_at
         ORDER BY t.created_at DESC
         LIMIT :limit
         """),
@@ -230,6 +232,8 @@ async def list_all_queries(
             "user_email": row[8],
             "execution_count": row[9] if row[9] else 0,
             "trigger_count": row[10] if row[10] else 0,
+            "last_known_state": row[11],
+            "state_changed_at": row[12].isoformat() if row[12] else None,
         }
         for row in result
     ]
