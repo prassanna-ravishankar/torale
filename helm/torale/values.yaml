@@ -176,10 +176,10 @@ agent:
 
   resources:
     requests:
-      cpu: 25m
+      cpu: 50m
       memory: 256Mi
     limits:
-      cpu: 200m
+      cpu: 500m
       memory: 512Mi
 
 # Database configuration (Cloud SQL)
