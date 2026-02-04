@@ -11,7 +11,7 @@ export interface TaskData {
   user_email: string
   execution_count: number
   trigger_count: number
-  last_known_state: string | null
+  last_known_state: string | Record<string, unknown> | null
   state_changed_at: string | null
 }
 

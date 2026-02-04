@@ -98,7 +98,11 @@ export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
       <div>
         <SectionLabel>Last Agent Evidence</SectionLabel>
         <div className="mt-1 p-3 bg-white border border-zinc-200 text-xs font-mono text-zinc-700 whitespace-pre-wrap max-h-40 overflow-y-auto">
-          {task.last_known_state || 'No evidence yet'}
+          {task.last_known_state
+            ? (typeof task.last_known_state === 'string'
+                ? task.last_known_state
+                : JSON.stringify(task.last_known_state, null, 2))
+            : 'No evidence yet'}
         </div>
       </div>
 
