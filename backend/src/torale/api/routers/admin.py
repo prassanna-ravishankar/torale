@@ -281,7 +281,6 @@ async def list_recent_executions(
             te.result,
             te.error_message,
             te.notification,
-            te.change_summary,
             te.grounding_sources,
             t.search_query,
             u.email as user_email
@@ -305,10 +304,9 @@ async def list_recent_executions(
             "result": parse_json_field(row[5]),
             "error_message": row[6],
             "notification": row[7],
-            "change_summary": row[8],
-            "grounding_sources": parse_json_field(row[9]),
-            "search_query": row[10],
-            "user_email": row[11],
+            "grounding_sources": parse_json_field(row[8]),
+            "search_query": row[9],
+            "user_email": row[10],
         }
         for row in result
     ]

@@ -37,7 +37,6 @@ class NovuService:
         task_name: str,
         search_query: str,
         answer: str,
-        change_summary: str | None,
         grounding_sources: list[dict],
         task_id: str,
         execution_id: str,
@@ -86,7 +85,6 @@ class NovuService:
                         "task_name": task_name,
                         "search_query": search_query,
                         "answer": answer_html,  # Send HTML-formatted answer
-                        "change_summary": change_summary or "Condition met",
                         "grounding_sources": formatted_sources,
                         "task_id": task_id,
                         "execution_id": execution_id,

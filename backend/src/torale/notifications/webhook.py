@@ -182,7 +182,6 @@ def build_webhook_payload(
             "execution": {
                 "id": execution_id,
                 "notification": notification_text,
-                "change_summary": result.get("summary", ""),
                 "completed_at": str(execution.get("completed_at", "")),
             },
             "result": {

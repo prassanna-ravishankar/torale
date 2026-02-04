@@ -296,13 +296,13 @@ def get_notifications(
 
             table = Table(title=f"Notifications (Task: {task_id[:8]}...)")
             table.add_column("Execution ID", style="cyan", no_wrap=True)
-            table.add_column("Change Summary", style="green")
+            table.add_column("Notification", style="green")
             table.add_column("Timestamp", style="blue")
 
             for notif in notifications:
                 table.add_row(
                     str(notif.id)[:8] + "...",
-                    notif.notification or notif.change_summary or "—",
+                    notif.notification or "—",
                     str(notif.started_at)[:19] if notif.started_at else "-",
                 )
 

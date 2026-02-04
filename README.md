@@ -215,7 +215,7 @@ for exec in executions:
 # Get only notifications (condition met)
 notifications = client.tasks.notifications(task_id="550e8400-...", limit=10)
 for notif in notifications:
-    print(f"{notif.started_at}: {notif.change_summary}")
+    print(f"{notif.started_at}: {notif.notification}")
 ```
 
 **Fluent Builder API**

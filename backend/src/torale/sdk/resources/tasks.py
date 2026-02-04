@@ -233,7 +233,7 @@ class TasksResource:
         Example:
             >>> notifications = client.tasks.notifications("550e8400-e29b-41d4-a716-446655440000")
             >>> for notif in notifications:
-            ...     print(f"{notif.started_at}: {notif.notification or notif.change_summary}")
+            ...     print(f"{notif.started_at}: {notif.notification}")
         """
         response = self.client.get(
             f"/api/v1/tasks/{task_id}/notifications", params={"limit": limit}

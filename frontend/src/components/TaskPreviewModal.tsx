@@ -131,12 +131,6 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
                 showConditionBadge={true}
               />
 
-              {execution.change_summary && (
-                <div className="p-3 bg-zinc-50 border-2 border-zinc-100">
-                  <p className="text-[10px] font-mono uppercase text-zinc-400 mb-1 tracking-wider">What Changed</p>
-                  <p className="text-sm text-zinc-600">{execution.change_summary}</p>
-                </div>
-              )}
             </div>
           )}
         </div>

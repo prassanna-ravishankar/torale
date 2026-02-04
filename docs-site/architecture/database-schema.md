@@ -84,8 +84,7 @@ CREATE TABLE task_executions (
   error_message TEXT,
 
   -- Grounded search execution fields
-  condition_met BOOLEAN,  -- Was trigger condition met?
-  change_summary TEXT,  -- What changed from last execution?
+  notification TEXT,  -- Notification text (if condition met)
   grounding_sources JSONB,  -- Array of source URLs with metadata
 
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

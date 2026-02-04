@@ -22,7 +22,6 @@ interface Execution {
   result: any
   error_message: string | null
   notification: string | null
-  change_summary: string | null
   grounding_sources: GroundingSource[]
   search_query: string
   user_email: string

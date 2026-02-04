@@ -28,7 +28,6 @@ async def main():
         task_name="Test Task - iPhone Release Monitor",
         search_query="When is the next iPhone being released?",
         answer="Apple announced the iPhone 16 will be released on September 20, 2024, with pre-orders starting September 13.",
-        change_summary="Apple officially announced the release date during their September event",
         grounding_sources=[
             {
                 "title": "Apple announces iPhone 16 release date",
