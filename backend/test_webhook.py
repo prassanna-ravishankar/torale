@@ -30,7 +30,6 @@ async def main():
             "execution": {
                 "id": "test_exec_123",
                 "condition_met": True,
-                "change_summary": "Apple officially announced the release date during their September event",
                 "completed_at": "2024-11-09T10:30:00Z",
             },
             "result": {

@@ -1,5 +1,14 @@
 [
   {
+    "id": "2026-02-02-agentic-monitoring",
+    "date": "2026-02-02",
+    "title": "Agentic Monitoring",
+    "description": "The agent now runs the show. No more cron schedules — just describe what you want to monitor and the AI decides when and how often to check. Simplified task creation and backend infrastructure. Powered by Gemini + Perplexity search with persistent memory.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": 136
+  },
+  {
     "id": "2025-12-11-public-task-sharing",
     "date": "2025-12-11",
     "title": "Public Task Sharing & Explore Page",

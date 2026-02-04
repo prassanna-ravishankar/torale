@@ -28,12 +28,9 @@ def parse_task_row(row) -> dict:
 
 def _enrich_result_for_frontend(result: dict) -> None:
     """Add frontend-compatible keys to agent result dict if missing."""
-    if "summary" not in result and "change_summary" in result:
-        result["summary"] = result["change_summary"]
     if "metadata" not in result:
         result["metadata"] = {
             "changed": result.get("notification") is not None,
-            "change_explanation": result.get("change_summary"),
             "current_state": None,
         }
 
@@ -93,7 +90,6 @@ def parse_task_with_execution(row) -> Task:
             "completed_at": row["exec_completed_at"],
             "status": row["exec_status"],
             "result": exec_result,
-            "change_summary": row["exec_change_summary"],
             "grounding_sources": exec_sources,
         }
 

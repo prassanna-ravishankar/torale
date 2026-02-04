@@ -195,8 +195,6 @@ async def _execute(
         next_run_dt = _parse_next_run(next_run_value)
         next_run = next_run_dt.isoformat() if next_run_dt else None
 
-        change_summary = notification or evidence
-
         def _source_entry(u):
             if isinstance(u, str):
                 return {"url": u, "title": urlparse(u).netloc or u}
@@ -212,7 +210,6 @@ async def _execute(
                 "notification": notification,
                 "confidence": confidence,
                 "next_run": next_run,
-                "change_summary": change_summary,
                 "grounding_sources": grounding_sources,
             },
         )
@@ -229,7 +226,7 @@ async def _execute(
 
                 enriched_result = {
                     "execution_id": execution_id,
-                    "summary": change_summary,
+                    "summary": notification or evidence,
                     "sources": grounding_sources,
                     "notification": notification,
                     "is_first_execution": False,

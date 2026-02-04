@@ -43,7 +43,6 @@ Authorization: Bearer {api_key}
       "condition_met": true,
       "answer": "Apple has officially announced that the iPhone 16 will be released on September 20, 2024. Pre-orders begin on September 13, 2024.",
       "reasoning": "The condition is met because Apple's official press release confirms a specific release date of September 20, 2024.",
-      "change_summary": "New information: Official release date announced as September 20, 2024",
       "grounding_sources": [
         {
           "uri": "https://www.apple.com/newsroom/2024/09/apple-announces-iphone-16/",

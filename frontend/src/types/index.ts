@@ -15,7 +15,6 @@ export interface TaskExecutionSummary {
   completed_at: string | null;
   status: TaskStatus;
   result: Record<string, any> | null;
-  change_summary: string | null;
   grounding_sources: GroundingSource[] | null;
 }
 
@@ -83,12 +82,10 @@ export interface TaskExecution {
     sources: GroundingSource[];
     metadata: {
       changed: boolean;
-      change_explanation: string | null;
       current_state: Record<string, any> | null;
     };
   } | null;
   notification: string | null;
-  change_summary: string | null;
   grounding_sources: GroundingSource[];
   error_message: string | null;
 }

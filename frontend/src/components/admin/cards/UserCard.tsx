@@ -1,17 +1,7 @@
 import { formatDistanceToNow } from 'date-fns'
-import { Edit, User, CheckCircle2, XCircle, Shield, Code } from 'lucide-react'
-
-interface UserData {
-  id: string
-  email: string
-  clerk_user_id: string
-  is_active: boolean
-  created_at: string
-  task_count: number
-  total_executions: number
-  conditions_met_count: number
-  role?: string | null
-}
+import { Edit, User, CheckCircle2, XCircle } from 'lucide-react'
+import { RoleBadge } from '../RoleBadge'
+import type { UserData } from '../types'
 
 interface UserCardProps {
   user: UserData
@@ -21,31 +11,6 @@ interface UserCardProps {
 }
 
 export function UserCard({ user, currentUserClerkId, onDeactivate, onEditRole }: UserCardProps) {
-  const getRoleBadge = (role?: string | null) => {
-    if (role === 'admin') {
-      return (
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-50 text-red-700 text-[9px] font-mono uppercase tracking-wider border border-red-200">
-          <Shield className="h-3 w-3" />
-          Admin
-        </span>
-      )
-    }
-    if (role === 'developer') {
-      return (
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[9px] font-mono uppercase tracking-wider border border-blue-200">
-          <Code className="h-3 w-3" />
-          Developer
-        </span>
-      )
-    }
-    return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-zinc-50 text-zinc-600 text-[9px] font-mono uppercase tracking-wider border border-zinc-200">
-        <User className="h-3 w-3" />
-        User
-      </span>
-    )
-  }
-
   const isCurrentUser = currentUserClerkId && user.clerk_user_id === currentUserClerkId
 
   return (
@@ -78,7 +43,7 @@ export function UserCard({ user, currentUserClerkId, onDeactivate, onEditRole }:
                   Inactive
                 </span>
               )}
-              {getRoleBadge(user.role)}
+              <RoleBadge role={user.role} />
               {isCurrentUser && (
                 <span className="px-1.5 py-0.5 bg-zinc-900 text-white text-[9px] font-mono uppercase tracking-wider">
                   You
@@ -98,8 +63,8 @@ export function UserCard({ user, currentUserClerkId, onDeactivate, onEditRole }:
             <p className="text-zinc-900 font-bold text-sm mt-0.5">{user.total_executions}</p>
           </div>
           <div className="p-2 bg-zinc-50 border border-zinc-200 text-center">
-            <p className="text-zinc-400 uppercase tracking-wider">Triggers</p>
-            <p className="text-zinc-900 font-bold text-sm mt-0.5">{user.conditions_met_count}</p>
+            <p className="text-zinc-400 uppercase tracking-wider">Notifications</p>
+            <p className="text-zinc-900 font-bold text-sm mt-0.5">{user.notifications_count}</p>
           </div>
         </div>
 

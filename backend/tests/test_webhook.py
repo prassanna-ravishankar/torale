@@ -40,7 +40,6 @@ def sample_execution(sample_task):
     execution.status = "success"
     execution.condition_met = True
     execution.result = {"answer": "Test answer"}
-    execution.change_summary = "Test change"
     execution.grounding_sources = [{"url": "https://example.com", "title": "Example"}]
     execution.started_at = datetime.now(UTC)
     execution.completed_at = datetime.now(UTC)
@@ -260,7 +259,6 @@ class TestBuildWebhookPayload:
         exec_data = payload.data["execution"]
         assert exec_data["id"] == str(sample_execution.id)
         assert exec_data["notification"] == sample_monitoring_result.get("notification", "")
-        assert exec_data["change_summary"] == sample_monitoring_result["summary"]
 
     def test_timestamp_format(self, sample_task, sample_execution, sample_monitoring_result):
         """Test timestamp is Unix timestamp."""

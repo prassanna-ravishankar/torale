@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React from "react";
 import ReactMarkdown from "react-markdown";
 import { TaskExecution } from "@/types";
 import { GroundingSourceList } from "@/components/ui/GroundingSourceList";
-import { StatusBadge, SectionLabel, CollapsibleSection, BrutalistCard } from "@/components/torale";
+import { StatusBadge, SectionLabel, BrutalistCard } from "@/components/torale";
 import {
   CheckCircle2,
   XCircle,
@@ -39,8 +39,6 @@ interface ExecutionCardProps {
 }
 
 const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
   return (
           <BrutalistCard>
             <div className="p-4">
@@ -101,26 +99,6 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution }) => {
                 </div>
               )}
 
-              {/* Layer 3: METADATA (Collapsible - Change Summary, Current State) */}
-              <CollapsibleSection
-                title="Metadata"
-                open={isExpanded}
-                onOpenChange={setIsExpanded}
-                variant="default"
-              >
-                <div className="space-y-3">
-                  {/* Support both old and new formats */}
-                  {(execution.result?.metadata?.change_explanation || execution.change_summary) && (
-                    <div className="p-3 bg-emerald-50 border border-emerald-200">
-                      <p className="text-sm text-emerald-900 font-medium">
-                        <span className="font-mono text-[10px] uppercase text-emerald-600 tracking-wider block mb-1">What Changed</span>
-                        {execution.result?.metadata?.change_explanation || execution.change_summary}
-                      </p>
-                    </div>
-                  )}
-
-                </div>
-              </CollapsibleSection>
 
               {execution.error_message && (
                 <div className="p-4 bg-red-50 border-2 border-red-200">

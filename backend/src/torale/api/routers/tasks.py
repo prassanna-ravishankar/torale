@@ -43,7 +43,6 @@ _TASK_WITH_EXECUTION_QUERY = """
            e.completed_at as exec_completed_at,
            e.status as exec_status,
            e.result as exec_result,
-           e.change_summary as exec_change_summary,
            e.grounding_sources as exec_grounding_sources
     FROM tasks t
     INNER JOIN users u ON t.user_id = u.id

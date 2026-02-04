@@ -57,7 +57,6 @@ def sample_execution(sample_task_with_notifications):
     execution.status = "success"
     execution.condition_met = True
     execution.result = {"answer": "Test answer"}
-    execution.change_summary = "Test change detected"
     execution.grounding_sources = [{"url": "https://example.com", "title": "Example"}]
     execution.started_at = datetime.now(UTC)
     execution.completed_at = datetime.now(UTC)

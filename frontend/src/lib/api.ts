@@ -190,13 +190,6 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
-  async getSchedulerJobs(): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/admin/scheduler/jobs`, {
-      headers: await this.getAuthHeaders(),
-    })
-    return this.handleResponse(response)
-  }
-
   async getAdminErrors(params?: { limit?: number }): Promise<any> {
     const queryParams = new URLSearchParams()
     if (params?.limit) queryParams.set('limit', params.limit.toString())
