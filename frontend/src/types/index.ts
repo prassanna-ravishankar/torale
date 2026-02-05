@@ -14,7 +14,7 @@ export interface TaskExecutionSummary {
   started_at: string;
   completed_at: string | null;
   status: TaskStatus;
-  result: Record<string, any> | null;
+  result: ExecutionResult | null;
   grounding_sources: GroundingSource[] | null;
 }
 
@@ -71,20 +71,33 @@ export interface GroundingSource {
   title?: string;
 }
 
+export interface ExecutionResult {
+  evidence?: string;
+  notification?: string;
+  sources?: GroundingSource[];
+  confidence?: number;
+  next_run?: string;
+  metadata?: {
+    changed: boolean;
+    current_state: Record<string, unknown> | null;
+  };
+}
+
+/**
+ * Returns the display text for an execution result.
+ * Prefers notification (user-facing) over evidence (agent reasoning).
+ */
+export function getResultDisplayText(result: ExecutionResult | null | undefined): string | undefined {
+  return result?.notification || result?.evidence;
+}
+
 export interface TaskExecution {
   id: string;
   task_id: string;
   status: TaskStatus;
   started_at: string;
   completed_at: string | null;
-  result: {
-    summary: string;
-    sources: GroundingSource[];
-    metadata: {
-      changed: boolean;
-      current_state: Record<string, any> | null;
-    };
-  } | null;
+  result: ExecutionResult | null;
   notification: string | null;
   grounding_sources: GroundingSource[];
   error_message: string | null;

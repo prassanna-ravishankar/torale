@@ -12,10 +12,13 @@ interface Execution {
   status: string
   started_at: string | null
   completed_at: string | null
-  result: Record<string, unknown> | null
+  result: {
+    evidence?: string
+    notification?: string
+    confidence?: number
+  } | null
   error_message: string | null
   notification: string | null
-  change_summary: string | null
   grounding_sources: unknown[] | null
   search_query: string
   user_email: string
@@ -203,8 +206,21 @@ function ExecutionRow({ execution }: { execution: Execution }) {
         )}
       </div>
 
-      {execution.change_summary && (
-        <p className="text-xs font-mono text-zinc-600">{execution.change_summary}</p>
+      {execution.result?.notification && (
+        <p className="text-xs font-mono text-emerald-700 truncate" title={execution.result.notification}>
+          {execution.result.notification}
+        </p>
+      )}
+
+      {execution.result?.evidence && (
+        <details className="text-[10px] font-mono">
+          <summary className="cursor-pointer text-zinc-400 hover:text-zinc-600 transition-colors">
+            Agent Reasoning
+          </summary>
+          <pre className="mt-1 p-2 bg-zinc-50 border border-zinc-200 overflow-x-auto text-zinc-600 max-h-40 overflow-y-auto whitespace-pre-wrap">
+            {execution.result.evidence}
+          </pre>
+        </details>
       )}
 
       {execution.error_message && (

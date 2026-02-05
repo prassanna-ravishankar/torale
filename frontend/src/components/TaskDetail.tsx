@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import type { Task, TaskExecution } from '@/types'
+import { getResultDisplayText } from '@/types'
 import api from '@/lib/api'
 import { toast } from 'sonner'
 import { Button } from "@/components/ui/button";
@@ -360,7 +361,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               })}
             </span>
           </div>
-          {firstExecution.result?.summary && (
+          {getResultDisplayText(firstExecution.result) && (
             <div className="text-sm text-zinc-700 leading-relaxed line-clamp-3 prose prose-sm max-w-none">
               <ReactMarkdown
                 components={{
@@ -371,7 +372,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                   strong: ({ children }) => <strong className="font-bold text-zinc-900">{children}</strong>,
                 }}
               >
-                {firstExecution.result.summary}
+                {getResultDisplayText(firstExecution.result)}
               </ReactMarkdown>
             </div>
           )}

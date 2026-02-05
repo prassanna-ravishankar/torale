@@ -13,6 +13,7 @@ import { Loader2, Edit, ExternalLink } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Task, TaskExecution } from '@/types';
+import { getResultDisplayText } from '@/types';
 
 interface TaskPreviewModalProps {
   open: boolean;
@@ -122,14 +123,22 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
                 <p className="text-sm text-zinc-600">"{task.search_query}"</p>
               </div>
 
-              <SearchPreview
-                answer={execution.result.summary}
-                conditionMet={!!execution.notification}
-                conditionDescription={task.condition_description}
-                groundingSources={execution.grounding_sources || []}
-                currentState={execution.result.metadata?.current_state}
-                showConditionBadge={true}
-              />
+              {getResultDisplayText(execution.result) ? (
+                <SearchPreview
+                  answer={getResultDisplayText(execution.result)!}
+                  conditionMet={!!execution.notification}
+                  conditionDescription={task.condition_description}
+                  groundingSources={execution.grounding_sources || []}
+                  currentState={execution.result.metadata?.current_state}
+                  showConditionBadge={true}
+                />
+              ) : (
+                <div className="p-4 border-2 border-amber-200 bg-amber-50">
+                  <p className="text-sm text-amber-700">
+                    The agent completed but did not produce a summary.
+                  </p>
+                </div>
+              )}
 
             </div>
           )}

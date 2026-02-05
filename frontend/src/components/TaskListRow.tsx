@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from '@/lib/motion-compat';
 import type { Task } from '@/types';
+import { getResultDisplayText } from '@/types';
 import { StatusBadge } from '@/components/torale';
 import { getTaskStatus } from '@/lib/taskStatus';
 import { formatTimeAgo, formatTimeUntil } from '@/lib/utils';
@@ -159,10 +160,10 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
               >
                 <div className="bg-white border-2 border-zinc-200 rounded-sm p-4 mb-2 mt-[-8px]">
                   {/* Latest Result */}
-                  {lastExecution?.result?.summary ? (
+                  {getResultDisplayText(lastExecution?.result) ? (
                     <div className="mb-4">
                       <p className="text-sm text-zinc-700 leading-relaxed line-clamp-3">
-                        {lastExecution.result.summary}
+                        {getResultDisplayText(lastExecution?.result)}
                       </p>
                     </div>
                   ) : (
@@ -200,10 +201,10 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
               >
                 <div className="bg-zinc-50 border-b-2 border-zinc-200 p-4 pl-12">
                   {/* Latest Result */}
-                  {lastExecution?.result?.summary ? (
+                  {getResultDisplayText(lastExecution?.result) ? (
                     <div className="mb-4">
                       <p className="text-sm text-zinc-700 leading-relaxed line-clamp-3">
-                        {lastExecution.result.summary}
+                        {getResultDisplayText(lastExecution?.result)}
                       </p>
                     </div>
                   ) : (
