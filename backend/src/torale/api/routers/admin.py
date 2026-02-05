@@ -16,6 +16,7 @@ from torale.access import ClerkUser, clerk_client, require_admin
 from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.core.database_alchemy import get_async_session
+from torale.scheduler.job import execute_task_job_manual
 from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import TaskState
 from torale.tasks.service import TaskService
@@ -23,6 +24,19 @@ from torale.tasks.service import TaskService
 router = APIRouter(prefix="/admin", tags=["admin"], include_in_schema=False)
 
 logger = logging.getLogger(__name__)
+
+# Module-level set to prevent GC of background tasks
+_background_tasks: set[asyncio.Task] = set()
+
+
+def _handle_background_task_result(task: asyncio.Task) -> None:
+    """Log unhandled exceptions from manual task executions."""
+    _background_tasks.discard(task)
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc:
+        logger.error(f"Background task execution failed: {exc}", exc_info=exc)
 
 
 # Request models for role management
@@ -974,3 +988,75 @@ async def delete_waitlist_entry(
         )
 
     return {"status": "deleted"}
+
+
+@router.post("/tasks/{task_id}/execute")
+async def admin_execute_task(
+    task_id: UUID,
+    suppress_notifications: bool = Query(default=True),
+    admin: ClerkUser = Depends(require_admin),
+    db: Database = Depends(get_db),
+):
+    """
+    Execute a task immediately (admin only).
+
+    Allows admins to manually trigger execution of any user's task.
+    Notifications are suppressed by default for admin executions.
+
+    Path Parameters:
+    - task_id: UUID of the task to execute
+
+    Query Parameters:
+    - suppress_notifications: Whether to suppress notifications (default: true)
+
+    Returns:
+    - Execution ID and status
+    """
+    # Fetch task (no user_id filter - admin can access any task)
+    task_query = """
+        SELECT t.id, t.name, t.user_id
+        FROM tasks t
+        WHERE t.id = $1
+    """
+    task_row = await db.fetch_one(task_query, task_id)
+
+    if not task_row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    # Create execution record
+    execution_query = """
+        INSERT INTO task_executions (task_id, status)
+        VALUES ($1, $2)
+        RETURNING id, task_id, status, started_at, completed_at, result, error_message, created_at
+    """
+    execution_row = await db.fetch_one(execution_query, task_id, "pending")
+
+    if not execution_row:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to create execution record",
+        )
+
+    # Run agent execution in background (prevent GC via module-level set)
+    bg_task = asyncio.create_task(
+        execute_task_job_manual(
+            task_id=str(task_id),
+            execution_id=str(execution_row["id"]),
+            user_id=str(task_row["user_id"]),
+            task_name=task_row["name"],
+            suppress_notifications=suppress_notifications,
+        )
+    )
+    _background_tasks.add(bg_task)
+    bg_task.add_done_callback(_handle_background_task_result)
+    logger.info(f"Admin {admin.email} started execution {execution_row['id']} for task {task_id}")
+
+    return {
+        "id": str(execution_row["id"]),
+        "task_id": str(task_id),
+        "status": "pending",
+        "message": f"Execution started (notifications {'suppressed' if suppress_notifications else 'enabled'})",
+    }

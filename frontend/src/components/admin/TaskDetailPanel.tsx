@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
-import { Loader2, Clock, Zap, AlertTriangle, FileText } from 'lucide-react'
+import { Loader2, Clock, Zap, AlertTriangle, FileText, Play } from 'lucide-react'
 import { SectionLabel, StatusBadge } from '@/components/torale'
+import { toast } from 'sonner'
 import { stateToVariant } from './types'
 import type { TaskData } from './types'
 
@@ -47,6 +48,20 @@ export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
+  const [isExecuting, setIsExecuting] = useState(false)
+
+  const handleExecute = async () => {
+    setIsExecuting(true)
+    try {
+      await api.adminExecuteTask(task.id)
+      toast.success('Execution started')
+      setRetryCount((c) => c + 1) // Refresh executions
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to execute task')
+    } finally {
+      setIsExecuting(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -72,6 +87,23 @@ export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
 
   return (
     <div className="bg-zinc-50 border-t border-zinc-200 p-4 space-y-4">
+      {/* Actions */}
+      <div className="flex items-center gap-2">
+        <SectionLabel>Actions</SectionLabel>
+        <button
+          onClick={handleExecute}
+          disabled={isExecuting || task.state === 'completed'}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 text-white text-xs font-mono hover:bg-[hsl(10,90%,55%)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isExecuting ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Play className="h-3 w-3" />
+          )}
+          Run Now
+        </button>
+      </div>
+
       {/* Metadata */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div>
