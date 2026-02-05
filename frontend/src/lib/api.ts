@@ -234,6 +234,18 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
+  async adminExecuteTask(
+    taskId: string,
+    suppressNotifications: boolean = true
+  ): Promise<{ id: string; task_id: string; status: string; message: string }> {
+    const url = `${this.baseUrl}/admin/tasks/${taskId}/execute?suppress_notifications=${suppressNotifications}`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
   // Waitlist endpoints
   async getWaitlist(statusFilter?: string): Promise<any> {
     const url = statusFilter
