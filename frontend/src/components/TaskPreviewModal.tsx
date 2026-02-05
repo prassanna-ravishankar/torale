@@ -123,22 +123,25 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
                 <p className="text-sm text-zinc-600">"{task.search_query}"</p>
               </div>
 
-              {getResultDisplayText(execution.result) ? (
-                <SearchPreview
-                  answer={getResultDisplayText(execution.result)!}
-                  conditionMet={!!execution.notification}
-                  conditionDescription={task.condition_description}
-                  groundingSources={execution.grounding_sources || []}
-                  currentState={execution.result.metadata?.current_state}
-                  showConditionBadge={true}
-                />
-              ) : (
-                <div className="p-4 border-2 border-amber-200 bg-amber-50">
-                  <p className="text-sm text-amber-700">
-                    The agent completed but did not produce a summary.
-                  </p>
-                </div>
-              )}
+              {(() => {
+                const displayText = getResultDisplayText(execution.result);
+                return displayText ? (
+                  <SearchPreview
+                    answer={displayText}
+                    conditionMet={!!execution.notification}
+                    conditionDescription={task.condition_description}
+                    groundingSources={execution.grounding_sources || []}
+                    currentState={execution.result.metadata?.current_state}
+                    showConditionBadge={true}
+                  />
+                ) : (
+                  <div className="p-4 border-2 border-amber-200 bg-amber-50">
+                    <p className="text-sm text-amber-700">
+                      The agent completed but did not produce a summary.
+                    </p>
+                  </div>
+                );
+              })()}
 
             </div>
           )}

@@ -1,5 +1,6 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import { TaskExecution } from "@/types";
 import { GroundingSourceList } from "@/components/ui/GroundingSourceList";
 import { StatusBadge, SectionLabel, BrutalistCard, CollapsibleSection } from "@/components/torale";
@@ -71,6 +72,7 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution }) => {
                   <SectionLabel className="mb-3 text-emerald-600">Notification</SectionLabel>
                   <div className="text-sm prose prose-sm max-w-none">
                     <ReactMarkdown
+                      rehypePlugins={[rehypeSanitize]}
                       components={{
                         p: ({ children }) => <p className="mb-3 leading-relaxed text-zinc-900">{children}</p>,
                         ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1.5">{children}</ul>,
@@ -107,9 +109,9 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution }) => {
                   className="mb-3"
                 >
                   <div className="p-4 bg-zinc-50 border-x-2 border-b-2 border-zinc-200">
-                    <p className="text-xs font-mono text-zinc-600 whitespace-pre-wrap leading-relaxed">
+                    <pre className="text-xs font-mono text-zinc-600 whitespace-pre-wrap leading-relaxed">
                       {execution.result.evidence}
-                    </p>
+                    </pre>
                   </div>
                 </CollapsibleSection>
               )}

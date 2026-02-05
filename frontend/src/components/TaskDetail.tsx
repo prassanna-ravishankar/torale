@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
+import rehypeSanitize from 'rehype-sanitize'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import type { Task, TaskExecution } from '@/types'
 import { getResultDisplayText } from '@/types'
@@ -361,21 +362,25 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               })}
             </span>
           </div>
-          {getResultDisplayText(firstExecution.result) && (
-            <div className="text-sm text-zinc-700 leading-relaxed line-clamp-3 prose prose-sm max-w-none">
-              <ReactMarkdown
-                components={{
-                  p: ({ children }) => <p className="mb-0 leading-relaxed text-zinc-700">{children}</p>,
-                  ul: ({ children }) => <ul className="list-disc pl-5 mb-0 space-y-0">{children}</ul>,
-                  ol: ({ children }) => <ol className="list-decimal pl-5 mb-0 space-y-0">{children}</ol>,
-                  li: ({ children }) => <li className="text-sm leading-relaxed text-zinc-700">{children}</li>,
-                  strong: ({ children }) => <strong className="font-bold text-zinc-900">{children}</strong>,
-                }}
-              >
-                {getResultDisplayText(firstExecution.result)}
-              </ReactMarkdown>
-            </div>
-          )}
+          {(() => {
+            const displayText = getResultDisplayText(firstExecution.result);
+            return displayText && (
+              <div className="text-sm text-zinc-700 leading-relaxed line-clamp-3 prose prose-sm max-w-none">
+                <ReactMarkdown
+                  rehypePlugins={[rehypeSanitize]}
+                  components={{
+                    p: ({ children }) => <p className="mb-0 leading-relaxed text-zinc-700">{children}</p>,
+                    ul: ({ children }) => <ul className="list-disc pl-5 mb-0 space-y-0">{children}</ul>,
+                    ol: ({ children }) => <ol className="list-decimal pl-5 mb-0 space-y-0">{children}</ol>,
+                    li: ({ children }) => <li className="text-sm leading-relaxed text-zinc-700">{children}</li>,
+                    strong: ({ children }) => <strong className="font-bold text-zinc-900">{children}</strong>,
+                  }}
+                >
+                  {displayText}
+                </ReactMarkdown>
+              </div>
+            );
+          })()}
         </div>
       )}
 

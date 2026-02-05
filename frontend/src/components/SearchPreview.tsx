@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { CheckCircle2, XCircle } from 'lucide-react';
@@ -54,6 +55,7 @@ export const SearchPreview: React.FC<SearchPreviewProps> = ({
           </div>
           <div className="text-sm prose prose-sm max-w-none">
             <ReactMarkdown
+              rehypePlugins={[rehypeSanitize]}
               components={{
                 p: ({ children }) => <p className="mb-3 leading-relaxed">{children}</p>,
                 ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1.5">{children}</ul>,
