@@ -1,8 +1,9 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import { TaskExecution } from "@/types";
 import { GroundingSourceList } from "@/components/ui/GroundingSourceList";
-import { StatusBadge, SectionLabel, BrutalistCard } from "@/components/torale";
+import { StatusBadge, SectionLabel, BrutalistCard, CollapsibleSection } from "@/components/torale";
 import {
   CheckCircle2,
   XCircle,
@@ -65,12 +66,13 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution }) => {
                 </span>
               </div>
 
-              {/* Layer 2: PRIMARY INFO - Answer/Summary & Sources (Always Visible) */}
-              {execution.result?.summary && (
-                <div className="mb-3 p-4 bg-white border-2 border-zinc-200">
-                  <SectionLabel className="mb-3">Summary</SectionLabel>
+              {/* Layer 2: Notification - prominent when condition met */}
+              {execution.result?.notification && (
+                <div className="mb-3 p-4 bg-emerald-50 border-2 border-emerald-200">
+                  <SectionLabel className="mb-3 text-emerald-600">Notification</SectionLabel>
                   <div className="text-sm prose prose-sm max-w-none">
                     <ReactMarkdown
+                      rehypePlugins={[rehypeSanitize]}
                       components={{
                         p: ({ children }) => <p className="mb-3 leading-relaxed text-zinc-900">{children}</p>,
                         ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1.5">{children}</ul>,
@@ -82,7 +84,7 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution }) => {
                         h3: ({ children }) => <h3 className="text-base font-grotesk font-bold mb-2 mt-2 text-zinc-900">{children}</h3>,
                       }}
                     >
-                      {execution.result.summary}
+                      {execution.result.notification}
                     </ReactMarkdown>
                   </div>
                 </div>
@@ -99,6 +101,20 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution }) => {
                 </div>
               )}
 
+              {/* Layer 3: Evidence - collapsible agent reasoning */}
+              {execution.result?.evidence && (
+                <CollapsibleSection
+                  title="Agent Reasoning"
+                  defaultOpen={false}
+                  className="mb-3"
+                >
+                  <div className="p-4 bg-zinc-50 border-x-2 border-b-2 border-zinc-200">
+                    <pre className="text-xs font-mono text-zinc-600 whitespace-pre-wrap leading-relaxed">
+                      {execution.result.evidence}
+                    </pre>
+                  </div>
+                </CollapsibleSection>
+              )}
 
               {execution.error_message && (
                 <div className="p-4 bg-red-50 border-2 border-red-200">
