@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 import secrets
@@ -7,7 +6,7 @@ from uuid import UUID
 
 from apscheduler.jobstores.base import JobLookupError
 from asyncpg.exceptions import UniqueViolationError
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from torale.access import CurrentUser, OptionalUser
@@ -59,9 +58,6 @@ async def _check_task_access(db: Database, task_id: UUID, user) -> dict:
     if not is_owner and not row["is_public"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     return dict(row)
-
-
-_background_tasks: set[asyncio.Task] = set()
 
 
 async def _validate_and_extract_notifications(
@@ -140,7 +136,12 @@ async def _validate_and_extract_notifications(
 
 
 @router.post("/", response_model=Task)
-async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depends(get_db)):
+async def create_task(
+    task: TaskCreate,
+    user: CurrentUser,
+    background_tasks: BackgroundTasks,
+    db: Database = Depends(get_db),
+):
     # Validate notifications and extract fields for database
     validated_notifications, extracted = await _validate_and_extract_notifications(
         task.notifications
@@ -209,11 +210,12 @@ async def create_task(task: TaskCreate, user: CurrentUser, db: Database = Depend
     immediate_execution_error = None
     if task.run_immediately:
         try:
-            await _start_task_execution(
+            await start_task_execution(
                 task_id=task_id,
                 task_name=task.name,
                 user_id=str(user.id),
                 db=db,
+                background_tasks=background_tasks,
                 suppress_notifications=False,  # First run should notify
             )
         except Exception as e:
@@ -239,21 +241,39 @@ async def list_tasks(
     return [parse_task_with_execution(row) for row in rows]
 
 
-def _handle_background_task_result(task: asyncio.Task) -> None:
-    """Log unhandled exceptions from manual task executions."""
-    _background_tasks.discard(task)
-    if task.cancelled():
-        return
-    exc = task.exception()
-    if exc:
-        logger.error(f"Background task execution failed: {exc}", exc_info=exc)
+async def _safe_execute_task_job_manual(
+    task_id: str,
+    execution_id: str,
+    user_id: str,
+    task_name: str,
+    suppress_notifications: bool = False,
+) -> None:
+    """Wrapper to ensure background task errors are logged.
+
+    FastAPI's BackgroundTasks silently swallows exceptions, so we need
+    explicit logging to maintain visibility into failures.
+    """
+    try:
+        await execute_task_job_manual(
+            task_id=task_id,
+            execution_id=execution_id,
+            user_id=user_id,
+            task_name=task_name,
+            suppress_notifications=suppress_notifications,
+        )
+    except Exception as exc:
+        logger.error(
+            f"Background task execution failed for task {task_id}, execution {execution_id}: {exc}",
+            exc_info=True,
+        )
 
 
-async def _start_task_execution(
+async def start_task_execution(
     task_id: str,
     task_name: str,
     user_id: str,
     db: Database,
+    background_tasks: BackgroundTasks,
     suppress_notifications: bool = False,
 ) -> dict:
     """Create execution record and launch agent-based execution in background."""
@@ -271,18 +291,14 @@ async def _start_task_execution(
             detail="Failed to create execution record",
         )
 
-    # Run agent execution in background (prevent GC via module-level set)
-    bg_task = asyncio.create_task(
-        execute_task_job_manual(
-            task_id=task_id,
-            execution_id=str(execution_row["id"]),
-            user_id=user_id,
-            task_name=task_name,
-            suppress_notifications=suppress_notifications,
-        )
+    background_tasks.add_task(
+        _safe_execute_task_job_manual,
+        task_id=task_id,
+        execution_id=str(execution_row["id"]),
+        user_id=user_id,
+        task_name=task_name,
+        suppress_notifications=suppress_notifications,
     )
-    _background_tasks.add(bg_task)
-    bg_task.add_done_callback(_handle_background_task_result)
     logger.info(f"Started execution {execution_row['id']} for task {task_id}")
 
     return dict(execution_row)
@@ -766,6 +782,7 @@ async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(g
 async def execute_task(
     task_id: UUID,
     user: CurrentUser,
+    background_tasks: BackgroundTasks,
     db: Database = Depends(get_db),
 ):
     """Execute a task manually (Run Now)."""
@@ -784,11 +801,12 @@ async def execute_task(
         )
 
     # Use helper to create execution and start workflow
-    row = await _start_task_execution(
+    row = await start_task_execution(
         task_id=str(task_id),
         task_name=task["name"],
         user_id=str(user.id),
         db=db,
+        background_tasks=background_tasks,
         suppress_notifications=False,
     )
 
