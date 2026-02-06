@@ -1,7 +1,8 @@
-"""Tests for scheduler activities (persist_execution_result)."""
+"""Tests for scheduler activities (persist_execution_result, fetch_recent_executions)."""
 
 import json
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -82,3 +83,64 @@ class TestPersistExecutionResult:
         task_call = mock_conn.execute.call_args_list[1]
         task_args = task_call[0]
         assert json.loads(task_args[1]) == {"evidence": "Price is $999"}
+
+
+class TestFetchRecentExecutions:
+    @pytest.mark.asyncio
+    @patch(f"{MODULE}.db")
+    async def test_returns_structured_output(self, mock_db):
+        """DB rows are mapped to structured dicts with truncated evidence."""
+        completed = datetime(2026, 2, 5, 14, 30, 0, tzinfo=UTC)
+        mock_db.fetch_all = AsyncMock(
+            return_value=[
+                {
+                    "completed_at": completed,
+                    "result": json.dumps(
+                        {
+                            "evidence": "No official announcement found yet from Apple",
+                            "confidence": 72,
+                        }
+                    ),
+                    "notification": None,
+                    "grounding_sources": json.dumps(
+                        [
+                            {"url": "https://macrumors.com", "title": "MacRumors"},
+                        ]
+                    ),
+                },
+            ]
+        )
+
+        from torale.scheduler.activities import fetch_recent_executions
+
+        result = await fetch_recent_executions(TASK_ID, limit=5)
+
+        assert len(result) == 1
+        assert result[0]["completed_at"] == "2026-02-05T14:30:00+00:00"
+        assert result[0]["confidence"] == 72
+        assert result[0]["notification"] is None
+        assert result[0]["evidence"] == "No official announcement found yet from Apple"
+        assert result[0]["sources"] == ["https://macrumors.com"]
+
+    @pytest.mark.asyncio
+    @patch(f"{MODULE}.db")
+    async def test_truncates_long_evidence(self, mock_db):
+        """Evidence longer than 300 chars is truncated."""
+        long_evidence = "x" * 500
+        mock_db.fetch_all = AsyncMock(
+            return_value=[
+                {
+                    "completed_at": datetime(2026, 2, 5, tzinfo=UTC),
+                    "result": json.dumps({"evidence": long_evidence, "confidence": 50}),
+                    "notification": None,
+                    "grounding_sources": "[]",
+                },
+            ]
+        )
+
+        from torale.scheduler.activities import fetch_recent_executions
+
+        result = await fetch_recent_executions(TASK_ID)
+
+        assert len(result[0]["evidence"]) == 303  # 300 + "..."
+        assert result[0]["evidence"].endswith("...")

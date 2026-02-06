@@ -295,3 +295,51 @@ async def send_webhook_notification(notification_context: dict, result: dict) ->
         )
         logger.error(f"Webhook delivery failed: {error}")
         raise RuntimeError(f"Webhook delivery failed: {error}")
+
+
+async def fetch_recent_executions(task_id: str, limit: int = 5) -> list[dict]:
+    """Fetch the last N successful executions for a task.
+
+    Returns structured dicts with: completed_at, confidence, notification,
+    evidence (truncated), and top source URLs.
+    """
+    rows = await db.fetch_all(
+        """
+        SELECT completed_at, result, notification, grounding_sources
+        FROM task_executions
+        WHERE task_id = $1 AND status = 'success'
+        ORDER BY completed_at DESC
+        LIMIT $2
+        """,
+        UUID(task_id),
+        limit,
+    )
+
+    executions = []
+    for row in rows:
+        result = row["result"]
+        if isinstance(result, str):
+            result = json.loads(result)
+
+        evidence = (result or {}).get("evidence", "")
+        if len(evidence) > 300:
+            evidence = evidence[:300] + "..."
+
+        confidence = (result or {}).get("confidence")
+
+        sources_raw = row["grounding_sources"]
+        if isinstance(sources_raw, str):
+            sources_raw = json.loads(sources_raw)
+        source_urls = [s["url"] if isinstance(s, dict) else s for s in (sources_raw or [])]
+
+        executions.append(
+            {
+                "completed_at": row["completed_at"].isoformat() if row["completed_at"] else None,
+                "confidence": confidence,
+                "notification": row["notification"],
+                "evidence": evidence,
+                "sources": source_urls,
+            }
+        )
+
+    return executions

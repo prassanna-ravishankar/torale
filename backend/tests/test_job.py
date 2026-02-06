@@ -176,14 +176,45 @@ class TestExecute:
             job_mocks.agent.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_last_known_state_in_prompt(self, job_mocks):
-        """Task with last_known_state -> prompt includes previous evidence."""
-        job_mocks.db.fetch_one = AsyncMock(
-            return_value=_make_task_row(last_known_state="No announcement yet")
-        )
+    async def test_execution_history_in_prompt(self, job_mocks):
+        """Recent executions -> prompt includes execution history block."""
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
         job_mocks.agent.return_value = _make_agent_response()
+        job_mocks.recent_execs.return_value = [
+            {
+                "completed_at": "2026-02-05T14:30:00+00:00",
+                "confidence": 72,
+                "notification": None,
+                "evidence": "No official announcement found",
+                "sources": ["https://macrumors.com"],
+            },
+            {
+                "completed_at": "2026-02-04T09:15:00+00:00",
+                "confidence": 45,
+                "notification": "Early rumors suggest September launch",
+                "evidence": "Checked Apple newsroom",
+                "sources": ["https://apple.com/newsroom"],
+            },
+        ]
 
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
         prompt = job_mocks.agent.call_args[0][0]
-        assert "Previous evidence: No announcement yet" in prompt
+        assert "## Execution History (most recent first)" in prompt
+        assert "Run 1 | 2026-02-05T14:30:00+00:00 | confidence: 72" in prompt
+        assert "Evidence: No official announcement found" in prompt
+        assert "Sources: https://macrumors.com" in prompt
+        assert "Run 2 | 2026-02-04T09:15:00+00:00 | confidence: 45" in prompt
+        assert "Notification sent: Early rumors suggest September launch" in prompt
+
+    @pytest.mark.asyncio
+    async def test_first_run_no_history(self, job_mocks):
+        """No previous executions -> no history block in prompt."""
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
+        job_mocks.agent.return_value = _make_agent_response()
+        job_mocks.recent_execs.return_value = []
+
+        await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
+
+        prompt = job_mocks.agent.call_args[0][0]
+        assert "Execution History" not in prompt
