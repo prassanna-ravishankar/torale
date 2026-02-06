@@ -125,24 +125,26 @@ class TestExecute:
 
     @pytest.mark.asyncio
     async def test_agent_failure_marks_failed(self, job_mocks):
-        """call_agent raises -> execution marked failed."""
+        """call_agent raises -> execution marked as retrying or failed (no exception raised)."""
         job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
         job_mocks.agent.side_effect = RuntimeError("Agent unreachable")
 
-        with pytest.raises(RuntimeError, match="Agent unreachable"):
-            await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
+        # Should not raise - error is handled and retry is scheduled
+        await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
+        # Check that execution was marked as retrying or failed
         execute_calls = job_mocks.db.execute.call_args_list
-        assert any("failed" in str(call) for call in execute_calls)
+        assert any("retrying" in str(call) or "failed" in str(call) for call in execute_calls)
 
     @pytest.mark.asyncio
     async def test_double_failure_logged(self, job_mocks):
-        """Agent raises + DB update raises -> both logged, no unhandled crash."""
+        """Agent raises + DB update raises -> DB error propagates, execution update fails."""
         job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
         job_mocks.db.execute = AsyncMock(side_effect=[None, Exception("DB down")])
         job_mocks.agent.side_effect = RuntimeError("Agent error")
 
-        with pytest.raises(RuntimeError, match="Agent error"):
+        # DB error should be raised when we can't persist the failure state
+        with pytest.raises(Exception, match="DB down"):
             await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
     @pytest.mark.asyncio
