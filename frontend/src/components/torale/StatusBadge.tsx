@@ -30,6 +30,7 @@ export type StatusVariant =
   | 'failed'
   | 'pending'
   | 'running'
+  | 'retrying'
   | 'triggered'
   | 'unknown';
 
@@ -99,6 +100,13 @@ const variantConfig: Record<
     border: 'border-amber-200',
     icon: <Clock className="h-3 w-3" />,
     label: 'Running',
+  },
+  retrying: {
+    bg: 'bg-amber-50',
+    text: 'text-amber-600',
+    border: 'border-amber-200',
+    icon: <Clock className="h-3 w-3" />,
+    label: 'Retrying',
   },
   triggered: {
     bg: 'bg-emerald-50',

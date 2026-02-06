@@ -66,7 +66,7 @@ async def sync_jobs_from_database() -> None:
                     JOB_FUNC_REF,
                     trigger=DateTrigger(run_date=next_run),
                     id=job_id,
-                    args=[task_id, str(row["user_id"]), row["name"]],
+                    args=[task_id, str(row["user_id"]), row["name"], 0],  # retry_count=0 on sync
                     replace_existing=True,
                 )
                 if row["state"] == "paused":

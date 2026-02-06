@@ -23,9 +23,15 @@ from torale.scheduler.activities import (
     send_webhook_notification,
 )
 from torale.scheduler.agent import call_agent
+from torale.scheduler.errors import (
+    classify_error,
+    get_retry_delay,
+    get_user_friendly_message,
+    should_retry,
+)
 from torale.scheduler.history import format_execution_history
 from torale.scheduler.scheduler import get_scheduler
-from torale.tasks import TaskState
+from torale.tasks import TaskState, TaskStatus
 from torale.tasks.service import TaskService
 
 logger = logging.getLogger(__name__)
@@ -79,6 +85,7 @@ async def _schedule_next_run(
     task_name: str,
     next_run_dt: datetime,
     execution_id: str | None,
+    retry_count: int = 0,
 ) -> None:
     """Schedule an APScheduler job and persist next_run to DB."""
     try:
@@ -88,7 +95,7 @@ async def _schedule_next_run(
             JOB_FUNC_REF,
             trigger=DateTrigger(run_date=next_run_dt),
             id=job_id,
-            args=[task_id, user_id, task_name],
+            args=[task_id, user_id, task_name, retry_count],
             replace_existing=True,
         )
         await db.execute(
@@ -121,6 +128,7 @@ async def _execute(
     user_id: str,
     task_name: str,
     suppress_notifications: bool = False,
+    retry_count: int = 0,
 ) -> None:
     """Core execution logic shared by scheduled and manual runs."""
     if not execution_id:
@@ -252,21 +260,80 @@ async def _execute(
         execution_succeeded = True
 
     except Exception as e:
-        logger.error(f"Task execution failed for {task_id}: {e}", exc_info=True)
+        category = classify_error(e)
+        user_message = get_user_friendly_message(e, category)
+        will_retry = should_retry(category, retry_count)
+
+        # Structured logging for metrics and debugging
+        logger.error(
+            f"Task execution failed for {task_id}: {e}",
+            extra={
+                "task_id": task_id,
+                "execution_id": execution_id,
+                "error_category": category.value,
+                "error_type": type(e).__name__,
+                "retry_count": retry_count,
+                "will_retry": will_retry,
+            },
+            exc_info=True,
+        )
+
+        if will_retry:
+            status = TaskStatus.RETRYING
+            next_retry_count = retry_count + 1
+            retry_delay = get_retry_delay(category, retry_count)
+            retry_dt = datetime.now(UTC) + timedelta(seconds=retry_delay)
+            logger.info(
+                f"Task {task_id} failed ({category.value}), retry {next_retry_count} in {retry_delay}s"
+            )
+        else:
+            status = TaskStatus.FAILED
+            next_retry_count = 0
+            retry_dt = datetime.now(UTC) + timedelta(hours=24)
+            logger.warning(
+                f"Task {task_id} permanently failed after {retry_count} retries ({category.value})"
+            )
+
+        # Update execution record with error details
         if execution_id:
             try:
                 await db.execute(
-                    "UPDATE task_executions SET status = 'failed', error_message = $1, completed_at = $2 WHERE id = $3",
+                    """UPDATE task_executions
+                       SET status = $1,
+                           error_message = $2,
+                           internal_error = $3,
+                           error_category = $4,
+                           retry_count = $5,
+                           completed_at = $6
+                       WHERE id = $7""",
+                    status.value,
+                    user_message,
                     str(e),
+                    category.value,
+                    retry_count,
                     datetime.now(UTC),
                     uuid.UUID(execution_id),
                 )
             except Exception as db_err:
                 logger.error(
-                    f"Failed to mark execution {execution_id} as failed: {db_err}",
+                    f"CRITICAL: Failed to mark execution {execution_id} as {status.value}: {db_err}",
                     exc_info=True,
                 )
-        raise
+                # Don't schedule retry if we can't persist state
+                raise db_err
+
+        # Schedule retry only for transient failures, not permanent failures or user errors
+        if will_retry:
+            await _schedule_next_run(
+                task_id=task_id,
+                user_id=user_id,
+                task_name=task_name,
+                next_run_dt=retry_dt,
+                execution_id=execution_id,
+                retry_count=next_retry_count,
+            )
+        # For permanent failures, let the normal task scheduling handle next run
+        # Don't auto-retry failed tasks - user needs to fix the issue
     finally:
         if execution_succeeded and next_run_value is None:
             # Agent returned next_run=null → monitoring complete
@@ -292,22 +359,21 @@ async def _execute(
                 task_name=task_name,
                 next_run_dt=resolved_dt,
                 execution_id=execution_id,
-            )
-        else:
-            # Execution failed → retry in 1 hour, don't complete
-            retry_dt = datetime.now(UTC) + timedelta(hours=1)
-            await _schedule_next_run(
-                task_id=task_id,
-                user_id=user_id,
-                task_name=task_name,
-                next_run_dt=retry_dt,
-                execution_id=execution_id,
+                retry_count=0,  # Reset retry count on successful execution
             )
 
 
-async def execute_task_job(task_id: str, user_id: str, task_name: str) -> None:
+async def execute_task_job(
+    task_id: str, user_id: str, task_name: str, retry_count: int = 0
+) -> None:
     """Entry point for APScheduler scheduled jobs."""
-    await _execute(task_id=task_id, execution_id=None, user_id=user_id, task_name=task_name)
+    await _execute(
+        task_id=task_id,
+        execution_id=None,
+        user_id=user_id,
+        task_name=task_name,
+        retry_count=retry_count,
+    )
 
 
 async def execute_task_job_manual(
