@@ -68,7 +68,9 @@ async def test_execute_task_job_accepts_execution_id():
         # Verify _execute was called with execution_id
         mock_execute.assert_awaited_once()
         call_kwargs = mock_execute.call_args.kwargs
-        assert call_kwargs["execution_id"] == EXECUTION_ID, "execution_id must be passed to _execute"
+        assert call_kwargs["execution_id"] == EXECUTION_ID, (
+            "execution_id must be passed to _execute"
+        )
         assert call_kwargs["retry_count"] == 1
 
 
@@ -89,5 +91,7 @@ async def test_execute_task_job_defaults_to_none():
         # Verify _execute was called with execution_id=None
         mock_execute.assert_awaited_once()
         call_kwargs = mock_execute.call_args.kwargs
-        assert call_kwargs["execution_id"] is None, "execution_id should default to None for new executions"
+        assert call_kwargs["execution_id"] is None, (
+            "execution_id should default to None for new executions"
+        )
         assert call_kwargs["retry_count"] == 0
