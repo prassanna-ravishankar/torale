@@ -23,6 +23,7 @@ from torale.scheduler.activities import (
     send_webhook_notification,
 )
 from torale.scheduler.agent import call_agent
+from torale.scheduler.history import format_execution_history
 from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import TaskState
 from torale.tasks.service import TaskService
@@ -158,19 +159,9 @@ async def _execute(
         if cond and cond.strip() != task["search_query"].strip():
             prompt_parts.append(f"Context: {cond}")
 
-        if recent_executions:
-            history_lines = ["\n## Execution History (most recent first)"]
-            for i, ex in enumerate(recent_executions, 1):
-                history_lines.append(
-                    f"\nRun {i} | {ex['completed_at']} | confidence: {ex['confidence']}"
-                )
-                if ex["evidence"]:
-                    history_lines.append(f"Evidence: {ex['evidence']}")
-                if ex["sources"]:
-                    history_lines.append(f"Sources: {', '.join(ex['sources'])}")
-                if ex["notification"]:
-                    history_lines.append(f"Notification sent: {ex['notification']}")
-            prompt_parts.append("\n".join(history_lines))
+        history_block = format_execution_history(recent_executions)
+        if history_block:
+            prompt_parts.append(history_block)
 
         # Call agent
         agent_response = await call_agent("\n".join(prompt_parts))

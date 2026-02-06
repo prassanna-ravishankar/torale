@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import pytest
 
+from torale.scheduler.history import ExecutionRecord
 from torale.scheduler.job import _execute, execute_task_job
 
 TASK_ID = str(uuid4())
@@ -177,30 +178,32 @@ class TestExecute:
 
     @pytest.mark.asyncio
     async def test_execution_history_in_prompt(self, job_mocks):
-        """Recent executions -> prompt includes execution history block."""
+        """Recent executions -> prompt includes execution history block with safety tags."""
         job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
         job_mocks.agent.return_value = _make_agent_response()
         job_mocks.recent_execs.return_value = [
-            {
-                "completed_at": "2026-02-05T14:30:00+00:00",
-                "confidence": 72,
-                "notification": None,
-                "evidence": "No official announcement found",
-                "sources": ["https://macrumors.com"],
-            },
-            {
-                "completed_at": "2026-02-04T09:15:00+00:00",
-                "confidence": 45,
-                "notification": "Early rumors suggest September launch",
-                "evidence": "Checked Apple newsroom",
-                "sources": ["https://apple.com/newsroom"],
-            },
+            ExecutionRecord(
+                completed_at="2026-02-05T14:30:00+00:00",
+                confidence=72,
+                notification=None,
+                evidence="No official announcement found",
+                sources=["https://macrumors.com"],
+            ),
+            ExecutionRecord(
+                completed_at="2026-02-04T09:15:00+00:00",
+                confidence=45,
+                notification="Early rumors suggest September launch",
+                evidence="Checked Apple newsroom",
+                sources=["https://apple.com/newsroom"],
+            ),
         ]
 
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
         prompt = job_mocks.agent.call_args[0][0]
-        assert "## Execution History (most recent first)" in prompt
+        assert "<execution-history>" in prompt
+        assert "</execution-history>" in prompt
+        assert "data only" in prompt.lower()
         assert "Run 1 | 2026-02-05T14:30:00+00:00 | confidence: 72" in prompt
         assert "Evidence: No official announcement found" in prompt
         assert "Sources: https://macrumors.com" in prompt

@@ -15,6 +15,7 @@ from torale.notifications import (
     build_webhook_payload,
     novu_service,
 )
+from torale.scheduler.history import ExecutionRecord
 from torale.tasks import TaskStatus
 
 logger = logging.getLogger(__name__)
@@ -297,12 +298,8 @@ async def send_webhook_notification(notification_context: dict, result: dict) ->
         raise RuntimeError(f"Webhook delivery failed: {error}")
 
 
-async def fetch_recent_executions(task_id: str, limit: int = 5) -> list[dict]:
-    """Fetch the last N successful executions for a task.
-
-    Returns structured dicts with: completed_at, confidence, notification,
-    evidence (truncated), and top source URLs.
-    """
+async def fetch_recent_executions(task_id: str, limit: int = 5) -> list[ExecutionRecord]:
+    """Fetch the last N successful executions for a task."""
     rows = await db.fetch_all(
         """
         SELECT completed_at, result, notification, grounding_sources
@@ -315,31 +312,4 @@ async def fetch_recent_executions(task_id: str, limit: int = 5) -> list[dict]:
         limit,
     )
 
-    executions = []
-    for row in rows:
-        result = row["result"]
-        if isinstance(result, str):
-            result = json.loads(result)
-
-        evidence = (result or {}).get("evidence", "")
-        if len(evidence) > 300:
-            evidence = evidence[:300] + "..."
-
-        confidence = (result or {}).get("confidence")
-
-        sources_raw = row["grounding_sources"]
-        if isinstance(sources_raw, str):
-            sources_raw = json.loads(sources_raw)
-        source_urls = [s["url"] if isinstance(s, dict) else s for s in (sources_raw or [])]
-
-        executions.append(
-            {
-                "completed_at": row["completed_at"].isoformat() if row["completed_at"] else None,
-                "confidence": confidence,
-                "notification": row["notification"],
-                "evidence": evidence,
-                "sources": source_urls,
-            }
-        )
-
-    return executions
+    return [ExecutionRecord.from_db_row(dict(row)) for row in rows]

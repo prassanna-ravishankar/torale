@@ -89,7 +89,7 @@ class TestFetchRecentExecutions:
     @pytest.mark.asyncio
     @patch(f"{MODULE}.db")
     async def test_returns_structured_output(self, mock_db):
-        """DB rows are mapped to structured dicts with truncated evidence."""
+        """DB rows are mapped to ExecutionRecord instances."""
         completed = datetime(2026, 2, 5, 14, 30, 0, tzinfo=UTC)
         mock_db.fetch_all = AsyncMock(
             return_value=[
@@ -116,11 +116,11 @@ class TestFetchRecentExecutions:
         result = await fetch_recent_executions(TASK_ID, limit=5)
 
         assert len(result) == 1
-        assert result[0]["completed_at"] == "2026-02-05T14:30:00+00:00"
-        assert result[0]["confidence"] == 72
-        assert result[0]["notification"] is None
-        assert result[0]["evidence"] == "No official announcement found yet from Apple"
-        assert result[0]["sources"] == ["https://macrumors.com"]
+        assert result[0].completed_at == "2026-02-05T14:30:00+00:00"
+        assert result[0].confidence == 72
+        assert result[0].notification is None
+        assert result[0].evidence == "No official announcement found yet from Apple"
+        assert result[0].sources == ["https://macrumors.com"]
 
     @pytest.mark.asyncio
     @patch(f"{MODULE}.db")
@@ -142,5 +142,68 @@ class TestFetchRecentExecutions:
 
         result = await fetch_recent_executions(TASK_ID)
 
-        assert len(result[0]["evidence"]) == 303  # 300 + "..."
-        assert result[0]["evidence"].endswith("...")
+        assert len(result[0].evidence) == 303  # 300 + "..."
+        assert result[0].evidence.endswith("...")
+
+
+class TestExecutionRecordFromDbRow:
+    def test_malformed_result_json(self):
+        """Corrupt result JSON -> empty defaults."""
+        from torale.scheduler.history import ExecutionRecord
+
+        row = {
+            "completed_at": datetime(2026, 2, 5, tzinfo=UTC),
+            "result": "{invalid json",
+            "notification": None,
+            "grounding_sources": "[]",
+        }
+        record = ExecutionRecord.from_db_row(row)
+        assert record.evidence == ""
+        assert record.confidence is None
+
+    def test_malformed_grounding_sources_json(self):
+        """Corrupt grounding_sources JSON -> empty sources list."""
+        from torale.scheduler.history import ExecutionRecord
+
+        row = {
+            "completed_at": datetime(2026, 2, 5, tzinfo=UTC),
+            "result": json.dumps({"evidence": "test", "confidence": 50}),
+            "notification": None,
+            "grounding_sources": "not valid json",
+        }
+        record = ExecutionRecord.from_db_row(row)
+        assert record.sources == []
+
+    def test_source_missing_url_key(self):
+        """Source dict without 'url' key -> skipped."""
+        from torale.scheduler.history import ExecutionRecord
+
+        row = {
+            "completed_at": datetime(2026, 2, 5, tzinfo=UTC),
+            "result": json.dumps({"evidence": "test", "confidence": 50}),
+            "notification": None,
+            "grounding_sources": json.dumps(
+                [
+                    {"title": "No URL"},
+                    {"url": "https://good.com", "title": "Good"},
+                ]
+            ),
+        }
+        record = ExecutionRecord.from_db_row(row)
+        assert record.sources == ["https://good.com"]
+
+    def test_result_is_none(self):
+        """All None columns -> safe empty defaults."""
+        from torale.scheduler.history import ExecutionRecord
+
+        row = {
+            "completed_at": None,
+            "result": None,
+            "notification": None,
+            "grounding_sources": None,
+        }
+        record = ExecutionRecord.from_db_row(row)
+        assert record.evidence == ""
+        assert record.confidence is None
+        assert record.sources == []
+        assert record.completed_at is None
