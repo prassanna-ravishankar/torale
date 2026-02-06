@@ -195,7 +195,7 @@ function ExecutionRow({ execution }: { execution: Execution }) {
         )}
         {confidence != null && (
           <span className="text-[10px] font-mono text-zinc-500">
-            conf: {typeof confidence === 'number' ? `${(confidence * 100).toFixed(0)}%` : String(confidence)}
+            conf: {typeof confidence === 'number' ? `${confidence}%` : String(confidence)}
           </span>
         )}
         {sourceCount > 0 && (
