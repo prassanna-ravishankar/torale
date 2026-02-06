@@ -41,9 +41,12 @@ class ExecutionRecord(BaseModel):
         if isinstance(result, str):
             try:
                 result = json.loads(result)
-            except (json.JSONDecodeError, TypeError):
+            except json.JSONDecodeError:
+                logger.warning("Corrupt result JSON in execution row: %s", result[:200])
                 result = {}
         if not isinstance(result, dict):
+            if result is not None:
+                logger.warning("Unexpected result type %s in execution row", type(result).__name__)
             result = {}
 
         # Parse grounding_sources JSONB
@@ -51,9 +54,17 @@ class ExecutionRecord(BaseModel):
         if isinstance(sources_raw, str):
             try:
                 sources_raw = json.loads(sources_raw)
-            except (json.JSONDecodeError, TypeError):
+            except json.JSONDecodeError:
+                logger.warning(
+                    "Corrupt grounding_sources JSON in execution row: %s", sources_raw[:200]
+                )
                 sources_raw = []
         if not isinstance(sources_raw, list):
+            if sources_raw is not None:
+                logger.warning(
+                    "Unexpected grounding_sources type %s in execution row",
+                    type(sources_raw).__name__,
+                )
             sources_raw = []
 
         # Safe URL extraction

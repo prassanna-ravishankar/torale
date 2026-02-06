@@ -23,14 +23,13 @@ MODULE = "torale.scheduler.job"
 FUTURE = "2099-01-01T00:00:00Z"
 
 
-def _make_task_row(last_known_state=None):
+def _make_task_row():
     return {
         "search_query": "iPhone release date",
         "condition_description": "Release date announced",
         "name": TASK_NAME,
         "notify_behavior": "once",
         "notification_channels": ["email"],
-        "last_known_state": last_known_state,
         "state": "active",
     }
 

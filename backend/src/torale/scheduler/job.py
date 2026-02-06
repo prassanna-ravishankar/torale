@@ -137,7 +137,7 @@ async def _execute(
 
         task = await db.fetch_one(
             """SELECT search_query, condition_description, name, notify_behavior,
-                      notification_channels, last_known_state
+                      notification_channels
                FROM tasks WHERE id = $1""",
             uuid.UUID(task_id),
         )
