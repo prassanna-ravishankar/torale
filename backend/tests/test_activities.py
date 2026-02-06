@@ -145,6 +145,17 @@ class TestFetchRecentExecutions:
         assert len(result[0].evidence) == 303  # 300 + "..."
         assert result[0].evidence.endswith("...")
 
+    @pytest.mark.asyncio
+    @patch(f"{MODULE}.db")
+    async def test_db_failure_returns_empty(self, mock_db):
+        """DB failure -> returns empty list instead of crashing."""
+        mock_db.fetch_all = AsyncMock(side_effect=Exception("connection refused"))
+
+        from torale.scheduler.activities import fetch_recent_executions
+
+        result = await fetch_recent_executions(TASK_ID)
+        assert result == []
+
 
 class TestExecutionRecordFromDbRow:
     def test_malformed_result_json(self):
@@ -235,19 +246,6 @@ class TestExecutionRecordFromDbRow:
         }
         record = ExecutionRecord.from_db_row(row)
         assert record.sources == ["https://a.com", "https://b.com"]
-
-
-class TestFetchRecentExecutionsDbFailure:
-    @pytest.mark.asyncio
-    @patch(f"{MODULE}.db")
-    async def test_db_failure_returns_empty(self, mock_db):
-        """DB failure -> returns empty list instead of crashing."""
-        mock_db.fetch_all = AsyncMock(side_effect=Exception("connection refused"))
-
-        from torale.scheduler.activities import fetch_recent_executions
-
-        result = await fetch_recent_executions(TASK_ID)
-        assert result == []
 
 
 class TestFormatExecutionHistory:
