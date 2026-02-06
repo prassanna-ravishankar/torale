@@ -35,30 +35,33 @@ _USER_PATTERNS = ("invalid", "malformed")
 
 def classify_error(error: Exception) -> ErrorCategory:
     """Classify an exception into a category for retry strategy."""
-    # Check exception type first for more reliable classification
     error_type = type(error).__name__.lower()
+    error_str = str(error).lower()
 
-    # Check for timeout exceptions
-    if isinstance(error, TimeoutError) or "timeout" in error_type:
+    # Prioritize string-based matching for specific error types that can be
+    # nested in generic exceptions, like rate limits.
+    if any(p in error_str for p in _RATE_LIMIT_PATTERNS):
+        return ErrorCategory.RATE_LIMIT
+
+    # Then, check for more reliable exception types and their string fallbacks.
+    if (
+        isinstance(error, TimeoutError)
+        or "timeout" in error_type
+        or any(p in error_str for p in _TIMEOUT_PATTERNS)
+    ):
         return ErrorCategory.TIMEOUT
 
-    # Check for connection exceptions
-    if isinstance(error, ConnectionError) or "connection" in error_type:
+    if (
+        isinstance(error, ConnectionError)
+        or "connection" in error_type
+        or any(p in error_str for p in _NETWORK_PATTERNS)
+    ):
         return ErrorCategory.NETWORK
 
-    # Check for database exceptions
     if "psycopg" in error_type or "database" in error_type or "operational" in error_type:
         return ErrorCategory.SYSTEM_ERROR
 
-    # Fall back to string pattern matching
-    error_str = str(error).lower()
-
-    if any(p in error_str for p in _RATE_LIMIT_PATTERNS):
-        return ErrorCategory.RATE_LIMIT
-    if any(p in error_str for p in _TIMEOUT_PATTERNS):
-        return ErrorCategory.TIMEOUT
-    if any(p in error_str for p in _NETWORK_PATTERNS):
-        return ErrorCategory.NETWORK
+    # Fall back to broader string pattern matching for other cases.
     if any(p in error_str for p in _AGENT_PATTERNS):
         return ErrorCategory.AGENT_ERROR
     if any(p in error_str for p in _USER_PATTERNS):

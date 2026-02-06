@@ -287,9 +287,8 @@ async def _execute(
                 f"Task {task_id} failed ({category.value}), retry {next_retry_count} in {retry_delay}s"
             )
         else:
+            # Permanent failure - mark as FAILED and don't schedule retry
             status = TaskStatus.FAILED
-            next_retry_count = 0
-            retry_dt = datetime.now(UTC) + timedelta(hours=24)
             logger.warning(
                 f"Task {task_id} permanently failed after {retry_count} retries ({category.value})"
             )
