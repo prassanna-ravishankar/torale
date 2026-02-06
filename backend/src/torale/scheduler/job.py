@@ -17,11 +17,13 @@ from torale.scheduler import JOB_FUNC_REF
 from torale.scheduler.activities import (
     create_execution_record,
     fetch_notification_context,
+    fetch_recent_executions,
     persist_execution_result,
     send_email_notification,
     send_webhook_notification,
 )
 from torale.scheduler.agent import call_agent
+from torale.scheduler.history import format_execution_history
 from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import TaskState
 from torale.tasks.service import TaskService
@@ -135,7 +137,7 @@ async def _execute(
 
         task = await db.fetch_one(
             """SELECT search_query, condition_description, name, notify_behavior,
-                      notification_channels, last_known_state
+                      notification_channels
                FROM tasks WHERE id = $1""",
             uuid.UUID(task_id),
         )
@@ -144,9 +146,7 @@ async def _execute(
             raise RuntimeError(f"Task {task_id} not found")
 
         # Build agent prompt
-        last_state = task["last_known_state"]
-        if last_state is not None and not isinstance(last_state, str):
-            last_state = json.dumps(last_state)
+        recent_executions = await fetch_recent_executions(task_id)
 
         prompt_parts = [
             f"task_id: {task_id}",
@@ -159,8 +159,9 @@ async def _execute(
         if cond and cond.strip() != task["search_query"].strip():
             prompt_parts.append(f"Context: {cond}")
 
-        if last_state:
-            prompt_parts.append(f"Previous evidence: {last_state}")
+        history_block = format_execution_history(recent_executions)
+        if history_block:
+            prompt_parts.append(history_block)
 
         # Call agent
         agent_response = await call_agent("\n".join(prompt_parts))

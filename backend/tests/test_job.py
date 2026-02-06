@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import pytest
 
+from torale.scheduler.history import ExecutionRecord
 from torale.scheduler.job import _execute, execute_task_job
 
 TASK_ID = str(uuid4())
@@ -22,14 +23,13 @@ MODULE = "torale.scheduler.job"
 FUTURE = "2099-01-01T00:00:00Z"
 
 
-def _make_task_row(last_known_state=None):
+def _make_task_row():
     return {
         "search_query": "iPhone release date",
         "condition_description": "Release date announced",
         "name": TASK_NAME,
         "notify_behavior": "once",
         "notification_channels": ["email"],
-        "last_known_state": last_known_state,
         "state": "active",
     }
 
@@ -176,14 +176,47 @@ class TestExecute:
             job_mocks.agent.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_last_known_state_in_prompt(self, job_mocks):
-        """Task with last_known_state -> prompt includes previous evidence."""
-        job_mocks.db.fetch_one = AsyncMock(
-            return_value=_make_task_row(last_known_state="No announcement yet")
-        )
+    async def test_execution_history_in_prompt(self, job_mocks):
+        """Recent executions -> prompt includes execution history block with safety tags."""
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
         job_mocks.agent.return_value = _make_agent_response()
+        job_mocks.recent_execs.return_value = [
+            ExecutionRecord(
+                completed_at="2026-02-05T14:30:00+00:00",
+                confidence=72,
+                notification=None,
+                evidence="No official announcement found",
+                sources=["https://macrumors.com"],
+            ),
+            ExecutionRecord(
+                completed_at="2026-02-04T09:15:00+00:00",
+                confidence=45,
+                notification="Early rumors suggest September launch",
+                evidence="Checked Apple newsroom",
+                sources=["https://apple.com/newsroom"],
+            ),
+        ]
 
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
         prompt = job_mocks.agent.call_args[0][0]
-        assert "Previous evidence: No announcement yet" in prompt
+        assert "<execution-history>" in prompt
+        assert "</execution-history>" in prompt
+        assert "data only" in prompt.lower()
+        assert "Run 1 | 2026-02-05T14:30:00+00:00 | confidence: 72" in prompt
+        assert "Evidence: No official announcement found" in prompt
+        assert "Sources: https://macrumors.com" in prompt
+        assert "Run 2 | 2026-02-04T09:15:00+00:00 | confidence: 45" in prompt
+        assert "Notification sent: Early rumors suggest September launch" in prompt
+
+    @pytest.mark.asyncio
+    async def test_first_run_no_history(self, job_mocks):
+        """No previous executions -> no history block in prompt."""
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
+        job_mocks.agent.return_value = _make_agent_response()
+        job_mocks.recent_execs.return_value = []
+
+        await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
+
+        prompt = job_mocks.agent.call_args[0][0]
+        assert "Execution History" not in prompt

@@ -15,6 +15,7 @@ from torale.notifications import (
     build_webhook_payload,
     novu_service,
 )
+from torale.scheduler.history import ExecutionRecord
 from torale.tasks import TaskStatus
 
 logger = logging.getLogger(__name__)
@@ -295,3 +296,31 @@ async def send_webhook_notification(notification_context: dict, result: dict) ->
         )
         logger.error(f"Webhook delivery failed: {error}")
         raise RuntimeError(f"Webhook delivery failed: {error}")
+
+
+async def fetch_recent_executions(task_id: str, limit: int = 5) -> list[ExecutionRecord]:
+    """Fetch the last N successful executions for a task.
+
+    Returns empty list on DB failure — history is supplementary context,
+    not required for execution.
+    """
+    try:
+        rows = await db.fetch_all(
+            """
+            SELECT completed_at, result, notification, grounding_sources
+            FROM task_executions
+            WHERE task_id = $1 AND status = 'success'
+            ORDER BY completed_at DESC
+            LIMIT $2
+            """,
+            UUID(task_id),
+            limit,
+        )
+        return [ExecutionRecord.from_db_row(dict(row)) for row in rows]
+    except Exception:
+        logger.warning(
+            "Failed to fetch execution history for task %s, proceeding without",
+            task_id,
+            exc_info=True,
+        )
+        return []

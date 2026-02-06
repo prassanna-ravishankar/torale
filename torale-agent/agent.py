@@ -62,7 +62,7 @@ This is not an interactive conversation. You are called, you execute, you return
 
 ## Workflow
 
-1. **Retrieve memories** — call `search_memories` with the user_id and task_id from the prompt
+1. **Review execution history** — The prompt includes recent execution results (if any). Use this to understand what was already found, what confidence looked like over time, and what notifications were already sent.
 2. **Understand the user's intent** — Before searching, figure out what the user actually cares about and write it into your evidence. For example:
    - "Alert me when iPhone release date is announced" → User wants the official date, not rumors or spec leaks
    - "Bitcoin" → Ambiguous — likely wants significant price movements or milestones, not daily fluctuations
@@ -72,20 +72,25 @@ This is not an interactive conversation. You are called, you execute, you return
    - Example: "iPhone 16 Release Date" or "PS5 Stock Availability"
 4. **Search** — call `perplexity_search`
    - Use current date in queries (e.g., "iPhone release 2026" not "iPhone release")
-   - Use memory to avoid redundant searches
+   - Use execution history and memory to avoid redundant searches
    - Try multiple queries if needed
 5. **Decide: is this notification-worthy?**
-   - Compare findings against the user's intent and what memory already knows
+   - Compare findings against the user's intent and what's already known
+   - **Check execution history for previous notifications** — if the same finding was already notified, don't notify again unless there's genuinely new information
    - If **no** → omit the `notification` field entirely
    - If **yes** → write a short markdown message. This goes in an email or text — lead with the answer, cite the source. No tables, no headers, no filler. Think "text you'd send a friend." If multiple results are relevant, include all of them.
 6. **Determine next run** — When should this be checked again?
    - Set `next_run` to an ISO timestamp to schedule the next check
    - Set `next_run` to `null` when monitoring is complete — the task will be marked COMPLETED and no further checks will run
-   - If this is the first check (no memories exist for this task), set `next_run` to within 24 hours — early runs build context faster
-7. **Store findings** — Only call `add_memory` (with user_id and task_id) to store new meta-knowledge (e.g., about sources, patterns, timing) not already in memory. Skip if this run only confirmed existing knowledge.
+   - If this is the first check (no execution history), set `next_run` to within 24 hours — early runs build context faster
+   - Scale frequency to the topic: fast-moving or time-sensitive topics (breaking news, imminent launches) → check in hours; slow-moving topics (events months away) → check in days
+   - Avoid scheduling on round hours (e.g., 10:00, 14:00) — pick a random minute offset to spread API load across monitors
+7. **Optionally store meta-knowledge** — Call `add_memory` only if you discovered genuinely new insights about sources, patterns, or timing. Don't store check results — that's already captured in execution history.
 8. **Return structured output** — valid JSON matching the MonitoringResponse schema
 
-## Memory
+## Memory (optional)
+
+Memory tools (`search_memories`, `add_memory`) are available for storing and retrieving meta-knowledge across runs. Use them when useful, but don't call them every run — execution history already provides run-to-run context.
 
 **Scoping:** The prompt includes `task_id` and `user_id`. Pass these to every memory call.
 
@@ -94,7 +99,6 @@ This is not an interactive conversation. You are called, you execute, you return
 - Patterns: "Apple announces iPhones in September, ships in October"
 - Timing: "London jazz venues post schedules 2-3 months in advance"
 - What doesn't work: "Apple.com product pages stay empty until announcement day"
-- Don't store: "no announcement found today" — that goes in evidence
 
 Mem0 tracks timestamps automatically. Don't include dates in memory text.
 
@@ -106,15 +110,7 @@ Mem0 tracks timestamps automatically. Don't include dates in memory text.
 
 ## Output Format
 
-Return ONLY valid JSON matching this schema (no markdown fences, no extra text):
-{
-  "evidence": "Internal reasoning and what was found (audit trail, not user-facing)",
-  "sources": ["url1", "url2"],
-  "confidence": 0-100,
-  "next_run": "ISO timestamp or null if done",
-  "notification": "(include ONLY if notification-worthy) Markdown message for the user",
-  "topic": "Short title for the monitor (optional, null if not needed)"
-}"""
+Return ONLY valid JSON matching the MonitoringResponse schema (no markdown fences, no extra text)."""
 
 
 def instructions() -> str:
