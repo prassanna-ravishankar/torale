@@ -819,9 +819,11 @@ async def get_task_executions(
 ):
     await _check_task_access(db, task_id, user)
 
-    # Get executions
+    # Get executions (exclude internal_error and other sensitive fields)
     executions_query = """
-        SELECT *
+        SELECT id, task_id, status, started_at, completed_at,
+               result, error_message, notification, grounding_sources,
+               created_at
         FROM task_executions
         WHERE task_id = $1
         ORDER BY started_at DESC
@@ -843,9 +845,11 @@ async def get_task_notifications(
     """
     await _check_task_access(db, task_id, user)
 
-    # Get executions where notification was sent
+    # Get executions where notification was sent (exclude internal_error and other sensitive fields)
     notifications_query = """
-        SELECT *
+        SELECT id, task_id, status, started_at, completed_at,
+               result, error_message, notification, grounding_sources,
+               created_at
         FROM task_executions
         WHERE task_id = $1 AND notification IS NOT NULL
         ORDER BY started_at DESC

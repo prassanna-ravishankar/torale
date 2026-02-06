@@ -95,7 +95,7 @@ async def _schedule_next_run(
             JOB_FUNC_REF,
             trigger=DateTrigger(run_date=next_run_dt),
             id=job_id,
-            args=[task_id, user_id, task_name, retry_count],
+            args=[task_id, user_id, task_name, retry_count, execution_id],
             replace_existing=True,
         )
         await db.execute(
@@ -363,12 +363,16 @@ async def _execute(
 
 
 async def execute_task_job(
-    task_id: str, user_id: str, task_name: str, retry_count: int = 0
+    task_id: str,
+    user_id: str,
+    task_name: str,
+    retry_count: int = 0,
+    execution_id: str | None = None,
 ) -> None:
     """Entry point for APScheduler scheduled jobs."""
     await _execute(
         task_id=task_id,
-        execution_id=None,
+        execution_id=execution_id,
         user_id=user_id,
         task_name=task_name,
         retry_count=retry_count,

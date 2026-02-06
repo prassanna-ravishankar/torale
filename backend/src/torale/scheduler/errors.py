@@ -90,7 +90,14 @@ _DEFAULT_USER_MESSAGE = "An unexpected error occurred. We'll retry automatically
 def get_user_friendly_message(error: Exception, category: ErrorCategory) -> str:
     """Convert technical error to user-friendly message."""
     if category == ErrorCategory.USER_ERROR:
-        return str(error)
+        # Sanitize user errors - don't expose raw exception strings that may leak internal details
+        error_str = str(error).lower()
+        if "invalid" in error_str:
+            return "The request contains invalid data. Please check your input and try again."
+        if "malformed" in error_str:
+            return "The request is malformed. Please check the format and try again."
+        # Fallback for other user errors
+        return "Unable to process your request. Please check your input and try again."
     return _USER_MESSAGES.get(category, _DEFAULT_USER_MESSAGE)
 
 
