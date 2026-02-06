@@ -296,6 +296,9 @@ async def _execute(
         # Update execution record with error details
         if execution_id:
             try:
+                # Truncate internal_error to prevent storing overly large stack traces
+                internal_error = str(e)[:2000]  # Limit to 2000 chars for security/storage
+
                 await db.execute(
                     """UPDATE task_executions
                        SET status = $1,
@@ -307,7 +310,7 @@ async def _execute(
                        WHERE id = $7""",
                     status.value,
                     user_message,
-                    str(e),
+                    internal_error,
                     category.value,
                     retry_count,
                     datetime.now(UTC),
@@ -331,8 +334,8 @@ async def _execute(
                 execution_id=execution_id,
                 retry_count=next_retry_count,
             )
-        # For permanent failures, let the normal task scheduling handle next run
-        # Don't auto-retry failed tasks - user needs to fix the issue
+        # For permanent failures, the task is marked FAILED and no further retries are scheduled.
+        # The task will not be automatically rescheduled - user needs to fix the issue and manually re-activate if desired.
     finally:
         if execution_succeeded and next_run_value is None:
             # Agent returned next_run=null → monitoring complete

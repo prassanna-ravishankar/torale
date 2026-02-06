@@ -3,6 +3,8 @@
 import logging
 from enum import Enum
 
+import asyncpg.exceptions as asyncpg_ex
+
 logger = logging.getLogger(__name__)
 
 
@@ -51,6 +53,19 @@ def classify_error(error: Exception) -> ErrorCategory:
     ):
         return ErrorCategory.TIMEOUT
 
+    # Check for network/connection errors using specific exception types
+    if isinstance(
+        error,
+        (
+            asyncpg_ex.PostgresConnectionError,
+            asyncpg_ex.ConnectionDoesNotExistError,
+            asyncpg_ex.ConnectionFailureError,
+            asyncpg_ex.CannotConnectNowError,
+        ),
+    ):
+        return ErrorCategory.NETWORK
+
+    # Fallback: generic connection errors and string patterns
     if (
         isinstance(error, ConnectionError)
         or "connection" in error_type
@@ -58,7 +73,26 @@ def classify_error(error: Exception) -> ErrorCategory:
     ):
         return ErrorCategory.NETWORK
 
-    if "psycopg" in error_type or "database" in error_type or "operational" in error_type:
+    # Check for database/system errors using specific exception types
+    if isinstance(
+        error,
+        (
+            asyncpg_ex.PostgresSystemError,
+            asyncpg_ex.InsufficientResourcesError,
+            asyncpg_ex.OutOfMemoryError,
+            asyncpg_ex.DiskFullError,
+        ),
+    ):
+        return ErrorCategory.SYSTEM_ERROR
+
+    # Fallback: string-based detection for database errors
+    if (
+        "asyncpg" in error_type
+        or "psycopg" in error_type
+        or "database" in error_type
+        or "operational" in error_type
+        or "postgres" in error_type
+    ):
         return ErrorCategory.SYSTEM_ERROR
 
     # Fall back to broader string pattern matching for other cases.

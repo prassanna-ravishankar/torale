@@ -1,5 +1,7 @@
 """Tests for error classification and user-friendly message sanitization."""
 
+import asyncpg.exceptions as asyncpg_ex
+
 from torale.scheduler.errors import ErrorCategory, classify_error, get_user_friendly_message
 
 
@@ -74,3 +76,24 @@ def test_network_classification():
     error = ConnectionError("Connection refused")
     category = classify_error(error)
     assert category == ErrorCategory.NETWORK
+
+
+def test_asyncpg_connection_error_classification():
+    """Verify asyncpg connection errors are classified as NETWORK."""
+    error = asyncpg_ex.PostgresConnectionError("connection lost")
+    category = classify_error(error)
+    assert category == ErrorCategory.NETWORK
+
+
+def test_asyncpg_system_error_classification():
+    """Verify asyncpg system errors are classified as SYSTEM_ERROR."""
+    error = asyncpg_ex.OutOfMemoryError("out of memory")
+    category = classify_error(error)
+    assert category == ErrorCategory.SYSTEM_ERROR
+
+
+def test_asyncpg_insufficient_resources_classification():
+    """Verify asyncpg resource errors are classified as SYSTEM_ERROR."""
+    error = asyncpg_ex.InsufficientResourcesError("too many connections")
+    category = classify_error(error)
+    assert category == ErrorCategory.SYSTEM_ERROR

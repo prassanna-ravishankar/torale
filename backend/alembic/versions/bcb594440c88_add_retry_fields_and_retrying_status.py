@@ -27,7 +27,7 @@ def upgrade() -> None:
     # Add retry tracking columns to task_executions
     op.add_column(
         "task_executions",
-        sa.Column("retry_count", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("retry_count", sa.Integer(), nullable=False, server_default=sa.text("0")),
     )
     op.add_column("task_executions", sa.Column("error_category", sa.Text(), nullable=True))
     op.add_column("task_executions", sa.Column("internal_error", sa.Text(), nullable=True))
