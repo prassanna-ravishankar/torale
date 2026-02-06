@@ -12,15 +12,18 @@ logger = logging.getLogger(__name__)
 
 async def reap_stale_executions() -> None:
     """Mark executions stuck in 'running' state for >30 minutes as failed."""
+    now = datetime.now(UTC)
+    cutoff_time = now - timedelta(minutes=30)
     result = await db.fetch_all(
         """UPDATE task_executions
            SET status = 'failed',
                error_message = 'Reaped: execution stuck in running state',
                completed_at = $1
            WHERE status = 'running'
-             AND started_at < $1 - INTERVAL '30 minutes'
+             AND started_at < $2
            RETURNING id""",
-        datetime.now(UTC),
+        now,
+        cutoff_time,
     )
     if result:
         logger.warning(f"Reaped {len(result)} stale executions stuck in running state")
