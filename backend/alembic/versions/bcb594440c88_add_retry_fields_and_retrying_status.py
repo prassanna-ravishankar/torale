@@ -21,8 +21,8 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Add 'retrying' value to task_status enum
-    op.execute("ALTER TYPE task_status ADD VALUE IF NOT EXISTS 'retrying'")
+    # The status column is TEXT, not an enum type, so no enum alteration needed
+    # The 'retrying' status can be used directly as a text value
 
     # Add retry tracking columns to task_executions
     op.add_column(
