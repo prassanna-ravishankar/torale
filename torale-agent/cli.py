@@ -24,6 +24,19 @@ CASES_PATH = Path(__file__).parent / "evals" / "cases.jsonl"
 RESULTS_DIR = Path(__file__).parent / "evals" / "results"
 
 
+def _load_results_file(path: Path) -> list[dict]:
+    """Load and parse a JSON results file, exiting on failure."""
+    try:
+        with path.open() as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        console.print(f"[red]Error: Results file {path.name} is corrupted: {e}[/red]")
+        raise typer.Exit(1)
+    except OSError as e:
+        console.print(f"[red]Error: Cannot read {path.name}: {e}[/red]")
+        raise typer.Exit(1)
+
+
 @app.command()
 def query(
     prompt: str = typer.Argument(..., help="Prompt to send to the agent"),
@@ -35,7 +48,6 @@ def query(
 
 
 async def _query_async(prompt: str, model: str, raw: bool):
-    """Async implementation of query command."""
     if not raw:
         console.print(f"\n[bold]Running query with model [cyan]{model}[/cyan][/bold]\n")
 
@@ -44,8 +56,7 @@ async def _query_async(prompt: str, model: str, raw: bool):
     try:
         agent = create_monitoring_agent(model)
         result = await agent.run(prompt)
-        end_time = time.perf_counter()
-        latency_ms = (end_time - start_time) * 1000
+        latency_ms = (time.perf_counter() - start_time) * 1000
 
         output_json = result.output.model_dump_json(indent=2)
 
@@ -57,8 +68,7 @@ async def _query_async(prompt: str, model: str, raw: bool):
 
     # Only catch expected agent/model errors
     except (ValueError, RuntimeError, KeyError, AttributeError) as e:
-        end_time = time.perf_counter()
-        latency_ms = (end_time - start_time) * 1000
+        latency_ms = (time.perf_counter() - start_time) * 1000
 
         if raw:
             print(f"ERROR: {e}", file=sys.stderr)
@@ -80,22 +90,18 @@ def run(
 
 
 async def _run_async(model: str, runs: int, case: str | None, limit: int | None):
-    """Async implementation of run command."""
-    # Load cases
     try:
         cases = load_cases(CASES_PATH)
     except FileNotFoundError:
         console.print(f"[red]Error: Cases file not found at {CASES_PATH}[/red]")
         raise typer.Exit(1)
 
-    # Filter if specific case requested
     if case:
         cases = [c for c in cases if c.name == case]
         if not cases:
             console.print(f"[red]Error: Case '{case}' not found[/red]")
             raise typer.Exit(1)
 
-    # Limit to first N cases if requested
     if limit is not None:
         cases = cases[:limit]
 
@@ -108,7 +114,6 @@ async def _run_async(model: str, runs: int, case: str | None, limit: int | None)
         f"({runs} run{'s' if runs > 1 else ''} each)[/bold]\n"
     )
 
-    # Run evaluations with progress
     results = []
     total_evals = len(cases) * runs
 
@@ -130,26 +135,22 @@ async def _run_async(model: str, runs: int, case: str | None, limit: int | None)
                 results.append(result)
                 progress.advance(task)
 
-                # Show result
                 status = "[green]✓[/green]" if result.error is None else "[red]✗[/red]"
                 console.print(
                     f"  {status} {case_obj.name} (run {run_num}): "
                     f"{result.latency_ms:.0f}ms"
                 )
 
-    # Save results
     output_path = save_results(results, RESULTS_DIR)
     console.print(f"\n[green]Results saved to:[/green] {output_path}")
 
-    # Summary
     success_count = sum(1 for r in results if r.error is None)
-    error_count = len(results) - success_count
     avg_latency = sum(r.latency_ms for r in results) / len(results)
 
     console.print(f"\n[bold]Summary:[/bold]")
     console.print(f"  Total: {len(results)}")
     console.print(f"  Success: [green]{success_count}[/green]")
-    console.print(f"  Errors: [red]{error_count}[/red]")
+    console.print(f"  Errors: [red]{len(results) - success_count}[/red]")
     console.print(f"  Avg Latency: {avg_latency:.0f}ms")
 
 
@@ -160,7 +161,6 @@ def list_cases():
 
 
 async def _list_async():
-    """Async implementation of list command."""
     try:
         cases = load_cases(CASES_PATH)
     except FileNotFoundError:
@@ -213,29 +213,22 @@ def results(limit: int = typer.Option(10, help="Number of recent results to show
         try:
             with result_file.open() as f:
                 data = json.load(f)
-        except json.JSONDecodeError as e:
-            console.print(f"[yellow]Warning: Skipping corrupted file {result_file.name}: {e}[/yellow]")
-            continue
-        except Exception as e:
-            console.print(f"[yellow]Warning: Cannot read {result_file.name}: {e}[/yellow]")
+        except (json.JSONDecodeError, OSError) as e:
+            console.print(f"[yellow]Warning: Skipping {result_file.name}: {e}[/yellow]")
             continue
 
         if not data:
             continue
 
-        model = data[0]["model"]
-        cases = len(set(r["case_name"] for r in data))
-        success = sum(1 for r in data if r["error"] is None)
         total = len(data)
+        success = sum(1 for r in data if r["error"] is None)
         avg_latency = sum(r["latency_ms"] for r in data) / total
-
-        # Extract timestamp with time component (not just date)
         timestamp = "_".join(result_file.stem.split("_")[:2])
 
         table.add_row(
             timestamp,
-            model,
-            str(cases),
+            data[0]["model"],
+            str(len(set(r["case_name"] for r in data))),
             f"{success}/{total}",
             f"{avg_latency:.0f}ms",
         )
@@ -250,11 +243,8 @@ def compare(model1: str, model2: str):
         console.print("[yellow]No results directory found[/yellow]")
         raise typer.Exit(0)
 
-    # Find latest results for each model
-    def find_latest_for_model(model: str):
-        matching = [
-            f for f in RESULTS_DIR.glob("*.json") if model in f.name
-        ]
+    def find_latest_for_model(model: str) -> Path | None:
+        matching = [f for f in RESULTS_DIR.glob("*.json") if model in f.name]
         if not matching:
             return None
         return max(matching, key=lambda p: p.stat().st_mtime)
@@ -269,28 +259,9 @@ def compare(model1: str, model2: str):
         console.print(f"[red]No results found for model: {model2}[/red]")
         raise typer.Exit(1)
 
-    # Load results with error handling
-    try:
-        with file1.open() as f:
-            data1 = json.load(f)
-    except json.JSONDecodeError as e:
-        console.print(f"[red]Error: Results file {file1.name} is corrupted: {e}[/red]")
-        raise typer.Exit(1)
-    except Exception as e:
-        console.print(f"[red]Error: Cannot read {file1.name}: {e}[/red]")
-        raise typer.Exit(1)
+    data1 = _load_results_file(file1)
+    data2 = _load_results_file(file2)
 
-    try:
-        with file2.open() as f:
-            data2 = json.load(f)
-    except json.JSONDecodeError as e:
-        console.print(f"[red]Error: Results file {file2.name} is corrupted: {e}[/red]")
-        raise typer.Exit(1)
-    except Exception as e:
-        console.print(f"[red]Error: Cannot read {file2.name}: {e}[/red]")
-        raise typer.Exit(1)
-
-    # Build comparison table
     table = Table(
         title=f"Model Comparison: {model1} vs {model2}",
         show_header=True,
@@ -300,7 +271,6 @@ def compare(model1: str, model2: str):
     table.add_column(model1, style="green")
     table.add_column(model2, style="blue")
 
-    # Calculate metrics
     def calc_metrics(data):
         if not data:
             return 0, 0, 0.0

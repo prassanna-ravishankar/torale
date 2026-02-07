@@ -3,7 +3,8 @@
 import json
 import logging
 import time
-from dataclasses import dataclass
+import traceback
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -15,8 +16,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TestCase:
-    """A test case from the cases.jsonl file."""
-
     name: str
     category: str
     search_query: str
@@ -26,8 +25,6 @@ class TestCase:
 
 @dataclass
 class EvalResult:
-    """Result from running a single evaluation."""
-
     case_name: str
     model: str
     run_number: int
@@ -38,32 +35,29 @@ class EvalResult:
 
 
 def load_cases(path: Path) -> list[TestCase]:
-    """Load test cases from JSONL file."""
+    """Load test cases from a JSONL file."""
     cases = []
-    try:
-        with path.open() as f:
-            for line_num, line in enumerate(f, 1):
-                line = line.strip()
-                if not line:  # Skip empty lines
-                    continue
+    with path.open() as f:
+        for line_num, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
 
-                try:
-                    data = json.loads(line)
-                    cases.append(
-                        TestCase(
-                            name=data["name"],
-                            category=data["category"],
-                            search_query=data["search_query"],
-                            condition_description=data["condition_description"],
-                            notify_behavior=data["notify_behavior"],
-                        )
+            try:
+                data = json.loads(line)
+                cases.append(
+                    TestCase(
+                        name=data["name"],
+                        category=data["category"],
+                        search_query=data["search_query"],
+                        condition_description=data["condition_description"],
+                        notify_behavior=data["notify_behavior"],
                     )
-                except json.JSONDecodeError as e:
-                    raise ValueError(f"Malformed JSON in cases file at line {line_num}: {e}") from e
-                except KeyError as e:
-                    raise ValueError(f"Missing required field {e} in cases file at line {line_num}") from e
-    except FileNotFoundError:
-        raise  # Re-raise as-is, handled by caller
+                )
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Malformed JSON in cases file at line {line_num}: {e}") from e
+            except KeyError as e:
+                raise ValueError(f"Missing required field {e} in cases file at line {line_num}") from e
 
     return cases
 
@@ -71,13 +65,11 @@ def load_cases(path: Path) -> list[TestCase]:
 async def run_single_eval(
     case: TestCase, model: str, run_number: int
 ) -> EvalResult:
-    """Run a single evaluation with specified model."""
+    """Run a single evaluation case against the specified model."""
     timestamp = datetime.now(UTC).isoformat()
     start_time = time.perf_counter()
 
-    # Build agent prompt with mock context for tools.
-    # Mock user_id and task_id are provided so memory tools will function,
-    # though evals primarily test search and decision-making capabilities.
+    # Mock user_id/task_id so memory tools function during evals
     prompt = f"""Analyze this monitoring task:
 
 Search Query: {case.search_query}
@@ -121,9 +113,7 @@ IMPORTANT: Return ONLY valid JSON matching the MonitoringResponse schema. Do not
         if "Exceeded maximum retries" in error_msg:
             error_msg = f"{error_msg} - Agent output failed validation after retries"
 
-            # Try to extract traceback for debugging
             try:
-                import traceback
                 tb = traceback.format_exception(type(e), e, e.__traceback__)
                 tb_str = "".join(tb)
                 response_debug = {
@@ -131,10 +121,8 @@ IMPORTANT: Return ONLY valid JSON matching the MonitoringResponse schema. Do not
                     "traceback_preview": tb_str[-1000:] if len(tb_str) > 1000 else tb_str,
                 }
             except Exception:
-                # If traceback extraction fails, just save error type
                 response_debug = {"error_type": type(e).__name__}
 
-        # Log the failure
         logger.error(
             f"Evaluation failed: case={case.name}, model={model}, run={run_number}, "
             f"latency_ms={latency_ms:.0f}, error={error_msg}"
@@ -154,58 +142,34 @@ IMPORTANT: Return ONLY valid JSON matching the MonitoringResponse schema. Do not
 async def run_eval_suite(
     cases: list[TestCase], model: str, runs: int
 ) -> list[EvalResult]:
-    """Run evaluation suite for all cases."""
-    results = []
-
-    for case in cases:
-        for run_num in range(1, runs + 1):
-            result = await run_single_eval(case, model, run_num)
-            results.append(result)
-
-    return results
+    """Run all cases sequentially, repeating each case for the given number of runs."""
+    return [
+        await run_single_eval(case, model, run_num)
+        for case in cases
+        for run_num in range(1, runs + 1)
+    ]
 
 
 def save_results(results: list[EvalResult], output_dir: Path) -> Path:
-    """Save evaluation results to JSON file.
-
-    File naming: {timestamp}_{model}.json where timestamp is YYYYmmdd_HHMMSS.
-    This format allows the CLI's compare command to find results by model name
-    and sort chronologically.
-    """
+    """Save results to {timestamp}_{model}.json for chronological sorting and model lookup."""
     if not results:
         raise ValueError("Cannot save empty results list")
 
     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-    model = results[0].model
-    filename = f"{timestamp}_{model}.json"
+    filename = f"{timestamp}_{results[0].model}.json"
     output_path = output_dir / filename
 
-    # Ensure output directory exists
     try:
         output_dir.mkdir(parents=True, exist_ok=True)
     except OSError as e:
-        logger.error(f"Failed to create output directory {output_dir}: {e}")
         raise RuntimeError(f"Cannot create results directory: {e}") from e
 
-    # Convert results to dicts
-    results_data = [
-        {
-            "case_name": r.case_name,
-            "model": r.model,
-            "run_number": r.run_number,
-            "timestamp": r.timestamp,
-            "latency_ms": r.latency_ms,
-            "response": r.response,
-            "error": r.error,
-        }
-        for r in results
-    ]
+    results_data = [asdict(r) for r in results]
 
     try:
         with output_path.open("w") as f:
             json.dump(results_data, f, indent=2)
     except (OSError, PermissionError) as e:
-        logger.error(f"Failed to write results to {output_path}: {e}")
         raise RuntimeError(f"Cannot save results file: {e}") from e
 
     logger.info(f"Saved {len(results)} results to {output_path}")

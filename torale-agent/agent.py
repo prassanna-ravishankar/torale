@@ -30,8 +30,6 @@ logger = logging.getLogger(__name__)
 
 
 class MonitoringResponse(BaseModel):
-    """Response from monitoring check."""
-
     evidence: str = Field(description="Internal reasoning and audit trail (not user-facing)")
     sources: list[str] = Field(description="URLs backing the evidence")
     confidence: int = Field(ge=0, le=100, description="Confidence level 0-100")
@@ -40,12 +38,10 @@ class MonitoringResponse(BaseModel):
     topic: Optional[str] = Field(default=None, description="A short, specific 3-5 word title for this monitor (e.g. 'iPhone 16 Release'), if one is needed.")
 
 
-# Check for required API keys
 for key in ("GEMINI_API_KEY", "PERPLEXITY_API_KEY", "MEM0_API_KEY"):
     if not os.getenv(key):
         logger.warning(f"⚠️  {key} is not set! Agent will likely fail.")
 
-# SDK clients
 mem0_client = AsyncMemoryClient()
 perplexity_client = AsyncPerplexity()
 
@@ -141,20 +137,7 @@ def instructions() -> str:
 
 
 def _register_tools(agent: Agent) -> None:
-    """Register monitoring tools on an agent instance.
-
-    This function attaches three tools to the agent:
-    - search_memories: Queries Mem0 for historical context
-    - add_memory: Stores meta-knowledge patterns
-    - perplexity_search: Performs web searches
-
-    The underscore prefix indicates this is internal to the agent module.
-    It's called automatically by create_monitoring_agent() and should not
-    be called externally.
-
-    Args:
-        agent: Pydantic AI Agent instance to register tools on.
-    """
+    """Attach monitoring tools (search_memories, add_memory, perplexity_search) to an agent."""
 
     @agent.tool_plain
     async def search_memories(query: str, user_id: str, task_id: str) -> str:
@@ -190,26 +173,12 @@ def _register_tools(agent: Agent) -> None:
 def create_monitoring_agent(
     model_id: str = "google-gla:gemini-3-flash-preview",
 ) -> Agent:
-    """Factory function to create a monitoring agent with specified model.
-
-    Args:
-        model_id: Pydantic AI model identifier. Examples:
-            - "google-gla:gemini-3-flash-preview"
-            - "google-gla:gemini-2-0-flash-exp"
-            - "claude-3-5-sonnet-20241022"
-            - "gpt-4-turbo"
-
-    Returns:
-        Configured Agent instance with tools and validators registered.
-    """
-    # Use Google-specific settings only for Gemini models that support thinking
-    # As of January 2025, thinking is supported by: gemini-3-* and gemini-2.5-pro
-    # See: https://ai.google.dev/gemini-api/docs/thinking-mode
-    # Note: This detection logic uses string matching and may need updates for new models
+    """Create a monitoring agent with the specified model and all tools registered."""
+    # Enable thinking for supported Gemini models (gemini-3-*, gemini-2.5-pro).
+    # String matching may need updates for new models.
     model_settings = None
     model_lower = model_id.lower()
     if "gemini" in model_lower or "google" in model_lower:
-        # Check if model supports thinking config
         supports_thinking = (
             "gemini-3" in model_lower or
             "gemini-2.5-pro" in model_lower or
@@ -224,7 +193,7 @@ def create_monitoring_agent(
         model_id,
         output_type=MonitoringResponse,
         instructions=instructions,
-        retries=3,  # Retry up to 3 times for model errors (e.g., 429 rate limits)
+        retries=3,
         model_settings=model_settings,
     )
 
@@ -233,7 +202,6 @@ def create_monitoring_agent(
     return agent
 
 
-# Production agent instance (unchanged for A2A server)
 agent = create_monitoring_agent()
 
 
