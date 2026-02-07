@@ -97,6 +97,9 @@ docs: documentation
 refactor: code change that neither fixes nor adds
 ```
 
+### Agent-Backend Schema Contract
+`MonitoringResponse` model is duplicated between `torale-agent/agent.py` and `backend/src/torale/scheduler/models.py`. Keep them in sync manually when changing fields. Backend validates agent responses via Pydantic at runtime.
+
 ## Quick Pointers
 
 | What | Where |

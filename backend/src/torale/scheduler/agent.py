@@ -8,9 +8,10 @@ import time
 import uuid
 
 from fasta2a.client import A2AClient, UnexpectedResponseError
-from fasta2a.schema import Message, TextPart
+from fasta2a.schema import Message, MessageSendConfiguration, TextPart
 
 from torale.core.config import settings
+from torale.scheduler.models import MonitoringResponse
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ POLL_BACKOFF = [0.5, 1, 2, 4, 8, 16, 32]  # exponential backoff steps
 MAX_CONSECUTIVE_POLL_FAILURES = 3
 
 
-async def call_agent(prompt: str) -> dict:
+async def call_agent(prompt: str) -> MonitoringResponse:
     """Send task to torale-agent via A2A and poll for result."""
     message_id = f"msg-{uuid.uuid4().hex[:12]}"
     client = A2AClient(base_url=settings.agent_url)
@@ -31,9 +32,10 @@ async def call_agent(prompt: str) -> dict:
         parts=[TextPart(kind="text", text=prompt)],
     )
 
-    # Send message
+    configuration = MessageSendConfiguration(accepted_output_modes=["application/json"])
+
     try:
-        send_response = await client.send_message(message)
+        send_response = await client.send_message(message, configuration=configuration)
     except UnexpectedResponseError as e:
         raise RuntimeError(
             f"Failed to send task to agent at {settings.agent_url}: "
@@ -90,7 +92,8 @@ async def call_agent(prompt: str) -> dict:
         logger.debug(f"Agent task {task_id} state: {state}")
 
         if state == "completed":
-            return _parse_agent_response(task)
+            parsed = _parse_agent_response(task)
+            return MonitoringResponse.model_validate(parsed)
         elif state == "failed":
             raise RuntimeError(f"Agent task failed: {task.get('status', {})}")
 
@@ -98,27 +101,37 @@ async def call_agent(prompt: str) -> dict:
 
 
 def _parse_agent_response(task: dict) -> dict:
-    """Parse A2A Task into monitoring result shape."""
-    text_content = ""
+    """Parse A2A Task into monitoring result shape.
+
+    Prefers DataPart (structured JSON). Falls back to TextPart for legacy
+    agent versions -- remove this fallback once all agents return DataPart.
+    """
     artifacts = task.get("artifacts", [])
+    text_content = ""
+
     for artifact in artifacts:
         for part in artifact.get("parts", []):
-            if part.get("kind") == "text":
+            kind = part.get("kind")
+
+            if kind == "data" and part.get("data"):
+                return part["data"]
+
+            if kind == "text":
                 text_content += part.get("text", "")
 
     if not text_content:
         raise RuntimeError(
-            f"Agent returned empty text content "
-            f"(artifacts={len(artifacts)}, task_keys={list(task.keys())})"
+            f"Agent returned empty response (artifacts={len(artifacts)}, task_keys={list(task.keys())})"
         )
 
+    # Legacy fallback: parse text as JSON
     try:
-        parsed = json.loads(text_content)
+        return json.loads(text_content)
     except (json.JSONDecodeError, TypeError):
-        # Agent sometimes returns Python dict repr (single quotes) instead of JSON
-        try:
-            parsed = ast.literal_eval(text_content)
-        except (ValueError, SyntaxError) as e:
-            raise RuntimeError(f"Agent returned non-JSON response: {text_content[:200]}") from e
+        pass
 
-    return parsed
+    # Agent sometimes returns Python dict repr (single quotes)
+    try:
+        return ast.literal_eval(text_content)
+    except (ValueError, SyntaxError) as e:
+        raise RuntimeError(f"Agent returned non-JSON text response: {text_content[:200]}") from e
