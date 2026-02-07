@@ -12,6 +12,7 @@ import pytest
 
 from torale.scheduler.history import ExecutionRecord
 from torale.scheduler.job import _execute, execute_task_job
+from torale.scheduler.models import MonitoringResponse
 
 TASK_ID = str(uuid4())
 EXECUTION_ID = str(uuid4())
@@ -35,13 +36,14 @@ def _make_task_row():
 
 
 def _make_agent_response(notification=None, evidence="no changes", next_run=FUTURE):
-    return {
-        "evidence": evidence,
-        "notification": notification,
-        "sources": ["https://example.com"],
-        "confidence": "high",
-        "next_run": next_run,
-    }
+    return MonitoringResponse(
+        evidence=evidence,
+        notification=notification,
+        sources=["https://example.com"],
+        confidence=85,
+        next_run=next_run,
+        topic=None,
+    )
 
 
 class TestExecute:

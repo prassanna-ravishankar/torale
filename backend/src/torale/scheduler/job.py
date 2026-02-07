@@ -30,27 +30,12 @@ from torale.scheduler.errors import (
     should_retry,
 )
 from torale.scheduler.history import format_execution_history
+from torale.scheduler.models import MonitoringResponse
 from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import TaskState, TaskStatus
 from torale.tasks.service import TaskService
 
 logger = logging.getLogger(__name__)
-
-
-def _normalize_confidence(value: object) -> int:
-    if isinstance(value, bool):
-        return 50
-    if isinstance(value, (int, float)):
-        try:
-            return max(0, min(100, int(value)))
-        except (ValueError, TypeError):
-            return 50
-    if isinstance(value, str):
-        try:
-            return max(0, min(100, int(float(value))))
-        except ValueError:
-            return 50
-    return 50
 
 
 def _parse_next_run(value: str | None) -> datetime | None:
@@ -171,16 +156,13 @@ async def _execute(
         if history_block:
             prompt_parts.append(history_block)
 
-        # Call agent
-        agent_response = await call_agent("\n".join(prompt_parts))
+        # Call agent - returns MonitoringResponse instance
+        agent_response: MonitoringResponse = await call_agent("\n".join(prompt_parts))
 
-        if not isinstance(agent_response, dict):
-            raise RuntimeError(f"Agent returned non-dict response: {type(agent_response)}")
-
-        # Map agent response to execution result
-        notification = agent_response.get("notification")
-        evidence = agent_response.get("evidence", "")
-        topic = agent_response.get("topic")
+        # Access fields directly via properties
+        notification = agent_response.notification
+        evidence = agent_response.evidence
+        topic = agent_response.topic
 
         # Auto-name task if agent provided a topic and name is still the default
         if topic and task["name"] == "New Monitor":
@@ -195,19 +177,19 @@ async def _execute(
             except Exception as e:
                 logger.error(f"Failed to name task {task_id}: {e}")
 
-        sources = agent_response.get("sources", [])
-        if not isinstance(sources, list):
-            logger.warning(f"Agent returned non-list sources: {type(sources)}")
-            sources = []
-        confidence = _normalize_confidence(agent_response.get("confidence"))
-        next_run_value = agent_response.get("next_run")
+        # sources is guaranteed to be list[str] by Pydantic
+        sources = agent_response.sources
+
+        # confidence is guaranteed to be int 0-100 by Pydantic
+        confidence = agent_response.confidence
+
+        # Parse next_run timestamp
+        next_run_value = agent_response.next_run
         next_run_dt = _parse_next_run(next_run_value)
         next_run = next_run_dt.isoformat() if next_run_dt else None
 
-        def _source_entry(u):
-            if isinstance(u, str):
-                return {"url": u, "title": urlparse(u).netloc or u}
-            return u
+        def _source_entry(u: str):
+            return {"url": u, "title": urlparse(u).netloc or u}
 
         grounding_sources = [_source_entry(u) for u in sources]
 

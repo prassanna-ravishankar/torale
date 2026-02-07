@@ -6,6 +6,7 @@ import pytest
 from fasta2a.client import UnexpectedResponseError
 
 from torale.scheduler.agent import _parse_agent_response, call_agent
+from torale.scheduler.models import MonitoringResponse
 
 
 class TestParseAgentResponse:
@@ -27,7 +28,33 @@ class TestParseAgentResponse:
         parsed = _parse_agent_response(task)
         assert parsed == {"condition_met": True, "evidence": "found"}
 
+    def test_data_part_structured_response(self):
+        """DataPart with structured data is parsed directly."""
+        task = {
+            "artifacts": [
+                {
+                    "parts": [
+                        {
+                            "kind": "data",
+                            "data": {
+                                "evidence": "found it",
+                                "sources": ["https://example.com"],
+                                "confidence": 95,
+                            },
+                        }
+                    ]
+                }
+            ]
+        }
+        parsed = _parse_agent_response(task)
+        assert parsed == {
+            "evidence": "found it",
+            "sources": ["https://example.com"],
+            "confidence": 95,
+        }
+
     def test_multiple_text_parts_concatenated(self):
+        """Legacy text parts are concatenated and parsed as JSON."""
         task = {
             "artifacts": [
                 {
@@ -43,17 +70,18 @@ class TestParseAgentResponse:
 
     def test_no_artifacts_raises(self):
         task = {"artifacts": [], "id": "task-123"}
-        with pytest.raises(RuntimeError, match="empty text content"):
+        with pytest.raises(RuntimeError, match="empty response"):
             _parse_agent_response(task)
 
     def test_no_artifacts_key_raises(self):
         task = {"id": "task-123", "status": "completed"}
-        with pytest.raises(RuntimeError, match="empty text content"):
+        with pytest.raises(RuntimeError, match="empty response"):
             _parse_agent_response(task)
 
     def test_invalid_json_raises(self):
+        """Legacy text response that isn't valid JSON raises error."""
         task = {"artifacts": [{"parts": [{"kind": "text", "text": "not json at all"}]}]}
-        with pytest.raises(RuntimeError, match="non-JSON response"):
+        with pytest.raises(RuntimeError, match="non-JSON text response"):
             _parse_agent_response(task)
 
     def test_non_text_parts_skipped(self):
@@ -94,7 +122,23 @@ class TestCallAgent:
             "result": {
                 "id": "task-abc",
                 "status": {"state": "completed"},
-                "artifacts": [{"parts": [{"kind": "text", "text": '{"evidence": "found it"}'}]}],
+                "artifacts": [
+                    {
+                        "parts": [
+                            {
+                                "kind": "data",
+                                "data": {
+                                    "evidence": "found it",
+                                    "sources": ["https://example.com"],
+                                    "confidence": 95,
+                                    "next_run": "2026-02-08T12:00:00Z",
+                                    "notification": None,
+                                    "topic": None,
+                                },
+                            }
+                        ]
+                    }
+                ],
             }
         }
 
@@ -106,7 +150,10 @@ class TestCallAgent:
             with patch("torale.scheduler.agent.asyncio.sleep", new_callable=AsyncMock):
                 result = await call_agent("test prompt")
 
-        assert result == {"evidence": "found it"}
+        assert isinstance(result, MonitoringResponse)
+        assert result.evidence == "found it"
+        assert result.sources == ["https://example.com"]
+        assert result.confidence == 95
 
     @pytest.mark.asyncio
     @patch("torale.scheduler.agent.settings")
@@ -182,7 +229,23 @@ class TestCallAgent:
             "result": {
                 "id": "task-abc",
                 "status": {"state": "completed"},
-                "artifacts": [{"parts": [{"kind": "text", "text": '{"ok": true}'}]}],
+                "artifacts": [
+                    {
+                        "parts": [
+                            {
+                                "kind": "data",
+                                "data": {
+                                    "evidence": "all good",
+                                    "sources": [],
+                                    "confidence": 100,
+                                    "next_run": None,
+                                    "notification": None,
+                                    "topic": None,
+                                },
+                            }
+                        ]
+                    }
+                ],
             }
         }
 
@@ -199,7 +262,8 @@ class TestCallAgent:
             with patch("torale.scheduler.agent.asyncio.sleep", new_callable=AsyncMock):
                 result = await call_agent("test prompt")
 
-        assert result == {"ok": True}
+        assert isinstance(result, MonitoringResponse)
+        assert result.confidence == 100
 
     @pytest.mark.asyncio
     @patch("torale.scheduler.agent.settings")

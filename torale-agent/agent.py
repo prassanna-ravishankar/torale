@@ -121,23 +121,13 @@ def instructions() -> str:
 
 agent = Agent(
     "google-gla:gemini-3-flash-preview",
-    output_type=str,
+    output_type=MonitoringResponse,
     instructions=instructions,
     retries=3,  # Retry up to 3 times for model errors (e.g., 429 rate limits)
     model_settings=GoogleModelSettings(
         google_thinking_config={"thinking_level": "low", "include_thoughts": True},
     ),
 )
-
-
-@agent.output_validator
-def validate_response(output: str) -> str:
-    """Validate that the output is valid MonitoringResponse JSON."""
-    try:
-        MonitoringResponse.model_validate_json(output)
-    except Exception as e:
-        raise ModelRetry(f"Invalid MonitoringResponse JSON: {e}") from e
-    return output
 
 
 @agent.tool_plain
