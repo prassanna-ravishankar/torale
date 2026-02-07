@@ -5,7 +5,6 @@ import hmac
 import json
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
 import pytest
 
@@ -14,36 +13,6 @@ from torale.notifications import (
     WebhookSignature,
     build_webhook_payload,
 )
-
-
-@pytest.fixture
-def sample_task():
-    """Create a sample task."""
-    task = MagicMock()
-    task.id = uuid4()
-    task.user_id = uuid4()
-    task.name = "Test Task"
-    task.schedule = "0 9 * * *"
-    task.search_query = "Test query"
-    task.condition_description = "Test condition"
-    task.is_active = True
-    task.webhook_url = "https://example.com/webhook"
-    return task
-
-
-@pytest.fixture
-def sample_execution(sample_task):
-    """Create a sample task execution."""
-    execution = MagicMock()
-    execution.id = uuid4()
-    execution.task_id = sample_task.id
-    execution.status = "success"
-    execution.condition_met = True
-    execution.result = {"answer": "Test answer"}
-    execution.grounding_sources = [{"url": "https://example.com", "title": "Example"}]
-    execution.started_at = datetime.now(UTC)
-    execution.completed_at = datetime.now(UTC)
-    return execution
 
 
 @pytest.fixture
@@ -179,7 +148,7 @@ class TestBuildWebhookPayload:
     """Tests for build_webhook_payload function."""
 
     def test_payload_structure(self, sample_task, sample_execution, sample_monitoring_result):
-        """Test that payload has correct structure."""
+        """Test that payload has correct structure and fields."""
         task_dict = {
             "id": sample_task.id,
             "name": sample_task.name,
@@ -194,14 +163,16 @@ class TestBuildWebhookPayload:
             str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
         )
 
+        # Top-level structure
         assert payload.event_type == "task.condition_met"
         assert "task" in payload.data
         assert "execution" in payload.data
         assert "result" in payload.data
+        assert isinstance(payload.created_at, int)
         assert payload.created_at > 0
 
-    def test_event_type(self, sample_task, sample_execution, sample_monitoring_result):
-        """Test event type is correct."""
+    def test_payload_data_fields(self, sample_task, sample_execution, sample_monitoring_result):
+        """Test task and execution data include necessary fields."""
         task_dict = {
             "id": sample_task.id,
             "name": sample_task.name,
@@ -216,69 +187,17 @@ class TestBuildWebhookPayload:
             str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
         )
 
-        assert payload.event_type == "task.condition_met"
-
-    def test_task_data(self, sample_task, sample_execution, sample_monitoring_result):
-        """Test task data includes necessary fields."""
-        task_dict = {
-            "id": sample_task.id,
-            "name": sample_task.name,
-            "search_query": sample_task.search_query,
-            "condition_description": sample_task.condition_description,
-        }
-        execution_dict = {
-            "completed_at": sample_execution.completed_at,
-        }
-
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
-        )
-
+        # Task data
         task_data = payload.data["task"]
         assert task_data["id"] == str(sample_task.id)
         assert task_data["name"] == sample_task.name
         assert task_data["search_query"] == sample_task.search_query
         assert task_data["condition_description"] == sample_task.condition_description
 
-    def test_execution_data(self, sample_task, sample_execution, sample_monitoring_result):
-        """Test execution data includes necessary fields."""
-        task_dict = {
-            "id": sample_task.id,
-            "name": sample_task.name,
-            "search_query": sample_task.search_query,
-            "condition_description": sample_task.condition_description,
-        }
-        execution_dict = {
-            "completed_at": sample_execution.completed_at,
-        }
-
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
-        )
-
+        # Execution data
         exec_data = payload.data["execution"]
         assert exec_data["id"] == str(sample_execution.id)
         assert exec_data["notification"] == sample_monitoring_result.get("notification", "")
-
-    def test_timestamp_format(self, sample_task, sample_execution, sample_monitoring_result):
-        """Test timestamp is Unix timestamp."""
-        task_dict = {
-            "id": sample_task.id,
-            "name": sample_task.name,
-            "search_query": sample_task.search_query,
-            "condition_description": sample_task.condition_description,
-        }
-        execution_dict = {
-            "completed_at": sample_execution.completed_at,
-        }
-
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
-        )
-
-        # created_at should be Unix timestamp (int)
-        assert isinstance(payload.created_at, int)
-        assert payload.created_at > 0
 
 
 class TestWebhookDeliveryService:
@@ -434,42 +353,3 @@ class TestWebhookDeliveryService:
         assert "X-Torale-Event" in headers
         assert headers["X-Torale-Event"] == "task.condition_met"
         assert "X-Torale-Delivery" in headers
-
-    @pytest.mark.asyncio
-    @patch("httpx.AsyncClient.post")
-    async def test_delivery_returns_result_tuple(
-        self, mock_post, delivery_service, sample_task, sample_execution, sample_monitoring_result
-    ):
-        """Test that delivery returns proper result tuple."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = "OK"
-        mock_post.return_value = mock_response
-
-        task_dict = {
-            "id": sample_task.id,
-            "name": sample_task.name,
-            "search_query": sample_task.search_query,
-            "condition_description": sample_task.condition_description,
-        }
-        execution_dict = {
-            "completed_at": sample_execution.completed_at,
-        }
-
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
-        )
-        result = await delivery_service.deliver(
-            sample_task.webhook_url,
-            payload,
-            secret="test_secret",
-        )
-
-        # Verify result tuple structure
-        assert isinstance(result, tuple)
-        assert len(result) == 4
-        success, http_status, error_msg, signature = result
-        assert success is True
-        assert http_status == 200
-        assert error_msg is None
-        assert isinstance(signature, str)

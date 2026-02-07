@@ -1,10 +1,65 @@
 """Shared test fixtures."""
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
 import pytest
 
 JOB_MODULE = "torale.scheduler.job"
+
+
+class MockTransaction:
+    """Mock database transaction context manager."""
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+@pytest.fixture
+def sample_user():
+    """Create a sample user."""
+    user = MagicMock()
+    user.id = uuid4()
+    user.clerk_user_id = "user_test123"
+    user.email = "user@example.com"
+    user.is_active = True
+    user.created_at = datetime.now(UTC)
+    user.updated_at = datetime.now(UTC)
+    return user
+
+
+@pytest.fixture
+def sample_task():
+    """Create a sample task."""
+    task = MagicMock()
+    task.id = uuid4()
+    task.user_id = uuid4()
+    task.name = "Test Task"
+    task.schedule = "0 9 * * *"
+    task.search_query = "Test query"
+    task.condition_description = "Test condition"
+    task.is_active = True
+    task.webhook_url = "https://example.com/webhook"
+    return task
+
+
+@pytest.fixture
+def sample_execution(sample_task):
+    """Create a sample task execution."""
+    execution = MagicMock()
+    execution.id = uuid4()
+    execution.task_id = sample_task.id
+    execution.status = "success"
+    execution.condition_met = True
+    execution.result = {"answer": "Test answer"}
+    execution.grounding_sources = [{"url": "https://example.com", "title": "Example"}]
+    execution.started_at = datetime.now(UTC)
+    execution.completed_at = datetime.now(UTC)
+    return execution
 
 
 @pytest.fixture

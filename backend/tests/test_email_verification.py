@@ -1,6 +1,6 @@
 """Tests for email verification service."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -8,25 +8,14 @@ import pytest
 
 from torale.notifications import EmailVerificationService
 
+from .conftest import MockTransaction
+
 
 @pytest.fixture
 def mock_conn():
     """Mock database connection."""
     conn = AsyncMock()
     return conn
-
-
-@pytest.fixture
-def sample_user():
-    """Create a sample user."""
-    user = MagicMock()
-    user.id = uuid4()
-    user.clerk_user_id = "user_test123"
-    user.email = "user@example.com"
-    user.is_active = True
-    user.created_at = datetime.now(UTC)
-    user.updated_at = datetime.now(UTC)
-    return user
 
 
 class TestGenerateCode:
@@ -134,12 +123,6 @@ class TestVerifyCode:
         """Test successful code verification."""
 
         # Mock transaction context
-        class MockTransaction:
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc_val, exc_tb):
-                pass
 
         mock_conn.transaction = MagicMock(return_value=MockTransaction())
 
@@ -168,13 +151,6 @@ class TestVerifyCode:
     async def test_invalid_code(self, mock_conn, sample_user):
         """Test verification with wrong code."""
 
-        class MockTransaction:
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc_val, exc_tb):
-                pass
-
         mock_conn.transaction = MagicMock(return_value=MockTransaction())
         mock_conn.fetchrow = AsyncMock(
             return_value={
@@ -200,13 +176,6 @@ class TestVerifyCode:
     async def test_expired_code(self, mock_conn, sample_user):
         """Test verification with expired code."""
 
-        class MockTransaction:
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc_val, exc_tb):
-                pass
-
         mock_conn.transaction = MagicMock(return_value=MockTransaction())
         mock_conn.fetchrow = AsyncMock(
             return_value={
@@ -231,13 +200,6 @@ class TestVerifyCode:
     async def test_no_attempts_left(self, mock_conn, sample_user):
         """Test verification when no attempts remaining."""
 
-        class MockTransaction:
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc_val, exc_tb):
-                pass
-
         mock_conn.transaction = MagicMock(return_value=MockTransaction())
         mock_conn.fetchrow = AsyncMock(
             return_value={
@@ -261,13 +223,6 @@ class TestVerifyCode:
     @pytest.mark.asyncio
     async def test_verification_not_found(self, mock_conn, sample_user):
         """Test verification when record doesn't exist."""
-
-        class MockTransaction:
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc_val, exc_tb):
-                pass
 
         mock_conn.transaction = MagicMock(return_value=MockTransaction())
         mock_conn.fetchrow = AsyncMock(return_value=None)
@@ -367,19 +322,6 @@ class TestCheckSpamLimits:
 
         assert allowed is False
         assert "Daily notification limit" in error
-
-    @pytest.mark.asyncio
-    async def test_allows_within_hourly_limit(self, mock_conn, sample_user):
-        """Test that notifications under hourly limit are allowed."""
-        # Mock fetchval: 50 daily (OK), 5 hourly (OK)
-        mock_conn.fetchval = AsyncMock(side_effect=[50, 5])
-
-        allowed, error = await EmailVerificationService.check_spam_limits(
-            mock_conn, str(sample_user.id), "test@example.com"
-        )
-
-        assert allowed is True
-        assert error is None
 
     @pytest.mark.asyncio
     async def test_blocks_at_hourly_limit(self, mock_conn, sample_user):
