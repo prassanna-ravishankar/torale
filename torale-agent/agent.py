@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from mem0 import AsyncMemoryClient
 from perplexity import AsyncPerplexity
 from pydantic import BaseModel, Field
-from pydantic_ai import Agent, ModelRetry
+from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModelSettings
 from starlette.requests import Request
 from starlette.responses import JSONResponse

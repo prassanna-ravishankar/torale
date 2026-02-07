@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from fasta2a.client import UnexpectedResponseError
+from pydantic import ValidationError
 
 from torale.scheduler.agent import _parse_agent_response, call_agent
 from torale.scheduler.models import MonitoringResponse
@@ -106,6 +107,194 @@ class TestParseAgentResponse:
         }
         with pytest.raises(RuntimeError, match=r"artifacts=1.*task_keys="):
             _parse_agent_response(task)
+
+    def test_data_part_takes_precedence_over_text_part(self):
+        """When both DataPart and TextPart exist, DataPart is preferred."""
+        task = {
+            "artifacts": [
+                {
+                    "parts": [
+                        {
+                            "kind": "data",
+                            "data": {
+                                "evidence": "from data",
+                                "sources": ["https://data.com"],
+                                "confidence": 90,
+                            },
+                        },
+                        {
+                            "kind": "text",
+                            "text": '{"evidence": "from text", "sources": ["https://text.com"], "confidence": 50}',
+                        },
+                    ]
+                }
+            ]
+        }
+        parsed = _parse_agent_response(task)
+        assert parsed["evidence"] == "from data"
+        assert parsed["confidence"] == 90
+
+    def test_python_dict_repr_parsed_via_literal_eval(self):
+        """Agent returning Python dict repr (single quotes) is parsed via ast.literal_eval."""
+        task = {
+            "artifacts": [
+                {
+                    "parts": [
+                        {
+                            "kind": "text",
+                            "text": "{'evidence': 'found', 'sources': ['https://x.com'], 'confidence': 85}",
+                        }
+                    ]
+                }
+            ]
+        }
+        parsed = _parse_agent_response(task)
+        assert parsed == {
+            "evidence": "found",
+            "sources": ["https://x.com"],
+            "confidence": 85,
+        }
+
+    def test_malformed_python_literal_raises(self):
+        """Malformed Python literal that isn't valid JSON or literal_eval raises."""
+        task = {"artifacts": [{"parts": [{"kind": "text", "text": "{'unclosed': 'dict'"}]}]}
+        with pytest.raises(RuntimeError, match="non-JSON text response"):
+            _parse_agent_response(task)
+
+    def test_empty_data_part_falls_through_to_text(self):
+        """DataPart with empty data dict falls through to TextPart parsing."""
+        task = {
+            "artifacts": [
+                {
+                    "parts": [
+                        {"kind": "data", "data": {}},
+                        {
+                            "kind": "text",
+                            "text": '{"evidence": "from text", "sources": [], "confidence": 80}',
+                        },
+                    ]
+                }
+            ]
+        }
+        parsed = _parse_agent_response(task)
+        assert parsed["evidence"] == "from text"
+
+    def test_data_part_with_minimal_fields(self):
+        """DataPart with only required fields passes validation."""
+        task = {
+            "artifacts": [
+                {
+                    "parts": [
+                        {
+                            "kind": "data",
+                            "data": {
+                                "evidence": "checked",
+                                "sources": [],
+                                "confidence": 50,
+                                # notification, next_run, topic omitted (optional)
+                            },
+                        }
+                    ]
+                }
+            ]
+        }
+        parsed = _parse_agent_response(task)
+        response = MonitoringResponse.model_validate(parsed)
+        assert response.notification is None
+        assert response.next_run is None
+        assert response.topic is None
+
+
+class TestMonitoringResponseValidation:
+    """Test Pydantic validation of agent responses."""
+
+    def test_validation_error_confidence_out_of_range(self):
+        """DataPart with confidence > 100 raises ValidationError."""
+        task = {
+            "artifacts": [
+                {
+                    "parts": [
+                        {
+                            "kind": "data",
+                            "data": {
+                                "evidence": "found",
+                                "sources": [],
+                                "confidence": 150,  # Invalid: > 100
+                            },
+                        }
+                    ]
+                }
+            ]
+        }
+        parsed = _parse_agent_response(task)
+        with pytest.raises(ValidationError, match="confidence"):
+            MonitoringResponse.model_validate(parsed)
+
+    def test_validation_error_confidence_wrong_type(self):
+        """DataPart with string confidence raises ValidationError."""
+        task = {
+            "artifacts": [
+                {
+                    "parts": [
+                        {
+                            "kind": "data",
+                            "data": {
+                                "evidence": "found",
+                                "sources": [],
+                                "confidence": "high",  # Invalid: string not int
+                            },
+                        }
+                    ]
+                }
+            ]
+        }
+        parsed = _parse_agent_response(task)
+        with pytest.raises(ValidationError, match="confidence"):
+            MonitoringResponse.model_validate(parsed)
+
+    def test_validation_error_missing_required_field(self):
+        """DataPart missing required 'evidence' field raises ValidationError."""
+        task = {
+            "artifacts": [
+                {
+                    "parts": [
+                        {
+                            "kind": "data",
+                            "data": {
+                                "sources": [],
+                                "confidence": 80,
+                                # Missing: evidence (required)
+                            },
+                        }
+                    ]
+                }
+            ]
+        }
+        parsed = _parse_agent_response(task)
+        with pytest.raises(ValidationError, match="evidence"):
+            MonitoringResponse.model_validate(parsed)
+
+    def test_validation_error_sources_wrong_type(self):
+        """DataPart with string sources (not list) raises ValidationError."""
+        task = {
+            "artifacts": [
+                {
+                    "parts": [
+                        {
+                            "kind": "data",
+                            "data": {
+                                "evidence": "found",
+                                "sources": "https://example.com",  # Invalid: string not list
+                                "confidence": 80,
+                            },
+                        }
+                    ]
+                }
+            ]
+        }
+        parsed = _parse_agent_response(task)
+        with pytest.raises(ValidationError, match="sources"):
+            MonitoringResponse.model_validate(parsed)
 
 
 class TestCallAgent:

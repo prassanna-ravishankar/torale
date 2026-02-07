@@ -156,10 +156,8 @@ async def _execute(
         if history_block:
             prompt_parts.append(history_block)
 
-        # Call agent - returns MonitoringResponse instance
         agent_response: MonitoringResponse = await call_agent("\n".join(prompt_parts))
 
-        # Access fields directly via properties
         notification = agent_response.notification
         evidence = agent_response.evidence
         topic = agent_response.topic
@@ -177,21 +175,14 @@ async def _execute(
             except Exception as e:
                 logger.error(f"Failed to name task {task_id}: {e}")
 
-        # sources is guaranteed to be list[str] by Pydantic
         sources = agent_response.sources
-
-        # confidence is guaranteed to be int 0-100 by Pydantic
         confidence = agent_response.confidence
 
-        # Parse next_run timestamp
         next_run_value = agent_response.next_run
         next_run_dt = _parse_next_run(next_run_value)
         next_run = next_run_dt.isoformat() if next_run_dt else None
 
-        def _source_entry(u: str):
-            return {"url": u, "title": urlparse(u).netloc or u}
-
-        grounding_sources = [_source_entry(u) for u in sources]
+        grounding_sources = [{"url": u, "title": urlparse(u).netloc or u} for u in sources]
 
         await persist_execution_result(
             task_id=task_id,

@@ -32,10 +32,8 @@ async def call_agent(prompt: str) -> MonitoringResponse:
         parts=[TextPart(kind="text", text=prompt)],
     )
 
-    # Request JSON output explicitly
     configuration = MessageSendConfiguration(accepted_output_modes=["application/json"])
 
-    # Send message with configuration
     try:
         send_response = await client.send_message(message, configuration=configuration)
     except UnexpectedResponseError as e:
@@ -105,41 +103,35 @@ async def call_agent(prompt: str) -> MonitoringResponse:
 def _parse_agent_response(task: dict) -> dict:
     """Parse A2A Task into monitoring result shape.
 
-    Handles both DataPart (structured JSON) and TextPart (legacy) responses.
+    Prefers DataPart (structured JSON). Falls back to TextPart for legacy
+    agent versions -- remove this fallback once all agents return DataPart.
     """
     artifacts = task.get("artifacts", [])
-
-    for artifact in artifacts:
-        for part in artifact.get("parts", []):
-            part_kind = part.get("kind")
-
-            # Structured response (new)
-            if part_kind == "data":
-                data = part.get("data", {})
-                if data:
-                    logger.debug("Received structured DataPart response")
-                    return data
-
-    # Legacy text response (backward compatibility) - concatenate all text parts
     text_content = ""
+
     for artifact in artifacts:
         for part in artifact.get("parts", []):
-            if part.get("kind") == "text":
+            kind = part.get("kind")
+
+            if kind == "data" and part.get("data"):
+                return part["data"]
+
+            if kind == "text":
                 text_content += part.get("text", "")
 
-    if text_content:
-        logger.debug("Received text response, parsing as JSON")
-        try:
-            return json.loads(text_content)
-        except (json.JSONDecodeError, TypeError):
-            # Agent sometimes returns Python dict repr (single quotes)
-            try:
-                return ast.literal_eval(text_content)
-            except (ValueError, SyntaxError) as e:
-                raise RuntimeError(
-                    f"Agent returned non-JSON text response: {text_content[:200]}"
-                ) from e
+    if not text_content:
+        raise RuntimeError(
+            f"Agent returned empty response (artifacts={len(artifacts)}, task_keys={list(task.keys())})"
+        )
 
-    raise RuntimeError(
-        f"Agent returned empty response (artifacts={len(artifacts)}, task_keys={list(task.keys())})"
-    )
+    # Legacy fallback: parse text as JSON
+    try:
+        return json.loads(text_content)
+    except (json.JSONDecodeError, TypeError):
+        pass
+
+    # Agent sometimes returns Python dict repr (single quotes)
+    try:
+        return ast.literal_eval(text_content)
+    except (ValueError, SyntaxError) as e:
+        raise RuntimeError(f"Agent returned non-JSON text response: {text_content[:200]}") from e
