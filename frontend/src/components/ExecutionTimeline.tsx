@@ -132,7 +132,11 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution }) => {
 export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
   executions,
 }) => {
-  if (executions.length === 0) {
+  // Filter out RETRYING executions - don't show transient failures to users
+  // to avoid alarm/confusion during temporary errors that will auto-resolve
+  const visibleExecutions = executions.filter((ex) => ex.status !== "retrying");
+
+  if (visibleExecutions.length === 0) {
     return (
       <div className="text-center py-12">
         <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -146,7 +150,7 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
 
   return (
     <div className="space-y-4">
-      {executions.map((execution) => (
+      {visibleExecutions.map((execution) => (
         <ExecutionCard
           key={execution.id}
           execution={execution}

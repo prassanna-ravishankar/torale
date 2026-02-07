@@ -23,7 +23,8 @@ class TaskStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
     SUCCESS = "success"
-    FAILED = "failed"
+    RETRYING = "retrying"  # Transient failure, will retry
+    FAILED = "failed"  # Only for persistent/user-actionable failures
 
 
 # Notification Models

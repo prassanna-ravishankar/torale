@@ -123,6 +123,7 @@ agent = Agent(
     "google-gla:gemini-3-flash-preview",
     output_type=str,
     instructions=instructions,
+    retries=3,  # Retry up to 3 times for model errors (e.g., 429 rate limits)
     model_settings=GoogleModelSettings(
         google_thinking_config={"thinking_level": "low", "include_thoughts": True},
     ),

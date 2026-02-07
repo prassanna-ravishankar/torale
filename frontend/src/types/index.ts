@@ -1,4 +1,4 @@
-export type TaskStatus = "pending" | "running" | "success" | "failed";
+export type TaskStatus = "pending" | "running" | "success" | "retrying" | "failed";
 export type TaskState = "active" | "paused" | "completed";
 export type NotifyBehavior = "once" | "always";
 export type NotificationChannelType = "email" | "webhook";
@@ -101,6 +101,9 @@ export interface TaskExecution {
   notification: string | null;
   grounding_sources: GroundingSource[];
   error_message: string | null;
+  internal_error?: string | null;     // Full technical error (intended for admin views)
+  error_category?: string | null;     // Error classification
+  retry_count?: number;               // Retry attempt number
 }
 
 export interface User {
