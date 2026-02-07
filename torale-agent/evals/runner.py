@@ -86,7 +86,7 @@ IMPORTANT: Return ONLY valid JSON matching the MonitoringResponse schema. Do not
         latency_ms = (end_time - start_time) * 1000
 
         # Convert MonitoringResponse to dict
-        response_content = result.data.model_dump()
+        response_content = result.output.model_dump()
 
         return EvalResult(
             case_name=case.name,

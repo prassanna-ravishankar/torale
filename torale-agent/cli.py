@@ -50,7 +50,7 @@ async def _query_async(prompt: str, model: str, raw: bool):
         latency_ms = (end_time - start_time) * 1000
 
         # Convert MonitoringResponse to JSON
-        output_json = result.data.model_dump_json(indent=2)
+        output_json = result.output.model_dump_json(indent=2)
 
         if raw:
             # Just print the raw JSON for piping
