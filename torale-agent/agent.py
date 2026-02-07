@@ -141,7 +141,20 @@ def instructions() -> str:
 
 
 def _register_tools(agent: Agent) -> None:
-    """Register monitoring tools on an agent instance."""
+    """Register monitoring tools on an agent instance.
+
+    This function attaches three tools to the agent:
+    - search_memories: Queries Mem0 for historical context
+    - add_memory: Stores meta-knowledge patterns
+    - perplexity_search: Performs web searches
+
+    The underscore prefix indicates this is internal to the agent module.
+    It's called automatically by create_monitoring_agent() and should not
+    be called externally.
+
+    Args:
+        agent: Pydantic AI Agent instance to register tools on.
+    """
 
     @agent.tool_plain
     async def search_memories(query: str, user_id: str, task_id: str) -> str:
@@ -190,7 +203,9 @@ def create_monitoring_agent(
         Configured Agent instance with tools and validators registered.
     """
     # Use Google-specific settings only for Gemini models that support thinking
-    # Thinking is supported by: gemini-3-* and gemini-2.5-pro
+    # As of January 2025, thinking is supported by: gemini-3-* and gemini-2.5-pro
+    # See: https://ai.google.dev/gemini-api/docs/thinking-mode
+    # Note: This detection logic uses string matching and may need updates for new models
     model_settings = None
     model_lower = model_id.lower()
     if "gemini" in model_lower or "google" in model_lower:

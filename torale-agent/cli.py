@@ -2,6 +2,8 @@
 
 import asyncio
 import json
+import sys
+import time
 from pathlib import Path
 
 import typer
@@ -9,7 +11,8 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from evals.runner import load_cases, run_eval_suite, save_results
+from agent import create_monitoring_agent
+from evals.runner import load_cases, run_single_eval, save_results
 
 app = typer.Typer(help="Torale Agent Evaluation CLI")
 eval_app = typer.Typer(help="Run and manage evaluations")
@@ -27,49 +30,42 @@ def query(
     model: str = typer.Option("google-gla:gemini-3-flash-preview", help="Model to use"),
     raw: bool = typer.Option(False, "--raw", help="Show only raw output (no formatting)"),
 ):
-    """Run a query against the agent (validation disabled for ad-hoc testing)."""
+    """Run a query against the agent for ad-hoc testing."""
     asyncio.run(_query_async(prompt, model, raw))
 
 
 async def _query_async(prompt: str, model: str, raw: bool):
     """Async implementation of query command."""
-    import time
-    from agent import create_monitoring_agent
-
     if not raw:
         console.print(f"\n[bold]Running query with model [cyan]{model}[/cyan][/bold]\n")
 
     start_time = time.perf_counter()
 
     try:
-        # Create agent and run query
         agent = create_monitoring_agent(model)
         result = await agent.run(prompt)
-
         end_time = time.perf_counter()
         latency_ms = (end_time - start_time) * 1000
 
-        # Convert MonitoringResponse to JSON
         output_json = result.output.model_dump_json(indent=2)
 
         if raw:
-            # Just print the raw JSON for piping
             print(output_json)
         else:
             console.print(f"[green]Success![/green] ({latency_ms:.0f}ms)\n")
             console.print(output_json)
 
-    except Exception as e:
+    # Only catch expected agent/model errors
+    except (ValueError, RuntimeError, KeyError, AttributeError) as e:
         end_time = time.perf_counter()
         latency_ms = (end_time - start_time) * 1000
 
         if raw:
-            print(f"ERROR: {e}", file=__import__('sys').stderr)
-            raise typer.Exit(1)
+            print(f"ERROR: {e}", file=sys.stderr)
         else:
             console.print(f"[red]Error:[/red] ({latency_ms:.0f}ms)")
             console.print(str(e))
-            raise typer.Exit(1)
+        raise typer.Exit(1)
 
 
 @eval_app.command()
@@ -87,7 +83,7 @@ async def _run_async(model: str, runs: int, case: str | None, limit: int | None)
     """Async implementation of run command."""
     # Load cases
     try:
-        cases = await load_cases(CASES_PATH)
+        cases = load_cases(CASES_PATH)
     except FileNotFoundError:
         console.print(f"[red]Error: Cases file not found at {CASES_PATH}[/red]")
         raise typer.Exit(1)
@@ -102,6 +98,10 @@ async def _run_async(model: str, runs: int, case: str | None, limit: int | None)
     # Limit to first N cases if requested
     if limit is not None:
         cases = cases[:limit]
+
+    if not cases:
+        console.print("[yellow]No cases to evaluate after filtering[/yellow]")
+        raise typer.Exit(0)
 
     console.print(
         f"\n[bold]Running {len(cases)} case(s) with model [cyan]{model}[/cyan] "
@@ -125,8 +125,6 @@ async def _run_async(model: str, runs: int, case: str | None, limit: int | None)
                     task,
                     description=f"[cyan]{case_obj.name}[/cyan] (run {run_num}/{runs})",
                 )
-
-                from evals.runner import run_single_eval
 
                 result = await run_single_eval(case_obj, model, run_num)
                 results.append(result)
@@ -155,8 +153,8 @@ async def _run_async(model: str, runs: int, case: str | None, limit: int | None)
     console.print(f"  Avg Latency: {avg_latency:.0f}ms")
 
 
-@eval_app.command()
-def list():
+@eval_app.command(name="list")
+def list_cases():
     """List all test cases."""
     asyncio.run(_list_async())
 
@@ -164,7 +162,7 @@ def list():
 async def _list_async():
     """Async implementation of list command."""
     try:
-        cases = await load_cases(CASES_PATH)
+        cases = load_cases(CASES_PATH)
     except FileNotFoundError:
         console.print(f"[red]Error: Cases file not found at {CASES_PATH}[/red]")
         raise typer.Exit(1)
@@ -212,8 +210,15 @@ def results(limit: int = typer.Option(10, help="Number of recent results to show
     table.add_column("Avg Latency")
 
     for result_file in result_files:
-        with result_file.open() as f:
-            data = json.load(f)
+        try:
+            with result_file.open() as f:
+                data = json.load(f)
+        except json.JSONDecodeError as e:
+            console.print(f"[yellow]Warning: Skipping corrupted file {result_file.name}: {e}[/yellow]")
+            continue
+        except Exception as e:
+            console.print(f"[yellow]Warning: Cannot read {result_file.name}: {e}[/yellow]")
+            continue
 
         if not data:
             continue
@@ -224,8 +229,8 @@ def results(limit: int = typer.Option(10, help="Number of recent results to show
         total = len(data)
         avg_latency = sum(r["latency_ms"] for r in data) / total
 
-        # Extract timestamp from filename
-        timestamp = result_file.stem.split("_")[0]
+        # Extract timestamp with time component (not just date)
+        timestamp = "_".join(result_file.stem.split("_")[:2])
 
         table.add_row(
             timestamp,
@@ -264,11 +269,26 @@ def compare(model1: str, model2: str):
         console.print(f"[red]No results found for model: {model2}[/red]")
         raise typer.Exit(1)
 
-    # Load results
-    with file1.open() as f:
-        data1 = json.load(f)
-    with file2.open() as f:
-        data2 = json.load(f)
+    # Load results with error handling
+    try:
+        with file1.open() as f:
+            data1 = json.load(f)
+    except json.JSONDecodeError as e:
+        console.print(f"[red]Error: Results file {file1.name} is corrupted: {e}[/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[red]Error: Cannot read {file1.name}: {e}[/red]")
+        raise typer.Exit(1)
+
+    try:
+        with file2.open() as f:
+            data2 = json.load(f)
+    except json.JSONDecodeError as e:
+        console.print(f"[red]Error: Results file {file2.name} is corrupted: {e}[/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[red]Error: Cannot read {file2.name}: {e}[/red]")
+        raise typer.Exit(1)
 
     # Build comparison table
     table = Table(
@@ -282,9 +302,11 @@ def compare(model1: str, model2: str):
 
     # Calculate metrics
     def calc_metrics(data):
+        if not data:
+            return 0, 0, 0.0
         success = sum(1 for r in data if r["error"] is None)
         total = len(data)
-        avg_latency = sum(r["latency_ms"] for r in data) / total if total > 0 else 0
+        avg_latency = sum(r["latency_ms"] for r in data) / total
         return success, total, avg_latency
 
     s1, t1, l1 = calc_metrics(data1)
