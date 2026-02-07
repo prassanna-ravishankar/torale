@@ -119,7 +119,19 @@ Mem0 tracks timestamps automatically. Don't include dates in memory text.
 
 ## Output Format
 
-Return ONLY valid JSON matching the MonitoringResponse schema (no markdown fences, no extra text)."""
+CRITICAL INSTRUCTION:
+Output the raw JSON string only. Do NOT use markdown code blocks (```json).
+Do not start with ```. Start the response immediately with {.
+
+Return ONLY valid JSON matching this schema:
+{
+  "evidence": "Internal reasoning and what was found (audit trail, not user-facing)",
+  "sources": ["url1", "url2"],
+  "confidence": 0–100,
+  "next_run": "ISO timestamp or null if done",
+  "notification": "(include ONLY if notification-worthy) Markdown message for the user",
+  "topic": "Short title for the monitor (optional, null if not needed)"
+}"""
 
 
 def instructions() -> str:
@@ -128,48 +140,86 @@ def instructions() -> str:
     return f"Current UTC time: {now}\n\n{SYSTEM_PROMPT}"
 
 
-agent = Agent(
-    "google-gla:gemini-3-flash-preview",
-    output_type=MonitoringResponse,
-    instructions=instructions,
-    retries=3,  # Retry up to 3 times for model errors (e.g., 429 rate limits)
-    model_settings=GoogleModelSettings(
-        google_thinking_config={"thinking_level": "low", "include_thoughts": True},
-    ),
-)
+def _register_tools(agent: Agent) -> None:
+    """Register monitoring tools on an agent instance."""
+
+    @agent.tool_plain
+    async def search_memories(query: str, user_id: str, task_id: str) -> str:
+        """Search previous monitoring memories for this task. Use to recall what was found in earlier runs."""
+        results = await mem0_client.search(
+            query,
+            filters={"AND": [{"user_id": user_id}, {"app_id": task_id}]},
+            top_k=10,
+        )
+        return json.dumps(results, default=str)
+
+    @agent.tool_plain
+    async def add_memory(text: str, user_id: str, task_id: str) -> str:
+        """Store a new meta-knowledge memory for this task. Only store patterns and source insights, not individual check results."""
+        result = await mem0_client.add(
+            [{"role": "user", "content": text}],
+            user_id=user_id,
+            app_id=task_id,
+        )
+        return json.dumps(result, default=str)
+
+    @agent.tool_plain
+    async def perplexity_search(query: str) -> str:
+        """Search the web using Perplexity for current information. Include the current year in queries for time-sensitive topics."""
+        response = await perplexity_client.search.create(query=query)
+        results = [
+            {"title": r.title, "url": r.url, "snippet": r.snippet}
+            for r in response.results
+        ]
+        return json.dumps(results)
 
 
-@agent.tool_plain
-async def search_memories(query: str, user_id: str, task_id: str) -> str:
-    """Search previous monitoring memories for this task. Use to recall what was found in earlier runs."""
-    results = await mem0_client.search(
-        query,
-        filters={"AND": [{"user_id": user_id}, {"app_id": task_id}]},
-        top_k=10,
+def create_monitoring_agent(
+    model_id: str = "google-gla:gemini-3-flash-preview",
+) -> Agent:
+    """Factory function to create a monitoring agent with specified model.
+
+    Args:
+        model_id: Pydantic AI model identifier. Examples:
+            - "google-gla:gemini-3-flash-preview"
+            - "google-gla:gemini-2-0-flash-exp"
+            - "claude-3-5-sonnet-20241022"
+            - "gpt-4-turbo"
+
+    Returns:
+        Configured Agent instance with tools and validators registered.
+    """
+    # Use Google-specific settings only for Gemini models that support thinking
+    # Thinking is supported by: gemini-3-* and gemini-2.5-pro
+    model_settings = None
+    model_lower = model_id.lower()
+    if "gemini" in model_lower or "google" in model_lower:
+        # Check if model supports thinking config
+        supports_thinking = (
+            "gemini-3" in model_lower or
+            "gemini-2.5-pro" in model_lower or
+            "gemini-2-5-pro" in model_lower
+        )
+        if supports_thinking:
+            model_settings = GoogleModelSettings(
+                google_thinking_config={"thinking_level": "low", "include_thoughts": True},
+            )
+
+    agent = Agent(
+        model_id,
+        output_type=MonitoringResponse,
+        instructions=instructions,
+        retries=3,  # Retry up to 3 times for model errors (e.g., 429 rate limits)
+        model_settings=model_settings,
     )
-    return json.dumps(results, default=str)
+
+    _register_tools(agent)
+
+    return agent
 
 
-@agent.tool_plain
-async def add_memory(text: str, user_id: str, task_id: str) -> str:
-    """Store a new meta-knowledge memory for this task. Only store patterns and source insights, not individual check results."""
-    result = await mem0_client.add(
-        [{"role": "user", "content": text}],
-        user_id=user_id,
-        app_id=task_id,
-    )
-    return json.dumps(result, default=str)
-
-
-@agent.tool_plain
-async def perplexity_search(query: str) -> str:
-    """Search the web using Perplexity for current information. Include the current year in queries for time-sensitive topics."""
-    response = await perplexity_client.search.create(query=query)
-    results = [
-        {"title": r.title, "url": r.url, "snippet": r.snippet}
-        for r in response.results
-    ]
-    return json.dumps(results)
+# Production agent instance (unchanged for A2A server)
+agent = create_monitoring_agent()
 
 
 async def health(request: Request) -> JSONResponse:
