@@ -1,99 +1,79 @@
 """Tests for error classification and user-friendly message sanitization."""
 
 import asyncpg.exceptions as asyncpg_ex
+import pytest
 
 from torale.scheduler.errors import ErrorCategory, classify_error, get_user_friendly_message
 
 
-def test_user_error_sanitized_invalid():
-    """Verify USER_ERROR with 'invalid' keyword is sanitized."""
-    error = ValueError("Invalid column 'secret_api_key' in database schema")
-    category = classify_error(error)
-    message = get_user_friendly_message(error, category)
+class TestErrorClassification:
+    """Tests for classify_error mapping."""
 
-    # Should NOT contain sensitive database details
-    assert "secret_api_key" not in message.lower()
-    assert "database" not in message.lower()
-    assert "column" not in message.lower()
-    # Should be generic user-friendly message
-    assert "invalid data" in message.lower()
-
-
-def test_user_error_sanitized_malformed():
-    """Verify USER_ERROR with 'malformed' keyword is sanitized."""
-    error = ValueError("Malformed JSON in field 'user_credentials'")
-    category = classify_error(error)
-    message = get_user_friendly_message(error, category)
-
-    # Should NOT contain sensitive field names
-    assert "user_credentials" not in message.lower()
-    assert "json" not in message.lower()
-    # Should be generic user-friendly message
-    assert "malformed" in message.lower()
-
-
-def test_user_error_fallback():
-    """Verify USER_ERROR without specific keywords gets generic message."""
-    error = ValueError("Something invalid but not matching patterns")
-    category = ErrorCategory.USER_ERROR
-    message = get_user_friendly_message(error, category)
-
-    # Should NOT contain the raw error
-    assert "something" not in message.lower()
-    # Should be generic fallback message
-    assert "unable to process" in message.lower() or "check your input" in message.lower()
+    @pytest.mark.parametrize(
+        "error,expected_category",
+        [
+            (Exception("429 Rate limit exceeded"), ErrorCategory.RATE_LIMIT),
+            (TimeoutError("Request timed out after 30s"), ErrorCategory.TIMEOUT),
+            (ConnectionError("Connection refused"), ErrorCategory.NETWORK),
+            (asyncpg_ex.PostgresConnectionError("connection lost"), ErrorCategory.NETWORK),
+            (asyncpg_ex.OutOfMemoryError("out of memory"), ErrorCategory.SYSTEM_ERROR),
+            (
+                asyncpg_ex.InsufficientResourcesError("too many connections"),
+                ErrorCategory.SYSTEM_ERROR,
+            ),
+        ],
+        ids=[
+            "rate_limit",
+            "timeout",
+            "connection_error",
+            "asyncpg_connection",
+            "asyncpg_oom",
+            "asyncpg_resources",
+        ],
+    )
+    def test_classification(self, error, expected_category):
+        assert classify_error(error) == expected_category
 
 
-def test_network_error_message():
-    """Verify NETWORK errors get appropriate message."""
-    error = ConnectionError("Connection refused to internal-api.torale.local:8080")
-    category = classify_error(error)
-    message = get_user_friendly_message(error, category)
+class TestMessageSanitization:
+    """Tests for get_user_friendly_message -- verifies no sensitive data leaks."""
 
-    # Should NOT leak internal hostnames/ports
-    assert "internal-api" not in message.lower()
-    assert "8080" not in message
-    # Should be user-friendly
-    assert "connection" in message.lower() or "retrying" in message.lower()
+    def test_user_error_sanitized_invalid(self):
+        """USER_ERROR with 'invalid' keyword is sanitized."""
+        error = ValueError("Invalid column 'secret_api_key' in database schema")
+        category = classify_error(error)
+        message = get_user_friendly_message(error, category)
 
+        assert "secret_api_key" not in message.lower()
+        assert "database" not in message.lower()
+        assert "column" not in message.lower()
+        assert "invalid data" in message.lower()
 
-def test_rate_limit_classification():
-    """Verify rate limit errors are classified correctly."""
-    error = Exception("429 Rate limit exceeded")
-    category = classify_error(error)
-    assert category == ErrorCategory.RATE_LIMIT
+    def test_user_error_sanitized_malformed(self):
+        """USER_ERROR with 'malformed' keyword is sanitized."""
+        error = ValueError("Malformed JSON in field 'user_credentials'")
+        category = classify_error(error)
+        message = get_user_friendly_message(error, category)
 
+        assert "user_credentials" not in message.lower()
+        assert "json" not in message.lower()
+        assert "malformed" in message.lower()
 
-def test_timeout_classification():
-    """Verify timeout errors are classified correctly."""
-    error = TimeoutError("Request timed out after 30s")
-    category = classify_error(error)
-    assert category == ErrorCategory.TIMEOUT
+    def test_user_error_fallback(self):
+        """USER_ERROR without specific keywords gets generic message."""
+        error = ValueError("Something invalid but not matching patterns")
+        category = ErrorCategory.USER_ERROR
+        message = get_user_friendly_message(error, category)
 
+        assert "something" not in message.lower()
+        assert "unable to process" in message.lower() or "check your input" in message.lower()
 
-def test_network_classification():
-    """Verify network errors are classified correctly."""
-    error = ConnectionError("Connection refused")
-    category = classify_error(error)
-    assert category == ErrorCategory.NETWORK
+    def test_network_error_message(self):
+        """NETWORK errors do not leak internal hostnames/ports."""
+        error = ConnectionError("Connection refused to internal-api.torale.local:8080")
+        category = classify_error(error)
+        message = get_user_friendly_message(error, category)
 
-
-def test_asyncpg_connection_error_classification():
-    """Verify asyncpg connection errors are classified as NETWORK."""
-    error = asyncpg_ex.PostgresConnectionError("connection lost")
-    category = classify_error(error)
-    assert category == ErrorCategory.NETWORK
-
-
-def test_asyncpg_system_error_classification():
-    """Verify asyncpg system errors are classified as SYSTEM_ERROR."""
-    error = asyncpg_ex.OutOfMemoryError("out of memory")
-    category = classify_error(error)
-    assert category == ErrorCategory.SYSTEM_ERROR
-
-
-def test_asyncpg_insufficient_resources_classification():
-    """Verify asyncpg resource errors are classified as SYSTEM_ERROR."""
-    error = asyncpg_ex.InsufficientResourcesError("too many connections")
-    category = classify_error(error)
-    assert category == ErrorCategory.SYSTEM_ERROR
+        assert "internal-api" not in message.lower()
+        assert "8080" not in message
+        assert "connection" in message.lower() or "retrying" in message.lower()

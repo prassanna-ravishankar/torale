@@ -47,8 +47,8 @@ class TestWebhookSignature:
         secrets = [WebhookSignature.generate_secret() for _ in range(10)]
         assert len(set(secrets)) == 10
 
-    def test_sign_creates_valid_signature(self):
-        """Test that signing creates expected format."""
+    def test_sign_format_and_hmac_sha256(self):
+        """Test that signing creates correct format with HMAC-SHA256."""
         secret = "test_secret_key"
         payload = json.dumps({"test": "data"})
         timestamp = 1234567890
@@ -56,31 +56,19 @@ class TestWebhookSignature:
         signature = WebhookSignature.sign(payload, secret, timestamp)
 
         # Check format: t=timestamp,v1=signature
-        assert signature.startswith(f"t={timestamp},v1=")
         parts = signature.split(",")
         assert len(parts) == 2
         assert parts[0] == f"t={timestamp}"
         assert parts[1].startswith("v1=")
 
-    def test_sign_uses_hmac_sha256(self):
-        """Test that signature uses HMAC-SHA256."""
-        secret = "test_secret_key"
-        payload = json.dumps({"test": "data"})
-        timestamp = 1234567890
-
-        signature = WebhookSignature.sign(payload, secret, timestamp)
-
-        # Extract signature part
-        sig_part = signature.split("v1=")[1]
-
-        # Compute expected signature
+        # Verify HMAC-SHA256 algorithm
+        sig_part = parts[1].removeprefix("v1=")
         signed_payload = f"{timestamp}.{payload}"
         expected_sig = hmac.new(
             secret.encode(),
             signed_payload.encode(),
             hashlib.sha256,
         ).hexdigest()
-
         assert sig_part == expected_sig
 
     def test_verify_valid_signature(self):
@@ -147,23 +135,22 @@ class TestWebhookSignature:
 class TestBuildWebhookPayload:
     """Tests for build_webhook_payload function."""
 
-    def test_payload_structure(self, sample_task, sample_execution, sample_monitoring_result):
-        """Test that payload has correct structure and fields."""
+    @pytest.fixture
+    def payload(self, sample_task, sample_execution, sample_monitoring_result):
+        """Build a webhook payload from shared fixtures."""
         task_dict = {
             "id": sample_task.id,
             "name": sample_task.name,
             "search_query": sample_task.search_query,
             "condition_description": sample_task.condition_description,
         }
-        execution_dict = {
-            "completed_at": sample_execution.completed_at,
-        }
-
-        payload = build_webhook_payload(
+        execution_dict = {"completed_at": sample_execution.completed_at}
+        return build_webhook_payload(
             str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
         )
 
-        # Top-level structure
+    def test_payload_structure(self, payload):
+        """Test that payload has correct structure and fields."""
         assert payload.event_type == "task.condition_met"
         assert "task" in payload.data
         assert "execution" in payload.data
@@ -171,30 +158,16 @@ class TestBuildWebhookPayload:
         assert isinstance(payload.created_at, int)
         assert payload.created_at > 0
 
-    def test_payload_data_fields(self, sample_task, sample_execution, sample_monitoring_result):
+    def test_payload_data_fields(
+        self, payload, sample_task, sample_execution, sample_monitoring_result
+    ):
         """Test task and execution data include necessary fields."""
-        task_dict = {
-            "id": sample_task.id,
-            "name": sample_task.name,
-            "search_query": sample_task.search_query,
-            "condition_description": sample_task.condition_description,
-        }
-        execution_dict = {
-            "completed_at": sample_execution.completed_at,
-        }
-
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
-        )
-
-        # Task data
         task_data = payload.data["task"]
         assert task_data["id"] == str(sample_task.id)
         assert task_data["name"] == sample_task.name
         assert task_data["search_query"] == sample_task.search_query
         assert task_data["condition_description"] == sample_task.condition_description
 
-        # Execution data
         exec_data = payload.data["execution"]
         assert exec_data["id"] == str(sample_execution.id)
         assert exec_data["notification"] == sample_monitoring_result.get("notification", "")
@@ -208,10 +181,24 @@ class TestWebhookDeliveryService:
         """Create webhook delivery service instance."""
         return WebhookDeliveryService()
 
+    @pytest.fixture
+    def sample_payload(self, sample_task, sample_execution, sample_monitoring_result):
+        """Build a webhook payload from the shared sample fixtures."""
+        task_dict = {
+            "id": sample_task.id,
+            "name": sample_task.name,
+            "search_query": sample_task.search_query,
+            "condition_description": sample_task.condition_description,
+        }
+        execution_dict = {"completed_at": sample_execution.completed_at}
+        return build_webhook_payload(
+            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
+        )
+
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_successful_delivery(
-        self, mock_post, delivery_service, sample_task, sample_execution, sample_monitoring_result
+        self, mock_post, delivery_service, sample_task, sample_payload
     ):
         """Test successful webhook delivery."""
         mock_response = MagicMock()
@@ -219,22 +206,9 @@ class TestWebhookDeliveryService:
         mock_response.text = "OK"
         mock_post.return_value = mock_response
 
-        task_dict = {
-            "id": sample_task.id,
-            "name": sample_task.name,
-            "search_query": sample_task.search_query,
-            "condition_description": sample_task.condition_description,
-        }
-        execution_dict = {
-            "completed_at": sample_execution.completed_at,
-        }
-
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
-        )
         success, http_status, error_msg, signature = await delivery_service.deliver(
             sample_task.webhook_url,
-            payload,
+            sample_payload,
             secret="test_secret",
         )
 
@@ -247,31 +221,17 @@ class TestWebhookDeliveryService:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_failed_delivery_retries(
-        self, mock_post, delivery_service, sample_task, sample_execution, sample_monitoring_result
+        self, mock_post, delivery_service, sample_task, sample_payload
     ):
         """Test that failed delivery returns error status."""
-        # First call fails with 500
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_response.text = "Internal Server Error"
         mock_post.return_value = mock_response
 
-        task_dict = {
-            "id": sample_task.id,
-            "name": sample_task.name,
-            "search_query": sample_task.search_query,
-            "condition_description": sample_task.condition_description,
-        }
-        execution_dict = {
-            "completed_at": sample_execution.completed_at,
-        }
-
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
-        )
         success, http_status, error_msg, signature = await delivery_service.deliver(
             sample_task.webhook_url,
-            payload,
+            sample_payload,
             secret="test_secret",
         )
 
@@ -282,30 +242,15 @@ class TestWebhookDeliveryService:
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
-    async def test_delivery_timeout(
-        self, mock_post, delivery_service, sample_task, sample_execution, sample_monitoring_result
-    ):
+    async def test_delivery_timeout(self, mock_post, delivery_service, sample_task, sample_payload):
         """Test that delivery has 10-second timeout."""
         import httpx
 
         mock_post.side_effect = httpx.TimeoutException("Timeout")
 
-        task_dict = {
-            "id": sample_task.id,
-            "name": sample_task.name,
-            "search_query": sample_task.search_query,
-            "condition_description": sample_task.condition_description,
-        }
-        execution_dict = {
-            "completed_at": sample_execution.completed_at,
-        }
-
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
-        )
         success, http_status, error_msg, signature = await delivery_service.deliver(
             sample_task.webhook_url,
-            payload,
+            sample_payload,
             secret="test_secret",
         )
 
@@ -317,39 +262,23 @@ class TestWebhookDeliveryService:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_delivery_includes_headers(
-        self, mock_post, delivery_service, sample_task, sample_execution, sample_monitoring_result
+        self, mock_post, delivery_service, sample_task, sample_payload
     ):
         """Test that delivery includes required headers."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_post.return_value = mock_response
 
-        task_dict = {
-            "id": sample_task.id,
-            "name": sample_task.name,
-            "search_query": sample_task.search_query,
-            "condition_description": sample_task.condition_description,
-        }
-        execution_dict = {
-            "completed_at": sample_execution.completed_at,
-        }
-
-        payload = build_webhook_payload(
-            str(sample_execution.id), task_dict, execution_dict, sample_monitoring_result
-        )
         await delivery_service.deliver(
             sample_task.webhook_url,
-            payload,
+            sample_payload,
             secret="test_secret",
         )
 
-        # Verify headers in the call
         call_kwargs = mock_post.call_args[1]
         headers = call_kwargs["headers"]
 
-        assert "Content-Type" in headers
         assert headers["Content-Type"] == "application/json"
         assert "X-Torale-Signature" in headers
-        assert "X-Torale-Event" in headers
         assert headers["X-Torale-Event"] == "task.condition_met"
         assert "X-Torale-Delivery" in headers

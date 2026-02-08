@@ -69,13 +69,15 @@ class TestParseAgentResponse:
         parsed = _parse_agent_response(task)
         assert parsed == {"key": "value"}
 
-    def test_no_artifacts_raises(self):
-        task = {"artifacts": [], "id": "task-123"}
-        with pytest.raises(RuntimeError, match="empty response"):
-            _parse_agent_response(task)
-
-    def test_no_artifacts_key_raises(self):
-        task = {"id": "task-123", "status": "completed"}
+    @pytest.mark.parametrize(
+        "task",
+        [
+            {"artifacts": [], "id": "task-123"},
+            {"id": "task-123", "status": "completed"},
+        ],
+        ids=["empty_artifacts_list", "missing_artifacts_key"],
+    )
+    def test_no_artifacts_raises(self, task):
         with pytest.raises(RuntimeError, match="empty response"):
             _parse_agent_response(task)
 
