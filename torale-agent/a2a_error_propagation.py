@@ -38,17 +38,18 @@ class ErrorAwareStorage(InMemoryStorage):
         state: str,
         new_artifacts: list[dict[str, Any]] | None = None,
         new_messages: list[dict[str, Any]] | None = None,
-    ) -> None:
+    ) -> dict[str, Any]:
         """Update task state while preserving existing error message."""
-        # Capture existing message before parent overwrites status dict
         existing_message = self.tasks.get(task_id, {}).get("status", {}).get("message")
 
         # Let parent do its normal update
-        await super().update_task(task_id, state, new_artifacts, new_messages)
+        result = await super().update_task(task_id, state, new_artifacts, new_messages)
 
         # Restore message if it existed
         if existing_message and task_id in self.tasks:
             self.tasks[task_id]["status"]["message"] = existing_message
+
+        return result
 
 
 def create_error_message(error: Exception) -> dict:
@@ -71,7 +72,7 @@ def create_error_message(error: Exception) -> dict:
             "message": str(error),
         }
 
-    # Return dict matching fasta2a Message schema (uses snake_case field names)
+    # Return dict matching Pydantic AI's internal A2A Message schema
     return {
         "role": "agent",
         "kind": "message",
@@ -96,12 +97,13 @@ def enable_error_propagation() -> None:
         """Wrapper that captures exceptions and stores error details."""
         try:
             return await original_run_task(self, params)
-        except Exception as e:
-            logger.info(
-                "Capturing error details for task %s: %s - %s",
-                params.get("id"),
+        except (ModelHTTPError, ValueError, RuntimeError) as e:
+            logger.error(
+                "Agent task failed: %s - %s",
                 type(e).__name__,
                 str(e),
+                extra={"task_id": params["id"], "error_type": type(e).__name__},
+                exc_info=True,
             )
 
             # Store error details in task status using ErrorAwareStorage

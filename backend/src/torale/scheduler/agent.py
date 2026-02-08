@@ -41,8 +41,17 @@ def _extract_error_details(task: dict) -> dict | None:
     try:
         return json.loads(text)
     except (json.JSONDecodeError, TypeError) as e:
-        logger.warning("Failed to parse error details from task status: %s", e)
-        return None
+        logger.error(
+            "Failed to parse error details from task status: %s. Raw content: %s",
+            e,
+            text[:500],
+        )
+        # Return structured error instead of None to preserve context
+        return {
+            "error_type": "JSONParseError",
+            "message": f"Agent returned malformed error data: {text[:200]}",
+            "parse_error": str(e),
+        }
 
 
 def _handle_failed_task(task: dict) -> None:
@@ -52,21 +61,30 @@ def _handle_failed_task(task: dict) -> None:
     - UnexpectedResponseError(429) for rate limits (triggers paid tier fallback)
     - RuntimeError for other errors
     """
+    task_id = task.get("id", "unknown")
     error_details = _extract_error_details(task)
 
     if not error_details:
-        raise RuntimeError(f"Agent task failed without error details: {task.get('status', {})}")
+        raise RuntimeError(
+            f"Agent task {task_id} failed without error details: {task.get('status', {})}"
+        )
 
     error_type = error_details.get("error_type")
     message = error_details.get("message", "Unknown error")
 
+    logger.info(
+        "Extracted agent error details: type=%s, message=%s",
+        error_type,
+        message[:200],
+    )
+
     if error_type == "ModelHTTPError":
         status_code = error_details.get("status_code")
         if status_code == 429:
-            raise UnexpectedResponseError(429, f"Agent hit rate limit: {message}")
-        raise RuntimeError(f"Agent HTTP error {status_code}: {message}")
+            raise UnexpectedResponseError(429, f"Agent task {task_id} hit rate limit: {message}")
+        raise RuntimeError(f"Agent task {task_id} HTTP error {status_code}: {message}")
 
-    raise RuntimeError(f"Agent {error_type}: {message}")
+    raise RuntimeError(f"Agent task {task_id} {error_type}: {message}")
 
 
 async def call_agent(prompt: str) -> MonitoringResponse:
