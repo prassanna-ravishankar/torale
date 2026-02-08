@@ -24,14 +24,25 @@ async def call_agent(prompt: str) -> MonitoringResponse:
     """Send task to agent with automatic paid tier fallback on 429."""
     try:
         return await _call_agent_internal(settings.agent_url_free, prompt)
-    except UnexpectedResponseError as e:
+    except (UnexpectedResponseError, RuntimeError) as e:
         # Check actual HTTP status code (not error message) to avoid prompt injection
-        if e.status_code == 429:
+        if isinstance(e, UnexpectedResponseError) and e.status_code == 429:
             logger.info(
                 "Free tier rate limit hit (429), falling back to paid tier",
                 extra={"status_code": e.status_code},
             )
             return await _call_agent_internal(settings.agent_url_paid, prompt)
+
+        # RuntimeError from failed tasks - check if it might be a rate limit
+        # Since Pydantic AI's to_a2a() doesn't expose 429 in task status,
+        # we fall back to paid tier for any agent failure as a safety measure
+        if isinstance(e, RuntimeError) and "Agent task failed" in str(e):
+            logger.info(
+                "Free tier agent task failed (possibly rate limit), falling back to paid tier",
+                extra={"error": str(e)[:200]},
+            )
+            return await _call_agent_internal(settings.agent_url_paid, prompt)
+
         raise
 
 
