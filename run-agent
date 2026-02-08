@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -eq 0 ]; then
+  echo "Usage: ./run-agent <thing to monitor>"
+  echo "Example: ./run-agent 'next Apple iPhone release date'"
+  exit 1
+fi
+
+PROMPT="$*"
+PORT=8000
+BASE="http://localhost:$PORT"
+MSG_ID="msg-$(date +%s)"
+RULE="────────────────────────────────────────────────────────"
+LOG_FILE="/tmp/torale-agent.log"
+
+# Check if server is running, start if not
+if ! curl -s "$BASE/" -o /dev/null 2>&1; then
+  echo "Starting agent server..."
+  .venv/bin/uvicorn agent:app --port "$PORT" > "$LOG_FILE" 2>&1 &
+  SERVER_PID=$!
+  trap "kill $SERVER_PID 2>/dev/null" EXIT
+  sleep 3
+  echo "Server started (pid $SERVER_PID)"
+  OWNS_SERVER=1
+else
+  echo "Agent server already running on :$PORT"
+  OWNS_SERVER=0
+fi
+
+echo ""
+echo "$RULE"
+echo "  Task: $PROMPT"
+echo "$RULE"
+echo ""
+
+# Send the task
+START_TIME=$(date +%s)
+RESPONSE=$(curl -s -X POST "$BASE/" \
+  -H "Content-Type: application/json" \
+  -d "$(python3 -c "
+import json
+print(json.dumps({
+    'jsonrpc': '2.0',
+    'id': 'req-1',
+    'method': 'message/send',
+    'params': {
+        'message': {
+            'kind': 'message',
+            'role': 'user',
+            'parts': [{'kind': 'text', 'text': '$PROMPT'}],
+            'messageId': '$MSG_ID'
+        }
+    }
+}))
+")")
+
+TASK_ID=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['result']['id'])")
+echo "  Task ID: $TASK_ID"
+echo "  Polling..."
+echo ""
+
+# Poll until completed
+while true; do
+  RESULT=$(curl -s -X POST "$BASE/" \
+    -H "Content-Type: application/json" \
+    -d "$(python3 -c "
+import json
+print(json.dumps({
+    'jsonrpc': '2.0',
+    'id': 'poll-1',
+    'method': 'tasks/get',
+    'params': {'id': '$TASK_ID'}
+}))
+")")
+
+  STATE=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['result']['status']['state'])")
+
+  if [ "$STATE" = "completed" ]; then
+    END_TIME=$(date +%s)
+    ELAPSED=$((END_TIME - START_TIME))
+
+    # Extract the agent's response and pretty print
+    echo "$RESULT" | python3 -c "
+import sys, json, ast
+
+data = json.load(sys.stdin)
+history = data['result']['history']
+rule = '$RULE'
+
+for msg in history:
+    if msg['role'] == 'agent':
+        text = msg['parts'][0]['text']
+        try:
+            parsed = ast.literal_eval(text)
+        except:
+            try:
+                parsed = json.loads(text)
+            except:
+                print(text)
+                sys.exit(0)
+
+        notif = parsed.get('notification')
+        if notif:
+            print(f'{rule}')
+            print(f'  NOTIFICATION')
+            print(f'{rule}')
+            print()
+            print(notif)
+            print()
+        else:
+            print(f'{rule}')
+            print(f'  NO NOTIFICATION')
+            print(f'{rule}')
+            print()
+
+        print(f'{rule}')
+        print(f'  DETAILS')
+        print(f'{rule}')
+        print()
+        print(f'  Confidence: {parsed.get(\"confidence\", \"N/A\")}%')
+        nr = parsed.get('next_run')
+        print(f'  Next Run:   {nr if nr else \"DONE (task complete)\"}')
+        print(f'  Sources:    {len(parsed.get(\"sources\", []))}')
+        for s in parsed.get('sources', []):
+            print(f'              - {s}')
+        print()
+        print(f'{rule}')
+        print(f'  EVIDENCE (audit trail)')
+        print(f'{rule}')
+        print()
+        print(parsed.get('evidence', 'N/A'))
+        print()
+"
+
+    # Try to grab cost from server log file
+    COST="n/a"
+    if [ "$OWNS_SERVER" = "1" ] && [ -f "$LOG_FILE" ]; then
+      COST=$(grep -o 'cost_usd=[0-9.]*' "$LOG_FILE" | tail -1 | cut -d= -f2 || echo "n/a")
+    fi
+
+    echo "$RULE"
+    echo "  STATS"
+    echo "$RULE"
+    echo ""
+    echo "  Duration: ${ELAPSED}s"
+    echo "  Cost:     \$${COST}"
+    echo ""
+    break
+  elif [ "$STATE" = "failed" ]; then
+    echo "$RULE"
+    echo "  FAILED"
+    echo "$RULE"
+    echo ""
+    echo "$RESULT" | python3 -m json.tool
+    break
+  else
+    printf "  %-12s %s\r" "$STATE" "$(date +%H:%M:%S)"
+    sleep 3
+  fi
+done

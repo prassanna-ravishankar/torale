@@ -113,7 +113,16 @@ async def _call_agent_internal(base_url: str, prompt: str) -> MonitoringResponse
             parsed = _parse_agent_response(task)
             return MonitoringResponse.model_validate(parsed)
         elif state == "failed":
-            raise RuntimeError(f"Agent task failed: {task.get('status', {})}")
+            # Check if failure was due to rate limit (429) to trigger paid tier fallback
+            status_info = task.get("status", {})
+            error_message = status_info.get("message", "")
+
+            # ModelHTTPError from agent includes status code in message
+            if "429" in error_message or "Too Many Requests" in error_message:
+                logger.info("Agent task failed with 429, triggering paid tier fallback")
+                raise UnexpectedResponseError(status_code=429, content=error_message)
+
+            raise RuntimeError(f"Agent task failed: {status_info}")
 
     raise TimeoutError(f"Agent did not complete within {AGENT_TIMEOUT}s")
 

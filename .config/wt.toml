@@ -1,0 +1,3 @@
+[post-create]
+env = "cp {{ primary_worktree_path }}/.env .env"
+frontend = "cd frontend && npm install"
