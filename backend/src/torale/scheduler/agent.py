@@ -51,9 +51,14 @@ async def _call_agent_internal(base_url: str, prompt: str) -> MonitoringResponse
 
     try:
         send_response = await client.send_message(message, configuration=configuration)
-    except UnexpectedResponseError:
-        # Re-raise UnexpectedResponseError to preserve status_code for fallback logic
-        raise
+    except UnexpectedResponseError as e:
+        # Re-raise 429 to preserve status_code for fallback logic
+        # Wrap other HTTP errors in RuntimeError for consistent error handling
+        if e.status_code == 429:
+            raise
+        raise RuntimeError(
+            f"Failed to send task to agent at {base_url}: status={e.status_code} {e.content[:200]}"
+        ) from e
     except Exception as e:
         raise RuntimeError(f"Failed to send task to agent at {base_url}: {e}") from e
 
