@@ -12,9 +12,10 @@ from mem0 import AsyncMemoryClient
 from perplexity import AsyncPerplexity
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.models.google import GoogleModelSettings
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
 load_dotenv()
@@ -215,7 +216,30 @@ async def ready(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
 
+async def model_http_error_handler(request: Request, exc: ModelHTTPError) -> Response:
+    """Custom exception handler to preserve HTTP status code from ModelHTTPError.
+
+    When Gemini (or other model providers) return HTTP errors like 429 (rate limit),
+    this handler ensures the status code is propagated to the A2A client rather than
+    being wrapped in a generic 500 error.
+
+    This enables the backend to detect rate limits and fall back to the paid tier.
+    """
+    return Response(
+        status_code=exc.status_code,
+        content=json.dumps({
+            "error": {
+                "status_code": exc.status_code,
+                "model_name": exc.model_name,
+                "message": str(exc),
+            }
+        }),
+        media_type="application/json",
+    )
+
+
 app = agent.to_a2a(
     name="torale-agent",
     routes=[Route("/health", health), Route("/ready", ready)],
+    exception_handlers={ModelHTTPError: model_http_error_handler},
 )

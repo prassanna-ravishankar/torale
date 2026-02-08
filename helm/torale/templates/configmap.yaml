@@ -11,8 +11,11 @@ data:
   DB_NAME: {{ .Values.database.name | quote }}
   DB_USER: {{ .Values.database.user | quote }}
 
-  # Agent URL (torale-agent service)
-  AGENT_URL: {{ printf "http://%s-agent" (include "torale.fullname" .) | quote }}
+  # Agent URLs (dual-tier for paid fallback)
+  AGENT_URL_FREE: {{ printf "http://%s-agent-free" (include "torale.fullname" .) | quote }}
+  AGENT_URL_PAID: {{ printf "http://%s-agent-paid" (include "torale.fullname" .) | quote }}
+  # Keep AGENT_URL for backward compatibility
+  AGENT_URL: {{ printf "http://%s-agent-free" (include "torale.fullname" .) | quote }}
 
   # API configuration
   API_URL: {{ printf "https://%s" .Values.domains.api | quote }}

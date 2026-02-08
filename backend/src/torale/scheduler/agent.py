@@ -21,9 +21,24 @@ MAX_CONSECUTIVE_POLL_FAILURES = 3
 
 
 async def call_agent(prompt: str) -> MonitoringResponse:
+    """Send task to agent with automatic paid tier fallback on 429."""
+    try:
+        return await _call_agent_internal(settings.agent_url_free, prompt)
+    except UnexpectedResponseError as e:
+        # Check actual HTTP status code (not error message) to avoid prompt injection
+        if e.status_code == 429:
+            logger.info(
+                "Free tier rate limit hit (429), falling back to paid tier",
+                extra={"status_code": e.status_code},
+            )
+            return await _call_agent_internal(settings.agent_url_paid, prompt)
+        raise
+
+
+async def _call_agent_internal(base_url: str, prompt: str) -> MonitoringResponse:
     """Send task to torale-agent via A2A and poll for result."""
     message_id = f"msg-{uuid.uuid4().hex[:12]}"
-    client = A2AClient(base_url=settings.agent_url)
+    client = A2AClient(base_url=base_url)
 
     message = Message(
         role="user",
@@ -37,12 +52,15 @@ async def call_agent(prompt: str) -> MonitoringResponse:
     try:
         send_response = await client.send_message(message, configuration=configuration)
     except UnexpectedResponseError as e:
+        # Re-raise 429 to preserve status_code for fallback logic
+        # Wrap other HTTP errors in RuntimeError for consistent error handling
+        if e.status_code == 429:
+            raise
         raise RuntimeError(
-            f"Failed to send task to agent at {settings.agent_url}: "
-            f"status={e.status_code} {e.content[:200]}"
+            f"Failed to send task to agent at {base_url}: status={e.status_code} {e.content[:200]}"
         ) from e
     except Exception as e:
-        raise RuntimeError(f"Failed to send task to agent at {settings.agent_url}: {e}") from e
+        raise RuntimeError(f"Failed to send task to agent at {base_url}: {e}") from e
 
     if "error" in send_response:
         raise RuntimeError(f"Agent returned error: {send_response['error']}")

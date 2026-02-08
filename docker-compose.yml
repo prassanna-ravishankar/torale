@@ -67,7 +67,9 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
       - CLERK_PUBLISHABLE_KEY=${CLERK_PUBLISHABLE_KEY}
-      - AGENT_URL=${AGENT_URL:-http://agent:8000}
+      - AGENT_URL_FREE=${AGENT_URL_FREE:-http://agent-free:8000}
+      - AGENT_URL_PAID=${AGENT_URL_PAID:-http://agent-paid:8000}
+      - AGENT_URL=${AGENT_URL:-http://agent-free:8000}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - NOTIFICATION_API_KEY=${NOTIFICATION_API_KEY}
       - NOVU_SECRET_KEY=${NOVU_SECRET_KEY}
@@ -85,18 +87,45 @@ services:
       - ./backend/src:/app/src
 
   # ============================================
-  # Torale Agent (Local Development)
+  # Torale Agent - Free Tier (Local Development)
   # ============================================
   # Gemini-powered monitoring agent (A2A JSON-RPC)
+  # Uses free tier API key
 
-  agent:
+  agent-free:
     build:
       context: ./torale-agent
       dockerfile: Dockerfile
     ports:
       - "8001:8000"
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY_FREE:-${GEMINI_API_KEY}}
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
+      - MEM0_API_KEY=${MEM0_API_KEY}
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN}
+    volumes:
+      - ./torale-agent:/app
+      - /app/.venv
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ============================================
+  # Torale Agent - Paid Tier (Local Development)
+  # ============================================
+  # Gemini-powered monitoring agent (A2A JSON-RPC)
+  # Uses paid tier API key (fallback for 429 errors)
+
+  agent-paid:
+    build:
+      context: ./torale-agent
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY_PAID:-${GEMINI_API_KEY}}
       - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
       - MEM0_API_KEY=${MEM0_API_KEY}
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN}

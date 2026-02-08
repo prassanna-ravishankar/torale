@@ -134,3 +134,20 @@ Agent image
 {{- define "torale.agent.image" -}}
 {{ .Values.image.registry }}/{{ .Values.image.repository }}/{{ .Values.agent.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}
 {{- end }}
+
+{{/*
+Agent tier-specific labels (takes tier name as context)
+*/}}
+{{- define "torale.agent.tier.labels" -}}
+{{ include "torale.labels" .root }}
+app.kubernetes.io/component: agent-{{ .tier }}
+tier: {{ .tier }}
+{{- end }}
+
+{{/*
+Agent tier-specific selector labels (takes tier name as context)
+*/}}
+{{- define "torale.agent.tier.selectorLabels" -}}
+{{ include "torale.selectorLabels" .root }}
+app.kubernetes.io/component: agent-{{ .tier }}
+{{- end }}
