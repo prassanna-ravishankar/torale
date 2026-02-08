@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from agent import create_monitoring_agent
+from agent import MonitoringDeps, create_monitoring_agent
 
 logger = logging.getLogger(__name__)
 
@@ -69,23 +69,25 @@ async def run_single_eval(
     timestamp = datetime.now(UTC).isoformat()
     start_time = time.perf_counter()
 
-    # Mock user_id/task_id so memory tools function during evals
     prompt = f"""Analyze this monitoring task:
 
 Search Query: {case.search_query}
 Condition: {case.condition_description}
 Category: {case.category}
 
-User ID: eval-user
-Task ID: eval-{case.name.lower().replace(' ', '-')}
-
 Execute the search and determine if the condition is met.
 
 IMPORTANT: Return ONLY valid JSON matching the MonitoringResponse schema. Do not include markdown code fences, explanations, or any text outside the JSON object."""
 
+    # Pass user_id and task_id via dependencies (secure, not LLM-controlled)
+    deps = MonitoringDeps(
+        user_id="eval-user",
+        task_id=f"eval-{case.name.lower().replace(' ', '-')}"
+    )
+
     try:
         agent = create_monitoring_agent(model)
-        result = await agent.run(prompt)
+        result = await agent.run(prompt, deps=deps)
         end_time = time.perf_counter()
         latency_ms = (end_time - start_time) * 1000
 
