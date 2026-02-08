@@ -117,10 +117,21 @@ async def _call_agent_internal(base_url: str, prompt: str) -> MonitoringResponse
             status_info = task.get("status", {})
             error_message = status_info.get("message", "")
 
-            # ModelHTTPError from agent includes status code in message
+            # Log full task for debugging
+            logger.warning(f"Agent task failed, full task: {task}")
+
+            # ModelHTTPError from agent includes status code in message or error field
             if "429" in error_message or "Too Many Requests" in error_message:
                 logger.info("Agent task failed with 429, triggering paid tier fallback")
                 raise UnexpectedResponseError(status_code=429, content=error_message)
+
+            # Check for 429 in task-level error field
+            task_error = task.get("error", {})
+            if isinstance(task_error, dict):
+                task_error_msg = str(task_error.get("message", "")) + str(task_error.get("status_code", ""))
+                if "429" in task_error_msg or "Too Many Requests" in task_error_msg:
+                    logger.info("Agent task error contains 429, triggering paid tier fallback")
+                    raise UnexpectedResponseError(status_code=429, content=task_error_msg)
 
             raise RuntimeError(f"Agent task failed: {status_info}")
 
