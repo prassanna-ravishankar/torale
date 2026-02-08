@@ -1,7 +1,8 @@
 """Test that 429 errors trigger paid tier fallback."""
-import pytest
+
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from fasta2a.client import UnexpectedResponseError
 
 from torale.scheduler.agent import call_agent
