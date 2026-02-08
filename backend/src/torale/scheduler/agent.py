@@ -21,9 +21,23 @@ MAX_CONSECUTIVE_POLL_FAILURES = 3
 
 
 async def call_agent(prompt: str) -> MonitoringResponse:
+    """Send task to agent with automatic paid tier fallback on 429."""
+    try:
+        return await _call_agent_internal(settings.agent_url_free, prompt)
+    except Exception as e:
+        error_str = str(e).lower()
+        if "429" in error_str or "rate limit" in error_str or "quota" in error_str:
+            logger.info(
+                "Free tier rate limit hit, falling back to paid tier", extra={"error": str(e)[:200]}
+            )
+            return await _call_agent_internal(settings.agent_url_paid, prompt)
+        raise
+
+
+async def _call_agent_internal(base_url: str, prompt: str) -> MonitoringResponse:
     """Send task to torale-agent via A2A and poll for result."""
     message_id = f"msg-{uuid.uuid4().hex[:12]}"
-    client = A2AClient(base_url=settings.agent_url)
+    client = A2AClient(base_url=base_url)
 
     message = Message(
         role="user",
@@ -38,11 +52,10 @@ async def call_agent(prompt: str) -> MonitoringResponse:
         send_response = await client.send_message(message, configuration=configuration)
     except UnexpectedResponseError as e:
         raise RuntimeError(
-            f"Failed to send task to agent at {settings.agent_url}: "
-            f"status={e.status_code} {e.content[:200]}"
+            f"Failed to send task to agent at {base_url}: status={e.status_code} {e.content[:200]}"
         ) from e
     except Exception as e:
-        raise RuntimeError(f"Failed to send task to agent at {settings.agent_url}: {e}") from e
+        raise RuntimeError(f"Failed to send task to agent at {base_url}: {e}") from e
 
     if "error" in send_response:
         raise RuntimeError(f"Agent returned error: {send_response['error']}")

@@ -156,11 +156,18 @@ docs:
     maxReplicas: 5
     targetCPUUtilizationPercentage: 70
 
-# Agent deployment
+# Agent deployments (dual-tier for paid fallback)
+agents:
+  - name: free
+    secretKey: GEMINI_API_KEY_FREE
+    replicaCount: 1
+  - name: paid
+    secretKey: GEMINI_API_KEY_PAID
+    replicaCount: 1
+
+# Shared agent configuration
 agent:
   enabled: true
-  replicaCount: 1
-
   image:
     name: torale-agent
 
