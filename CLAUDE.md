@@ -33,7 +33,6 @@ torale/
 **Tooling**: `uv` (backend), `npm` (frontend), `vite` (docs-site), `justfile` for commands:
 - `just dev-noauth` - Run local dev without auth
 - `just test` - Run tests
-- `just test-integration` - Run integration tests
 - `just lint` - Run all linting (backend + frontend + TypeScript)
 
 **Architecture**: Frontend → FastAPI → APScheduler (cron) → Agent → Gemini + Perplexity Search → Notifications

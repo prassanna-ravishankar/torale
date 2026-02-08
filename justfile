@@ -114,11 +114,6 @@ test-cov:
     @echo "Running tests with coverage..."
     cd backend && uv run --all-extras pytest tests/ --cov=src/torale --cov-report=term-missing
 
-# Run integration tests (requires services running)
-test-integration:
-    @echo "Running Integration tests..."
-    cd backend && uv run --all-extras pytest tests/integration/ -v
-
 # === Logs ===
 
 # View logs for all services

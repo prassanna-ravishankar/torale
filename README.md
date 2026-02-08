@@ -478,11 +478,7 @@ Systematic evaluation framework for comparing grounded search approaches. See [`
 
 ## Testing
 
-Torale has comprehensive unit, integration, and E2E tests covering the agent pipeline, scheduler, and API.
-
-### Unit Tests
-
-Run pytest tests without requiring services:
+Torale has comprehensive unit tests covering the agent pipeline, scheduler, and API.
 
 ```bash
 just test               # Run backend unit tests
@@ -490,40 +486,7 @@ just test-cov           # Run with coverage report
 just lint               # Run ruff linting
 ```
 
-### Integration Tests
-
-Integration tests require running services (PostgreSQL, API) and support two authentication modes:
-
-**Option 1: No-Auth Mode (Recommended for Development)**
-
-```bash
-# Start services with no-auth mode
-just dev-noauth
-
-# Run integration tests
-TORALE_NOAUTH=1 just test-integration
-```
-
-This automatically creates a test user and bypasses Clerk authentication for testing.
-
-**Option 2: Clerk Authentication (Production-like)**
-
-```bash
-# Start services normally
-just dev-bg
-
-# Get a Clerk session token:
-# 1. Login at http://localhost:3000
-# 2. Open browser dev tools (F12)
-# 3. Go to Application/Storage → Cookies
-# 4. Copy the __session cookie value
-
-# Run tests with Clerk token
-export CLERK_TEST_TOKEN='your-clerk-session-token'
-just test-integration
-```
-
-See [docs-site/contributing/testing.md](https://docs.torale.ai/contributing/testing) for detailed testing guide, including debugging workflows and troubleshooting.
+See [docs-site/contributing/testing.md](https://docs.torale.ai/contributing/testing) for detailed testing guide.
 
 ## Deployment
 

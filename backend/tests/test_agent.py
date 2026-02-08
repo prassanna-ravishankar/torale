@@ -69,13 +69,15 @@ class TestParseAgentResponse:
         parsed = _parse_agent_response(task)
         assert parsed == {"key": "value"}
 
-    def test_no_artifacts_raises(self):
-        task = {"artifacts": [], "id": "task-123"}
-        with pytest.raises(RuntimeError, match="empty response"):
-            _parse_agent_response(task)
-
-    def test_no_artifacts_key_raises(self):
-        task = {"id": "task-123", "status": "completed"}
+    @pytest.mark.parametrize(
+        "task",
+        [
+            {"artifacts": [], "id": "task-123"},
+            {"id": "task-123", "status": "completed"},
+        ],
+        ids=["empty_artifacts_list", "missing_artifacts_key"],
+    )
+    def test_no_artifacts_raises(self, task):
         with pytest.raises(RuntimeError, match="empty response"):
             _parse_agent_response(task)
 
@@ -208,92 +210,35 @@ class TestParseAgentResponse:
 class TestMonitoringResponseValidation:
     """Test Pydantic validation of agent responses."""
 
-    def test_validation_error_confidence_out_of_range(self):
-        """DataPart with confidence > 100 raises ValidationError."""
-        task = {
-            "artifacts": [
-                {
-                    "parts": [
-                        {
-                            "kind": "data",
-                            "data": {
-                                "evidence": "found",
-                                "sources": [],
-                                "confidence": 150,  # Invalid: > 100
-                            },
-                        }
-                    ]
-                }
-            ]
-        }
+    @pytest.mark.parametrize(
+        "invalid_data,expected_error_field",
+        [
+            (
+                {"evidence": "found", "sources": [], "confidence": 150},
+                "confidence",
+            ),  # confidence > 100
+            (
+                {"evidence": "found", "sources": [], "confidence": "high"},
+                "confidence",
+            ),  # confidence wrong type
+            ({"sources": [], "confidence": 80}, "evidence"),  # missing required field
+            (
+                {"evidence": "found", "sources": "https://example.com", "confidence": 80},
+                "sources",
+            ),  # sources wrong type
+        ],
+        ids=[
+            "confidence_out_of_range",
+            "confidence_wrong_type",
+            "missing_required_field",
+            "sources_wrong_type",
+        ],
+    )
+    def test_validation_errors(self, invalid_data, expected_error_field):
+        """Test that invalid data raises ValidationError with expected field."""
+        task = {"artifacts": [{"parts": [{"kind": "data", "data": invalid_data}]}]}
         parsed = _parse_agent_response(task)
-        with pytest.raises(ValidationError, match="confidence"):
-            MonitoringResponse.model_validate(parsed)
-
-    def test_validation_error_confidence_wrong_type(self):
-        """DataPart with string confidence raises ValidationError."""
-        task = {
-            "artifacts": [
-                {
-                    "parts": [
-                        {
-                            "kind": "data",
-                            "data": {
-                                "evidence": "found",
-                                "sources": [],
-                                "confidence": "high",  # Invalid: string not int
-                            },
-                        }
-                    ]
-                }
-            ]
-        }
-        parsed = _parse_agent_response(task)
-        with pytest.raises(ValidationError, match="confidence"):
-            MonitoringResponse.model_validate(parsed)
-
-    def test_validation_error_missing_required_field(self):
-        """DataPart missing required 'evidence' field raises ValidationError."""
-        task = {
-            "artifacts": [
-                {
-                    "parts": [
-                        {
-                            "kind": "data",
-                            "data": {
-                                "sources": [],
-                                "confidence": 80,
-                                # Missing: evidence (required)
-                            },
-                        }
-                    ]
-                }
-            ]
-        }
-        parsed = _parse_agent_response(task)
-        with pytest.raises(ValidationError, match="evidence"):
-            MonitoringResponse.model_validate(parsed)
-
-    def test_validation_error_sources_wrong_type(self):
-        """DataPart with string sources (not list) raises ValidationError."""
-        task = {
-            "artifacts": [
-                {
-                    "parts": [
-                        {
-                            "kind": "data",
-                            "data": {
-                                "evidence": "found",
-                                "sources": "https://example.com",  # Invalid: string not list
-                                "confidence": 80,
-                            },
-                        }
-                    ]
-                }
-            ]
-        }
-        parsed = _parse_agent_response(task)
-        with pytest.raises(ValidationError, match="sources"):
+        with pytest.raises(ValidationError, match=expected_error_field):
             MonitoringResponse.model_validate(parsed)
 
 
@@ -383,26 +328,20 @@ class TestCallAgent:
                         await call_agent("test prompt")
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "exception",
+        [
+            UnexpectedResponseError(503, "Service Unavailable"),
+            ConnectionError("Connection refused"),
+        ],
+        ids=["unexpected_response_error", "connection_error"],
+    )
     @patch("torale.scheduler.agent.settings")
-    async def test_send_error_raises_runtime(self, mock_settings):
+    async def test_send_error_raises_runtime(self, mock_settings, exception):
         mock_settings.agent_url = "http://agent:8000"
 
         mock_client = AsyncMock()
-        mock_client.send_message = AsyncMock(
-            side_effect=UnexpectedResponseError(503, "Service Unavailable")
-        )
-
-        with patch("torale.scheduler.agent.A2AClient", return_value=mock_client):
-            with pytest.raises(RuntimeError, match="Failed to send task to agent"):
-                await call_agent("test prompt")
-
-    @pytest.mark.asyncio
-    @patch("torale.scheduler.agent.settings")
-    async def test_send_generic_error_raises_runtime(self, mock_settings):
-        mock_settings.agent_url = "http://agent:8000"
-
-        mock_client = AsyncMock()
-        mock_client.send_message = AsyncMock(side_effect=ConnectionError("Connection refused"))
+        mock_client.send_message = AsyncMock(side_effect=exception)
 
         with patch("torale.scheduler.agent.A2AClient", return_value=mock_client):
             with pytest.raises(RuntimeError, match="Failed to send task to agent"):

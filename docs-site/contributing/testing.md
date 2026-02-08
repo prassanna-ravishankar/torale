@@ -6,9 +6,6 @@
 # Backend unit tests
 just test
 
-# Backend integration tests (requires running services)
-just test-integration
-
 # Frontend tests
 cd frontend && npm test
 ```
@@ -17,8 +14,8 @@ cd frontend && npm test
 
 ```
 backend/tests/
-├── integration/    # Integration tests (requires DB)
-├── ...             # Unit tests
+├── test_*.py       # Unit tests
+├── conftest.py     # Shared fixtures
 ```
 
 ---
