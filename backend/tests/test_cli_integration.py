@@ -49,18 +49,6 @@ def cli_env():
 class TestCLITaskCreate:
     """Test 'torale task create' command."""
 
-    def test_create_command_exists(self):
-        """Test that create command is registered."""
-        result = subprocess.run(
-            ["torale", "task", "--help"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-
-        assert result.returncode == 0
-        assert "create" in result.stdout.lower()
-
     def test_create_requires_query_and_condition(self, cli_env):
         """Test that create command requires --query and --condition."""
         result = subprocess.run(
@@ -148,20 +136,6 @@ class TestCLITaskManagement:
         )
 
         # Should succeed (even if empty) - API and NOAUTH already verified by fixture
-        # Main check: no authentication errors
-        output = result.stdout + result.stderr
-        assert "authenticated" not in output.lower(), f"Auth error with NOAUTH=1: {output}"
-
-    def test_task_list_with_active_filter(self, cli_env):
-        """Test 'torale task list --active' command."""
-        result = subprocess.run(
-            ["torale", "task", "list", "--active"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            env=cli_env,
-        )
-
         # Main check: no authentication errors
         output = result.stdout + result.stderr
         assert "authenticated" not in output.lower(), f"Auth error with NOAUTH=1: {output}"

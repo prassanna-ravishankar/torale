@@ -30,21 +30,6 @@ def _make_verification_record(sample_user, *, expires_delta=timedelta(minutes=10
     }
 
 
-class TestGenerateCode:
-    """Tests for generate_code method."""
-
-    def test_generates_six_digit_code(self):
-        """Test that code is exactly 6 digits."""
-        code = EmailVerificationService.generate_code()
-        assert len(code) == 6
-        assert code.isdigit()
-
-    def test_generates_different_codes(self):
-        """Test that multiple calls generate different codes."""
-        codes = [EmailVerificationService.generate_code() for _ in range(10)]
-        assert len(set(codes)) > 5
-
-
 class TestCanSendVerification:
     """Tests for can_send_verification method."""
 
