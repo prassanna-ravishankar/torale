@@ -103,7 +103,6 @@ def enable_error_propagation() -> None:
                 type(e).__name__,
                 str(e),
                 extra={"task_id": params["id"], "error_type": type(e).__name__},
-                exc_info=True,
             )
 
             # Store error details in task status using ErrorAwareStorage
