@@ -14,7 +14,7 @@ fixes that by:
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -108,15 +108,15 @@ def enable_error_propagation() -> None:
 
             # Store error details in task status using ErrorAwareStorage
             if hasattr(self.storage, "tasks"):
-                task = self.storage.tasks.get(params["id"])
+                task = self.storage.tasks.get(params.get("id"))
                 if task:
                     error_msg = create_error_message(e)
                     task["status"] = {
                         "state": "failed",
-                        "timestamp": datetime.now(UTC).isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                         "message": error_msg,
                     }
-                    logger.info("Stored error details in task status for %s", params["id"])
+                    logger.info("Stored error details in task status for %s", params.get("id"))
 
             raise
 
