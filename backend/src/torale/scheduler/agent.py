@@ -8,7 +8,7 @@ import time
 import uuid
 
 from fasta2a.client import A2AClient, UnexpectedResponseError
-from fasta2a.schema import Message, MessageSendConfiguration, TextPart
+from fasta2a.schema import Message, MessageSendConfiguration, TaskState, TextPart
 
 from torale.core.config import settings
 from torale.scheduler.models import MonitoringResponse
@@ -18,6 +18,55 @@ logger = logging.getLogger(__name__)
 AGENT_TIMEOUT = 120  # seconds
 POLL_BACKOFF = [0.5, 1, 2, 4, 8, 16, 32]  # exponential backoff steps
 MAX_CONSECUTIVE_POLL_FAILURES = 3
+
+
+def _extract_error_details(task: dict) -> dict | None:
+    """Extract structured error details from failed task's status message.
+
+    The agent stores errors as JSON in task["status"]["message"]["parts"][0]["text"].
+    Returns None if the error details are missing or malformed.
+    """
+    try:
+        message = task.get("status", {}).get("message")
+        if not message:
+            return None
+
+        parts = message.get("parts", [])
+        if not parts:
+            return None
+
+        text = parts[0].get("text")
+        if not text:
+            return None
+
+        return json.loads(text)
+    except (json.JSONDecodeError, KeyError, IndexError, TypeError) as e:
+        logger.warning(f"Failed to parse error details from task status: {e}")
+        return None
+
+
+def _handle_failed_task(task: dict) -> None:
+    """Process failed task and raise appropriate error.
+
+    Extracts error details from task status and raises:
+    - UnexpectedResponseError(429) for rate limits (triggers paid tier fallback)
+    - RuntimeError for other errors
+    """
+    error_details = _extract_error_details(task)
+
+    if not error_details:
+        raise RuntimeError(f"Agent task failed without error details: {task.get('status', {})}")
+
+    error_type = error_details.get("error_type")
+    message = error_details.get("message", "Unknown error")
+
+    if error_type == "ModelHTTPError":
+        status_code = error_details.get("status_code")
+        if status_code == 429:
+            raise UnexpectedResponseError(429, f"Agent hit rate limit: {message}")
+        raise RuntimeError(f"Agent HTTP error {status_code}: {message}")
+
+    raise RuntimeError(f"Agent {error_type}: {message}")
 
 
 async def call_agent(prompt: str) -> MonitoringResponse:
@@ -106,14 +155,17 @@ async def _call_agent_internal(base_url: str, prompt: str) -> MonitoringResponse
             continue
 
         task = poll_response["result"]
-        state = task["status"]["state"]
+        state: TaskState = task["status"]["state"]
         logger.debug(f"Agent task {task_id} state: {state}")
 
-        if state == "completed":
-            parsed = _parse_agent_response(task)
-            return MonitoringResponse.model_validate(parsed)
-        elif state == "failed":
-            raise RuntimeError(f"Agent task failed: {task.get('status', {})}")
+        match state:
+            case "completed":
+                parsed = _parse_agent_response(task)
+                return MonitoringResponse.model_validate(parsed)
+            case "failed":
+                _handle_failed_task(task)
+            case "working" | "submitted":
+                continue
 
     raise TimeoutError(f"Agent did not complete within {AGENT_TIMEOUT}s")
 

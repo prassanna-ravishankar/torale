@@ -117,7 +117,8 @@ jobs:
         run: |
           kubectl rollout status deployment/torale-api -n torale-staging --timeout=5m
           kubectl rollout status deployment/torale-frontend -n torale-staging --timeout=5m
-          kubectl rollout status deployment/torale-agent -n torale-staging --timeout=5m
+          kubectl rollout status deployment/torale-agent-free -n torale-staging --timeout=5m
+          kubectl rollout status deployment/torale-agent-paid -n torale-staging --timeout=5m
 
       - name: Post Deployment Info
         if: github.event_name == 'pull_request'

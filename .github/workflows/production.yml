@@ -134,7 +134,8 @@ jobs:
           kubectl rollout status deployment/torale-api -n torale --timeout=5m
           kubectl rollout status deployment/torale-frontend -n torale --timeout=5m
           kubectl rollout status deployment/torale-docs -n torale --timeout=5m
-          kubectl rollout status deployment/torale-agent -n torale --timeout=5m
+          kubectl rollout status deployment/torale-agent-free -n torale --timeout=5m
+          kubectl rollout status deployment/torale-agent-paid -n torale --timeout=5m
 
       - name: Deployment summary
         run: |
