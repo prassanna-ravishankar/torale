@@ -202,7 +202,11 @@ def _parse_agent_response(task: dict) -> dict:
             kind = part.get("kind")
 
             if kind == "data" and part.get("data"):
-                return part["data"]
+                data = part["data"]
+                # Unwrap if agent wrapped response in 'result' key
+                if isinstance(data, dict) and "result" in data and len(data) == 1:
+                    return data["result"]
+                return data
 
             if kind == "text":
                 text_content += part.get("text", "")
