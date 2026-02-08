@@ -24,11 +24,12 @@ async def call_agent(prompt: str) -> MonitoringResponse:
     """Send task to agent with automatic paid tier fallback on 429."""
     try:
         return await _call_agent_internal(settings.agent_url_free, prompt)
-    except Exception as e:
-        error_str = str(e).lower()
-        if "429" in error_str or "rate limit" in error_str or "quota" in error_str:
+    except UnexpectedResponseError as e:
+        # Check actual HTTP status code (not error message) to avoid prompt injection
+        if e.status_code == 429:
             logger.info(
-                "Free tier rate limit hit, falling back to paid tier", extra={"error": str(e)[:200]}
+                "Free tier rate limit hit (429), falling back to paid tier",
+                extra={"status_code": e.status_code},
             )
             return await _call_agent_internal(settings.agent_url_paid, prompt)
         raise
@@ -50,10 +51,9 @@ async def _call_agent_internal(base_url: str, prompt: str) -> MonitoringResponse
 
     try:
         send_response = await client.send_message(message, configuration=configuration)
-    except UnexpectedResponseError as e:
-        raise RuntimeError(
-            f"Failed to send task to agent at {base_url}: status={e.status_code} {e.content[:200]}"
-        ) from e
+    except UnexpectedResponseError:
+        # Re-raise UnexpectedResponseError to preserve status_code for fallback logic
+        raise
     except Exception as e:
         raise RuntimeError(f"Failed to send task to agent at {base_url}: {e}") from e
 
