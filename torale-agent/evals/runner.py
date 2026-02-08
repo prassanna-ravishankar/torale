@@ -75,9 +75,7 @@ Search Query: {case.search_query}
 Condition: {case.condition_description}
 Category: {case.category}
 
-Execute the search and determine if the condition is met.
-
-IMPORTANT: Return ONLY valid JSON matching the MonitoringResponse schema. Do not include markdown code fences, explanations, or any text outside the JSON object."""
+Execute the search and determine if the condition is met."""
 
     # Pass user_id and task_id via dependencies (secure, not LLM-controlled)
     deps = MonitoringDeps(
