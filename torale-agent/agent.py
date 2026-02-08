@@ -18,7 +18,12 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
+from a2a_error_propagation import ErrorAwareStorage, enable_error_propagation
+
 load_dotenv()
+
+# Enable error propagation for A2A task status
+enable_error_propagation()
 
 logfire.configure()
 logfire.instrument_pydantic_ai()
@@ -242,4 +247,5 @@ app = agent.to_a2a(
     name="torale-agent",
     routes=[Route("/health", health), Route("/ready", ready)],
     exception_handlers={ModelHTTPError: model_http_error_handler},
+    storage=ErrorAwareStorage(),
 )

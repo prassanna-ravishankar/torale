@@ -303,7 +303,9 @@ class TestCallAgent:
 
         with patch("torale.scheduler.agent.A2AClient", return_value=mock_client):
             with patch("torale.scheduler.agent.asyncio.sleep", new_callable=AsyncMock):
-                with pytest.raises(RuntimeError, match="Agent task failed"):
+                with pytest.raises(
+                    RuntimeError, match="Agent task task-abc failed without error details"
+                ):
                     await call_agent("test prompt")
 
     @pytest.mark.asyncio
