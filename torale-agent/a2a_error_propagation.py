@@ -18,7 +18,6 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from fasta2a.schema import Message, TextPart
 from pydantic_ai._a2a import InMemoryStorage
 from pydantic_ai.exceptions import ModelHTTPError
 
@@ -115,7 +114,7 @@ def enable_error_propagation() -> None:
                         "timestamp": datetime.now(UTC).isoformat(),
                         "message": error_msg,
                     }
-                    logger.info(f"Stored error details in task status for {params['id']}")
+                    logger.info("Stored error details in task status for %s", params["id"])
 
             raise
 

@@ -26,22 +26,22 @@ def _extract_error_details(task: dict) -> dict | None:
     The agent stores errors as JSON in task["status"]["message"]["parts"][0]["text"].
     Returns None if the error details are missing or malformed.
     """
+    message = task.get("status", {}).get("message")
+    if not message:
+        return None
+
+    parts = message.get("parts", [])
+    if not parts:
+        return None
+
+    text = parts[0].get("text")
+    if not text:
+        return None
+
     try:
-        message = task.get("status", {}).get("message")
-        if not message:
-            return None
-
-        parts = message.get("parts", [])
-        if not parts:
-            return None
-
-        text = parts[0].get("text")
-        if not text:
-            return None
-
         return json.loads(text)
-    except (json.JSONDecodeError, KeyError, IndexError, TypeError) as e:
-        logger.warning(f"Failed to parse error details from task status: {e}")
+    except (json.JSONDecodeError, TypeError) as e:
+        logger.warning("Failed to parse error details from task status: %s", e)
         return None
 
 
