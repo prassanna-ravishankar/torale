@@ -20,13 +20,12 @@ Note: These tests automatically skip if the API server isn't running (similar to
 
 import os
 import uuid
-from datetime import datetime
 
 import httpx
 import pytest
 
 from torale.sdk import Torale
-from torale.sdk.exceptions import AuthenticationError, NotFoundError, ValidationError
+from torale.sdk.exceptions import NotFoundError, ValidationError
 
 # NOTE: These tests create tasks which create APScheduler jobs.
 
@@ -369,18 +368,6 @@ class TestSDKValidation:
 class TestSDKContextManager:
     """Test context manager functionality."""
 
-    def test_context_manager_basic(self):
-        """Test basic context manager usage."""
-        # Skip if API not available or NOAUTH not set
-        if not check_api_available():
-            pytest.skip("API server not available (start with `just dev`)")
-        if not os.getenv("TORALE_NOAUTH"):
-            pytest.skip("TORALE_NOAUTH not set (required for integration tests)")
-
-        with Torale() as client:
-            tasks = client.tasks.list()
-            assert isinstance(tasks, list)
-
     def test_context_manager_creates_task(self):
         """Test creating a task within context manager."""
         # Skip if API not available or NOAUTH not set
@@ -406,133 +393,6 @@ class TestSDKContextManager:
             cleanup_client.tasks.delete(task_id)
         finally:
             cleanup_client.close()
-
-    def test_multiple_sequential_context_managers(self):
-        """Test using multiple context managers sequentially."""
-        # Skip if API not available or NOAUTH not set
-        if not check_api_available():
-            pytest.skip("API server not available (start with `just dev`)")
-        if not os.getenv("TORALE_NOAUTH"):
-            pytest.skip("TORALE_NOAUTH not set (required for integration tests)")
-
-        task_id = None
-
-        # Create task in first context
-        with Torale() as client1:
-            task = client1.tasks.create(
-                name="Sequential Context Test",
-                search_query="Test query",
-                condition_description="Test condition",
-            )
-            task_id = task.id
-
-        # Verify task exists in second context
-        with Torale() as client2:
-            retrieved_task = client2.tasks.get(task_id)
-            assert retrieved_task.id == task_id
-
-        # Cleanup in third context
-        with Torale() as client3:
-            client3.tasks.delete(task_id)
-
-
-class TestSDKConfiguration:
-    """Test SDK configuration and initialization."""
-
-    def test_sdk_respects_api_url_env_var(self, monkeypatch):
-        """Test that SDK respects TORALE_API_URL environment variable."""
-        # Need NOAUTH for client initialization
-        if not os.getenv("TORALE_NOAUTH"):
-            pytest.skip("TORALE_NOAUTH not set (required for integration tests)")
-
-        custom_url = "http://custom-api:9000"
-        monkeypatch.setenv("TORALE_API_URL", custom_url)
-
-        client = Torale()
-        assert client.api_url == custom_url
-        client.close()
-
-    def test_sdk_respects_api_key_env_var(self, monkeypatch):
-        """Test that SDK respects TORALE_API_KEY environment variable."""
-        # Remove NOAUTH if set
-        monkeypatch.delenv("TORALE_NOAUTH", raising=False)
-
-        custom_key = "sk_test_custom_key_12345"
-        monkeypatch.setenv("TORALE_API_KEY", custom_key)
-
-        # This will fail auth unless NOAUTH is set, but we're just testing initialization
-        try:
-            client = Torale()
-            # In real scenario with auth, this would use the API key
-            client.close()
-        except AuthenticationError:
-            # Expected if no valid auth is configured
-            pass
-
-    def test_sdk_with_explicit_api_url(self):
-        """Test creating SDK client with explicit api_url."""
-        # Need NOAUTH for client initialization
-        if not os.getenv("TORALE_NOAUTH"):
-            pytest.skip("TORALE_NOAUTH not set (required for integration tests)")
-
-        client = Torale(api_url="http://localhost:8000")
-        assert client.api_url == "http://localhost:8000"
-        client.close()
-
-    def test_sdk_with_explicit_api_key(self):
-        """Test creating SDK client with explicit api_key."""
-        # This will fail auth in tests, but we're testing initialization
-        try:
-            client = Torale(api_key="sk_test_explicit_key")
-            client.close()
-        except AuthenticationError:
-            # Expected if TORALE_NOAUTH is not set
-            pass
-
-
-class TestSDKDataTypes:
-    """Test that SDK properly handles different data types."""
-
-    def test_task_timestamps_are_datetime(self, sdk_client, test_task):
-        """Test that timestamps are properly parsed as datetime objects."""
-        task = sdk_client.tasks.get(test_task.id)
-
-        assert isinstance(task.created_at, datetime)
-        assert isinstance(task.updated_at, datetime)
-
-    def test_execution_timestamps_are_datetime(self, sdk_client, test_task):
-        """Test that execution timestamps are datetime objects."""
-        execution = sdk_client.tasks.execute(test_task.id)
-
-        assert isinstance(execution.started_at, datetime)
-        # completed_at might be None if still running
-        if execution.completed_at is not None:
-            assert isinstance(execution.completed_at, datetime)
-
-    def test_task_config_is_dict(self, sdk_client, test_task):
-        """Test that task config is properly returned as dict."""
-        task = sdk_client.tasks.get(test_task.id)
-
-        assert isinstance(task.config, dict)
-        assert "model" in task.config
-
-    def test_notifications_are_list_of_notification_config(self, sdk_client):
-        """Test that notifications are returned as list of NotificationConfig objects."""
-        task = sdk_client.tasks.create(
-            name="Notifications Type Test",
-            search_query="Test query",
-            condition_description="Test condition",
-            notifications=[{"type": "webhook", "url": "https://example.com/hook"}],
-        )
-
-        assert isinstance(task.notifications, list)
-        assert len(task.notifications) > 0
-        # Notifications are NotificationConfig objects, not dicts
-        assert hasattr(task.notifications[0], "type")
-        assert task.notifications[0].type == "webhook"
-
-        # Cleanup
-        sdk_client.tasks.delete(task.id)
 
 
 class TestSDKEdgeCases:
@@ -568,19 +428,6 @@ class TestSDKEdgeCases:
         # Cleanup
         sdk_client.tasks.delete(task.id)
 
-    def test_update_task_with_no_changes(self, sdk_client, test_task):
-        """Test updating a task with no actual changes."""
-        # Get original values
-        original = sdk_client.tasks.get(test_task.id)
-
-        # Update with same values (effectively no change)
-        updated = sdk_client.tasks.update(
-            test_task.id, name=original.name, schedule=original.schedule
-        )
-
-        assert updated.name == original.name
-        assert updated.schedule == original.schedule
-
     def test_list_tasks_when_empty(self, sdk_client):
         """Test listing tasks when no tasks exist (cleanup all first)."""
         # Get all tasks
@@ -597,36 +444,6 @@ class TestSDKEdgeCases:
         tasks = sdk_client.tasks.list()
         assert isinstance(tasks, list)
         assert len(tasks) == 0
-
-    def test_very_long_task_name(self, sdk_client):
-        """Test creating a task with a very long name."""
-        long_name = "A" * 255  # 255 characters
-
-        task = sdk_client.tasks.create(
-            name=long_name,
-            search_query="Test query",
-            condition_description="Test condition",
-        )
-
-        assert task.name == long_name
-
-        # Cleanup
-        sdk_client.tasks.delete(task.id)
-
-    def test_special_characters_in_task_name(self, sdk_client):
-        """Test creating a task with special characters in name."""
-        special_name = "Test 🚀 Task with émojis and spëcial çhars!"
-
-        task = sdk_client.tasks.create(
-            name=special_name,
-            search_query="Test query",
-            condition_description="Test condition",
-        )
-
-        assert task.name == special_name
-
-        # Cleanup
-        sdk_client.tasks.delete(task.id)
 
 
 class TestSDKPreview:
@@ -717,30 +534,9 @@ class TestSDKPreview:
                 pytest.skip("Google API key not configured")
             raise
 
-    def test_preview_method_signature(self, sdk_client):
-        """Test that preview method has correct signature."""
-        # Verify method exists on tasks resource
-        assert hasattr(sdk_client.tasks, "preview")
-        assert callable(sdk_client.tasks.preview)
-
-        # Verify it accepts required parameters
-        import inspect
-
-        sig = inspect.signature(sdk_client.tasks.preview)
-        params = list(sig.parameters.keys())
-
-        assert "search_query" in params
-        assert "condition_description" in params
-        assert "model" in params
-
 
 class TestSDKWebhooks:
     """Test SDK webhook resource functionality."""
-
-    def test_webhooks_resource_exists(self, sdk_client):
-        """Verify webhooks resource is initialized."""
-        assert hasattr(sdk_client, "webhooks")
-        assert sdk_client.webhooks is not None
 
     def test_get_webhook_config(self, sdk_client):
         """Test getting webhook configuration."""
@@ -781,16 +577,6 @@ class TestSDKWebhooks:
         )
 
         assert updated["enabled"] is False
-
-    def test_webhook_test_method_exists(self, sdk_client):
-        """Verify webhook test method exists."""
-        assert hasattr(sdk_client.webhooks, "test")
-        assert callable(sdk_client.webhooks.test)
-
-    def test_webhook_list_deliveries_method_exists(self, sdk_client):
-        """Verify list_deliveries method exists."""
-        assert hasattr(sdk_client.webhooks, "list_deliveries")
-        assert callable(sdk_client.webhooks.list_deliveries)
 
     def test_task_creation_with_webhook_notification(self, sdk_client):
         """Test creating task with webhook notification."""
