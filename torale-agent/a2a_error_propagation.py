@@ -102,7 +102,7 @@ def enable_error_propagation() -> None:
                 "Agent task failed: %s - %s",
                 type(e).__name__,
                 str(e),
-                extra={"task_id": params["id"], "error_type": type(e).__name__},
+                extra={"task_id": params.get("id"), "error_type": type(e).__name__},
             )
 
             # Store error details in task status using ErrorAwareStorage
