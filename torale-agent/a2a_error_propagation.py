@@ -52,11 +52,12 @@ class ErrorAwareStorage(InMemoryStorage):
             self.tasks[task_id]["status"]["message"] = existing_message
 
 
-def create_error_message(error: Exception) -> Message:
-    """Create A2A Message with structured error details.
+def create_error_message(error: Exception) -> dict:
+    """Create A2A Message dict with structured error details.
 
     Serializes error information into JSON format that the backend can parse.
     Special handling for ModelHTTPError to extract status codes.
+    Returns a dict matching the A2A Message schema.
     """
     if isinstance(error, ModelHTTPError):
         error_data = {
@@ -71,12 +72,13 @@ def create_error_message(error: Exception) -> Message:
             "message": str(error),
         }
 
-    return Message(
-        role="agent",
-        kind="message",
-        message_id=str(uuid4()),
-        parts=[TextPart(kind="text", text=json.dumps(error_data))],
-    )
+    # Return dict matching fasta2a Message schema (uses snake_case field names)
+    return {
+        "role": "agent",
+        "kind": "message",
+        "message_id": str(uuid4()),
+        "parts": [{"kind": "text", "text": json.dumps(error_data)}],
+    }
 
 
 def enable_error_propagation() -> None:
@@ -97,20 +99,23 @@ def enable_error_propagation() -> None:
             return await original_run_task(self, params)
         except Exception as e:
             logger.info(
-                "Capturing error details for task %s: %s",
+                "Capturing error details for task %s: %s - %s",
                 params.get("id"),
                 type(e).__name__,
+                str(e),
             )
 
             # Store error details in task status using ErrorAwareStorage
             if hasattr(self.storage, "tasks"):
                 task = self.storage.tasks.get(params["id"])
                 if task:
+                    error_msg = create_error_message(e)
                     task["status"] = {
                         "state": "failed",
                         "timestamp": datetime.now(UTC).isoformat(),
-                        "message": create_error_message(e).model_dump(),
+                        "message": error_msg,
                     }
+                    logger.info(f"Stored error details in task status for {params['id']}")
 
             raise
 
