@@ -11,7 +11,7 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from agent import create_monitoring_agent
+from agent import MonitoringDeps, create_monitoring_agent
 from evals.runner import load_cases, run_single_eval, save_results
 
 app = typer.Typer(help="Torale Agent Evaluation CLI")
@@ -55,7 +55,8 @@ async def _query_async(prompt: str, model: str, raw: bool):
 
     try:
         agent = create_monitoring_agent(model)
-        result = await agent.run(prompt)
+        deps = MonitoringDeps(user_id="cli-user", task_id="cli-query")
+        result = await agent.run(prompt, deps=deps)
         latency_ms = (time.perf_counter() - start_time) * 1000
 
         output_json = result.output.model_dump_json(indent=2)
