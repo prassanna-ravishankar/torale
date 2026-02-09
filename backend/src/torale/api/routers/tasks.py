@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import secrets
@@ -279,8 +280,6 @@ async def start_task_execution(
     suppress_notifications: bool = False,
 ) -> dict:
     """Create execution record and launch agent-based execution in background."""
-    from torale.scheduler.scheduler import get_scheduler
-
     # Check for running or pending executions to prevent concurrent execution
     running_execution = await db.fetch_one(
         "SELECT id FROM task_executions WHERE task_id = $1 AND status IN ('running', 'pending')",
@@ -296,9 +295,9 @@ async def start_task_execution(
     # Cancel any pending retry jobs before starting manual execution
     scheduler = get_scheduler()
     job_id = f"task-{task_id}"
-    existing_job = scheduler.get_job(job_id)
+    existing_job = await asyncio.to_thread(scheduler.get_job, job_id)
     if existing_job:
-        scheduler.remove_job(job_id)
+        await asyncio.to_thread(scheduler.remove_job, job_id)
         logger.info(f"Cancelled pending retry job for task {task_id} (manual run triggered)")
 
     # Inherit retry count from last execution (if it exists)
