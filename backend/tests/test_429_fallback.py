@@ -3,10 +3,39 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from fasta2a.client import UnexpectedResponseError
+from a2a.client.errors import A2AClientHTTPError
+from a2a.types import (
+    Artifact,
+    DataPart,
+    GetTaskResponse,
+    GetTaskSuccessResponse,
+    Part,
+    SendMessageResponse,
+    SendMessageSuccessResponse,
+    Task,
+    TaskState,
+    TaskStatus,
+)
 
 from torale.scheduler.agent import call_agent
 from torale.scheduler.models import MonitoringResponse
+
+
+def _make_task(*, task_id="task-abc", status_state=TaskState.completed, artifacts=None):
+    return Task(
+        id=task_id,
+        context_id="ctx-test",
+        status=TaskStatus(state=status_state),
+        artifacts=artifacts,
+    )
+
+
+def _send_success(task):
+    return SendMessageResponse(root=SendMessageSuccessResponse(id="req-1", result=task))
+
+
+def _poll_success(task):
+    return GetTaskResponse(root=GetTaskSuccessResponse(id="req-1", result=task))
 
 
 @pytest.mark.asyncio
@@ -19,61 +48,56 @@ class TestPaidTierFallback:
         mock_settings.agent_url_free = "http://agent-free:8000"
         mock_settings.agent_url_paid = "http://agent-paid:8000"
 
-        # Mock the A2AClient
+        completed_task = _make_task(
+            task_id="task-paid-123",
+            artifacts=[
+                Artifact(
+                    artifact_id="art-1",
+                    parts=[
+                        Part(
+                            root=DataPart(
+                                kind="data",
+                                data={
+                                    "evidence": "Test evidence",
+                                    "sources": ["http://example.com"],
+                                    "confidence": 95,
+                                    "next_run": None,
+                                    "notification": "Test notification",
+                                },
+                            )
+                        )
+                    ],
+                )
+            ],
+        )
+
         with patch("torale.scheduler.agent.A2AClient") as mock_client_class:
             # First call (free tier) raises 429
             free_client = AsyncMock()
             free_client.send_message = AsyncMock(
-                side_effect=UnexpectedResponseError(429, "Rate limit exceeded")
+                side_effect=A2AClientHTTPError(429, "Rate limit exceeded")
             )
 
             # Second call (paid tier) succeeds
             paid_client = AsyncMock()
             paid_client.send_message = AsyncMock(
-                return_value={
-                    "result": {
-                        "id": "task-paid-123",
-                        "status": {"state": "submitted"},
-                    }
-                }
+                return_value=_send_success(
+                    _make_task(task_id="task-paid-123", status_state=TaskState.submitted)
+                )
             )
-            paid_client.get_task = AsyncMock(
-                return_value={
-                    "result": {
-                        "id": "task-paid-123",
-                        "status": {"state": "completed"},
-                        "artifacts": [
-                            {
-                                "parts": [
-                                    {
-                                        "kind": "data",
-                                        "data": {
-                                            "evidence": "Test evidence",
-                                            "sources": ["http://example.com"],
-                                            "confidence": 95,
-                                            "next_run": None,
-                                            "notification": "Test notification",
-                                        },
-                                    }
-                                ]
-                            }
-                        ],
-                    }
-                }
-            )
+            paid_client.get_task = AsyncMock(return_value=_poll_success(completed_task))
 
-            # Return different clients based on base_url
-            def get_client(base_url):
-                if "free" in base_url:
+            # Return different clients based on url kwarg
+            def get_client(**kwargs):
+                url = kwargs.get("url", "")
+                if "free" in url:
                     return free_client
                 return paid_client
 
             mock_client_class.side_effect = get_client
 
-            # Execute
             result = await call_agent("test prompt")
 
-            # Verify
             assert isinstance(result, MonitoringResponse)
             assert result.evidence == "Test evidence"
             assert result.notification == "Test notification"
@@ -81,9 +105,9 @@ class TestPaidTierFallback:
             # Verify both clients were created
             assert mock_client_class.call_count == 2
             # First call should be to free tier
-            assert "free" in mock_client_class.call_args_list[0][1]["base_url"]
+            assert "free" in mock_client_class.call_args_list[0][1]["url"]
             # Second call should be to paid tier
-            assert "paid" in mock_client_class.call_args_list[1][1]["base_url"]
+            assert "paid" in mock_client_class.call_args_list[1][1]["url"]
 
     @patch("torale.scheduler.agent.settings")
     async def test_non_429_error_does_not_fallback(self, mock_settings):
@@ -95,7 +119,7 @@ class TestPaidTierFallback:
             # Free tier raises 503 (not 429)
             free_client = AsyncMock()
             free_client.send_message = AsyncMock(
-                side_effect=UnexpectedResponseError(503, "Service unavailable")
+                side_effect=A2AClientHTTPError(503, "Service unavailable")
             )
 
             mock_client_class.return_value = free_client
@@ -106,7 +130,7 @@ class TestPaidTierFallback:
 
             # Verify only free tier was tried
             assert mock_client_class.call_count == 1
-            assert "free" in mock_client_class.call_args[1]["base_url"]
+            assert "free" in mock_client_class.call_args[1]["url"]
 
     @patch("torale.scheduler.agent.settings")
     async def test_429_during_poll_propagates(self, mock_settings):
@@ -118,16 +142,13 @@ class TestPaidTierFallback:
             # Free tier send succeeds, but poll gets 429
             client = AsyncMock()
             client.send_message = AsyncMock(
-                return_value={
-                    "result": {
-                        "id": "task-123",
-                        "status": {"state": "submitted"},
-                    }
-                }
+                return_value=_send_success(
+                    _make_task(task_id="task-123", status_state=TaskState.submitted)
+                )
             )
             # Poll raises 429 (unusual but possible)
             client.get_task = AsyncMock(
-                side_effect=UnexpectedResponseError(429, "Rate limit during poll")
+                side_effect=A2AClientHTTPError(429, "Rate limit during poll")
             )
 
             mock_client_class.return_value = client
@@ -149,13 +170,13 @@ class TestPaidTierFallback:
             # Both free and paid return 429
             client = AsyncMock()
             client.send_message = AsyncMock(
-                side_effect=UnexpectedResponseError(429, "Rate limit exceeded")
+                side_effect=A2AClientHTTPError(429, "Rate limit exceeded")
             )
 
             mock_client_class.return_value = client
 
-            # Should raise UnexpectedResponseError from paid tier
-            with pytest.raises(UnexpectedResponseError) as exc_info:
+            # Should raise A2AClientHTTPError from paid tier
+            with pytest.raises(A2AClientHTTPError) as exc_info:
                 await call_agent("test prompt")
 
             assert exc_info.value.status_code == 429
