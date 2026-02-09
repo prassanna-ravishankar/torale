@@ -61,6 +61,7 @@ dependencies = [
     "pypika-tortoise>=0.1.6",
     "bcrypt>=4.0.0",
     "fasta2a>=0.1.0",
+    "posthog>=7.8.3",
 ]
 
 [project.urls]

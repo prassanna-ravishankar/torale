@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { UserButton } from "@clerk/clerk-react";
-import { Shield, Bell, BookOpen, Compass } from "lucide-react";
+import { Shield, Bell, BookOpen, Compass, MessageSquare } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Logo } from "@/components/Logo";
+import { FeedbackModal } from "@/components/FeedbackModal";
 
 /**
  * Header - Brutalist navigation for authenticated app
@@ -16,6 +17,7 @@ export const Header: React.FC = () => {
   const location = useLocation();
   const noAuth = import.meta.env.VITE_TORALE_NOAUTH === '1';
   const isAdmin = user?.publicMetadata?.role === "admin";
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   return (
     <header className="border-b-2 border-zinc-200 bg-white sticky top-0 z-40">
@@ -74,6 +76,16 @@ export const Header: React.FC = () => {
                   <span className="hidden sm:inline">Docs</span>
                 </Button>
               </a>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFeedbackOpen(true)}
+                className="gap-1 md:gap-2 font-mono text-xs h-8 px-2 md:px-3"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Feedback</span>
+              </Button>
             </>
           )}
         </div>
@@ -89,6 +101,7 @@ export const Header: React.FC = () => {
           {!noAuth && <UserButton afterSignOutUrl="/sign-in" />}
         </div>
       </div>
+      <FeedbackModal open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </header>
   );
 };

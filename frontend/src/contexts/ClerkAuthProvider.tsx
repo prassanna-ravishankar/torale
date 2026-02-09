@@ -1,6 +1,7 @@
 import React, { ReactNode, useMemo, useEffect, useState, useCallback } from 'react'
 import { ClerkProvider, useAuth as useClerkAuth, useUser } from '@clerk/clerk-react'
 import { AuthContext, AuthContextType, User } from './AuthContext'
+import { initPostHog, resetPostHog } from '@/lib/posthog'
 
 const CLERK_PUBLISHABLE_KEY = window.CONFIG?.clerkPublishableKey || import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -69,6 +70,15 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
   }, [clerkUser])
 
   const user: User | null = backendUser
+
+  // Initialize PostHog when user is authenticated
+  useEffect(() => {
+    if (user?.id && user?.email) {
+      initPostHog(user.id, user.email, user.username || undefined)
+    } else if (!user) {
+      resetPostHog()
+    }
+  }, [user])
 
   const getToken = useCallback(async () => {
     try {

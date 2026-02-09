@@ -10,6 +10,8 @@ data:
     // Runtime configuration injected by Kubernetes
     window.CONFIG = {
       apiUrl: 'https://{{ .Values.domains.api }}',
-      clerkPublishableKey: '{{ .Values.clerk.publishableKey }}'
+      clerkPublishableKey: '{{ .Values.clerk.publishableKey }}',
+      posthogApiKey: '{{ .Values.posthog.apiKey }}',
+      posthogHost: '{{ .Values.posthog.host | default "https://app.posthog.com" }}'
     };
 {{- end }}

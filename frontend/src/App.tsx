@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { Loader2 } from 'lucide-react'
 import { useApiSetup } from '@/hooks/useApi'
 import { useAuth } from '@/contexts/AuthContext'
+import { captureEvent } from '@/lib/posthog'
 
 // Lazy load heavy components for better performance
 const Dashboard = lazy(() => import('@/components/Dashboard').then(m => ({ default: m.Dashboard })))
@@ -107,9 +108,17 @@ function ScrollToTop() {
 
 export default function App() {
   const navigate = useNavigate()
+  const location = useLocation()
 
   // Initialize API client with Clerk authentication
   useApiSetup()
+
+  // Track page views
+  useEffect(() => {
+    captureEvent('$pageview', {
+      path: location.pathname,
+    })
+  }, [location.pathname])
 
   const handleTaskClick = (taskId: string, justCreated?: boolean) => {
     navigate(`/tasks/${taskId}${justCreated ? '?justCreated=true' : ''}`)

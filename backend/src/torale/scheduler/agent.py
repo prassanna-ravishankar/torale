@@ -11,6 +11,7 @@ from fasta2a.client import A2AClient, UnexpectedResponseError
 from fasta2a.schema import Message, MessageSendConfiguration, TaskState, TextPart
 
 from torale.core.config import settings
+from torale.lib.posthog import capture as posthog_capture
 from torale.scheduler.models import MonitoringResponse
 
 logger = logging.getLogger(__name__)
@@ -87,10 +88,20 @@ def _handle_failed_task(task: dict) -> None:
     raise RuntimeError(f"Agent task {task_id} {error_type}: {message}")
 
 
-async def call_agent(prompt: str) -> MonitoringResponse:
+async def call_agent(prompt: str, user_id: str | None = None) -> MonitoringResponse:
     """Send task to agent with automatic paid tier fallback on 429."""
     try:
-        return await _call_agent_internal(settings.agent_url_free, prompt)
+        result = await _call_agent_internal(settings.agent_url_free, prompt, user_id)
+        if user_id:
+            posthog_capture(
+                distinct_id=user_id,
+                event="agent_tier_used",
+                properties={
+                    "tier": "free",
+                    "fallback_triggered": False,
+                },
+            )
+        return result
     except UnexpectedResponseError as e:
         # Check actual HTTP status code (not error message) to avoid prompt injection
         if e.status_code == 429:
@@ -98,14 +109,27 @@ async def call_agent(prompt: str) -> MonitoringResponse:
                 "Free tier rate limit hit (429), falling back to paid tier",
                 extra={"status_code": e.status_code},
             )
-            return await _call_agent_internal(settings.agent_url_paid, prompt)
+            result = await _call_agent_internal(settings.agent_url_paid, prompt, user_id)
+            if user_id:
+                posthog_capture(
+                    distinct_id=user_id,
+                    event="agent_tier_used",
+                    properties={
+                        "tier": "paid",
+                        "fallback_triggered": True,
+                    },
+                )
+            return result
         raise
 
 
-async def _call_agent_internal(base_url: str, prompt: str) -> MonitoringResponse:
+async def _call_agent_internal(
+    base_url: str, prompt: str, user_id: str | None = None
+) -> MonitoringResponse:
     """Send task to torale-agent via A2A and poll for result."""
     message_id = f"msg-{uuid.uuid4().hex[:12]}"
     client = A2AClient(base_url=base_url)
+    poll_start_time = time.monotonic()
 
     message = Message(
         role="user",
@@ -140,8 +164,10 @@ async def _call_agent_internal(base_url: str, prompt: str) -> MonitoringResponse
     deadline = time.monotonic() + AGENT_TIMEOUT
     backoff_idx = 0
     consecutive_poll_failures = 0
+    poll_count = 0
 
     while time.monotonic() < deadline:
+        poll_count += 1
         delay = POLL_BACKOFF[min(backoff_idx, len(POLL_BACKOFF) - 1)]
         await asyncio.sleep(delay)
         backoff_idx += 1
@@ -179,6 +205,16 @@ async def _call_agent_internal(base_url: str, prompt: str) -> MonitoringResponse
         match state:
             case "completed":
                 parsed = _parse_agent_response(task)
+                poll_duration = time.monotonic() - poll_start_time
+                if user_id:
+                    posthog_capture(
+                        distinct_id=user_id,
+                        event="agent_task_completed",
+                        properties={
+                            "poll_duration_seconds": round(poll_duration, 2),
+                            "poll_iterations": poll_count,
+                        },
+                    )
                 return MonitoringResponse.model_validate(parsed)
             case "failed":
                 _handle_failed_task(task)

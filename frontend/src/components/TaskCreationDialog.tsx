@@ -192,13 +192,13 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                   id="instructions"
                   placeholder={"Examples:\n• Alert me when the next iPhone gets announced\n• Track Starship launch updates\n• Monitor when GPT-5 release date is confirmed\n\n💡 Keep it simple — our agent figures out the details"}
                   value={instructions}
+                  className={cn("posthog-no-capture resize-none font-medium text-lg p-4", validationErrors.instructions && "border-destructive")}
                   onChange={(e) => {
                     setInstructions(e.target.value);
                     if (validationErrors.instructions) setValidationErrors(prev => ({ ...prev, instructions: "" }));
                   }}
                   disabled={isSubmitting}
                   rows={6}
-                  className={cn("resize-none font-mono text-sm p-3", validationErrors.instructions && "border-destructive")}
                 />
                 {validationErrors.instructions && (
                   <p className="text-xs text-destructive flex items-center gap-1.5">

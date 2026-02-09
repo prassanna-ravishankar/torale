@@ -18,6 +18,7 @@ import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
 import { useAuth } from '@/contexts/AuthContext';
 import { FirstTimeExperience } from '@/components/FirstTimeExperience';
 import { useWelcomeFlow } from '@/hooks/useWelcomeFlow';
+import { captureEvent } from '@/lib/posthog';
 
 /**
  * Dashboard - Mission Control layout from MockDashboard.tsx
@@ -77,6 +78,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
       await api.updateTask(id, { state: newState });
       await loadTasks();
       toast.success(newState === 'active' ? 'Task activated' : 'Task paused');
+
+      captureEvent(newState === 'active' ? 'task_activated' : 'task_paused', {
+        task_id: id,
+      });
     } catch (error) {
       console.error('Failed to toggle task:', error);
       toast.error('Failed to update task');
@@ -88,6 +93,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
       await api.deleteTask(id);
       await loadTasks();
       toast.success('Task deleted');
+
+      captureEvent('task_deleted', {
+        task_id: id,
+      });
     } catch (error) {
       console.error('Failed to delete task:', error);
       toast.error('Failed to delete task');
@@ -111,6 +120,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   const handleTaskCreated = (task: Task) => {
     loadTasks();
     onTaskClick(task.id, true);
+
+    captureEvent('task_created', {
+      task_id: task.id,
+    });
   };
 
   const handleTaskUpdated = (task: Task) => {
@@ -189,16 +202,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
 
         {/* Stats Row - Now clickable to filter */}
         <div className="hidden md:grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-          <button onClick={() => setActiveFilter('active')} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
+          <button onClick={() => { setActiveFilter('active'); captureEvent('filter_changed', { filter: 'active' }); }} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
             <StatCard label="Active Monitors" value={activeCount.toString()} />
           </button>
-          <button onClick={() => setActiveFilter('all')} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
+          <button onClick={() => { setActiveFilter('all'); captureEvent('filter_changed', { filter: 'all' }); }} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
             <StatCard label="Total Tasks" value={tasks.length.toString()} />
           </button>
-          <button onClick={() => setActiveFilter('completed')} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
+          <button onClick={() => { setActiveFilter('completed'); captureEvent('filter_changed', { filter: 'completed' }); }} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
             <StatCard label="Completed" value={completedCount.toString()} />
           </button>
-          <button onClick={() => setActiveFilter('paused')} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
+          <button onClick={() => { setActiveFilter('paused'); captureEvent('filter_changed', { filter: 'paused' }); }} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
             <StatCard label="Paused" value={pausedCount.toString()} />
           </button>
         </div>
@@ -213,19 +226,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
               { id: 'paused', label: 'Paused', count: pausedCount },
             ]}
             active={activeFilter}
-            onChange={setActiveFilter}
+            onChange={(filter) => { setActiveFilter(filter); captureEvent('filter_changed', { filter }); }}
             responsive={true}
           />
 
           <div className="flex bg-white border border-zinc-200 rounded-sm p-0.5">
             <button
-              onClick={() => setViewMode('grid')}
+              onClick={() => { setViewMode('grid'); captureEvent('view_mode_toggled', { view_mode: 'grid' }); }}
               className={`p-1.5 rounded-sm transition-colors ${viewMode === 'grid' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`}
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setViewMode('list')}
+              onClick={() => { setViewMode('list'); captureEvent('view_mode_toggled', { view_mode: 'list' }); }}
               className={`inline-flex p-1.5 rounded-sm transition-colors ${viewMode === 'list' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`}
             >
               <ListIcon className="w-4 h-4" />
