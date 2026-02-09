@@ -21,6 +21,8 @@ from uuid import uuid4
 from pydantic_ai._a2a import InMemoryStorage
 from pydantic_ai.exceptions import ModelHTTPError
 
+from models import MonitoringDeps
+
 logger = logging.getLogger(__name__)
 
 
@@ -93,7 +95,6 @@ def enable_error_propagation() -> None:
     Must be called before creating the A2A app, and requires using ErrorAwareStorage.
     """
     from pydantic_ai._a2a import AgentWorker
-    from agent import MonitoringDeps
 
     original_run_task = AgentWorker.run_task
 
