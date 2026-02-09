@@ -248,19 +248,20 @@ async def _execute(
 
         # Track successful execution
         execution_duration = time.monotonic() - start_time
-        posthog_capture(
-            distinct_id=user_id,
-            event="task_execution_completed",
-            properties={
-                "task_id": task_id,
-                "execution_id": execution_id,
-                "duration_seconds": round(execution_duration, 2),
-                "notification_sent": bool(notification),
-                "confidence": confidence if confidence else None,
-                "grounding_sources_count": len(grounding_sources) if grounding_sources else 0,
-                "retry_count": retry_count,
-            },
-        )
+        if user_id:
+            posthog_capture(
+                distinct_id=user_id,
+                event="task_execution_completed",
+                properties={
+                    "task_id": task_id,
+                    "execution_id": execution_id,
+                    "duration_seconds": round(execution_duration, 2),
+                    "notification_sent": bool(notification),
+                    "confidence": confidence if confidence else None,
+                    "grounding_sources_count": len(grounding_sources) if grounding_sources else 0,
+                    "retry_count": retry_count,
+                },
+            )
 
     except Exception as e:
         category = classify_error(e)
@@ -268,18 +269,19 @@ async def _execute(
         will_retry = should_retry(category, retry_count)
 
         # Track failed execution
-        posthog_capture(
-            distinct_id=user_id,
-            event="task_execution_failed",
-            properties={
-                "task_id": task_id,
-                "execution_id": execution_id,
-                "error_category": category.value,
-                "error_type": type(e).__name__,
-                "retry_count": retry_count,
-                "will_retry": will_retry,
-            },
-        )
+        if user_id:
+            posthog_capture(
+                distinct_id=user_id,
+                event="task_execution_failed",
+                properties={
+                    "task_id": task_id,
+                    "execution_id": execution_id,
+                    "error_category": category.value,
+                    "error_type": type(e).__name__,
+                    "retry_count": retry_count,
+                    "will_retry": will_retry,
+                },
+            )
 
         # Structured logging for metrics and debugging
         logger.error(
@@ -305,16 +307,17 @@ async def _execute(
             )
 
             # Track retry scheduling
-            posthog_capture(
-                distinct_id=user_id,
-                event="task_retry_scheduled",
-                properties={
-                    "task_id": task_id,
-                    "error_category": category.value,
-                    "retry_count": next_retry_count,
-                    "retry_delay_seconds": retry_delay,
-                },
-            )
+            if user_id:
+                posthog_capture(
+                    distinct_id=user_id,
+                    event="task_retry_scheduled",
+                    properties={
+                        "task_id": task_id,
+                        "error_category": category.value,
+                        "retry_count": next_retry_count,
+                        "retry_delay_seconds": retry_delay,
+                    },
+                )
         else:
             # Permanent failure - mark as FAILED and don't schedule retry
             status = TaskStatus.FAILED
