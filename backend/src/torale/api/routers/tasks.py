@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import secrets
@@ -247,6 +248,7 @@ async def _safe_execute_task_job_manual(
     user_id: str,
     task_name: str,
     suppress_notifications: bool = False,
+    retry_count: int = 0,
 ) -> None:
     """Wrapper to ensure background task errors are logged.
 
@@ -260,6 +262,7 @@ async def _safe_execute_task_job_manual(
             user_id=user_id,
             task_name=task_name,
             suppress_notifications=suppress_notifications,
+            retry_count=retry_count,
         )
     except Exception as exc:
         logger.error(
@@ -277,6 +280,35 @@ async def start_task_execution(
     suppress_notifications: bool = False,
 ) -> dict:
     """Create execution record and launch agent-based execution in background."""
+    # Check for running or pending executions to prevent concurrent execution
+    running_execution = await db.fetch_one(
+        "SELECT id FROM task_executions WHERE task_id = $1 AND status IN ('running', 'pending')",
+        UUID(task_id),
+    )
+
+    if running_execution:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Task is already running. Wait for current execution to complete.",
+        )
+
+    # Cancel any pending retry jobs before starting manual execution
+    scheduler = get_scheduler()
+    job_id = f"task-{task_id}"
+    existing_job = await asyncio.to_thread(scheduler.get_job, job_id)
+    if existing_job:
+        await asyncio.to_thread(scheduler.remove_job, job_id)
+        logger.info(f"Cancelled pending retry job for task {task_id} (manual run triggered)")
+
+    # Inherit retry count from last execution (if it exists)
+    last_execution = await db.fetch_one(
+        """SELECT retry_count FROM task_executions
+           WHERE task_id = $1
+           ORDER BY started_at DESC LIMIT 1""",
+        UUID(task_id),
+    )
+    retry_count = last_execution["retry_count"] if last_execution else 0
+
     execution_query = """
         INSERT INTO task_executions (task_id, status)
         VALUES ($1, $2)
@@ -298,8 +330,11 @@ async def start_task_execution(
         user_id=user_id,
         task_name=task_name,
         suppress_notifications=suppress_notifications,
+        retry_count=retry_count,
     )
-    logger.info(f"Started execution {execution_row['id']} for task {task_id}")
+    logger.info(
+        f"Started execution {execution_row['id']} for task {task_id} (retry_count={retry_count})"
+    )
 
     return dict(execution_row)
 

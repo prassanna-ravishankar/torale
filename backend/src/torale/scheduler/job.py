@@ -372,6 +372,7 @@ async def execute_task_job_manual(
     user_id: str,
     task_name: str,
     suppress_notifications: bool = False,
+    retry_count: int = 0,
 ) -> None:
     """Entry point for manual task execution."""
     await _execute(
@@ -380,4 +381,5 @@ async def execute_task_job_manual(
         user_id=user_id,
         task_name=task_name,
         suppress_notifications=suppress_notifications,
+        retry_count=retry_count,
     )
