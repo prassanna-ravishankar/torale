@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useNavigate } from 'react-router-dom'
 
 interface FirstTimeExperienceProps {
   onComplete: () => void
@@ -11,7 +10,6 @@ interface FirstTimeExperienceProps {
 export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
   const [step, setStep] = useState(0)
   const [isAnimating, setIsAnimating] = useState(false)
-  const navigate = useNavigate()
 
   const SILKY_EASE = [0.16, 1, 0.3, 1] as const
 
@@ -43,7 +41,6 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
 
   const handleComplete = () => {
     onComplete()
-    navigate('/dashboard')
   }
 
   return (
@@ -290,7 +287,7 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onClick={handleNext}
+                onClick={handleComplete}
                 className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest hover:text-zinc-900 transition-colors flex items-center gap-2 group"
               >
                 Skip intro <span className="text-lg transition-transform group-hover:translate-x-1">→</span>

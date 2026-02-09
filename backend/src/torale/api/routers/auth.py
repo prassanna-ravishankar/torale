@@ -383,22 +383,18 @@ async def mark_welcome_seen(
         )
 
     try:
-        # Fetch current metadata
-        user = provider.clerk_client.users.get(user_id=clerk_user.clerk_user_id)
-        current_metadata = user.public_metadata or {}
-
-        # Set has_seen_welcome flag
-        current_metadata["has_seen_welcome"] = True
-
-        # Update user in Clerk
+        # Update user in Clerk - Clerk performs a deep merge on metadata
+        # Only send the specific field to avoid race conditions
         provider.clerk_client.users.update(
             user_id=clerk_user.clerk_user_id,
-            public_metadata=current_metadata,
+            public_metadata={"has_seen_welcome": True},
         )
 
         return {"status": "success"}
     except Exception as e:
+        # Log the full exception for debugging
+        # logging.exception("Failed to update user metadata")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update user metadata: {str(e)}",
+            detail="Failed to update user metadata. Please try again later.",
         ) from e

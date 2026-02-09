@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
 import { useAuth } from '@/contexts/AuthContext';
 import { FirstTimeExperience } from '@/components/FirstTimeExperience';
+import { useWelcomeFlow } from '@/hooks/useWelcomeFlow';
 
 /**
  * Dashboard - Mission Control layout from MockDashboard.tsx
@@ -28,7 +29,8 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
-  const { user, isLoaded, refreshUser } = useAuth();
+  const { user, isLoaded } = useAuth();
+  const { handleWelcomeComplete } = useWelcomeFlow();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -60,23 +62,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   }, []); // Only load on mount - user sync now happens automatically in auth provider
 
   useEffect(() => {
-    if (isLoaded && (user?.publicMetadata?.has_seen_welcome === false || user?.publicMetadata?.has_seen_welcome === undefined)) {
+    if (isLoaded && !user?.publicMetadata?.has_seen_welcome) {
       setShowWelcome(true);
     }
   }, [user, isLoaded]);
 
-  const handleWelcomeComplete = async () => {
-    try {
-      await api.markWelcomeSeen();
-      if (refreshUser) {
-        await refreshUser();
-      }
-    } catch (error) {
-      console.error('Failed to mark welcome as seen:', error);
-      // Still close - don't trap user
-    } finally {
-      setShowWelcome(false);
-    }
+  const onWelcomeComplete = async () => {
+    await handleWelcomeComplete();
+    setShowWelcome(false);
   };
 
   const handleToggleTask = async (id: string, newState: 'active' | 'paused') => {
@@ -324,7 +317,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
       )}
 
       {/* First-time experience overlay */}
-      {showWelcome && <FirstTimeExperience onComplete={handleWelcomeComplete} />}
+      {showWelcome && <FirstTimeExperience onComplete={onWelcomeComplete} />}
     </div>
   );
 };
