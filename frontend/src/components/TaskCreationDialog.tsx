@@ -188,17 +188,17 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
 
             {/* Template Selection */}
             {templates.length > 0 && (
-              <div className="bg-zinc-50 p-3 border-2 border-zinc-100">
+              <div className="border-2 border-zinc-200 p-3">
                 <Label className="text-[10px] font-mono uppercase text-zinc-400 mb-2 block tracking-wider">
                   Start with a template (Optional)
                 </Label>
                 <Select value={selectedTemplateId} onValueChange={handleTemplateSelect}>
-                  <SelectTrigger className="h-9 bg-background">
+                  <SelectTrigger className="h-8 bg-background">
                     <SelectValue placeholder="Select a template..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -237,8 +237,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
             <div className="space-y-4">
               {/* Instructions */}
               <div className="space-y-2">
-                <Label htmlFor="instructions" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
-                  <Bot className="h-3 w-3" />
+                <Label htmlFor="instructions" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider">
                   What to Monitor
                 </Label>
                 <Textarea
@@ -251,7 +250,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                   }}
                   disabled={isSubmitting}
                   rows={6}
-                  className={cn("resize-none font-medium text-lg p-4", validationErrors.instructions && "border-destructive")}
+                  className={cn("resize-none font-mono text-sm p-3", validationErrors.instructions && "border-destructive")}
                 />
                 {validationErrors.instructions && (
                   <p className="text-xs text-destructive flex items-center gap-1.5">
