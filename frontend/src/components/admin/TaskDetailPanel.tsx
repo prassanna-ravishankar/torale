@@ -95,7 +95,7 @@ export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
         <SectionLabel>Actions</SectionLabel>
         <button
           onClick={handleExecute}
-          disabled={isExecuting || task.state === 'completed'}
+          disabled={isExecuting}
           className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 text-white text-xs font-mono hover:bg-[hsl(10,90%,55%)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isExecuting ? (
@@ -127,17 +127,27 @@ export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
           <SectionLabel>State Changed</SectionLabel>
           <p className="text-xs font-mono text-zinc-700 mt-1">{formatTimestamp(task.state_changed_at)}</p>
         </div>
+        <div>
+          <SectionLabel>Next Run</SectionLabel>
+          <p className="text-xs font-mono text-zinc-700 mt-1">
+            {task.next_run
+              ? new Date(task.next_run).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+              : '-'}
+          </p>
+        </div>
       </div>
 
-      {/* Last Agent Evidence */}
+      {/* Last Agent Response */}
       <div>
-        <SectionLabel>Last Agent Evidence</SectionLabel>
+        <SectionLabel>Last Agent Response</SectionLabel>
         <div className="mt-1 p-3 bg-white border border-zinc-200 text-xs font-mono text-zinc-700 whitespace-pre-wrap max-h-40 overflow-y-auto">
-          {task.last_known_state
-            ? (typeof task.last_known_state === 'string'
-                ? task.last_known_state
-                : JSON.stringify(task.last_known_state, null, 2))
-            : 'No evidence yet'}
+          {loading ? (
+            'Loading...'
+          ) : executions.length > 0 && executions[0].result ? (
+            JSON.stringify(executions[0].result, null, 2)
+          ) : (
+            'No executions yet'
+          )}
         </div>
       </div>
 

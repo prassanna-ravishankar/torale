@@ -159,7 +159,11 @@ export function ExecutionsTable() {
               </tr>
             ) : (
               executions.map((execution) => (
-                <tr key={execution.id} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
+                <tr
+                  key={execution.id}
+                  onClick={() => window.location.href = `/tasks/${execution.task_id}`}
+                  className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors cursor-pointer"
+                >
                   <td className="p-3 text-xs font-mono text-zinc-600">{execution.user_email}</td>
                   <td className="p-3 text-xs font-mono text-zinc-700 max-w-xs truncate">{execution.search_query}</td>
                   <td className="p-3">

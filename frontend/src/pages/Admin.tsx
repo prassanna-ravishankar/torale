@@ -25,7 +25,7 @@ export function Admin() {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
 
   // Wait for user to load
-  if (!isLoaded) {
+  if (!isLoaded || !user) {
     return (
       <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
