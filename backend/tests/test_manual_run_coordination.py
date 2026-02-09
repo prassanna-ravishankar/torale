@@ -165,7 +165,7 @@ class TestManualRunCoordination:
         scheduler_mock = MagicMock()
         scheduler_mock.get_job.return_value = None
 
-        background_tasks = BackgroundTasks()
+        background_tasks_mock = MagicMock(spec=BackgroundTasks)
 
         with patch("torale.scheduler.scheduler.get_scheduler", return_value=scheduler_mock):
             await start_task_execution(
@@ -173,8 +173,10 @@ class TestManualRunCoordination:
                 task_name=TASK_NAME,
                 user_id=USER_ID,
                 db=db_mock,
-                background_tasks=background_tasks,
+                background_tasks=background_tasks_mock,
             )
 
-        # Verify retry count query was made (running check + last exec + insert)
-        assert db_mock.fetch_one.call_count == 3
+        # Verify retry count was passed to background task
+        background_tasks_mock.add_task.assert_called_once()
+        call_kwargs = background_tasks_mock.add_task.call_args.kwargs
+        assert call_kwargs["retry_count"] == 2

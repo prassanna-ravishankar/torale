@@ -281,9 +281,9 @@ async def start_task_execution(
     """Create execution record and launch agent-based execution in background."""
     from torale.scheduler.scheduler import get_scheduler
 
-    # Check for running executions to prevent concurrent execution
+    # Check for running or pending executions to prevent concurrent execution
     running_execution = await db.fetch_one(
-        "SELECT id FROM task_executions WHERE task_id = $1 AND status = 'running'",
+        "SELECT id FROM task_executions WHERE task_id = $1 AND status IN ('running', 'pending')",
         UUID(task_id),
     )
 
