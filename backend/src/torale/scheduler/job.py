@@ -314,7 +314,7 @@ async def _execute(
                     "retry_count": next_retry_count,
                     "retry_delay_seconds": retry_delay,
                 },
-                )
+            )
         else:
             # Permanent failure - mark as FAILED and don't schedule retry
             status = TaskStatus.FAILED
