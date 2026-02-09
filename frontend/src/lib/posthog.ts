@@ -18,11 +18,8 @@ export function initPostHog(userId?: string, userEmail?: string, username?: stri
     autocapture: false,
   })
 
-  if (userId && userEmail) {
-    posthog.identify(userId, {
-      email: userEmail,
-      username: username,
-    })
+  if (userId) {
+    posthog.identify(userId)
   }
 
   initialized = true

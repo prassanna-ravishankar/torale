@@ -106,6 +106,13 @@ function ScrollToTop() {
   return null
 }
 
+// Sanitize pathname to prevent PII leaks (e.g., usernames in URLs)
+function sanitizePath(path: string): string {
+  return path
+    .replace(/\/t\/[^/]+\/[^/]+/, '/t/[username]/[slug]')
+    .replace(/\/tasks\/[a-f0-9-]{36}/, '/tasks/[id]')
+}
+
 export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -116,7 +123,7 @@ export default function App() {
   // Track page views
   useEffect(() => {
     captureEvent('$pageview', {
-      path: location.pathname,
+      path: sanitizePath(location.pathname),
     })
   }, [location.pathname])
 

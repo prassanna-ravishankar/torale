@@ -29,7 +29,6 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
     captureEvent('user_feedback', {
       $feedback_text: feedback,
       $feedback_category: category,
-      $feedback_email: user?.email,
     })
 
     toast.success('Feedback sent!', {
