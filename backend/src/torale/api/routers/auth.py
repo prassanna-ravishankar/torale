@@ -385,11 +385,14 @@ async def mark_welcome_seen(
         )
 
     try:
-        # Update user in Clerk - Clerk performs a deep merge on metadata
-        # Only send the specific field to avoid race conditions
+        # Fetch existing metadata first, then merge to avoid overwriting other keys (e.g. role)
+        existing_user = provider.clerk_client.users.get(user_id=clerk_user.clerk_user_id)
+        current_metadata = existing_user.public_metadata or {}
+        current_metadata["has_seen_welcome"] = True
+
         provider.clerk_client.users.update(
             user_id=clerk_user.clerk_user_id,
-            public_metadata={"has_seen_welcome": True},
+            public_metadata=current_metadata,
         )
 
         return {"status": "success"}
