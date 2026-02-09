@@ -34,6 +34,7 @@ from torale.api.routers import (
 from torale.core.config import settings
 from torale.core.database import db
 from torale.core.database_alchemy import get_async_session
+from torale.lib.posthog import shutdown as shutdown_posthog
 from torale.scheduler import get_scheduler
 from torale.scheduler.migrate import reap_stale_executions, sync_jobs_from_database
 
@@ -111,6 +112,8 @@ async def lifespan(app: FastAPI):
 
     scheduler.shutdown(wait=False)
     logger.info("APScheduler shut down")
+    shutdown_posthog()
+    logger.info("PostHog shut down")
     await db.disconnect()
     logger.info("Shutting down Torale API")
 

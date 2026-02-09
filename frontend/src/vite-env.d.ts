@@ -12,6 +12,8 @@ interface ImportMeta {
 interface RuntimeConfig {
   apiUrl: string
   clerkPublishableKey: string
+  posthogApiKey?: string
+  posthogHost?: string
 }
 
 interface Window {

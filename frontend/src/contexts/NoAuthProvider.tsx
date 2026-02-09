@@ -1,6 +1,7 @@
-import React, { ReactNode, useState, useCallback, useMemo } from 'react'
+import React, { ReactNode, useState, useCallback, useMemo, useEffect } from 'react'
 import { AuthContext, AuthContextType, User } from './AuthContext'
 import { api } from '@/lib/api'
+import { initPostHog, resetPostHog } from '@/lib/posthog'
 
 interface NoAuthProviderProps {
   children: ReactNode
@@ -18,6 +19,15 @@ const INITIAL_MOCK_USER: User = {
 
 export const NoAuthProvider: React.FC<NoAuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User>(INITIAL_MOCK_USER)
+
+  // Initialize PostHog with mock user (or re-identify if already initialized)
+  useEffect(() => {
+    if (user?.id) {
+      initPostHog(user.id)
+    } else if (!user) {
+      resetPostHog()
+    }
+  }, [user])
 
   const refreshUser = useCallback(async () => {
     try {

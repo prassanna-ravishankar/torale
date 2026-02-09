@@ -6,6 +6,7 @@ Imports from activities (data access) and service (state machine) -- no circular
 
 import json
 import logging
+import time
 import uuid
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlparse
@@ -13,6 +14,7 @@ from urllib.parse import urlparse
 from apscheduler.triggers.date import DateTrigger
 
 from torale.core.database import db
+from torale.lib.posthog import capture as posthog_capture
 from torale.scheduler import JOB_FUNC_REF
 from torale.scheduler.activities import (
     create_execution_record,
@@ -122,6 +124,7 @@ async def _execute(
 
     next_run_value: str | None = None
     execution_succeeded = False
+    start_time = time.monotonic()
 
     try:
         await db.execute(
@@ -167,7 +170,7 @@ async def _execute(
         if history_block:
             prompt_parts.append(history_block)
 
-        agent_response: MonitoringResponse = await call_agent("\n".join(prompt_parts))
+        agent_response: MonitoringResponse = await call_agent("\n".join(prompt_parts), user_id)
 
         notification = agent_response.notification
         evidence = agent_response.evidence
@@ -243,10 +246,40 @@ async def _execute(
 
         execution_succeeded = True
 
+        # Track successful execution
+        execution_duration = time.monotonic() - start_time
+        posthog_capture(
+            distinct_id=user_id,
+            event="task_execution_completed",
+            properties={
+                "task_id": task_id,
+                "execution_id": execution_id,
+                "duration_seconds": round(execution_duration, 2),
+                "notification_sent": bool(notification),
+                "confidence": confidence if confidence else None,
+                "grounding_sources_count": len(grounding_sources) if grounding_sources else 0,
+                "retry_count": retry_count,
+            },
+        )
+
     except Exception as e:
         category = classify_error(e)
         user_message = get_user_friendly_message(e, category)
         will_retry = should_retry(category, retry_count)
+
+        # Track failed execution
+        posthog_capture(
+            distinct_id=user_id,
+            event="task_execution_failed",
+            properties={
+                "task_id": task_id,
+                "execution_id": execution_id,
+                "error_category": category.value,
+                "error_type": type(e).__name__,
+                "retry_count": retry_count,
+                "will_retry": will_retry,
+            },
+        )
 
         # Structured logging for metrics and debugging
         logger.error(
@@ -269,6 +302,18 @@ async def _execute(
             retry_dt = datetime.now(UTC) + timedelta(seconds=retry_delay)
             logger.info(
                 f"Task {task_id} failed ({category.value}), retry {next_retry_count} in {retry_delay}s"
+            )
+
+            # Track retry scheduling
+            posthog_capture(
+                distinct_id=user_id,
+                event="task_retry_scheduled",
+                properties={
+                    "task_id": task_id,
+                    "error_category": category.value,
+                    "retry_count": next_retry_count,
+                    "retry_delay_seconds": retry_delay,
+                },
             )
         else:
             # Permanent failure - mark as FAILED and don't schedule retry

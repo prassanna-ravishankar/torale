@@ -52,5 +52,10 @@ class Settings(BaseSettings):
     # Platform capacity limit for beta
     max_users: int = 100
 
+    # PostHog analytics
+    posthog_api_key: str | None = None
+    posthog_host: str = "https://app.posthog.com"
+    posthog_enabled: bool = True
+
 
 settings = Settings()

@@ -16,6 +16,14 @@ domains:
 clerk:
   publishableKey: pk_test_cGxlYXNhbnQtcHJpbWF0ZS04OC5jbGVyay5hY2NvdW50cy5kZXYk
 
+# PostHog analytics configuration
+posthog:
+  # Project API keys are public-safe (like Clerk publishable keys)
+  # Set per environment (values-production.yaml, values-staging.yaml)
+  enabled: true
+  apiKey: "phc_xsNwTnbLMEgpRZDLdhfALt9lnf0mVbVkmcQg9hlhZHi"  # Dev project
+  apiHost: "https://eu.posthog.com"  # EU instance for GDPR compliance
+
 # Image configuration
 image:
   registry: gcr.io
@@ -272,7 +280,8 @@ secrets:
   #     --from-literal=NOVU_SECRET_KEY="..." \
   #     --from-literal=MEM0_API_KEY="" \
   #     --from-literal=OPENAI_API_KEY="" \
-  #     --from-literal=NOTIFICATION_API_KEY=""
+  #     --from-literal=NOTIFICATION_API_KEY="" \
+  #     --from-literal=POSTHOG_API_KEY="phc_..."
   external: true
   name: torale-secrets
 
