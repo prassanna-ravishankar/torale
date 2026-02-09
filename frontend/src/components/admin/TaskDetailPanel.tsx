@@ -4,25 +4,7 @@ import { Loader2, Clock, Zap, AlertTriangle, FileText, Play } from 'lucide-react
 import { SectionLabel, StatusBadge } from '@/components/torale'
 import { toast } from 'sonner'
 import { stateToVariant } from './types'
-import type { TaskData } from './types'
-
-interface Execution {
-  id: string
-  task_id: string
-  status: string
-  started_at: string | null
-  completed_at: string | null
-  result: {
-    evidence?: string
-    notification?: string
-    confidence?: number
-  } | null
-  error_message: string | null
-  notification: string | null
-  grounding_sources: unknown[] | null
-  search_query: string
-  user_email: string
-}
+import type { TaskData, ExecutionData } from './types'
 
 interface TaskDetailPanelProps {
   task: TaskData
@@ -57,7 +39,7 @@ function formatShortTimestamp(iso: string | null): string {
 }
 
 export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
-  const [executions, setExecutions] = useState<Execution[]>([])
+  const [executions, setExecutions] = useState<ExecutionData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
@@ -190,8 +172,8 @@ export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
   )
 }
 
-function ExecutionRow({ execution }: { execution: Execution }) {
-  const confidence = execution.result?.confidence
+function ExecutionRow({ execution }: { execution: ExecutionData }) {
+  const confidence = execution.result?.confidence as number | undefined
   const sourceCount = Array.isArray(execution.grounding_sources) ? execution.grounding_sources.length : 0
 
   return (
@@ -225,8 +207,8 @@ function ExecutionRow({ execution }: { execution: Execution }) {
       </div>
 
       {execution.result?.notification && (
-        <p className="text-xs font-mono text-emerald-700 truncate" title={execution.result.notification}>
-          {execution.result.notification}
+        <p className="text-xs font-mono text-emerald-700 truncate" title={String(execution.result.notification)}>
+          {String(execution.result.notification)}
         </p>
       )}
 
@@ -236,7 +218,7 @@ function ExecutionRow({ execution }: { execution: Execution }) {
             Agent Reasoning
           </summary>
           <pre className="mt-1 p-2 bg-zinc-50 border border-zinc-200 overflow-x-auto text-zinc-600 max-h-40 overflow-y-auto whitespace-pre-wrap">
-            {execution.result.evidence}
+            {String(execution.result.evidence)}
           </pre>
         </details>
       )}

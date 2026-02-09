@@ -1,36 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { api } from '@/lib/api'
 import { formatDistanceToNow } from 'date-fns'
 import { formatDuration } from '@/lib/utils'
 import { ExecutionCard } from './cards/ExecutionCard'
 import { Loader2, Activity, ChevronDown, Link2 } from 'lucide-react'
 import { SectionLabel, BrutalistCard, StatusBadge } from '@/components/torale'
-import type { TaskStatus } from '@/types'
+import type { ExecutionData } from './types'
 
-interface GroundingSource {
-  title: string
-  uri: string
+interface ExecutionsTableProps {
+  onTaskClick?: (taskId: string) => void
 }
 
-interface Execution {
-  id: string
-  task_id: string
-  status: TaskStatus
-  started_at: string
-  completed_at: string | null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  result: any
-  error_message: string | null
-  notification: string | null
-  grounding_sources: GroundingSource[]
-  search_query: string
-  user_email: string
-}
-
-export function ExecutionsTable() {
-  const navigate = useNavigate()
-  const [executions, setExecutions] = useState<Execution[]>([])
+export function ExecutionsTable({ onTaskClick }: ExecutionsTableProps = {}) {
+  const [executions, setExecutions] = useState<ExecutionData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -163,7 +145,7 @@ export function ExecutionsTable() {
               executions.map((execution) => (
                 <tr
                   key={execution.id}
-                  onClick={() => navigate(`/tasks/${execution.task_id}`)}
+                  onClick={() => onTaskClick?.(execution.task_id)}
                   className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors cursor-pointer"
                 >
                   <td className="p-3 text-xs font-mono text-zinc-600">{execution.user_email}</td>

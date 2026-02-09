@@ -46,3 +46,22 @@ export function stateToVariant(state: string): StatusVariant {
   }
   return 'unknown'
 }
+
+export interface GroundingSource {
+  title: string
+  uri: string
+}
+
+export interface ExecutionData {
+  id: string
+  task_id: string
+  status: string
+  started_at: string
+  completed_at: string | null
+  result: Record<string, unknown> | null
+  error_message: string | null
+  notification: string | null
+  grounding_sources: GroundingSource[]
+  search_query: string
+  user_email: string
+}

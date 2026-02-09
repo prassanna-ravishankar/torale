@@ -1,25 +1,10 @@
 import { formatDistanceToNow } from 'date-fns'
 import { formatDuration } from '@/lib/utils'
 import { CheckCircle2, XCircle, Clock, Search, User, Link } from 'lucide-react'
-
-interface GroundingSource {
-  title: string
-  uri: string
-}
-
-interface Execution {
-  id: string
-  status: string
-  started_at: string
-  completed_at: string | null
-  notification: string | null
-  grounding_sources: GroundingSource[]
-  search_query: string
-  user_email: string
-}
+import type { ExecutionData } from '../types'
 
 interface ExecutionCardProps {
-  execution: Execution
+  execution: ExecutionData
 }
 
 export function ExecutionCard({ execution }: ExecutionCardProps) {

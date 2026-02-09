@@ -23,6 +23,7 @@ const tabs: { id: AdminTab; label: string; icon: typeof Shield }[] = [
 export function Admin() {
   const { user, isLoaded } = useAuth()
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
+  const [taskIdToExpand, setTaskIdToExpand] = useState<string | null>(null)
 
   // Wait for user to load
   if (!isLoaded || !user) {
@@ -88,8 +89,15 @@ export function Admin() {
         {/* Tab Content */}
         <div>
           {activeTab === 'overview' && <OverviewStats />}
-          {activeTab === 'tasks' && <TasksTable />}
-          {activeTab === 'executions' && <ExecutionsTable />}
+          {activeTab === 'tasks' && <TasksTable initialExpandedTaskId={taskIdToExpand} />}
+          {activeTab === 'executions' && (
+            <ExecutionsTable
+              onTaskClick={(taskId) => {
+                setTaskIdToExpand(taskId)
+                setActiveTab('tasks')
+              }}
+            />
+          )}
           {activeTab === 'errors' && <ErrorsList />}
           {activeTab === 'users' && <UsersTable />}
           {activeTab === 'waitlist' && <WaitlistTable />}
