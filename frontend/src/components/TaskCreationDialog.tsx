@@ -8,9 +8,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CollapsibleSection } from "@/components/torale";
 import {
   Select,
   SelectContent,
@@ -191,49 +191,6 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">
 
-            {/* Template Selection */}
-            {templates.length > 0 && (
-              <div className="border-2 border-zinc-200 p-3">
-                <Label className="text-[10px] font-mono uppercase text-zinc-400 mb-2 block tracking-wider">
-                  Start with a template (Optional)
-                </Label>
-                <Select value={selectedTemplateId} onValueChange={handleTemplateSelect}>
-                  <SelectTrigger className="h-8 bg-background">
-                    <SelectValue placeholder="Select a template..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Custom Task</SelectItem>
-                    {(() => {
-                      const grouped = templates.reduce((acc, template) => {
-                        if (!acc[template.category]) {
-                          acc[template.category] = [];
-                        }
-                        acc[template.category].push(template);
-                        return acc;
-                      }, {} as Record<string, TaskTemplate[]>);
-
-                      return Object.entries(grouped).map(([category, categoryTemplates]) => (
-                        <SelectGroup key={category}>
-                          <SelectLabel>{category}</SelectLabel>
-                          {categoryTemplates.map((template) => {
-                            const IconComponent = getTemplateIcon(template.category);
-                            return (
-                              <SelectItem key={template.id} value={template.id}>
-                                <div className="flex items-center gap-2">
-                                  <IconComponent className="h-4 w-4" />
-                                  {template.name}
-                                </div>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectGroup>
-                      ));
-                    })()}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
             <div className="space-y-4">
               {/* Instructions */}
               <div className="space-y-2">
@@ -242,7 +199,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                 </Label>
                 <Textarea
                   id="instructions"
-                  placeholder="e.g., Notify me when the iPhone 16 release date is announced..."
+                  placeholder={"Next iPhone release\n\n💡 Keep it simple — our agent figures out the details"}
                   value={instructions}
                   onChange={(e) => {
                     setInstructions(e.target.value);
@@ -260,6 +217,52 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Template Selection */}
+            {templates.length > 0 && (
+              <CollapsibleSection
+                title="Need inspiration?"
+                defaultOpen={false}
+                variant="default"
+              >
+                <div className="p-3">
+                  <Select value={selectedTemplateId} onValueChange={handleTemplateSelect}>
+                    <SelectTrigger className="h-8 bg-background">
+                      <SelectValue placeholder="Select a template..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Custom Task</SelectItem>
+                      {(() => {
+                        const grouped = templates.reduce((acc, template) => {
+                          if (!acc[template.category]) {
+                            acc[template.category] = [];
+                          }
+                          acc[template.category].push(template);
+                          return acc;
+                        }, {} as Record<string, TaskTemplate[]>);
+
+                        return Object.entries(grouped).map(([category, categoryTemplates]) => (
+                          <SelectGroup key={category}>
+                            <SelectLabel>{category}</SelectLabel>
+                            {categoryTemplates.map((template) => {
+                              const IconComponent = getTemplateIcon(template.category);
+                              return (
+                                <SelectItem key={template.id} value={template.id}>
+                                  <div className="flex items-center gap-2">
+                                    <IconComponent className="h-4 w-4" />
+                                    {template.name}
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectGroup>
+                        ));
+                      })()}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CollapsibleSection>
+            )}
 
             {error && (
               <Alert variant="destructive">
