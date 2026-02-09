@@ -38,50 +38,30 @@ MAX_CONSECUTIVE_POLL_FAILURES = 3
 
 
 def _extract_error_details(task: Task) -> dict | None:
-    """Extract structured error details from failed task.
+    """Extract structured error details from a failed task's status.message.
 
-    Checks both artifacts (new a2a-sdk format) and status.message (legacy fallback).
+    The agent emits error details as JSON-encoded TextPart in status.message.
     Returns None if error details are missing or malformed.
     """
-    # First try artifacts (new format with a2a-sdk)
-    artifacts = task.artifacts or []
-    for artifact in artifacts:
-        for part_wrapper in artifact.parts:
-            part = part_wrapper.root
-            if isinstance(part, DataPart) and part.data:
-                data = part.data
-                if isinstance(data, dict) and "error_type" in data:
-                    return data
-
-    # Fallback: check status.message (legacy format)
     message = task.status.message
-    if not message:
+    if not message or not message.parts:
         return None
 
-    parts = message.parts
-    if not parts:
-        return None
-
-    part = parts[0].root
-    if not isinstance(part, TextPart):
-        return None
-
-    text = part.text
-    if not text:
+    part = message.parts[0].root
+    if not isinstance(part, TextPart) or not part.text:
         return None
 
     try:
-        return json.loads(text)
+        return json.loads(part.text)
     except (json.JSONDecodeError, TypeError) as e:
         logger.error(
             "Failed to parse error details from task status: %s. Raw content: %s",
             e,
-            text[:500],
+            part.text[:500],
         )
-        # Return structured error instead of None to preserve context
         return {
             "error_type": "JSONParseError",
-            "message": f"Agent returned malformed error data: {text[:200]}",
+            "message": f"Agent returned malformed error data: {part.text[:200]}",
             "parse_error": str(e),
         }
 
@@ -279,6 +259,7 @@ def _parse_agent_response(task: Task) -> dict:
         for part_wrapper in artifact.parts:
             part = part_wrapper.root
 
+            # Truthy check: empty dict {} falls through to TextPart path
             if isinstance(part, DataPart) and part.data:
                 data = part.data
                 # Unwrap if agent wrapped response in 'result' key

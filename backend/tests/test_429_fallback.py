@@ -4,38 +4,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from a2a.client.errors import A2AClientHTTPError
-from a2a.types import (
-    Artifact,
-    DataPart,
-    GetTaskResponse,
-    GetTaskSuccessResponse,
-    Part,
-    SendMessageResponse,
-    SendMessageSuccessResponse,
-    Task,
-    TaskState,
-    TaskStatus,
-)
+from a2a.types import TaskState
 
+from tests.conftest import data_artifact, make_a2a_task, poll_success, send_success
 from torale.scheduler.agent import call_agent
 from torale.scheduler.models import MonitoringResponse
-
-
-def _make_task(*, task_id="task-abc", status_state=TaskState.completed, artifacts=None):
-    return Task(
-        id=task_id,
-        context_id="ctx-test",
-        status=TaskStatus(state=status_state),
-        artifacts=artifacts,
-    )
-
-
-def _send_success(task):
-    return SendMessageResponse(root=SendMessageSuccessResponse(id="req-1", result=task))
-
-
-def _poll_success(task):
-    return GetTaskResponse(root=GetTaskSuccessResponse(id="req-1", result=task))
 
 
 @pytest.mark.asyncio
@@ -48,26 +21,16 @@ class TestPaidTierFallback:
         mock_settings.agent_url_free = "http://agent-free:8000"
         mock_settings.agent_url_paid = "http://agent-paid:8000"
 
-        completed_task = _make_task(
+        completed_task = make_a2a_task(
             task_id="task-paid-123",
             artifacts=[
-                Artifact(
-                    artifact_id="art-1",
-                    parts=[
-                        Part(
-                            root=DataPart(
-                                kind="data",
-                                data={
-                                    "evidence": "Test evidence",
-                                    "sources": ["http://example.com"],
-                                    "confidence": 95,
-                                    "next_run": None,
-                                    "notification": "Test notification",
-                                },
-                            )
-                        )
-                    ],
-                )
+                data_artifact({
+                    "evidence": "Test evidence",
+                    "sources": ["http://example.com"],
+                    "confidence": 95,
+                    "next_run": None,
+                    "notification": "Test notification",
+                })
             ],
         )
 
@@ -81,11 +44,11 @@ class TestPaidTierFallback:
             # Second call (paid tier) succeeds
             paid_client = AsyncMock()
             paid_client.send_message = AsyncMock(
-                return_value=_send_success(
-                    _make_task(task_id="task-paid-123", status_state=TaskState.submitted)
+                return_value=send_success(
+                    make_a2a_task(task_id="task-paid-123", status_state=TaskState.submitted)
                 )
             )
-            paid_client.get_task = AsyncMock(return_value=_poll_success(completed_task))
+            paid_client.get_task = AsyncMock(return_value=poll_success(completed_task))
 
             # Return different clients based on url kwarg
             def get_client(**kwargs):
@@ -142,8 +105,8 @@ class TestPaidTierFallback:
             # Free tier send succeeds, but poll gets 429
             client = AsyncMock()
             client.send_message = AsyncMock(
-                return_value=_send_success(
-                    _make_task(task_id="task-123", status_state=TaskState.submitted)
+                return_value=send_success(
+                    make_a2a_task(task_id="task-123", status_state=TaskState.submitted)
                 )
             )
             # Poll raises 429 (unusual but possible)

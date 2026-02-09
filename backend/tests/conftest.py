@@ -5,8 +5,60 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from a2a.types import (
+    Artifact,
+    DataPart,
+    GetTaskResponse,
+    GetTaskSuccessResponse,
+    Part,
+    SendMessageResponse,
+    SendMessageSuccessResponse,
+    Task,
+    TaskState,
+    TaskStatus,
+    TextPart,
+)
 
 JOB_MODULE = "torale.scheduler.job"
+
+
+# --- A2A test helpers ---
+
+
+def make_a2a_task(*, artifacts=None, status_state=TaskState.completed, task_id="task-abc"):
+    """Build an A2A Task for tests."""
+    return Task(
+        id=task_id,
+        context_id="ctx-test",
+        status=TaskStatus(state=status_state),
+        artifacts=artifacts,
+    )
+
+
+def text_artifact(text):
+    """Create an artifact with a single TextPart."""
+    return Artifact(
+        artifact_id="art-1",
+        parts=[Part(root=TextPart(kind="text", text=text))],
+    )
+
+
+def data_artifact(data):
+    """Create an artifact with a single DataPart."""
+    return Artifact(
+        artifact_id="art-1",
+        parts=[Part(root=DataPart(kind="data", data=data))],
+    )
+
+
+def send_success(task):
+    """Wrap a Task in a SendMessageResponse success."""
+    return SendMessageResponse(root=SendMessageSuccessResponse(id="req-1", result=task))
+
+
+def poll_success(task):
+    """Wrap a Task in a GetTaskResponse success."""
+    return GetTaskResponse(root=GetTaskSuccessResponse(id="req-1", result=task))
 
 
 class MockTransaction:

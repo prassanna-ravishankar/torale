@@ -216,6 +216,25 @@ class ToraleAgentExecutor(AgentExecutor):
     def __init__(self, agent: Agent) -> None:
         self.agent = agent
 
+    async def _emit_failure(
+        self, event_queue: EventQueue, task_id: str, context_id: str, error_data: dict
+    ) -> None:
+        """Enqueue a failed A2ATask with structured error details in status.message."""
+        await event_queue.enqueue_event(
+            A2ATask(
+                id=task_id,
+                context_id=context_id,
+                status=TaskStatus(
+                    state=TaskState.failed,
+                    message=Message(
+                        message_id=str(uuid4()),
+                        role=Role.agent,
+                        parts=[TextPart(text=json.dumps(error_data))],
+                    ),
+                ),
+            )
+        )
+
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         task_id = context.task_id
         context_id = context.context_id
@@ -267,27 +286,12 @@ class ToraleAgentExecutor(AgentExecutor):
                 e.status_code,
                 extra={"task_id": task_id},
             )
-            # Preserve status_code in status message for backend 429 fallback
-            error_data = {
+            await self._emit_failure(event_queue, task_id, context_id, {
                 "error_type": "ModelHTTPError",
                 "status_code": e.status_code,
                 "model_name": e.model_name,
                 "message": str(e),
-            }
-            await event_queue.enqueue_event(
-                A2ATask(
-                    id=task_id,
-                    context_id=context_id,
-                    status=TaskStatus(
-                        state=TaskState.failed,
-                        message=Message(
-                            message_id=str(uuid4()),
-                            role=Role.agent,
-                            parts=[TextPart(text=json.dumps(error_data))],
-                        ),
-                    ),
-                )
-            )
+            })
 
         except (ValueError, RuntimeError) as e:
             logger.error(
@@ -296,24 +300,10 @@ class ToraleAgentExecutor(AgentExecutor):
                 str(e),
                 extra={"task_id": task_id},
             )
-            error_data = {
+            await self._emit_failure(event_queue, task_id, context_id, {
                 "error_type": type(e).__name__,
                 "message": str(e),
-            }
-            await event_queue.enqueue_event(
-                A2ATask(
-                    id=task_id,
-                    context_id=context_id,
-                    status=TaskStatus(
-                        state=TaskState.failed,
-                        message=Message(
-                            message_id=str(uuid4()),
-                            role=Role.agent,
-                            parts=[TextPart(text=json.dumps(error_data))],
-                        ),
-                    ),
-                )
-            )
+            })
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         await event_queue.enqueue_event(

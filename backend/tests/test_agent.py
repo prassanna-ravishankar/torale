@@ -7,58 +7,18 @@ from a2a.client.errors import A2AClientHTTPError
 from a2a.types import (
     Artifact,
     DataPart,
-    GetTaskResponse,
-    GetTaskSuccessResponse,
     JSONRPCError,
     JSONRPCErrorResponse,
     Part,
     SendMessageResponse,
-    SendMessageSuccessResponse,
-    Task,
     TaskState,
-    TaskStatus,
     TextPart,
 )
 from pydantic import ValidationError
 
+from tests.conftest import data_artifact, make_a2a_task, poll_success, send_success, text_artifact
 from torale.scheduler.agent import _parse_agent_response, call_agent
 from torale.scheduler.models import MonitoringResponse
-
-
-def _make_task(*, artifacts=None, status_state=TaskState.completed, task_id="task-abc"):
-    """Helper to build Task objects for tests."""
-    return Task(
-        id=task_id,
-        context_id="ctx-test",
-        status=TaskStatus(state=status_state),
-        artifacts=artifacts,
-    )
-
-
-def _text_artifact(text):
-    """Helper to create an artifact with a single TextPart."""
-    return Artifact(
-        artifact_id="art-1",
-        parts=[Part(root=TextPart(kind="text", text=text))],
-    )
-
-
-def _data_artifact(data):
-    """Helper to create an artifact with a single DataPart."""
-    return Artifact(
-        artifact_id="art-1",
-        parts=[Part(root=DataPart(kind="data", data=data))],
-    )
-
-
-def _send_success(task):
-    """Wrap a Task in a SendMessageResponse success."""
-    return SendMessageResponse(root=SendMessageSuccessResponse(id="req-1", result=task))
-
-
-def _poll_success(task):
-    """Wrap a Task in a GetTaskResponse success."""
-    return GetTaskResponse(root=GetTaskSuccessResponse(id="req-1", result=task))
 
 
 class TestParseAgentResponse:
@@ -68,17 +28,17 @@ class TestParseAgentResponse:
     """
 
     def test_single_artifact_valid_json(self):
-        task = _make_task(
-            artifacts=[_text_artifact('{"condition_met": true, "evidence": "found"}')]
+        task = make_a2a_task(
+            artifacts=[text_artifact('{"condition_met": true, "evidence": "found"}')]
         )
         parsed = _parse_agent_response(task)
         assert parsed == {"condition_met": True, "evidence": "found"}
 
     def test_data_part_structured_response(self):
         """DataPart with structured data is parsed directly."""
-        task = _make_task(
+        task = make_a2a_task(
             artifacts=[
-                _data_artifact(
+                data_artifact(
                     {"evidence": "found it", "sources": ["https://example.com"], "confidence": 95}
                 )
             ]
@@ -92,7 +52,7 @@ class TestParseAgentResponse:
 
     def test_multiple_text_parts_concatenated(self):
         """Legacy text parts are concatenated and parsed as JSON."""
-        task = _make_task(
+        task = make_a2a_task(
             artifacts=[
                 Artifact(
                     artifact_id="art-1",
@@ -115,20 +75,20 @@ class TestParseAgentResponse:
         ids=["empty_artifacts_list", "no_artifacts"],
     )
     def test_no_artifacts_raises(self, artifacts):
-        task = _make_task(artifacts=artifacts)
+        task = make_a2a_task(artifacts=artifacts)
         with pytest.raises(RuntimeError, match="empty response"):
             _parse_agent_response(task)
 
     def test_invalid_json_raises(self):
         """Legacy text response that isn't valid JSON raises error."""
-        task = _make_task(artifacts=[_text_artifact("not json at all")])
+        task = make_a2a_task(artifacts=[text_artifact("not json at all")])
         with pytest.raises(RuntimeError, match="non-JSON text response"):
             _parse_agent_response(task)
 
     def test_non_text_parts_skipped(self):
         from a2a.types import FilePart, FileWithBytes
 
-        task = _make_task(
+        task = make_a2a_task(
             artifacts=[
                 Artifact(
                     artifact_id="art-1",
@@ -150,7 +110,7 @@ class TestParseAgentResponse:
     def test_error_message_includes_artifact_count_and_keys(self):
         from a2a.types import FilePart, FileWithBytes
 
-        task = _make_task(
+        task = make_a2a_task(
             artifacts=[
                 Artifact(
                     artifact_id="art-1",
@@ -170,7 +130,7 @@ class TestParseAgentResponse:
 
     def test_data_part_takes_precedence_over_text_part(self):
         """When both DataPart and TextPart exist, DataPart is preferred."""
-        task = _make_task(
+        task = make_a2a_task(
             artifacts=[
                 Artifact(
                     artifact_id="art-1",
@@ -201,9 +161,9 @@ class TestParseAgentResponse:
 
     def test_python_dict_repr_parsed_via_literal_eval(self):
         """Agent returning Python dict repr (single quotes) is parsed via ast.literal_eval."""
-        task = _make_task(
+        task = make_a2a_task(
             artifacts=[
-                _text_artifact(
+                text_artifact(
                     "{'evidence': 'found', 'sources': ['https://x.com'], 'confidence': 85}"
                 )
             ]
@@ -217,13 +177,13 @@ class TestParseAgentResponse:
 
     def test_malformed_python_literal_raises(self):
         """Malformed Python literal that isn't valid JSON or literal_eval raises."""
-        task = _make_task(artifacts=[_text_artifact("{'unclosed': 'dict'")])
+        task = make_a2a_task(artifacts=[text_artifact("{'unclosed': 'dict'")])
         with pytest.raises(RuntimeError, match="non-JSON text response"):
             _parse_agent_response(task)
 
     def test_empty_data_part_falls_through_to_text(self):
         """DataPart with empty data dict falls through to TextPart parsing."""
-        task = _make_task(
+        task = make_a2a_task(
             artifacts=[
                 Artifact(
                     artifact_id="art-1",
@@ -244,9 +204,9 @@ class TestParseAgentResponse:
 
     def test_data_part_with_minimal_fields(self):
         """DataPart with only required fields passes validation."""
-        task = _make_task(
+        task = make_a2a_task(
             artifacts=[
-                _data_artifact(
+                data_artifact(
                     {
                         "evidence": "checked",
                         "sources": [],
@@ -292,7 +252,7 @@ class TestMonitoringResponseValidation:
     )
     def test_validation_errors(self, invalid_data, expected_error_field):
         """Test that invalid data raises ValidationError with expected field."""
-        task = _make_task(artifacts=[_data_artifact(invalid_data)])
+        task = make_a2a_task(artifacts=[data_artifact(invalid_data)])
         parsed = _parse_agent_response(task)
         with pytest.raises(ValidationError, match=expected_error_field):
             MonitoringResponse.model_validate(parsed)
@@ -306,11 +266,11 @@ class TestCallAgent:
     async def test_happy_path(self, mock_settings):
         mock_settings.agent_url = "http://agent:8000"
 
-        submitted_task = _make_task(status_state=TaskState.submitted)
-        working_task = _make_task(status_state=TaskState.working)
-        completed_task = _make_task(
+        submitted_task = make_a2a_task(status_state=TaskState.submitted)
+        working_task = make_a2a_task(status_state=TaskState.working)
+        completed_task = make_a2a_task(
             artifacts=[
-                _data_artifact(
+                data_artifact(
                     {
                         "evidence": "found it",
                         "sources": ["https://example.com"],
@@ -324,9 +284,9 @@ class TestCallAgent:
         )
 
         mock_client = AsyncMock()
-        mock_client.send_message = AsyncMock(return_value=_send_success(submitted_task))
+        mock_client.send_message = AsyncMock(return_value=send_success(submitted_task))
         mock_client.get_task = AsyncMock(
-            side_effect=[_poll_success(working_task), _poll_success(completed_task)]
+            side_effect=[poll_success(working_task), poll_success(completed_task)]
         )
 
         with patch("torale.scheduler.agent.A2AClient", return_value=mock_client):
@@ -343,12 +303,12 @@ class TestCallAgent:
     async def test_agent_failed_state_raises(self, mock_settings):
         mock_settings.agent_url = "http://agent:8000"
 
-        submitted_task = _make_task(status_state=TaskState.submitted)
-        failed_task = _make_task(status_state=TaskState.failed)
+        submitted_task = make_a2a_task(status_state=TaskState.submitted)
+        failed_task = make_a2a_task(status_state=TaskState.failed)
 
         mock_client = AsyncMock()
-        mock_client.send_message = AsyncMock(return_value=_send_success(submitted_task))
-        mock_client.get_task = AsyncMock(return_value=_poll_success(failed_task))
+        mock_client.send_message = AsyncMock(return_value=send_success(submitted_task))
+        mock_client.get_task = AsyncMock(return_value=poll_success(failed_task))
 
         with patch("torale.scheduler.agent.A2AClient", return_value=mock_client):
             with patch("torale.scheduler.agent.asyncio.sleep", new_callable=AsyncMock):
@@ -362,12 +322,12 @@ class TestCallAgent:
     async def test_timeout_raises(self, mock_settings):
         mock_settings.agent_url = "http://agent:8000"
 
-        submitted_task = _make_task(status_state=TaskState.submitted)
-        working_task = _make_task(status_state=TaskState.working)
+        submitted_task = make_a2a_task(status_state=TaskState.submitted)
+        working_task = make_a2a_task(status_state=TaskState.working)
 
         mock_client = AsyncMock()
-        mock_client.send_message = AsyncMock(return_value=_send_success(submitted_task))
-        mock_client.get_task = AsyncMock(return_value=_poll_success(working_task))
+        mock_client.send_message = AsyncMock(return_value=send_success(submitted_task))
+        mock_client.get_task = AsyncMock(return_value=poll_success(working_task))
 
         # Simulate time passing beyond deadline
         times = iter([0, 0, 999])
@@ -403,10 +363,10 @@ class TestCallAgent:
     async def test_transient_poll_failure_then_recovery(self, mock_settings):
         mock_settings.agent_url = "http://agent:8000"
 
-        submitted_task = _make_task(status_state=TaskState.submitted)
-        completed_task = _make_task(
+        submitted_task = make_a2a_task(status_state=TaskState.submitted)
+        completed_task = make_a2a_task(
             artifacts=[
-                _data_artifact(
+                data_artifact(
                     {
                         "evidence": "all good",
                         "sources": [],
@@ -420,11 +380,11 @@ class TestCallAgent:
         )
 
         mock_client = AsyncMock()
-        mock_client.send_message = AsyncMock(return_value=_send_success(submitted_task))
+        mock_client.send_message = AsyncMock(return_value=send_success(submitted_task))
         mock_client.get_task = AsyncMock(
             side_effect=[
                 A2AClientHTTPError(503, "Service Unavailable"),
-                _poll_success(completed_task),
+                poll_success(completed_task),
             ]
         )
 
@@ -440,10 +400,10 @@ class TestCallAgent:
     async def test_consecutive_poll_failures_raises(self, mock_settings):
         mock_settings.agent_url = "http://agent:8000"
 
-        submitted_task = _make_task(status_state=TaskState.submitted)
+        submitted_task = make_a2a_task(status_state=TaskState.submitted)
 
         mock_client = AsyncMock()
-        mock_client.send_message = AsyncMock(return_value=_send_success(submitted_task))
+        mock_client.send_message = AsyncMock(return_value=send_success(submitted_task))
         mock_client.get_task = AsyncMock(
             side_effect=[
                 A2AClientHTTPError(503, "err"),
