@@ -5,6 +5,7 @@ import { formatDuration } from '@/lib/utils'
 import { ExecutionCard } from './cards/ExecutionCard'
 import { Loader2, Activity, ChevronDown, Link2 } from 'lucide-react'
 import { SectionLabel, BrutalistCard, StatusBadge } from '@/components/torale'
+import { stateToVariant } from './types'
 import type { ExecutionData } from './types'
 
 interface ExecutionsTableProps {
@@ -151,7 +152,7 @@ export function ExecutionsTable({ onTaskClick }: ExecutionsTableProps = {}) {
                   <td className="p-3 text-xs font-mono text-zinc-600">{execution.user_email}</td>
                   <td className="p-3 text-xs font-mono text-zinc-700 max-w-xs truncate">{execution.search_query}</td>
                   <td className="p-3">
-                    <StatusBadge variant={execution.status} />
+                    <StatusBadge variant={stateToVariant(execution.status)} />
                   </td>
                   <td className="p-3 text-xs font-mono text-zinc-600 max-w-xs truncate">
                     {execution.notification || '—'}
