@@ -8,6 +8,12 @@ domains:
 clerk:
   publishableKey: pk_live_Y2xlcmsudG9yYWxlLmFpJA
 
+# PostHog analytics (production project)
+posthog:
+  enabled: true
+  apiKey: "phc_OFKCUKk0xOos42tBeoRUjmgKfp6xXqKb81tZQwxDJdc"
+  apiHost: "https://eu.posthog.com"
+
 image:
   tag: latest  # Will be overridden by Cloud Build with commit SHA
 

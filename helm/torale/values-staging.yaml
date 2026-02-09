@@ -10,6 +10,12 @@ domains:
 clerk:
   publishableKey: pk_live_Y2xlcmsudG9yYWxlLmFpJA
 
+# PostHog analytics (staging project)
+posthog:
+  enabled: true
+  apiKey: "phc_OFKCUKk0xOos42tBeoRUjmgKfp6xXqKb81tZQwxDJdc"
+  apiHost: "https://eu.posthog.com"
+
 image:
   tag: staging
 

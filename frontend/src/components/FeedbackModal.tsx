@@ -25,8 +25,10 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
       page: sanitizePath(window.location.pathname),
     })
 
-    // Intentionally send feedback text to PostHog for user feedback collection
-    // Users actively submit this content through the feedback form
+    // EXCEPTION TO PRIVACY POLICY: Intentionally send feedback text to PostHog.
+    // This is user-submitted content through an explicit feedback form, distinct
+    // from passively captured task data (search queries, conditions) which are
+    // never sent. Users actively choose to share this content.
     captureEvent('user_feedback', {
       $feedback_text: feedback,
       $feedback_category: category,

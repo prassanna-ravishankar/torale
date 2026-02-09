@@ -11,7 +11,12 @@ data:
     window.CONFIG = {
       apiUrl: 'https://{{ .Values.domains.api }}',
       clerkPublishableKey: '{{ .Values.clerk.publishableKey }}',
+      {{- if .Values.posthog.enabled }}
       posthogApiKey: '{{ .Values.posthog.apiKey }}',
-      posthogHost: '{{ .Values.posthog.host | default "https://app.posthog.com" }}'
+      posthogHost: '{{ .Values.posthog.apiHost }}'
+      {{- else }}
+      posthogApiKey: undefined,
+      posthogHost: undefined
+      {{- end }}
     };
 {{- end }}

@@ -7,7 +7,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { Loader2 } from 'lucide-react'
 import { useApiSetup } from '@/hooks/useApi'
 import { useAuth } from '@/contexts/AuthContext'
-import { captureEvent } from '@/lib/posthog'
+import { captureEvent, initPostHog } from '@/lib/posthog'
 import { sanitizePath } from '@/lib/analytics'
 
 // Lazy load heavy components for better performance
@@ -113,6 +113,12 @@ export default function App() {
 
   // Initialize API client with Clerk authentication
   useApiSetup()
+
+  // Initialize PostHog early for anonymous tracking
+  // Will be re-identified when user logs in via auth providers
+  useEffect(() => {
+    initPostHog()
+  }, [])
 
   // Track page views
   useEffect(() => {
