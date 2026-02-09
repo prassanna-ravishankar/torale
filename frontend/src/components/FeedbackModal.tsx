@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { captureEvent } from '@/lib/posthog'
 import { sanitizePath } from '@/lib/analytics'
 import { toast } from 'sonner'
-import { useAuth } from '@/contexts/AuthContext'
 
 interface FeedbackModalProps {
   open: boolean
@@ -12,7 +11,6 @@ interface FeedbackModalProps {
 }
 
 export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
-  const { user } = useAuth()
   const [feedback, setFeedback] = useState('')
   const [category, setCategory] = useState<'bug' | 'feature' | 'other'>('other')
   const [submitting, setSubmitting] = useState(false)
@@ -27,6 +25,8 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
       page: sanitizePath(window.location.pathname),
     })
 
+    // Intentionally send feedback text to PostHog for user feedback collection
+    // Users actively submit this content through the feedback form
     captureEvent('user_feedback', {
       $feedback_text: feedback,
       $feedback_category: category,
