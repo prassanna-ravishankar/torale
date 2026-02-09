@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Navigate, Link } from 'react-router-dom'
 import { OverviewStats } from '@/components/admin/OverviewStats'
 import { TasksTable } from '@/components/admin/TasksTable'
@@ -24,6 +24,11 @@ export function Admin() {
   const { user, isLoaded } = useAuth()
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
   const [taskIdToExpand, setTaskIdToExpand] = useState<string | null>(null)
+
+  const handleExecutionClick = useCallback((taskId: string) => {
+    setTaskIdToExpand(taskId)
+    setActiveTab('tasks')
+  }, [])
 
   // Wait for user to load
   if (!isLoaded || !user) {
@@ -91,12 +96,7 @@ export function Admin() {
           {activeTab === 'overview' && <OverviewStats />}
           {activeTab === 'tasks' && <TasksTable initialExpandedTaskId={taskIdToExpand} />}
           {activeTab === 'executions' && (
-            <ExecutionsTable
-              onTaskClick={(taskId) => {
-                setTaskIdToExpand(taskId)
-                setActiveTab('tasks')
-              }}
-            />
+            <ExecutionsTable onTaskClick={handleExecutionClick} />
           )}
           {activeTab === 'errors' && <ErrorsList />}
           {activeTab === 'users' && <UsersTable />}

@@ -146,11 +146,17 @@ export function ExecutionsTable({ onTaskClick }: ExecutionsTableProps = {}) {
               executions.map((execution) => (
                 <tr
                   key={execution.id}
-                  onClick={() => onTaskClick?.(execution.task_id)}
-                  className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors cursor-pointer"
+                  className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors"
                 >
                   <td className="p-3 text-xs font-mono text-zinc-600">{execution.user_email}</td>
-                  <td className="p-3 text-xs font-mono text-zinc-700 max-w-xs truncate">{execution.search_query}</td>
+                  <td className="p-3">
+                    <button
+                      onClick={() => onTaskClick?.(execution.task_id)}
+                      className="text-left w-full text-xs font-mono text-zinc-700 hover:text-zinc-900 hover:underline max-w-xs truncate"
+                    >
+                      {execution.search_query}
+                    </button>
+                  </td>
                   <td className="p-3">
                     <StatusBadge variant={stateToVariant(execution.status)} />
                   </td>
