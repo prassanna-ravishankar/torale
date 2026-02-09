@@ -2,7 +2,7 @@ import posthog from 'posthog-js'
 
 let initialized = false
 
-export function initPostHog(userId?: string, userEmail?: string, username?: string) {
+export function initPostHog(userId?: string) {
   const apiKey = window.CONFIG?.posthogApiKey || import.meta.env.VITE_POSTHOG_API_KEY
 
   if (!apiKey || initialized) return

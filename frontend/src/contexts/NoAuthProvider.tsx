@@ -22,7 +22,7 @@ export const NoAuthProvider: React.FC<NoAuthProviderProps> = ({ children }) => {
 
   // Initialize PostHog with mock user
   useEffect(() => {
-    initPostHog(user.id!, user.email, user.username)
+    initPostHog(user.id!)
   }, [user])
 
   const refreshUser = useCallback(async () => {

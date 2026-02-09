@@ -73,8 +73,8 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   // Initialize PostHog when user is authenticated
   useEffect(() => {
-    if (user?.id && user?.email) {
-      initPostHog(user.id, user.email, user.username || undefined)
+    if (user?.id) {
+      initPostHog(user.id)
     } else if (!user) {
       resetPostHog()
     }
