@@ -1,5 +1,6 @@
 """Authentication and user management endpoints."""
 
+import logging
 import secrets
 import uuid
 from datetime import UTC, datetime
@@ -13,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.access import (
+    TEST_USER_NOAUTH_ID,
     CurrentUser,
     ProductionAuthProvider,
     get_auth_provider,
@@ -371,7 +373,7 @@ async def mark_welcome_seen(
 ):
     """Mark that the user has seen the welcome flow."""
     # Handle NoAuth mode
-    if clerk_user.clerk_user_id == "test_user_noauth":
+    if clerk_user.clerk_user_id == TEST_USER_NOAUTH_ID:
         return {"status": "success", "note": "NoAuth mode - metadata not persisted"}
 
     # Get auth provider and Clerk client
@@ -393,7 +395,7 @@ async def mark_welcome_seen(
         return {"status": "success"}
     except Exception as e:
         # Log the full exception for debugging
-        # logging.exception("Failed to update user metadata")
+        logging.exception("Failed to update user metadata")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update user metadata. Please try again later.",

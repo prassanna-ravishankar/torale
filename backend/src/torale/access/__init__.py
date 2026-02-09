@@ -1,5 +1,6 @@
 from .auth import CurrentUser, OptionalUser, require_admin, require_developer
 from .auth_provider import (
+    TEST_USER_NOAUTH_ID,
     AuthProvider,
     NoAuthProvider,
     ProductionAuthProvider,
@@ -12,6 +13,7 @@ from .models import User as UserDBModel
 from .repository import ApiKeyRepository, UserRepository
 
 __all__ = [
+    "TEST_USER_NOAUTH_ID",
     "User",
     "AuthProvider",
     "ProductionAuthProvider",

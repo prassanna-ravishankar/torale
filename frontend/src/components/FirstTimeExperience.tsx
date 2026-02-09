@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -7,15 +7,38 @@ interface FirstTimeExperienceProps {
   onComplete: () => void
 }
 
+// Animation timing constants
+const INTRO_DURATION = 6000 // Extended Step 0 for 'ceremony'
+const STEP_DURATION = 3500 // Steps 1-3
+const ANIMATION_LOCK_DURATION = 800 // Debounce for step transitions
+
 export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
   const [step, setStep] = useState(0)
   const [isAnimating, setIsAnimating] = useState(false)
 
   const SILKY_EASE = [0.16, 1, 0.3, 1] as const
 
+  const handleNext = useCallback(() => {
+    if (isAnimating || step >= 4) return
+    setIsAnimating(true)
+    setStep((prev) => Math.min(prev + 1, 4))
+    setTimeout(() => setIsAnimating(false), ANIMATION_LOCK_DURATION)
+  }, [isAnimating, step])
+
+  const handleDotClick = useCallback((targetStep: number) => {
+    if (isAnimating || targetStep === step) return
+    setIsAnimating(true)
+    setStep(targetStep)
+    setTimeout(() => setIsAnimating(false), ANIMATION_LOCK_DURATION)
+  }, [isAnimating, step])
+
+  const handleComplete = useCallback(() => {
+    onComplete()
+  }, [onComplete])
+
   // Auto-advance for steps 0-3
   useEffect(() => {
-    const durations = [6000, 3500, 3500, 3500] // Extended Step 0 for 'ceremony'
+    const durations = [INTRO_DURATION, STEP_DURATION, STEP_DURATION, STEP_DURATION]
     if (step < 4 && durations[step]) {
       const timer = setTimeout(() => {
         if (isAnimating) return
@@ -23,25 +46,7 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
       }, durations[step])
       return () => clearTimeout(timer)
     }
-  }, [step, isAnimating])
-
-  const handleNext = () => {
-    if (isAnimating || step >= 4) return
-    setIsAnimating(true)
-    setStep((prev) => Math.min(prev + 1, 4))
-    setTimeout(() => setIsAnimating(false), 800)
-  }
-
-  const handleDotClick = (targetStep: number) => {
-    if (isAnimating || targetStep === step) return
-    setIsAnimating(true)
-    setStep(targetStep)
-    setTimeout(() => setIsAnimating(false), 800)
-  }
-
-  const handleComplete = () => {
-    onComplete()
-  }
+  }, [step, isAnimating, handleNext])
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-[#fafafa]">
