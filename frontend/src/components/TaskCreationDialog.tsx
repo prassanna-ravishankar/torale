@@ -11,15 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CollapsibleSection } from "@/components/torale";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  SelectGroup,
-  SelectLabel,
-} from "@/components/ui/select";
 import type { NotifyBehavior, TaskTemplate, Task } from "@/types";
 import api from "@/lib/api";
 import {
@@ -199,7 +190,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                 </Label>
                 <Textarea
                   id="instructions"
-                  placeholder={"Next iPhone release\n\n💡 Keep it simple — our agent figures out the details"}
+                  placeholder={"Examples:\n• Alert me when the next iPhone gets announced\n• Track Starship launch updates\n• Monitor when GPT-5 release date is confirmed\n\n💡 Keep it simple — our agent figures out the details"}
                   value={instructions}
                   onChange={(e) => {
                     setInstructions(e.target.value);
@@ -225,41 +216,48 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                 defaultOpen={false}
                 variant="default"
               >
-                <div className="p-3">
-                  <Select value={selectedTemplateId} onValueChange={handleTemplateSelect}>
-                    <SelectTrigger className="h-8 bg-background">
-                      <SelectValue placeholder="Select a template..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Custom Task</SelectItem>
-                      {(() => {
-                        const grouped = templates.reduce((acc, template) => {
-                          if (!acc[template.category]) {
-                            acc[template.category] = [];
-                          }
-                          acc[template.category].push(template);
-                          return acc;
-                        }, {} as Record<string, TaskTemplate[]>);
+                <div className="p-4 space-y-3">
+                  {(() => {
+                    const grouped = templates.reduce((acc, template) => {
+                      if (!acc[template.category]) {
+                        acc[template.category] = [];
+                      }
+                      acc[template.category].push(template);
+                      return acc;
+                    }, {} as Record<string, TaskTemplate[]>);
 
-                        return Object.entries(grouped).map(([category, categoryTemplates]) => (
-                          <SelectGroup key={category}>
-                            <SelectLabel>{category}</SelectLabel>
-                            {categoryTemplates.map((template) => {
-                              const IconComponent = getTemplateIcon(template.category);
-                              return (
-                                <SelectItem key={template.id} value={template.id}>
-                                  <div className="flex items-center gap-2">
-                                    <IconComponent className="h-4 w-4" />
-                                    {template.name}
-                                  </div>
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectGroup>
-                        ));
-                      })()}
-                    </SelectContent>
-                  </Select>
+                    return Object.entries(grouped).map(([category, categoryTemplates]) => (
+                      <div key={category} className="space-y-2">
+                        <Label className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider">
+                          {category}
+                        </Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {categoryTemplates.map((template) => {
+                            const IconComponent = getTemplateIcon(template.category);
+                            return (
+                              <button
+                                key={template.id}
+                                type="button"
+                                onClick={() => handleTemplateSelect(template.id)}
+                                className={cn(
+                                  "flex items-start gap-2 p-3 text-left border-2 border-zinc-200 hover:border-zinc-900 transition-colors bg-white",
+                                  selectedTemplateId === template.id && "border-zinc-900 bg-zinc-50"
+                                )}
+                              >
+                                <IconComponent className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-sm leading-tight">{template.name}</div>
+                                  {template.description && (
+                                    <div className="text-xs text-zinc-500 mt-1 line-clamp-2">{template.description}</div>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ));
+                  })()}
                 </div>
               </CollapsibleSection>
             )}
