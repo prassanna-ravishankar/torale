@@ -170,7 +170,9 @@ async def _execute(
         if history_block:
             prompt_parts.append(history_block)
 
-        agent_response: MonitoringResponse = await call_agent("\n".join(prompt_parts), user_id)
+        agent_response: MonitoringResponse = await call_agent(
+            "\n".join(prompt_parts), user_id=user_id, task_id=task_id
+        )
 
         notification = agent_response.notification
         evidence = agent_response.evidence

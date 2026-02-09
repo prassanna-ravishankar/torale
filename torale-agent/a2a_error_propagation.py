@@ -82,19 +82,52 @@ def create_error_message(error: Exception) -> dict:
 
 
 def enable_error_propagation() -> None:
-    """Patch AgentWorker.run_task to preserve error details in task status.
+    """Patch AgentWorker.run_task to preserve error details AND inject deps.
 
-    This monkey patch intercepts exceptions during agent execution and stores
-    them in the task's status.message field as structured JSON before they're lost.
+    This monkey patch:
+    1. Extracts user_id and task_id from A2A task metadata
+    2. Constructs MonitoringDeps and injects into agent.run()
+    3. Captures exceptions during agent execution
+    4. Stores structured error details in task status
 
     Must be called before creating the A2A app, and requires using ErrorAwareStorage.
     """
     from pydantic_ai._a2a import AgentWorker
+    from agent import MonitoringDeps
 
     original_run_task = AgentWorker.run_task
 
     async def patched_run_task(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Wrapper that captures exceptions and stores error details."""
+        """Wrapper that injects deps and captures exceptions."""
+        task_id = params.get("id")
+
+        # Extract deps from task metadata
+        deps = None
+        if hasattr(self.storage, "tasks"):
+            task = self.storage.tasks.get(task_id)
+            if task:
+                metadata = task.get("metadata", {})
+                user_id = metadata.get("user_id")
+                task_id_str = metadata.get("task_id")
+
+                if user_id and task_id_str:
+                    deps = MonitoringDeps(user_id=user_id, task_id=task_id_str)
+                    logger.info(f"Injected deps: user={user_id}, task={task_id_str}")
+                else:
+                    logger.warning(f"Missing deps metadata for task {task_id}: {metadata}")
+
+        # Temporarily wrap agent.run to inject deps
+        original_agent_run = self.agent.run
+
+        async def run_with_deps(*args, **kwargs):
+            """Inject deps if not already provided."""
+            if deps and "deps" not in kwargs:
+                kwargs["deps"] = deps
+            return await original_agent_run(*args, **kwargs)
+
+        # Replace agent.run temporarily
+        self.agent.run = run_with_deps
+
         try:
             return await original_run_task(self, params)
         except (ModelHTTPError, ValueError, RuntimeError) as e:
@@ -102,12 +135,12 @@ def enable_error_propagation() -> None:
                 "Agent task failed: %s - %s",
                 type(e).__name__,
                 str(e),
-                extra={"task_id": params.get("id"), "error_type": type(e).__name__},
+                extra={"task_id": task_id, "error_type": type(e).__name__},
             )
 
             # Store error details in task status using ErrorAwareStorage
             if hasattr(self.storage, "tasks"):
-                task = self.storage.tasks.get(params.get("id"))
+                task = self.storage.tasks.get(task_id)
                 if task:
                     error_msg = create_error_message(e)
                     task["status"] = {
@@ -115,9 +148,12 @@ def enable_error_propagation() -> None:
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                         "message": error_msg,
                     }
-                    logger.info("Stored error details in task status for %s", params.get("id"))
+                    logger.info("Stored error details in task status for %s", task_id)
 
             raise
+        finally:
+            # Restore original agent.run
+            self.agent.run = original_agent_run
 
     AgentWorker.run_task = patched_run_task
-    logger.info("Patched AgentWorker.run_task to preserve error details")
+    logger.info("Patched AgentWorker.run_task for error propagation and deps injection")

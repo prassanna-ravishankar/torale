@@ -88,10 +88,12 @@ def _handle_failed_task(task: dict) -> None:
     raise RuntimeError(f"Agent task {task_id} {error_type}: {message}")
 
 
-async def call_agent(prompt: str, user_id: str | None = None) -> MonitoringResponse:
+async def call_agent(
+    prompt: str, user_id: str | None = None, task_id: str | None = None
+) -> MonitoringResponse:
     """Send task to agent with automatic paid tier fallback on 429."""
     try:
-        result = await _call_agent_internal(settings.agent_url_free, prompt, user_id)
+        result = await _call_agent_internal(settings.agent_url_free, prompt, user_id, task_id)
         tier, fallback = "free", False
     except UnexpectedResponseError as e:
         if e.status_code != 429:
@@ -100,7 +102,7 @@ async def call_agent(prompt: str, user_id: str | None = None) -> MonitoringRespo
             "Free tier rate limit hit (429), falling back to paid tier",
             extra={"status_code": e.status_code},
         )
-        result = await _call_agent_internal(settings.agent_url_paid, prompt, user_id)
+        result = await _call_agent_internal(settings.agent_url_paid, prompt, user_id, task_id)
         tier, fallback = "paid", True
 
     if user_id:
@@ -116,7 +118,7 @@ async def call_agent(prompt: str, user_id: str | None = None) -> MonitoringRespo
 
 
 async def _call_agent_internal(
-    base_url: str, prompt: str, user_id: str | None = None
+    base_url: str, prompt: str, user_id: str | None = None, task_id: str | None = None
 ) -> MonitoringResponse:
     """Send task to torale-agent via A2A and poll for result."""
     message_id = f"msg-{uuid.uuid4().hex[:12]}"
@@ -133,7 +135,9 @@ async def _call_agent_internal(
     configuration = MessageSendConfiguration(accepted_output_modes=["application/json"])
 
     try:
-        send_response = await client.send_message(message, configuration=configuration)
+        send_response = await client.send_message(
+            message, configuration=configuration, metadata={"user_id": user_id, "task_id": task_id}
+        )
     except UnexpectedResponseError as e:
         # Re-raise 429 to preserve status_code for fallback logic
         # Wrap other HTTP errors in RuntimeError for consistent error handling
