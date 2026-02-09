@@ -42,8 +42,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const isTaskActive = task.state === 'active';
 
   const handleDelete = (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     onDelete(task.id);
     setShowDeleteDialog(false);
   };
