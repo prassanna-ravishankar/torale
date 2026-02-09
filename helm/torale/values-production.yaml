@@ -11,7 +11,7 @@ clerk:
 # PostHog analytics (production project)
 posthog:
   enabled: true
-  apiKey: "phc_OFKCUKk0xOos42tBeoRUjmgKfp6xXqKb81tZQwxDJdc"
+  apiKey: "phc_aBJidBfDmxU0jaAn6K1168Ob6sGDdOc9hVImLHCTCWJ"
   apiHost: "https://eu.posthog.com"
 
 image:
