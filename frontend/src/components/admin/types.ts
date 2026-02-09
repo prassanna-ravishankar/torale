@@ -58,7 +58,12 @@ export interface ExecutionData {
   status: string
   started_at: string
   completed_at: string | null
-  result: Record<string, unknown> | null
+  result: {
+    confidence?: number
+    notification?: string
+    evidence?: string
+    [key: string]: unknown
+  } | null
   error_message: string | null
   notification: string | null
   grounding_sources: GroundingSource[]

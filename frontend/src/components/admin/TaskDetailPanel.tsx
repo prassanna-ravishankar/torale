@@ -173,7 +173,7 @@ export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
 }
 
 function ExecutionRow({ execution }: { execution: ExecutionData }) {
-  const confidence = execution.result?.confidence as number | undefined
+  const confidence = typeof execution.result?.confidence === 'number' ? execution.result.confidence : undefined
   const sourceCount = Array.isArray(execution.grounding_sources) ? execution.grounding_sources.length : 0
 
   return (
@@ -207,8 +207,8 @@ function ExecutionRow({ execution }: { execution: ExecutionData }) {
       </div>
 
       {execution.result?.notification && (
-        <p className="text-xs font-mono text-emerald-700 truncate" title={String(execution.result.notification)}>
-          {String(execution.result.notification)}
+        <p className="text-xs font-mono text-emerald-700 truncate" title={execution.result.notification}>
+          {execution.result.notification}
         </p>
       )}
 
@@ -218,7 +218,7 @@ function ExecutionRow({ execution }: { execution: ExecutionData }) {
             Agent Reasoning
           </summary>
           <pre className="mt-1 p-2 bg-zinc-50 border border-zinc-200 overflow-x-auto text-zinc-600 max-h-40 overflow-y-auto whitespace-pre-wrap">
-            {String(execution.result.evidence)}
+            {execution.result.evidence}
           </pre>
         </details>
       )}
