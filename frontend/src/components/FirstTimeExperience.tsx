@@ -13,9 +13,11 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
   const [isAnimating, setIsAnimating] = useState(false)
   const navigate = useNavigate()
 
+  const SILKY_EASE = [0.16, 1, 0.3, 1]
+
   // Auto-advance for steps 0-3
   useEffect(() => {
-    const durations = [4000, 3500, 3500, 3500]
+    const durations = [6000, 3500, 3500, 3500] // Extended Step 0 for 'ceremony'
     if (step < 4 && durations[step]) {
       const timer = setTimeout(() => {
         if (isAnimating) return
@@ -29,14 +31,14 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
     if (isAnimating || step >= 4) return
     setIsAnimating(true)
     setStep((prev) => Math.min(prev + 1, 4))
-    setTimeout(() => setIsAnimating(false), 600) // Longer lock for smoother flow
+    setTimeout(() => setIsAnimating(false), 800)
   }
 
   const handleDotClick = (targetStep: number) => {
     if (isAnimating || targetStep === step) return
     setIsAnimating(true)
     setStep(targetStep)
-    setTimeout(() => setIsAnimating(false), 600)
+    setTimeout(() => setIsAnimating(false), 800)
   }
 
   const handleComplete = () => {
@@ -54,8 +56,8 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
             x: [0, 50, 0],
             y: [0, 30, 0],
           }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] bg-brand-orange/10 blur-[120px] rounded-full"
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] bg-brand-orange/15 blur-[120px] rounded-full"
         />
         <motion.div 
           animate={{
@@ -63,7 +65,7 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
             x: [0, -30, 0],
             y: [0, -50, 0],
           }}
-          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
           className="absolute -bottom-[20%] -right-[10%] w-[60%] h-[60%] bg-zinc-400/10 blur-[100px] rounded-full"
         />
       </div>
@@ -72,28 +74,35 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
         {/* The "Vessel" - Morphing Container */}
         <motion.div 
           layout
-          transition={{ type: "spring", stiffness: 200, damping: 30 }}
-          className="relative overflow-hidden bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-[32px]"
+          transition={{ 
+            layout: { duration: 0.8, ease: SILKY_EASE },
+            opacity: { duration: 0.4 }
+          }}
+          className="relative overflow-hidden bg-white/70 backdrop-blur-2xl border border-white shadow-[0_20px_50px_rgba(0,0,0,0.04)] rounded-[40px]"
         >
           <AnimatePresence mode="popLayout">
             {step === 0 && (
               <motion.div
                 key="step-0"
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
-                transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
-                className="flex flex-col items-center justify-center p-16 space-y-12"
+                exit={{ opacity: 0, scale: 1.04, filter: "blur(12px)", y: -10 }}
+                transition={{ duration: 0.8, ease: SILKY_EASE }}
+                className="flex flex-col items-center justify-center p-20 space-y-14"
               >
-                {/* Search to Bell Animation - More Fluid */}
+                {/* Search to Bell Animation - Recalibrated for 6s flow */}
                 <div className="relative h-32 w-full flex items-center justify-center">
                   <motion.div
                     animate={{
-                      opacity: [1, 1, 0],
-                      scale: [1, 1, 0.9],
-                      y: [0, 0, -10],
+                      opacity: [0, 1, 1, 0],
+                      scale: [0.9, 1, 1, 0.9],
+                      y: [10, 0, 0, -10],
                     }}
-                    transition={{ duration: 4, times: [0, 0.7, 0.9] }}
+                    transition={{ 
+                      duration: 6, 
+                      times: [0, 0.1, 0.4, 0.6],
+                      ease: "easeInOut"
+                    }}
                     className="absolute flex items-center gap-4 bg-white border border-zinc-100 rounded-2xl px-8 py-5 shadow-sm"
                   >
                     <Search className="w-5 h-5 text-zinc-300" />
@@ -101,24 +110,28 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
                   </motion.div>
 
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
+                    initial={{ opacity: 0, scale: 0.4, rotate: -15 }}
                     animate={{ 
-                      opacity: [0, 0, 1], 
-                      scale: [0.5, 0.5, 1],
-                      rotate: [10, 10, 0],
+                      opacity: [0, 0, 1, 1], 
+                      scale: [0.4, 0.4, 1.05, 1],
+                      rotate: [15, 15, -5, 0],
                     }}
-                    transition={{ duration: 4, times: [0, 0.75, 1] }}
-                    className="absolute bg-brand-orange text-white p-6 rounded-[24px] shadow-xl shadow-brand-orange/20"
+                    transition={{ 
+                      duration: 6, 
+                      times: [0, 0.45, 0.65, 0.8],
+                      ease: SILKY_EASE
+                    }}
+                    className="absolute bg-brand-orange text-white p-7 rounded-[30px] shadow-2xl shadow-brand-orange/25"
                   >
-                    <Bell className="w-12 h-12" />
+                    <Bell className="w-14 h-14" />
                   </motion.div>
                 </div>
 
-                <div className="text-center space-y-4">
+                <div className="text-center space-y-5">
                   <motion.h1 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
+                    transition={{ delay: 0.6, duration: 1, ease: SILKY_EASE }}
                     className="text-5xl font-bold text-zinc-900 font-grotesk tracking-tight leading-[1.1]"
                   >
                     Stop checking.<br />Start knowing.
@@ -126,8 +139,8 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
                   <motion.p 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: 0.4 }}
-                    className="text-zinc-500 font-sans text-lg"
+                    transition={{ delay: 1, duration: 1, ease: SILKY_EASE }}
+                    className="text-zinc-500 font-sans text-xl"
                   >
                     The machine watches the web so you don't have to.
                   </motion.p>
@@ -141,7 +154,7 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
                 initial={{ opacity: 0, x: 40 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
+                transition={{ duration: 0.7, ease: SILKY_EASE }}
                 className="p-16"
               >
                 <div className="space-y-8">
@@ -165,7 +178,7 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
                 initial={{ opacity: 0, x: 40 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
+                transition={{ duration: 0.7, ease: SILKY_EASE }}
                 className="p-16"
               >
                 <div className="space-y-8">
@@ -189,7 +202,7 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
                 initial={{ opacity: 0, x: 40 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
+                transition={{ duration: 0.7, ease: SILKY_EASE }}
                 className="p-16"
               >
                 <div className="space-y-8">
@@ -212,7 +225,7 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
                 key="step-4"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+                transition={{ duration: 0.8, ease: SILKY_EASE }}
                 className="p-12 text-center"
               >
                 <div className="space-y-8">
@@ -263,6 +276,7 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
                 {step === dotStep && (
                   <motion.div 
                     layoutId="activeIndicator"
+                    transition={{ duration: 0.5, ease: SILKY_EASE }}
                     className="absolute inset-0 border border-zinc-900/10 rounded-full"
                   />
                 )}
