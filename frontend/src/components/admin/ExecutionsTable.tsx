@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '@/lib/api'
 import { formatDistanceToNow } from 'date-fns'
 import { formatDuration } from '@/lib/utils'
@@ -28,6 +29,7 @@ interface Execution {
 }
 
 export function ExecutionsTable() {
+  const navigate = useNavigate()
   const [executions, setExecutions] = useState<Execution[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -161,7 +163,7 @@ export function ExecutionsTable() {
               executions.map((execution) => (
                 <tr
                   key={execution.id}
-                  onClick={() => window.location.href = `/tasks/${execution.task_id}`}
+                  onClick={() => navigate(`/tasks/${execution.task_id}`)}
                   className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors cursor-pointer"
                 >
                   <td className="p-3 text-xs font-mono text-zinc-600">{execution.user_email}</td>

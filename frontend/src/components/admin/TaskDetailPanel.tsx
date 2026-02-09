@@ -46,6 +46,16 @@ function formatTimestamp(iso: string | null): string {
   })
 }
 
+function formatShortTimestamp(iso: string | null): string {
+  if (!iso) return '-'
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
   const [executions, setExecutions] = useState<Execution[]>([])
   const [loading, setLoading] = useState(true)
@@ -130,9 +140,7 @@ export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
         <div>
           <SectionLabel>Next Run</SectionLabel>
           <p className="text-xs font-mono text-zinc-700 mt-1">
-            {task.next_run
-              ? new Date(task.next_run).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-              : '-'}
+            {formatShortTimestamp(task.next_run)}
           </p>
         </div>
       </div>
