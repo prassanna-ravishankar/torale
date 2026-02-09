@@ -363,3 +363,42 @@ async def get_current_user_info(
         )
 
     return UserRead.model_validate(user)
+
+
+@router.post("/mark-welcome-seen")
+async def mark_welcome_seen(
+    clerk_user: CurrentUser,
+):
+    """Mark that the user has seen the welcome flow."""
+    # Handle NoAuth mode
+    if clerk_user.clerk_user_id == "test_user_noauth":
+        return {"status": "success", "note": "NoAuth mode - metadata not persisted"}
+
+    # Get auth provider and Clerk client
+    provider = get_auth_provider()
+    if not isinstance(provider, ProductionAuthProvider) or not provider.clerk_client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Clerk client not available",
+        )
+
+    try:
+        # Fetch current metadata
+        user = provider.clerk_client.users.get(user_id=clerk_user.clerk_user_id)
+        current_metadata = user.public_metadata or {}
+
+        # Set has_seen_welcome flag
+        current_metadata["has_seen_welcome"] = True
+
+        # Update user in Clerk
+        provider.clerk_client.users.update(
+            user_id=clerk_user.clerk_user_id,
+            public_metadata=current_metadata,
+        )
+
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update user metadata: {str(e)}",
+        ) from e

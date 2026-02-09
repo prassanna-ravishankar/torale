@@ -15,6 +15,8 @@ import {
 import { Plus, Search, Loader2, Filter, LayoutGrid, List as ListIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTaskStatus, TaskActivityState } from '@/lib/taskStatus';
+import { useAuth } from '@/contexts/AuthContext';
+import { FirstTimeExperience } from '@/components/FirstTimeExperience';
 
 /**
  * Dashboard - Mission Control layout from MockDashboard.tsx
@@ -26,6 +28,7 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
+  const { user, isLoaded, refreshUser } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -37,6 +40,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
     typeof window !== 'undefined' && window.innerWidth < 768 ? 'list' : 'grid'
   );
   const [searchQuery, setSearchQuery] = useState('');
+  const [showWelcome, setShowWelcome] = useState(false);
 
   const loadTasks = async () => {
     setIsLoading(true);
@@ -54,6 +58,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   useEffect(() => {
     loadTasks();
   }, []); // Only load on mount - user sync now happens automatically in auth provider
+
+  useEffect(() => {
+    if (isLoaded && (user?.publicMetadata?.has_seen_welcome === false || user?.publicMetadata?.has_seen_welcome === undefined)) {
+      setShowWelcome(true);
+    }
+  }, [user, isLoaded]);
+
+  const handleWelcomeComplete = async () => {
+    try {
+      await api.markWelcomeSeen();
+      if (refreshUser) {
+        await refreshUser();
+      }
+    } catch (error) {
+      console.error('Failed to mark welcome as seen:', error);
+      // Still close - don't trap user
+    } finally {
+      setShowWelcome(false);
+    }
+  };
 
   const handleToggleTask = async (id: string, newState: 'active' | 'paused') => {
     try {
@@ -298,6 +322,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
           onSuccess={handleTaskUpdated}
         />
       )}
+
+      {/* First-time experience overlay */}
+      {showWelcome && <FirstTimeExperience onComplete={handleWelcomeComplete} />}
     </div>
   );
 };
