@@ -645,22 +645,11 @@ async def update_user_role(
         )
 
     try:
-        # Update publicMetadata
-        clerk_user = await clerk_client.users.get_async(user_id=target_clerk_user_id)
-        current_metadata = clerk_user.public_metadata or {}
-
-        # Set or remove role
-        if role is None:
-            # Remove role from metadata
-            current_metadata.pop("role", None)
-        else:
-            # Set role
-            current_metadata["role"] = role
-
-        # Update user in Clerk
-        await clerk_client.users.update_async(
+        # Use update_metadata (not update) — it shallow-merges, preserving existing keys.
+        # Passing None for a key removes it.
+        await clerk_client.users.update_metadata_async(
             user_id=target_clerk_user_id,
-            public_metadata=current_metadata,
+            public_metadata={"role": role},
         )
 
         return {
@@ -772,17 +761,10 @@ async def bulk_update_user_roles(
                 errors.append({"user_id": user_id, "error": "User not found in Clerk"})
                 continue
 
-            current_metadata = clerk_user.public_metadata or {}
-
-            if role is None:
-                current_metadata.pop("role", None)
-            else:
-                current_metadata["role"] = role
-
-            # Create update coroutine but don't await yet - collect for parallel execution
-            update_coro = clerk_client.users.update_async(
+            # Use update_metadata (not update) — it shallow-merges, preserving existing keys.
+            update_coro = clerk_client.users.update_metadata_async(
                 user_id=target_clerk_user_id,
-                public_metadata=current_metadata,
+                public_metadata={"role": role},
             )
             update_tasks.append(update_coro)
             task_metadata.append({"user_id": user_id})

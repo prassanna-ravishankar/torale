@@ -385,14 +385,10 @@ async def mark_welcome_seen(
         )
 
     try:
-        # Fetch existing metadata first, then merge to avoid overwriting other keys (e.g. role)
-        existing_user = provider.clerk_client.users.get(user_id=clerk_user.clerk_user_id)
-        current_metadata = existing_user.public_metadata or {}
-        current_metadata["has_seen_welcome"] = True
-
-        provider.clerk_client.users.update(
+        # Use update_metadata (not update) — it shallow-merges, preserving existing keys like "role"
+        provider.clerk_client.users.update_metadata(
             user_id=clerk_user.clerk_user_id,
-            public_metadata=current_metadata,
+            public_metadata={"has_seen_welcome": True},
         )
 
         return {"status": "success"}
