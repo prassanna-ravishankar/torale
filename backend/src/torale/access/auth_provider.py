@@ -18,6 +18,9 @@ from .repository import ApiKeyRepository, UserRepository
 
 logger = logging.getLogger(__name__)
 
+# Test user ID for NoAuth mode
+TEST_USER_NOAUTH_ID = "test_user_noauth"
+
 
 class User:
     """Generic authenticated user model."""
@@ -344,7 +347,7 @@ class NoAuthProvider(AuthProvider):
     def __init__(self):
         """Initialize with test user definition."""
         self.test_user = User(
-            user_id="test_user_noauth",
+            user_id=TEST_USER_NOAUTH_ID,
             email=settings.torale_noauth_email,
             email_verified=True,
             db_user_id=NOAUTH_TEST_USER_ID,

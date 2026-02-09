@@ -73,6 +73,14 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
+  async markWelcomeSeen(): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/auth/mark-welcome-seen`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
   // Task endpoints
   async getTasks(): Promise<Task[]> {
     const response = await fetch(`${this.baseUrl}/api/v1/tasks/`, {

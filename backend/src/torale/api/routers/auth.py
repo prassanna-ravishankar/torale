@@ -1,5 +1,6 @@
 """Authentication and user management endpoints."""
 
+import logging
 import secrets
 import uuid
 from datetime import UTC, datetime
@@ -13,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.access import (
+    TEST_USER_NOAUTH_ID,
     CurrentUser,
     ProductionAuthProvider,
     get_auth_provider,
@@ -363,3 +365,38 @@ async def get_current_user_info(
         )
 
     return UserRead.model_validate(user)
+
+
+@router.post("/mark-welcome-seen")
+async def mark_welcome_seen(
+    clerk_user: CurrentUser,
+):
+    """Mark that the user has seen the welcome flow."""
+    # Handle NoAuth mode
+    if clerk_user.clerk_user_id == TEST_USER_NOAUTH_ID:
+        return {"status": "success", "note": "NoAuth mode - metadata not persisted"}
+
+    # Get auth provider and Clerk client
+    provider = get_auth_provider()
+    if not isinstance(provider, ProductionAuthProvider) or not provider.clerk_client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Clerk client not available",
+        )
+
+    try:
+        # Update user in Clerk - Clerk performs a deep merge on metadata
+        # Only send the specific field to avoid race conditions
+        provider.clerk_client.users.update(
+            user_id=clerk_user.clerk_user_id,
+            public_metadata={"has_seen_welcome": True},
+        )
+
+        return {"status": "success"}
+    except Exception as e:
+        # Log the full exception for debugging
+        logging.exception("Failed to update user metadata")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update user metadata. Please try again later.",
+        ) from e

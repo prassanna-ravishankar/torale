@@ -23,6 +23,7 @@ const Explore = lazy(() => import('@/pages/Explore').then(m => ({ default: m.Exp
 const VanityTaskRedirect = lazy(() => import('@/pages/VanityTaskRedirect').then(m => ({ default: m.VanityTaskRedirect })))
 const ComparePage = lazy(() => import('@/pages/ComparePage').then(m => ({ default: m.ComparePage })))
 const UseCasePage = lazy(() => import('@/pages/UseCasePage').then(m => ({ default: m.UseCasePage })))
+const Welcome = lazy(() => import('@/components/Welcome').then(m => ({ default: m.Welcome })))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoaded, isAuthenticated } = useAuth()
@@ -220,6 +221,16 @@ export default function App() {
         <Route
           path="/"
           element={<HomeRoute onTaskClick={handleTaskClick} />}
+        />
+        <Route
+          path="/welcome"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Welcome />
+              </AppLayout>
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/dashboard"
