@@ -13,7 +13,7 @@ export function FirstTimeExperience({ onComplete }: FirstTimeExperienceProps) {
   const [isAnimating, setIsAnimating] = useState(false)
   const navigate = useNavigate()
 
-  const SILKY_EASE = [0.16, 1, 0.3, 1]
+  const SILKY_EASE = [0.16, 1, 0.3, 1] as const
 
   // Auto-advance for steps 0-3
   useEffect(() => {
