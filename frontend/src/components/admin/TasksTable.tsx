@@ -35,12 +35,6 @@ export function TasksTable({ initialExpandedTaskId }: TasksTableProps = {}) {
     loadTasks()
   }, [loadTasks])
 
-  useEffect(() => {
-    if (initialExpandedTaskId) {
-      setExpandedTaskId(initialExpandedTaskId)
-    }
-  }, [initialExpandedTaskId])
-
   const toggleExpanded = (taskId: string) => {
     setExpandedTaskId(prev => prev === taskId ? null : taskId)
   }
