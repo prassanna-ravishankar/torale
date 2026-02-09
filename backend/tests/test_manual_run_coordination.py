@@ -1,0 +1,180 @@
+"""Tests for manual run coordination with scheduled retries.
+
+Verifies that manual task execution properly:
+1. Prevents concurrent execution attempts
+2. Cancels pending retry jobs before starting
+3. Handles edge cases in retry/backoff state
+"""
+
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
+
+import pytest
+from fastapi import HTTPException
+from starlette.background import BackgroundTasks
+
+from torale.api.routers.tasks import start_task_execution
+
+TASK_ID = str(uuid4())
+USER_ID = str(uuid4())
+TASK_NAME = "Test Monitor"
+
+
+class TestManualRunCoordination:
+    """Test manual run coordination with scheduled jobs."""
+
+    @pytest.mark.asyncio
+    async def test_prevents_concurrent_execution(self):
+        """Manual run should fail if task is already running."""
+        db_mock = AsyncMock()
+        # Mock running execution exists
+        db_mock.fetch_one.return_value = {"id": str(uuid4())}
+
+        background_tasks = BackgroundTasks()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await start_task_execution(
+                task_id=TASK_ID,
+                task_name=TASK_NAME,
+                user_id=USER_ID,
+                db=db_mock,
+                background_tasks=background_tasks,
+            )
+
+        assert exc_info.value.status_code == 409
+        assert "already running" in exc_info.value.detail.lower()
+
+    @pytest.mark.asyncio
+    async def test_cancels_pending_retry_job(self):
+        """Manual run should cancel any pending retry job."""
+        db_mock = AsyncMock()
+        # No running execution
+        db_mock.fetch_one.side_effect = [
+            None,  # running check
+            None,  # no last execution (new task)
+            {"id": str(uuid4()), "task_id": TASK_ID, "status": "pending"},  # insert
+        ]
+
+        scheduler_mock = MagicMock()
+        job_mock = MagicMock()
+        scheduler_mock.get_job.return_value = job_mock
+
+        background_tasks = BackgroundTasks()
+
+        with patch("torale.scheduler.scheduler.get_scheduler", return_value=scheduler_mock):
+            result = await start_task_execution(
+                task_id=TASK_ID,
+                task_name=TASK_NAME,
+                user_id=USER_ID,
+                db=db_mock,
+                background_tasks=background_tasks,
+            )
+
+        # Verify retry job was cancelled
+        scheduler_mock.get_job.assert_called_once_with(f"task-{TASK_ID}")
+        scheduler_mock.remove_job.assert_called_once_with(f"task-{TASK_ID}")
+
+        # Verify execution was created
+        assert result["status"] == "pending"
+
+    @pytest.mark.asyncio
+    async def test_succeeds_when_no_pending_job(self):
+        """Manual run should succeed when no retry job is pending."""
+        db_mock = AsyncMock()
+        # No running execution
+        db_mock.fetch_one.side_effect = [
+            None,  # running check
+            None,  # no last execution (new task)
+            {"id": str(uuid4()), "task_id": TASK_ID, "status": "pending"},  # insert
+        ]
+
+        scheduler_mock = MagicMock()
+        scheduler_mock.get_job.return_value = None  # No pending job
+
+        background_tasks = BackgroundTasks()
+
+        with patch("torale.scheduler.scheduler.get_scheduler", return_value=scheduler_mock):
+            result = await start_task_execution(
+                task_id=TASK_ID,
+                task_name=TASK_NAME,
+                user_id=USER_ID,
+                db=db_mock,
+                background_tasks=background_tasks,
+            )
+
+        # Verify no removal attempt when no job exists
+        scheduler_mock.remove_job.assert_not_called()
+
+        # Verify execution was created
+        assert result["status"] == "pending"
+
+    @pytest.mark.asyncio
+    async def test_concurrent_manual_runs_prevented(self):
+        """Multiple manual runs for same task should not race."""
+        db_mock = AsyncMock()
+
+        # First call: no running execution, creates new one
+        # Second call: running execution exists (from first call)
+        db_mock.fetch_one.side_effect = [
+            None,  # First: no running
+            None,  # First: no last execution
+            {"id": str(uuid4()), "task_id": TASK_ID, "status": "pending"},  # First: insert
+            {"id": str(uuid4())},  # Second: running exists
+        ]
+
+        scheduler_mock = MagicMock()
+        scheduler_mock.get_job.return_value = None
+
+        background_tasks = BackgroundTasks()
+
+        with patch("torale.scheduler.scheduler.get_scheduler", return_value=scheduler_mock):
+            # First manual run succeeds
+            result1 = await start_task_execution(
+                task_id=TASK_ID,
+                task_name=TASK_NAME,
+                user_id=USER_ID,
+                db=db_mock,
+                background_tasks=background_tasks,
+            )
+            assert result1["status"] == "pending"
+
+            # Second manual run fails (concurrent)
+            with pytest.raises(HTTPException) as exc_info:
+                await start_task_execution(
+                    task_id=TASK_ID,
+                    task_name=TASK_NAME,
+                    user_id=USER_ID,
+                    db=db_mock,
+                    background_tasks=background_tasks,
+                )
+
+            assert exc_info.value.status_code == 409
+
+    @pytest.mark.asyncio
+    async def test_inherits_retry_count_from_last_execution(self):
+        """Manual run should inherit retry count from previous failed execution."""
+        db_mock = AsyncMock()
+
+        # Last execution was retry attempt 2
+        db_mock.fetch_one.side_effect = [
+            None,  # running check
+            {"retry_count": 2},  # last execution retry count
+            {"id": str(uuid4()), "task_id": TASK_ID, "status": "pending"},  # insert new execution
+        ]
+
+        scheduler_mock = MagicMock()
+        scheduler_mock.get_job.return_value = None
+
+        background_tasks = BackgroundTasks()
+
+        with patch("torale.scheduler.scheduler.get_scheduler", return_value=scheduler_mock):
+            await start_task_execution(
+                task_id=TASK_ID,
+                task_name=TASK_NAME,
+                user_id=USER_ID,
+                db=db_mock,
+                background_tasks=background_tasks,
+            )
+
+        # Verify retry count query was made (running check + last exec + insert)
+        assert db_mock.fetch_one.call_count == 3
