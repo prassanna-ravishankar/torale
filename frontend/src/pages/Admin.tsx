@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Navigate, Link } from 'react-router-dom'
 import { OverviewStats } from '@/components/admin/OverviewStats'
 import { TasksTable } from '@/components/admin/TasksTable'
@@ -23,9 +23,15 @@ const tabs: { id: AdminTab; label: string; icon: typeof Shield }[] = [
 export function Admin() {
   const { user, isLoaded } = useAuth()
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
+  const [taskIdToExpand, setTaskIdToExpand] = useState<string | null>(null)
+
+  const handleExecutionClick = useCallback((taskId: string) => {
+    setTaskIdToExpand(taskId)
+    setActiveTab('tasks')
+  }, [])
 
   // Wait for user to load
-  if (!isLoaded) {
+  if (!isLoaded || !user) {
     return (
       <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
@@ -88,8 +94,10 @@ export function Admin() {
         {/* Tab Content */}
         <div>
           {activeTab === 'overview' && <OverviewStats />}
-          {activeTab === 'tasks' && <TasksTable />}
-          {activeTab === 'executions' && <ExecutionsTable />}
+          {activeTab === 'tasks' && <TasksTable initialExpandedTaskId={taskIdToExpand} />}
+          {activeTab === 'executions' && (
+            <ExecutionsTable onTaskClick={handleExecutionClick} />
+          )}
           {activeTab === 'errors' && <ErrorsList />}
           {activeTab === 'users' && <UsersTable />}
           {activeTab === 'waitlist' && <WaitlistTable />}

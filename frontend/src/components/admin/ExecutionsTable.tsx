@@ -5,30 +5,15 @@ import { formatDuration } from '@/lib/utils'
 import { ExecutionCard } from './cards/ExecutionCard'
 import { Loader2, Activity, ChevronDown, Link2 } from 'lucide-react'
 import { SectionLabel, BrutalistCard, StatusBadge } from '@/components/torale'
-import type { TaskStatus } from '@/types'
+import { stateToVariant } from './types'
+import type { ExecutionData } from './types'
 
-interface GroundingSource {
-  title: string
-  uri: string
+interface ExecutionsTableProps {
+  onTaskClick?: (taskId: string) => void
 }
 
-interface Execution {
-  id: string
-  task_id: string
-  status: TaskStatus
-  started_at: string
-  completed_at: string | null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  result: any
-  error_message: string | null
-  notification: string | null
-  grounding_sources: GroundingSource[]
-  search_query: string
-  user_email: string
-}
-
-export function ExecutionsTable() {
-  const [executions, setExecutions] = useState<Execution[]>([])
+export function ExecutionsTable({ onTaskClick }: ExecutionsTableProps = {}) {
+  const [executions, setExecutions] = useState<ExecutionData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -159,11 +144,21 @@ export function ExecutionsTable() {
               </tr>
             ) : (
               executions.map((execution) => (
-                <tr key={execution.id} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
+                <tr
+                  key={execution.id}
+                  className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors"
+                >
                   <td className="p-3 text-xs font-mono text-zinc-600">{execution.user_email}</td>
-                  <td className="p-3 text-xs font-mono text-zinc-700 max-w-xs truncate">{execution.search_query}</td>
                   <td className="p-3">
-                    <StatusBadge variant={execution.status} />
+                    <button
+                      onClick={() => onTaskClick?.(execution.task_id)}
+                      className="text-left w-full text-xs font-mono text-zinc-700 hover:text-zinc-900 hover:underline max-w-xs truncate"
+                    >
+                      {execution.search_query}
+                    </button>
+                  </td>
+                  <td className="p-3">
+                    <StatusBadge variant={stateToVariant(execution.status)} />
                   </td>
                   <td className="p-3 text-xs font-mono text-zinc-600 max-w-xs truncate">
                     {execution.notification || '—'}

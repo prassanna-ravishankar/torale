@@ -7,12 +7,16 @@ import { SectionLabel, BrutalistCard, StatusBadge, BrutalistSwitch } from '@/com
 import { stateToVariant } from './types'
 import type { TaskData } from './types'
 
-export function TasksTable() {
+interface TasksTableProps {
+  initialExpandedTaskId?: string | null
+}
+
+export function TasksTable({ initialExpandedTaskId }: TasksTableProps = {}) {
   const [tasks, setTasks] = useState<TaskData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeOnly, setActiveOnly] = useState(false)
-  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(initialExpandedTaskId || null)
 
   const loadTasks = useCallback(async () => {
     try {

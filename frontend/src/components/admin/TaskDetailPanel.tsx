@@ -4,25 +4,7 @@ import { Loader2, Clock, Zap, AlertTriangle, FileText, Play } from 'lucide-react
 import { SectionLabel, StatusBadge } from '@/components/torale'
 import { toast } from 'sonner'
 import { stateToVariant } from './types'
-import type { TaskData } from './types'
-
-interface Execution {
-  id: string
-  task_id: string
-  status: string
-  started_at: string | null
-  completed_at: string | null
-  result: {
-    evidence?: string
-    notification?: string
-    confidence?: number
-  } | null
-  error_message: string | null
-  notification: string | null
-  grounding_sources: unknown[] | null
-  search_query: string
-  user_email: string
-}
+import type { TaskData, ExecutionData } from './types'
 
 interface TaskDetailPanelProps {
   task: TaskData
@@ -46,8 +28,18 @@ function formatTimestamp(iso: string | null): string {
   })
 }
 
+function formatShortTimestamp(iso: string | null): string {
+  if (!iso) return '-'
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
-  const [executions, setExecutions] = useState<Execution[]>([])
+  const [executions, setExecutions] = useState<ExecutionData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
@@ -95,7 +87,7 @@ export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
         <SectionLabel>Actions</SectionLabel>
         <button
           onClick={handleExecute}
-          disabled={isExecuting || task.state === 'completed'}
+          disabled={isExecuting}
           className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 text-white text-xs font-mono hover:bg-[hsl(10,90%,55%)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isExecuting ? (
@@ -127,17 +119,25 @@ export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
           <SectionLabel>State Changed</SectionLabel>
           <p className="text-xs font-mono text-zinc-700 mt-1">{formatTimestamp(task.state_changed_at)}</p>
         </div>
+        <div>
+          <SectionLabel>Next Run</SectionLabel>
+          <p className="text-xs font-mono text-zinc-700 mt-1">
+            {formatShortTimestamp(task.next_run)}
+          </p>
+        </div>
       </div>
 
-      {/* Last Agent Evidence */}
+      {/* Last Agent Response */}
       <div>
-        <SectionLabel>Last Agent Evidence</SectionLabel>
+        <SectionLabel>Last Agent Response</SectionLabel>
         <div className="mt-1 p-3 bg-white border border-zinc-200 text-xs font-mono text-zinc-700 whitespace-pre-wrap max-h-40 overflow-y-auto">
-          {task.last_known_state
-            ? (typeof task.last_known_state === 'string'
-                ? task.last_known_state
-                : JSON.stringify(task.last_known_state, null, 2))
-            : 'No evidence yet'}
+          {loading ? (
+            'Loading...'
+          ) : executions.length > 0 && executions[0].result ? (
+            JSON.stringify(executions[0].result, null, 2)
+          ) : (
+            'No executions yet'
+          )}
         </div>
       </div>
 
@@ -172,8 +172,8 @@ export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
   )
 }
 
-function ExecutionRow({ execution }: { execution: Execution }) {
-  const confidence = execution.result?.confidence
+function ExecutionRow({ execution }: { execution: ExecutionData }) {
+  const confidence = typeof execution.result?.confidence === 'number' ? execution.result.confidence : undefined
   const sourceCount = Array.isArray(execution.grounding_sources) ? execution.grounding_sources.length : 0
 
   return (
