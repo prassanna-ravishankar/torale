@@ -8,18 +8,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  SelectGroup,
-  SelectLabel,
-} from "@/components/ui/select";
+import { CollapsibleSection } from "@/components/torale";
 import type { NotifyBehavior, TaskTemplate, Task } from "@/types";
 import api from "@/lib/api";
 import {
@@ -188,62 +179,18 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-
-            {/* Template Selection */}
-            {templates.length > 0 && (
-              <div className="bg-zinc-50 p-3 border-2 border-zinc-100">
-                <Label className="text-[10px] font-mono uppercase text-zinc-400 mb-2 block tracking-wider">
-                  Start with a template (Optional)
-                </Label>
-                <Select value={selectedTemplateId} onValueChange={handleTemplateSelect}>
-                  <SelectTrigger className="h-9 bg-background">
-                    <SelectValue placeholder="Select a template..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Custom Task</SelectItem>
-                    {(() => {
-                      const grouped = templates.reduce((acc, template) => {
-                        if (!acc[template.category]) {
-                          acc[template.category] = [];
-                        }
-                        acc[template.category].push(template);
-                        return acc;
-                      }, {} as Record<string, TaskTemplate[]>);
-
-                      return Object.entries(grouped).map(([category, categoryTemplates]) => (
-                        <SelectGroup key={category}>
-                          <SelectLabel>{category}</SelectLabel>
-                          {categoryTemplates.map((template) => {
-                            const IconComponent = getTemplateIcon(template.category);
-                            return (
-                              <SelectItem key={template.id} value={template.id}>
-                                <div className="flex items-center gap-2">
-                                  <IconComponent className="h-4 w-4" />
-                                  {template.name}
-                                </div>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectGroup>
-                      ));
-                    })()}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
 
             <div className="space-y-4">
               {/* Instructions */}
               <div className="space-y-2">
-                <Label htmlFor="instructions" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
-                  <Bot className="h-3 w-3" />
+                <Label htmlFor="instructions" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider">
                   What to Monitor
                 </Label>
                 <Textarea
                   id="instructions"
-                  placeholder="e.g., Notify me when the iPhone 16 release date is announced..."
+                  placeholder={"Examples:\n• Alert me when the next iPhone gets announced\n• Track Starship launch updates\n• Monitor when GPT-5 release date is confirmed\n\n💡 Keep it simple — our agent figures out the details"}
                   value={instructions}
                   onChange={(e) => {
                     setInstructions(e.target.value);
@@ -251,7 +198,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                   }}
                   disabled={isSubmitting}
                   rows={6}
-                  className={cn("resize-none font-medium text-lg p-4", validationErrors.instructions && "border-destructive")}
+                  className={cn("resize-none font-mono text-sm p-3", validationErrors.instructions && "border-destructive")}
                 />
                 {validationErrors.instructions && (
                   <p className="text-xs text-destructive flex items-center gap-1.5">
@@ -261,6 +208,66 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Template Selection */}
+            {templates.length > 0 && (
+              <CollapsibleSection
+                title="Need inspiration?"
+                defaultOpen={false}
+                variant="default"
+              >
+                <div className="relative">
+                  {/* Desktop: wrapping chips */}
+                  <div className="hidden md:flex flex-wrap gap-2 p-4">
+                    {templates.map((template) => {
+                      const IconComponent = getTemplateIcon(template.category);
+                      return (
+                        <button
+                          key={template.id}
+                          type="button"
+                          onClick={() => handleTemplateSelect(template.id)}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-zinc-200 bg-white font-mono text-xs hover:border-zinc-900 hover:shadow-brutalist transition-all",
+                            selectedTemplateId === template.id && "border-zinc-900 bg-zinc-50 shadow-brutalist"
+                          )}
+                        >
+                          <IconComponent className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="whitespace-nowrap">{template.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Mobile: horizontal scroll with fade */}
+                  <div className="md:hidden relative">
+                    <div
+                      className="flex gap-2 p-4 overflow-x-auto [&::-webkit-scrollbar]:hidden"
+                      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    >
+                      {templates.map((template) => {
+                        const IconComponent = getTemplateIcon(template.category);
+                        return (
+                          <button
+                            key={template.id}
+                            type="button"
+                            onClick={() => handleTemplateSelect(template.id)}
+                            className={cn(
+                              "inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-zinc-200 bg-white font-mono text-xs hover:border-zinc-900 transition-colors flex-shrink-0",
+                              selectedTemplateId === template.id && "border-zinc-900 bg-zinc-50"
+                            )}
+                          >
+                            <IconComponent className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span className="whitespace-nowrap">{template.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Fade gradient on right edge */}
+                    <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent pointer-events-none" />
+                  </div>
+                </div>
+              </CollapsibleSection>
+            )}
 
             {error && (
               <Alert variant="destructive">

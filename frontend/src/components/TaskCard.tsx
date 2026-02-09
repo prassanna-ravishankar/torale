@@ -41,7 +41,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isTaskActive = task.state === 'active';
 
-  const handleDelete = () => {
+  const handleDelete = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     onDelete(task.id);
     setShowDeleteDialog(false);
   };
@@ -86,7 +90,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       variant="clickable"
       animate={true}
       hoverEffect={true}
-      onClick={() => onClick(task.id)}
+      onClick={() => {
+        // Prevent navigation if delete dialog is open
+        if (showDeleteDialog) return;
+        onClick(task.id);
+      }}
       className="group relative"
     >
       {/* Top Bar: Icon + Name + Actions */}
