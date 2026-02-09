@@ -45,6 +45,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showWelcome, setShowWelcome] = useState(false);
 
+  const handleFilterClick = (filter: 'all' | 'active' | 'completed' | 'paused') => {
+    setActiveFilter(filter);
+    captureEvent('filter_changed', { filter });
+  };
+
   const loadTasks = async () => {
     setIsLoading(true);
     try {
@@ -202,16 +207,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
 
         {/* Stats Row - Now clickable to filter */}
         <div className="hidden md:grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-          <button onClick={() => { setActiveFilter('active'); captureEvent('filter_changed', { filter: 'active' }); }} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
+          <button onClick={() => handleFilterClick('active')} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
             <StatCard label="Active Monitors" value={activeCount.toString()} />
           </button>
-          <button onClick={() => { setActiveFilter('all'); captureEvent('filter_changed', { filter: 'all' }); }} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
+          <button onClick={() => handleFilterClick('all')} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
             <StatCard label="Total Tasks" value={tasks.length.toString()} />
           </button>
-          <button onClick={() => { setActiveFilter('completed'); captureEvent('filter_changed', { filter: 'completed' }); }} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
+          <button onClick={() => handleFilterClick('completed')} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
             <StatCard label="Completed" value={completedCount.toString()} />
           </button>
-          <button onClick={() => { setActiveFilter('paused'); captureEvent('filter_changed', { filter: 'paused' }); }} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
+          <button onClick={() => handleFilterClick('paused')} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 rounded-sm">
             <StatCard label="Paused" value={pausedCount.toString()} />
           </button>
         </div>
@@ -226,7 +231,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
               { id: 'paused', label: 'Paused', count: pausedCount },
             ]}
             active={activeFilter}
-            onChange={(filter) => { setActiveFilter(filter); captureEvent('filter_changed', { filter }); }}
+            onChange={handleFilterClick}
             responsive={true}
           />
 

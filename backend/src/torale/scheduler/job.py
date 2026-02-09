@@ -124,7 +124,7 @@ async def _execute(
 
     next_run_value: str | None = None
     execution_succeeded = False
-    start_time = time.time()
+    start_time = time.monotonic()
 
     try:
         await db.execute(
@@ -247,7 +247,7 @@ async def _execute(
         execution_succeeded = True
 
         # Track successful execution
-        execution_duration = time.time() - start_time
+        execution_duration = time.monotonic() - start_time
         posthog_capture(
             distinct_id=user_id,
             event="task_execution_completed",

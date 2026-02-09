@@ -92,35 +92,27 @@ async def call_agent(prompt: str, user_id: str | None = None) -> MonitoringRespo
     """Send task to agent with automatic paid tier fallback on 429."""
     try:
         result = await _call_agent_internal(settings.agent_url_free, prompt, user_id)
-        if user_id:
-            posthog_capture(
-                distinct_id=user_id,
-                event="agent_tier_used",
-                properties={
-                    "tier": "free",
-                    "fallback_triggered": False,
-                },
-            )
-        return result
+        tier, fallback = "free", False
     except UnexpectedResponseError as e:
-        # Check actual HTTP status code (not error message) to avoid prompt injection
-        if e.status_code == 429:
-            logger.info(
-                "Free tier rate limit hit (429), falling back to paid tier",
-                extra={"status_code": e.status_code},
-            )
-            result = await _call_agent_internal(settings.agent_url_paid, prompt, user_id)
-            if user_id:
-                posthog_capture(
-                    distinct_id=user_id,
-                    event="agent_tier_used",
-                    properties={
-                        "tier": "paid",
-                        "fallback_triggered": True,
-                    },
-                )
-            return result
-        raise
+        if e.status_code != 429:
+            raise
+        logger.info(
+            "Free tier rate limit hit (429), falling back to paid tier",
+            extra={"status_code": e.status_code},
+        )
+        result = await _call_agent_internal(settings.agent_url_paid, prompt, user_id)
+        tier, fallback = "paid", True
+
+    if user_id:
+        posthog_capture(
+            distinct_id=user_id,
+            event="agent_tier_used",
+            properties={
+                "tier": tier,
+                "fallback_triggered": fallback,
+            },
+        )
+    return result
 
 
 async def _call_agent_internal(
