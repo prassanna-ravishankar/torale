@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { captureEvent } from '@/lib/posthog'
+import { sanitizePath } from '@/lib/analytics'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -23,7 +24,7 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
     captureEvent('feedback_submitted', {
       category,
       feedback_length: feedback.length,
-      page: window.location.pathname,
+      page: sanitizePath(window.location.pathname),
     })
 
     captureEvent('user_feedback', {

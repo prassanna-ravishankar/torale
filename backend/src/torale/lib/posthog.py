@@ -37,6 +37,7 @@ def capture(distinct_id: str, event: str, properties: dict | None = None):
 def shutdown():
     """Flush and shutdown PostHog client."""
     global _posthog_client
-    if _posthog_client:
-        _posthog_client.shutdown()
-        _posthog_client = None
+    with _lock:
+        if _posthog_client:
+            _posthog_client.shutdown()
+            _posthog_client = None

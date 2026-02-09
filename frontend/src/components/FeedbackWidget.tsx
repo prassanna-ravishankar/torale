@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ThumbsUp, ThumbsDown } from 'lucide-react'
 import { captureEvent } from '@/lib/posthog'
+import { sanitizePath } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
 interface FeedbackWidgetProps {
@@ -19,7 +20,7 @@ export function FeedbackWidget({ context, contextId, compact = false }: Feedback
       context,
       context_id: contextId,
       sentiment,
-      page: window.location.pathname,
+      page: sanitizePath(window.location.pathname),
     })
   }
 

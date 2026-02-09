@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react'
 import { useApiSetup } from '@/hooks/useApi'
 import { useAuth } from '@/contexts/AuthContext'
 import { captureEvent } from '@/lib/posthog'
+import { sanitizePath } from '@/lib/analytics'
 
 // Lazy load heavy components for better performance
 const Dashboard = lazy(() => import('@/components/Dashboard').then(m => ({ default: m.Dashboard })))
@@ -104,13 +105,6 @@ function ScrollToTop() {
   }, [pathname])
 
   return null
-}
-
-// Sanitize pathname to prevent PII leaks (e.g., usernames in URLs)
-function sanitizePath(path: string): string {
-  return path
-    .replace(/\/t\/[^/]+\/[^/]+/, '/t/[username]/[slug]')
-    .replace(/\/tasks\/[a-f0-9-]{36}/, '/tasks/[id]')
 }
 
 export default function App() {
