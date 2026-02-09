@@ -93,6 +93,9 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
     // Refresh user data from backend (used after mutations like username change)
     if (!clerkUser) return
 
+    // Reload Clerk user to pick up server-side metadata changes (e.g., has_seen_welcome)
+    await clerkUser.reload()
+
     const { api } = await import('@/lib/api')
     const userData = await api.getCurrentUser()
     setBackendUser(createUserFromData(userData, clerkUser))
