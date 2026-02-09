@@ -216,48 +216,55 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                 defaultOpen={false}
                 variant="default"
               >
-                <div className="p-4 space-y-3">
-                  {(() => {
-                    const grouped = templates.reduce((acc, template) => {
-                      if (!acc[template.category]) {
-                        acc[template.category] = [];
-                      }
-                      acc[template.category].push(template);
-                      return acc;
-                    }, {} as Record<string, TaskTemplate[]>);
+                <div className="relative">
+                  {/* Desktop: wrapping chips */}
+                  <div className="hidden md:flex flex-wrap gap-2 p-4">
+                    {templates.map((template) => {
+                      const IconComponent = getTemplateIcon(template.category);
+                      return (
+                        <button
+                          key={template.id}
+                          type="button"
+                          onClick={() => handleTemplateSelect(template.id)}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-zinc-200 bg-white font-mono text-xs hover:border-zinc-900 hover:shadow-brutalist transition-all",
+                            selectedTemplateId === template.id && "border-zinc-900 bg-zinc-50 shadow-brutalist"
+                          )}
+                        >
+                          <IconComponent className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="whitespace-nowrap">{template.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                    return Object.entries(grouped).map(([category, categoryTemplates]) => (
-                      <div key={category} className="space-y-2">
-                        <Label className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider">
-                          {category}
-                        </Label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {categoryTemplates.map((template) => {
-                            const IconComponent = getTemplateIcon(template.category);
-                            return (
-                              <button
-                                key={template.id}
-                                type="button"
-                                onClick={() => handleTemplateSelect(template.id)}
-                                className={cn(
-                                  "flex items-start gap-2 p-3 text-left border-2 border-zinc-200 hover:border-zinc-900 transition-colors bg-white",
-                                  selectedTemplateId === template.id && "border-zinc-900 bg-zinc-50"
-                                )}
-                              >
-                                <IconComponent className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-medium text-sm leading-tight">{template.name}</div>
-                                  {template.description && (
-                                    <div className="text-xs text-zinc-500 mt-1 line-clamp-2">{template.description}</div>
-                                  )}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ));
-                  })()}
+                  {/* Mobile: horizontal scroll with fade */}
+                  <div className="md:hidden relative">
+                    <div
+                      className="flex gap-2 p-4 overflow-x-auto [&::-webkit-scrollbar]:hidden"
+                      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    >
+                      {templates.map((template) => {
+                        const IconComponent = getTemplateIcon(template.category);
+                        return (
+                          <button
+                            key={template.id}
+                            type="button"
+                            onClick={() => handleTemplateSelect(template.id)}
+                            className={cn(
+                              "inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-zinc-200 bg-white font-mono text-xs hover:border-zinc-900 transition-colors flex-shrink-0",
+                              selectedTemplateId === template.id && "border-zinc-900 bg-zinc-50"
+                            )}
+                          >
+                            <IconComponent className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span className="whitespace-nowrap">{template.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Fade gradient on right edge */}
+                    <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent pointer-events-none" />
+                  </div>
                 </div>
               </CollapsibleSection>
             )}
