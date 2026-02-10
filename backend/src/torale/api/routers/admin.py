@@ -1103,7 +1103,7 @@ async def admin_update_task_state(
                 "task_id": str(task_id),
                 "from_state": previous_state.value,
                 "to_state": target_state.value,
-                "admin_email": admin.email,
+                "admin_clerk_id": admin.clerk_user_id,
             },
         )
         raise HTTPException(
@@ -1112,10 +1112,10 @@ async def admin_update_task_state(
         ) from e
 
     logger.info(
-        f"Admin {admin.email} changed task {task_id} state: {previous_state.value} -> {target_state.value}",
+        f"Admin user {admin.clerk_user_id} changed task {task_id} state: {previous_state.value} -> {target_state.value}",
         extra={
             "task_id": str(task_id),
-            "admin_email": admin.email,
+            "admin_clerk_id": admin.clerk_user_id,
             "from_state": previous_state.value,
             "to_state": target_state.value,
             "schedule_action": result.get("schedule_action"),
