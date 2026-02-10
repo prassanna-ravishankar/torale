@@ -971,13 +971,12 @@ async def admin_execute_task(
     Execute a task immediately (admin only).
 
     Allows admins to manually trigger execution of any user's task.
-    Notifications are enabled by default for admin executions.
 
     Path Parameters:
     - task_id: UUID of the task to execute
 
     Query Parameters:
-    - suppress_notifications: Whether to suppress notifications (default: true)
+    - suppress_notifications: Whether to suppress notifications (default: false - notifications enabled)
 
     Returns:
     - Execution ID and status
@@ -1152,53 +1151,73 @@ async def reset_task_history(
     Returns:
     - Status confirmation with count of deleted executions
     """
-    # Check task exists (no user_id filter - admin can access any task)
-    check_result = await session.execute(
-        text("SELECT id FROM tasks WHERE id = :task_id"),
-        {"task_id": task_id},
-    )
-    if not check_result.first():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
+    try:
+        # Check task exists (no user_id filter - admin can access any task)
+        check_result = await session.execute(
+            text("SELECT id FROM tasks WHERE id = :task_id"),
+            {"task_id": task_id},
+        )
+        if not check_result.first():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found",
+            )
+
+        # Delete executions from last N days
+        cutoff = datetime.now(UTC) - timedelta(days=days)
+        delete_result = await session.execute(
+            text("""
+                DELETE FROM task_executions
+                WHERE task_id = :task_id
+                AND created_at >= :cutoff
+                RETURNING id
+            """),
+            {"task_id": task_id, "cutoff": cutoff},
+        )
+        deleted_count = len(delete_result.fetchall())
+
+        # Log warning if no executions found
+        if deleted_count == 0:
+            logger.warning(
+                f"Admin {admin.email} reset task {task_id} but found no executions in last {days} day(s)"
+            )
+
+        # Reset task state so the agent re-evaluates from scratch
+        await session.execute(
+            text("""
+                UPDATE tasks
+                SET last_execution_id = NULL,
+                    last_known_state = NULL,
+                    state_changed_at = NULL,
+                    updated_at = NOW()
+                WHERE id = :task_id
+            """),
+            {"task_id": task_id},
         )
 
-    # Delete executions from last N days
-    cutoff = datetime.now(UTC) - timedelta(days=days)
-    delete_result = await session.execute(
-        text("""
-            DELETE FROM task_executions
-            WHERE task_id = :task_id
-            AND created_at >= :cutoff
-            RETURNING id
-        """),
-        {"task_id": task_id, "cutoff": cutoff},
-    )
-    deleted_count = len(delete_result.fetchall())
+        await session.commit()
 
-    # Reset task state so the agent re-evaluates from scratch
-    await session.execute(
-        text("""
-            UPDATE tasks
-            SET last_execution_id = NULL,
-                last_known_state = NULL,
-                state_changed_at = NULL,
-                updated_at = NOW()
-            WHERE id = :task_id
-        """),
-        {"task_id": task_id},
-    )
+        logger.info(
+            f"Admin {admin.email} reset task {task_id}: deleted {deleted_count} executions from last {days} day(s)"
+        )
 
-    await session.commit()
+        return {
+            "status": "reset",
+            "task_id": str(task_id),
+            "executions_deleted": deleted_count,
+            "days": days,
+        }
 
-    # Log the action with admin context
-    logger.info(
-        f"Admin {admin.email} reset task {task_id}: deleted {deleted_count} executions from last {days} day(s)"
-    )
-
-    return {
-        "status": "reset",
-        "task_id": str(task_id),
-        "executions_deleted": deleted_count,
-        "days": days,
-    }
+    except HTTPException:
+        await session.rollback()
+        raise
+    except Exception as e:
+        await session.rollback()
+        logger.error(
+            f"Failed to reset task {task_id} (admin: {admin.email}, days: {days}): {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reset task history. Please try again or contact support if the issue persists.",
+        ) from e

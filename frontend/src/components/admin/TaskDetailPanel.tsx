@@ -54,9 +54,14 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
     try {
       await api.adminExecuteTask(task.id)
       toast.success('Execution started')
-      setRetryCount((c) => c + 1) // Refresh executions
+      setRetryCount((c) => c + 1)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to execute task')
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error'
+      console.error(`[TaskDetailPanel] Execute failed for task ${task.id}:`, err)
+      toast.error(
+        `Failed to start execution: ${errorMsg}. Check task status and try again.`,
+        { duration: 6000 }
+      )
     } finally {
       setIsExecuting(false)
     }
@@ -96,23 +101,41 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
   }
 
   const handleResetAndRun = async () => {
+    const days = 1
     const confirmed = confirm(
-      'This will permanently delete recent execution history. ' +
+      `This will permanently delete the last ${days} day(s) of execution history. ` +
       'The task will then run fresh. Continue?'
     )
     if (!confirmed) return
 
     setIsResetting(true)
+    let resetSucceeded = false
+
     try {
-      const resetResult = await api.adminResetTask(task.id, 1)
+      // Step 1: Reset (delete history)
+      const resetResult = await api.adminResetTask(task.id, days)
+      resetSucceeded = true
       toast.success(`Deleted ${resetResult.executions_deleted} execution(s)`)
 
+      // Step 2: Execute task (false = enable notifications)
       await api.adminExecuteTask(task.id, false)
-      toast.success('Task re-executed')
+      toast.success('Task re-executed successfully')
 
       setRetryCount((c) => c + 1)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Reset & run failed')
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error'
+      console.error(`[TaskDetailPanel] Reset & run failed for task ${task.id}:`, err)
+
+      if (resetSucceeded) {
+        // Partial success: reset worked but execution failed
+        toast.error(
+          `Reset succeeded but execution failed: ${errorMsg}. Click "Run Now" to manually start the task.`,
+          { duration: 8000 }
+        )
+      } else {
+        // Complete failure: reset failed
+        toast.error(`Reset failed: ${errorMsg}`)
+      }
     } finally {
       setIsResetting(false)
     }
