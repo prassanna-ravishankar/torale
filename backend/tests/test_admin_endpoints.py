@@ -246,28 +246,26 @@ class TestAdminUpdateTaskState:
 
         request = AdminTaskStateUpdateRequest(state=TaskState.ACTIVE)
 
+        mock_now = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
+        expected_next_run = mock_now + timedelta(minutes=1)
+
         with patch.object(TaskService, "transition") as mock_transition:
             mock_transition.return_value = {"success": True, "schedule_action": "created"}
 
-            before_call = datetime.now(UTC)
-            await admin_update_task_state(
-                task_id=sample_task["id"],
-                request=request,
-                admin=mock_admin,
-                db=mock_db,
-            )
-            after_call = datetime.now(UTC)
+            with patch("torale.api.routers.admin.datetime") as mock_dt:
+                mock_dt.now.return_value = mock_now
 
-            # Verify next_run was set to ~1 minute from now
+                await admin_update_task_state(
+                    task_id=sample_task["id"],
+                    request=request,
+                    admin=mock_admin,
+                    db=mock_db,
+                )
+
+            # Verify next_run was set to exactly 1 minute from mocked now
             call_kwargs = mock_transition.call_args[1]
             next_run = call_kwargs["next_run"]
-            assert next_run is not None
-            # Should be within 1-2 minutes from now (allowing for test execution time)
-            assert (
-                before_call + timedelta(seconds=50)
-                <= next_run
-                <= after_call + timedelta(seconds=70)
-            )
+            assert next_run == expected_next_run
 
     @pytest.mark.asyncio
     async def test_pause_does_not_require_next_run(self, mock_admin, mock_db, sample_task):
