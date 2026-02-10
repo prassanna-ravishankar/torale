@@ -287,34 +287,31 @@ async def start_task_execution(
         UUID(task_id),
     )
 
+    if running_execution and not force:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Task is already running or pending. Use force=true to override.",
+        )
+
     if running_execution:
-        if not force:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Task is already running or pending. Use force=true to override.",
-            )
-        else:
-            # Force override: mark stuck execution as failed
-            execution_id = running_execution["id"]
-            now = datetime.now(UTC)
-
-            await db.execute(
-                """
-                UPDATE task_executions
-                SET status = 'failed',
-                    error_message = 'Execution overridden by manual force run',
-                    internal_error = 'Force override triggered from admin/manual execution',
-                    completed_at = $1
-                WHERE id = $2
-                """,
-                now,
-                execution_id,
-            )
-
-            logger.warning(
-                f"Force-overriding stuck execution {execution_id} for task {task_id} "
-                f"(was in status '{running_execution['status']}' since {running_execution['started_at']})"
-            )
+        # Force override: mark stuck execution as failed
+        stuck_id = running_execution["id"]
+        await db.execute(
+            """
+            UPDATE task_executions
+            SET status = 'failed',
+                error_message = 'Execution overridden by manual force run',
+                internal_error = 'Force override triggered from admin/manual execution',
+                completed_at = $1
+            WHERE id = $2
+            """,
+            datetime.now(UTC),
+            stuck_id,
+        )
+        logger.warning(
+            f"Force-overriding stuck execution {stuck_id} for task {task_id} "
+            f"(was in status '{running_execution['status']}' since {running_execution['started_at']})"
+        )
 
     # Cancel any pending retry jobs before starting manual execution
     scheduler = get_scheduler()

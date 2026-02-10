@@ -6,6 +6,7 @@ Verifies that manual task execution properly:
 3. Handles edge cases in retry/backoff state
 """
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -185,8 +186,6 @@ class TestManualRunCoordination:
     @pytest.mark.asyncio
     async def test_force_override_stuck_execution(self):
         """Force=true should override stuck execution and mark it failed."""
-        from datetime import UTC, datetime, timedelta
-
         db_mock = AsyncMock()
         stuck_execution_id = str(uuid4())
 
@@ -217,13 +216,16 @@ class TestManualRunCoordination:
             )
 
         # Verify stuck execution was marked failed
-        update_calls = [c for c in db_mock.execute.call_args_list if c.args and "UPDATE task_executions" in c.args[0]]
+        update_calls = [
+            c
+            for c in db_mock.execute.call_args_list
+            if c.args and "UPDATE task_executions" in c.args[0]
+        ]
         assert len(update_calls) == 1
 
-        update_call = update_calls[0]
-        update_query = update_call.args[0]
+        update_query = update_calls[0].args[0]
         assert "status = 'failed'" in update_query
-        assert "error_message = 'Execution overridden by manual force run'" in update_query
+        assert "Execution overridden by manual force run" in update_query
 
         # Verify new execution was created
         assert result["status"] == "pending"
