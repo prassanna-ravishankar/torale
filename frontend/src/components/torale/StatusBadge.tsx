@@ -127,7 +127,7 @@ const variantConfig: Record<
     bg: 'bg-amber-50',
     text: 'text-amber-600',
     border: 'border-amber-200',
-    icon: <AlertCircle className="w-3 w-3" />,
+    icon: <AlertCircle className="h-3 w-3" />,
     label: 'Unknown',
   },
 };
