@@ -127,6 +127,7 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
       await api.adminExecuteTask(task.id, false)
       toast.success('Task re-executed successfully')
 
+      onTaskUpdate?.()
       setRetryCount((c) => c + 1)
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error'
