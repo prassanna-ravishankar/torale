@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
-import { Loader2, Clock, Zap, AlertTriangle, FileText, Play, Pause } from 'lucide-react'
+import { Loader2, Clock, Zap, AlertTriangle, FileText, Play, Pause, RotateCcw } from 'lucide-react'
 import { SectionLabel, StatusBadge } from '@/components/torale'
 import { toast } from 'sonner'
 import { stateToVariant } from './types'
@@ -46,6 +46,8 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
   const [retryCount, setRetryCount] = useState(0)
   const [isExecuting, setIsExecuting] = useState(false)
   const [isPauseResuming, setIsPauseResuming] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
+  const isBusy = isExecuting || isPauseResuming || isResetting
 
   const handleExecute = async () => {
     setIsExecuting(true)
@@ -93,6 +95,36 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
     }
   }
 
+  const handleResetAndRun = async () => {
+    // Confirm destructive action
+    if (!confirm(
+      'This will permanently delete recent execution history. ' +
+      'The task will then run fresh. Continue?'
+    )) {
+      return
+    }
+
+    setIsResetting(true)
+    try {
+      // Reset (delete history)
+      const resetResult = await api.adminResetTask(task.id, 1) // 1 day
+      toast.success(
+        `Reset complete: deleted ${resetResult.executions_deleted} execution(s)`
+      )
+
+      // Immediately re-run
+      await api.adminExecuteTask(task.id, false) // notifications enabled
+      toast.success('Task re-executed')
+
+      // Refresh UI
+      setRetryCount((c) => c + 1)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Reset failed')
+    } finally {
+      setIsResetting(false)
+    }
+  }
+
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -122,7 +154,7 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
         <SectionLabel>Actions</SectionLabel>
         <button
           onClick={handleExecute}
-          disabled={isExecuting}
+          disabled={isBusy}
           className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 text-white text-xs font-mono hover:bg-[hsl(10,90%,55%)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isExecuting ? (
@@ -134,7 +166,7 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
         </button>
         <button
           onClick={handlePauseResume}
-          disabled={isPauseResuming || task.state === 'completed'}
+          disabled={isBusy || task.state === 'completed'}
           className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-zinc-900 text-zinc-900 text-xs font-mono hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isPauseResuming ? (
@@ -145,6 +177,19 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
             <Play className="h-3 w-3" />
           )}
           {task.state === 'active' ? 'Pause' : 'Resume'}
+        </button>
+        <button
+          onClick={handleResetAndRun}
+          disabled={isBusy}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-600 text-white text-xs font-mono hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Delete recent history and re-run fresh"
+        >
+          {isResetting ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <RotateCcw className="h-3 w-3" />
+          )}
+          Reset & Run
         </button>
       </div>
 

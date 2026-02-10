@@ -273,6 +273,18 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
+  async adminResetTask(
+    taskId: string,
+    days: number = 1
+  ): Promise<{ status: string; task_id: string; executions_deleted: number; days: number }> {
+    const url = `${this.baseUrl}/admin/tasks/${taskId}/reset?days=${days}`
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
   // Waitlist endpoints
   async getWaitlist(statusFilter?: string): Promise<any> {
     const url = statusFilter

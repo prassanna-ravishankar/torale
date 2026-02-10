@@ -1128,3 +1128,78 @@ async def admin_update_task_state(
         "previous_state": previous_state.value,
         "message": f"Task state updated to {target_state.value}",
     }
+
+
+@router.delete("/tasks/{task_id}/reset")
+async def reset_task_history(
+    task_id: UUID,
+    days: int = Query(default=1, ge=1, le=30, description="Delete executions from last N days"),
+    admin: ClerkUser = Depends(require_admin),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Reset task execution history (admin only).
+
+    Deletes all executions from the last N days and resets task state.
+    This forces the agent to re-evaluate fresh on next run.
+
+    Path Parameters:
+    - task_id: UUID of the task to reset
+
+    Query Parameters:
+    - days: Delete executions from last N days (default: 1, max: 30)
+
+    Returns:
+    - Status confirmation with count of deleted executions
+    """
+    # Check task exists (no user_id filter - admin can access any task)
+    check_result = await session.execute(
+        text("SELECT id FROM tasks WHERE id = :task_id"),
+        {"task_id": task_id},
+    )
+    if not check_result.first():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    # Delete executions from last N days
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+    delete_result = await session.execute(
+        text("""
+            DELETE FROM task_executions
+            WHERE task_id = :task_id
+            AND created_at >= :cutoff
+            RETURNING id
+        """),
+        {"task_id": task_id, "cutoff": cutoff},
+    )
+    deleted_count = len(delete_result.fetchall())
+
+    # Reset task state to NULL
+    # Note: last_execution_id has ON DELETE SET NULL, so it's already NULL if we deleted that execution
+    # But we explicitly set it to be safe, and also clear last_known_state
+    await session.execute(
+        text("""
+            UPDATE tasks
+            SET last_execution_id = NULL,
+                last_known_state = NULL,
+                updated_at = NOW()
+            WHERE id = :task_id
+        """),
+        {"task_id": task_id},
+    )
+
+    await session.commit()
+
+    # Log the action with admin context
+    logger.info(
+        f"Admin {admin.email} reset task {task_id}: deleted {deleted_count} executions from last {days} day(s)"
+    )
+
+    return {
+        "status": "reset",
+        "task_id": str(task_id),
+        "executions_deleted": deleted_count,
+        "days": days,
+    }
