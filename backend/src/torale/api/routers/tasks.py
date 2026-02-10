@@ -25,6 +25,7 @@ from torale.tasks import (
     TaskCreate,
     TaskExecution,
     TaskState,
+    TaskStatus,
     TaskUpdate,
 )
 from torale.tasks.service import InvalidTransitionError, TaskService
@@ -299,12 +300,15 @@ async def start_task_execution(
         await db.execute(
             """
             UPDATE task_executions
-            SET status = 'cancelled',
-                error_message = 'Execution cancelled by manual force run',
-                internal_error = 'Force override triggered from admin/manual execution',
-                completed_at = $1
-            WHERE id = $2
+            SET status = $1,
+                error_message = $2,
+                internal_error = $3,
+                completed_at = $4
+            WHERE id = $5
             """,
+            TaskStatus.CANCELLED.value,
+            "Execution cancelled by manual force run",
+            "Force override triggered from admin/manual execution",
             datetime.now(UTC),
             stuck_id,
         )

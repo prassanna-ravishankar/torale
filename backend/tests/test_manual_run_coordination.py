@@ -223,9 +223,9 @@ class TestManualRunCoordination:
         ]
         assert len(update_calls) == 1
 
-        update_query = update_calls[0].args[0]
-        assert "status = 'cancelled'" in update_query
-        assert "Execution cancelled by manual force run" in update_query
+        update_args = update_calls[0].args
+        assert "cancelled" in update_args  # status parameter
+        assert "Execution cancelled by manual force run" in update_args  # error_message parameter
 
         # Verify new execution was created
         assert result["status"] == "pending"
