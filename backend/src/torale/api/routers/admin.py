@@ -963,7 +963,7 @@ async def delete_waitlist_entry(
 async def admin_execute_task(
     task_id: UUID,
     background_tasks: BackgroundTasks,
-    suppress_notifications: bool = Query(default=True),
+    suppress_notifications: bool = Query(default=False),
     admin: ClerkUser = Depends(require_admin),
     db: Database = Depends(get_db),
 ):
@@ -971,7 +971,7 @@ async def admin_execute_task(
     Execute a task immediately (admin only).
 
     Allows admins to manually trigger execution of any user's task.
-    Notifications are suppressed by default for admin executions.
+    Notifications are enabled by default for admin executions.
 
     Path Parameters:
     - task_id: UUID of the task to execute

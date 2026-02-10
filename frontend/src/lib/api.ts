@@ -244,7 +244,7 @@ class ApiClient {
 
   async adminExecuteTask(
     taskId: string,
-    suppressNotifications: boolean = true
+    suppressNotifications: boolean = false
   ): Promise<{ id: string; task_id: string; status: string; message: string }> {
     const url = `${this.baseUrl}/admin/tasks/${taskId}/execute?suppress_notifications=${suppressNotifications}`
     const response = await fetch(url, {
