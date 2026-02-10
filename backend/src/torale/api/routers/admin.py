@@ -1004,6 +1004,7 @@ async def admin_execute_task(
         db=db,
         background_tasks=background_tasks,
         suppress_notifications=suppress_notifications,
+        force=True,  # Admin executions always override stuck executions
     )
 
     logger.info(f"Admin {admin.email} started execution {execution_row['id']} for task {task_id}")

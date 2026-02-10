@@ -181,3 +181,76 @@ class TestManualRunCoordination:
         background_tasks_mock.add_task.assert_called_once()
         call_kwargs = background_tasks_mock.add_task.call_args.kwargs
         assert call_kwargs["retry_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_force_override_stuck_execution(self):
+        """Force=true should override stuck execution and mark it failed."""
+        from datetime import UTC, datetime, timedelta
+
+        db_mock = AsyncMock()
+        stuck_execution_id = str(uuid4())
+
+        # Mock stuck execution exists
+        db_mock.fetch_one.side_effect = [
+            {
+                "id": stuck_execution_id,
+                "status": "running",
+                "started_at": datetime.now(UTC) - timedelta(hours=1),
+            },  # running check
+            None,  # no last execution
+            {"id": str(uuid4()), "task_id": TASK_ID, "status": "pending"},  # insert new execution
+        ]
+
+        scheduler_mock = MagicMock()
+        scheduler_mock.get_job.return_value = None
+
+        background_tasks = BackgroundTasks()
+
+        with patch("torale.scheduler.scheduler.get_scheduler", return_value=scheduler_mock):
+            result = await start_task_execution(
+                task_id=TASK_ID,
+                task_name=TASK_NAME,
+                user_id=USER_ID,
+                db=db_mock,
+                background_tasks=background_tasks,
+                force=True,
+            )
+
+        # Verify stuck execution was marked failed
+        update_calls = [c for c in db_mock.execute.call_args_list if c.args and "UPDATE task_executions" in c.args[0]]
+        assert len(update_calls) == 1
+
+        update_call = update_calls[0]
+        update_query = update_call.args[0]
+        assert "status = 'failed'" in update_query
+        assert "error_message = 'Execution overridden by manual force run'" in update_query
+
+        # Verify new execution was created
+        assert result["status"] == "pending"
+
+    @pytest.mark.asyncio
+    async def test_force_false_prevents_override(self):
+        """Force=false (default) should prevent concurrent execution."""
+        db_mock = AsyncMock()
+
+        # Mock running execution exists
+        db_mock.fetch_one.return_value = {
+            "id": str(uuid4()),
+            "status": "running",
+            "started_at": None,
+        }
+
+        background_tasks = BackgroundTasks()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await start_task_execution(
+                task_id=TASK_ID,
+                task_name=TASK_NAME,
+                user_id=USER_ID,
+                db=db_mock,
+                background_tasks=background_tasks,
+                force=False,
+            )
+
+        assert exc_info.value.status_code == 409
+        assert "already running or pending" in exc_info.value.detail.lower()

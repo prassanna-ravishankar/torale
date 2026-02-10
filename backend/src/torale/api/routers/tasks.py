@@ -278,19 +278,43 @@ async def start_task_execution(
     db: Database,
     background_tasks: BackgroundTasks,
     suppress_notifications: bool = False,
+    force: bool = False,
 ) -> dict:
     """Create execution record and launch agent-based execution in background."""
     # Check for running or pending executions to prevent concurrent execution
     running_execution = await db.fetch_one(
-        "SELECT id FROM task_executions WHERE task_id = $1 AND status IN ('running', 'pending')",
+        "SELECT id, status, started_at FROM task_executions WHERE task_id = $1 AND status IN ('running', 'pending')",
         UUID(task_id),
     )
 
     if running_execution:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Task is already running. Wait for current execution to complete.",
-        )
+        if not force:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Task is already running or pending. Use force=true to override.",
+            )
+        else:
+            # Force override: mark stuck execution as failed
+            execution_id = running_execution["id"]
+            now = datetime.now(UTC)
+
+            await db.execute(
+                """
+                UPDATE task_executions
+                SET status = 'failed',
+                    error_message = 'Execution overridden by manual force run',
+                    internal_error = 'Force override triggered from admin/manual execution',
+                    completed_at = $1
+                WHERE id = $2
+                """,
+                now,
+                execution_id,
+            )
+
+            logger.warning(
+                f"Force-overriding stuck execution {execution_id} for task {task_id} "
+                f"(was in status '{running_execution['status']}' since {running_execution['started_at']})"
+            )
 
     # Cancel any pending retry jobs before starting manual execution
     scheduler = get_scheduler()
@@ -843,6 +867,7 @@ async def execute_task(
         db=db,
         background_tasks=background_tasks,
         suppress_notifications=False,
+        force=True,  # User manual "Run Now" always overrides stuck executions
     )
 
     return TaskExecution(**parse_execution_row(row))
