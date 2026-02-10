@@ -1080,7 +1080,7 @@ async def admin_update_task_state(
             task_id=task_id,
             from_state=previous_state,
             to_state=target_state,
-            user_id=UUID(task_row["user_id"]),
+            user_id=task_row["user_id"],
             task_name=task_row["name"],
             next_run=next_run,
         )

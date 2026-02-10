@@ -35,7 +35,7 @@ def sample_task():
         "id": uuid4(),
         "name": "Test Monitoring Task",
         "state": "active",
-        "user_id": str(uuid4()),
+        "user_id": uuid4(),
         "next_run": datetime.now(UTC) + timedelta(hours=1),
     }
 
@@ -83,7 +83,7 @@ class TestAdminUpdateTaskState:
             assert call_kwargs["task_id"] == sample_task["id"]
             assert call_kwargs["from_state"] == TaskState(from_state)
             assert call_kwargs["to_state"] == to_state
-            assert call_kwargs["user_id"] == UUID(sample_task["user_id"])
+            assert call_kwargs["user_id"] == sample_task["user_id"]
             assert call_kwargs["task_name"] == sample_task["name"]
 
             # Verify response format
