@@ -6,6 +6,7 @@ Verifies that manual task execution properly:
 3. Handles edge cases in retry/backoff state
 """
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -181,3 +182,77 @@ class TestManualRunCoordination:
         background_tasks_mock.add_task.assert_called_once()
         call_kwargs = background_tasks_mock.add_task.call_args.kwargs
         assert call_kwargs["retry_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_force_override_stuck_execution(self):
+        """Force=true should override stuck execution and mark it cancelled."""
+        db_mock = AsyncMock()
+        stuck_execution_id = str(uuid4())
+
+        # Mock stuck execution exists
+        db_mock.fetch_one.side_effect = [
+            {
+                "id": stuck_execution_id,
+                "status": "running",
+                "started_at": datetime.now(UTC) - timedelta(hours=1),
+            },  # running check
+            None,  # no last execution
+            {"id": str(uuid4()), "task_id": TASK_ID, "status": "pending"},  # insert new execution
+        ]
+
+        scheduler_mock = MagicMock()
+        scheduler_mock.get_job.return_value = None
+
+        background_tasks = BackgroundTasks()
+
+        with patch("torale.scheduler.scheduler.get_scheduler", return_value=scheduler_mock):
+            result = await start_task_execution(
+                task_id=TASK_ID,
+                task_name=TASK_NAME,
+                user_id=USER_ID,
+                db=db_mock,
+                background_tasks=background_tasks,
+                force=True,
+            )
+
+        # Verify stuck execution was marked cancelled
+        update_calls = [
+            c
+            for c in db_mock.execute.call_args_list
+            if c.args and "UPDATE task_executions" in c.args[0]
+        ]
+        assert len(update_calls) == 1
+
+        update_args = update_calls[0].args
+        assert "cancelled" in update_args  # status parameter
+        assert "Execution cancelled by manual force run" in update_args  # error_message parameter
+
+        # Verify new execution was created
+        assert result["status"] == "pending"
+
+    @pytest.mark.asyncio
+    async def test_force_false_prevents_override(self):
+        """Force=false (default) should prevent concurrent execution."""
+        db_mock = AsyncMock()
+
+        # Mock running execution exists
+        db_mock.fetch_one.return_value = {
+            "id": str(uuid4()),
+            "status": "running",
+            "started_at": None,
+        }
+
+        background_tasks = BackgroundTasks()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await start_task_execution(
+                task_id=TASK_ID,
+                task_name=TASK_NAME,
+                user_id=USER_ID,
+                db=db_mock,
+                background_tasks=background_tasks,
+                force=False,
+            )
+
+        assert exc_info.value.status_code == 409
+        assert "already running or pending" in exc_info.value.detail.lower()

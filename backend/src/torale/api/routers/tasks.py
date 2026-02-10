@@ -25,6 +25,7 @@ from torale.tasks import (
     TaskCreate,
     TaskExecution,
     TaskState,
+    TaskStatus,
     TaskUpdate,
 )
 from torale.tasks.service import InvalidTransitionError, TaskService
@@ -278,18 +279,42 @@ async def start_task_execution(
     db: Database,
     background_tasks: BackgroundTasks,
     suppress_notifications: bool = False,
+    force: bool = False,
 ) -> dict:
     """Create execution record and launch agent-based execution in background."""
     # Check for running or pending executions to prevent concurrent execution
     running_execution = await db.fetch_one(
-        "SELECT id FROM task_executions WHERE task_id = $1 AND status IN ('running', 'pending')",
+        "SELECT id, status, started_at FROM task_executions WHERE task_id = $1 AND status IN ('running', 'pending')",
         UUID(task_id),
     )
 
-    if running_execution:
+    if running_execution and not force:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Task is already running. Wait for current execution to complete.",
+            detail="Task is already running or pending. Use force=true to override.",
+        )
+
+    if running_execution:
+        # Force override: mark stuck execution as cancelled
+        stuck_id = running_execution["id"]
+        await db.execute(
+            """
+            UPDATE task_executions
+            SET status = $1,
+                error_message = $2,
+                internal_error = $3,
+                completed_at = $4
+            WHERE id = $5
+            """,
+            TaskStatus.CANCELLED.value,
+            "Execution cancelled by manual force run",
+            "Force override triggered from admin/manual execution",
+            datetime.now(UTC),
+            stuck_id,
+        )
+        logger.warning(
+            f"Force-cancelling stuck execution {stuck_id} for task {task_id} "
+            f"(was in status '{running_execution['status']}' since {running_execution['started_at']})"
         )
 
     # Cancel any pending retry jobs before starting manual execution
@@ -843,6 +868,7 @@ async def execute_task(
         db=db,
         background_tasks=background_tasks,
         suppress_notifications=False,
+        force=True,  # User manual "Run Now" always overrides stuck executions
     )
 
     return TaskExecution(**parse_execution_row(row))

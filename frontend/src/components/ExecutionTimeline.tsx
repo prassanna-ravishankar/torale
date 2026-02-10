@@ -1,9 +1,9 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
-import { TaskExecution } from "@/types";
+import { TaskExecution, TaskStatus } from "@/types";
 import { GroundingSourceList } from "@/components/ui/GroundingSourceList";
-import { StatusBadge, SectionLabel, BrutalistCard, CollapsibleSection } from "@/components/torale";
+import { StatusBadge, SectionLabel, BrutalistCard, CollapsibleSection, type StatusVariant } from "@/components/torale";
 import {
   CheckCircle2,
   XCircle,
@@ -48,15 +48,7 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution }) => {
                 <div className="flex items-center gap-3">
                   <div className="shrink-0">{getStatusIcon(execution.status)}</div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <StatusBadge
-                      variant={
-                        execution.status === "success"
-                          ? "success"
-                          : execution.status === "failed"
-                          ? "failed"
-                          : "pending"
-                      }
-                    />
+                    <StatusBadge variant={execution.status as StatusVariant} />
 
                   </div>
                 </div>
