@@ -244,7 +244,7 @@ class ApiClient {
 
   async adminExecuteTask(
     taskId: string,
-    suppressNotifications: boolean = true
+    suppressNotifications: boolean = false
   ): Promise<{ id: string; task_id: string; status: string; message: string }> {
     const url = `${this.baseUrl}/admin/tasks/${taskId}/execute?suppress_notifications=${suppressNotifications}`
     const response = await fetch(url, {
@@ -269,6 +269,18 @@ class ApiClient {
       method: 'PATCH',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify({ state }),
+    })
+    return this.handleResponse(response)
+  }
+
+  async adminResetTask(
+    taskId: string,
+    days: number = 1
+  ): Promise<{ status: string; task_id: string; executions_deleted: number; days: number }> {
+    const url = `${this.baseUrl}/admin/tasks/${taskId}/reset?days=${days}`
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }
