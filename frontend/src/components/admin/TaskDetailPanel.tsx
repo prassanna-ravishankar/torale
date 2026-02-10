@@ -96,30 +96,23 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
   }
 
   const handleResetAndRun = async () => {
-    // Confirm destructive action
-    if (!confirm(
+    const confirmed = confirm(
       'This will permanently delete recent execution history. ' +
       'The task will then run fresh. Continue?'
-    )) {
-      return
-    }
+    )
+    if (!confirmed) return
 
     setIsResetting(true)
     try {
-      // Reset (delete history)
-      const resetResult = await api.adminResetTask(task.id, 1) // 1 day
-      toast.success(
-        `Reset complete: deleted ${resetResult.executions_deleted} execution(s)`
-      )
+      const resetResult = await api.adminResetTask(task.id, 1)
+      toast.success(`Deleted ${resetResult.executions_deleted} execution(s)`)
 
-      // Immediately re-run
-      await api.adminExecuteTask(task.id, false) // notifications enabled
+      await api.adminExecuteTask(task.id, false)
       toast.success('Task re-executed')
 
-      // Refresh UI
       setRetryCount((c) => c + 1)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Reset failed')
+      toast.error(err instanceof Error ? err.message : 'Reset & run failed')
     } finally {
       setIsResetting(false)
     }

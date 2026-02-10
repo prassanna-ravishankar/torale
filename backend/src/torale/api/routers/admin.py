@@ -1176,14 +1176,13 @@ async def reset_task_history(
     )
     deleted_count = len(delete_result.fetchall())
 
-    # Reset task state to NULL
-    # Note: last_execution_id has ON DELETE SET NULL, so it's already NULL if we deleted that execution
-    # But we explicitly set it to be safe, and also clear last_known_state
+    # Reset task state so the agent re-evaluates from scratch
     await session.execute(
         text("""
             UPDATE tasks
             SET last_execution_id = NULL,
                 last_known_state = NULL,
+                state_changed_at = NULL,
                 updated_at = NOW()
             WHERE id = :task_id
         """),
