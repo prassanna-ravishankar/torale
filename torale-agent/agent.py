@@ -236,6 +236,27 @@ class ToraleAgentExecutor(AgentExecutor):
         )
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
+        """Execute a monitoring task received via A2A protocol.
+
+        Extracts user context from A2A metadata, runs the Pydantic AI agent with
+        monitoring dependencies, and emits task results via the A2A event queue.
+
+        Workflow:
+        1. Extract user_id and task_id from context.metadata
+        2. Emit "working" state to caller
+        3. Run agent with MonitoringDeps context
+        4. On success: emit completed task with MonitoringResponse as DataPart artifact
+        5. On error: emit failed task with structured error details in status.message
+
+        Args:
+            context: A2A request context containing task metadata (user_id, task_id required)
+            event_queue: Queue for emitting task state updates and results
+
+        Error Handling:
+            - ConfigurationError: Missing user_id or task_id in metadata
+            - ModelHTTPError: Preserves status_code for 429 rate limit detection
+            - ValueError/RuntimeError: General execution failures
+        """
         task_id = context.task_id
         context_id = context.context_id
         user_input = context.get_user_input()
@@ -246,7 +267,18 @@ class ToraleAgentExecutor(AgentExecutor):
         monitoring_task_id = metadata.get("task_id", "")
 
         if not user_id or not monitoring_task_id:
-            logger.warning("Missing deps metadata: %s", metadata)
+            error_msg = f"Missing required metadata - user_id: {bool(user_id)}, task_id: {bool(monitoring_task_id)}"
+            logger.error(
+                "Agent task failed: %s",
+                error_msg,
+                extra={"task_id": task_id, "metadata": metadata},
+            )
+            await self._emit_failure(event_queue, task_id, context_id, {
+                "error_type": "ConfigurationError",
+                "message": error_msg,
+                "metadata_received": metadata,
+            })
+            return
 
         deps = MonitoringDeps(user_id=user_id, task_id=monitoring_task_id)
 
@@ -281,15 +313,23 @@ class ToraleAgentExecutor(AgentExecutor):
 
         except ModelHTTPError as e:
             logger.error(
-                "Agent task failed: ModelHTTPError - %s (status=%d)",
+                "Agent task failed: ModelHTTPError - %s (status=%d, model=%s)",
                 str(e),
                 e.status_code,
-                extra={"task_id": task_id},
+                e.model_name,
+                extra={
+                    "task_id": task_id,
+                    "user_id": user_id,
+                    "monitoring_task_id": monitoring_task_id,
+                    "model_name": e.model_name,
+                    "status_code": e.status_code,
+                    "prompt_preview": user_input[:200] if user_input else "",
+                },
             )
             await self._emit_failure(event_queue, task_id, context_id, {
                 "error_type": "ModelHTTPError",
                 "status_code": e.status_code,
-                "model_name": e.model_name,
+                "model_name": str(e.model_name),
                 "message": str(e),
             })
 
@@ -298,7 +338,14 @@ class ToraleAgentExecutor(AgentExecutor):
                 "Agent task failed: %s - %s",
                 type(e).__name__,
                 str(e),
-                extra={"task_id": task_id},
+                exc_info=True,
+                extra={
+                    "task_id": task_id,
+                    "user_id": user_id,
+                    "monitoring_task_id": monitoring_task_id,
+                    "error_type": type(e).__name__,
+                    "prompt_preview": user_input[:200] if user_input else "",
+                },
             )
             await self._emit_failure(event_queue, task_id, context_id, {
                 "error_type": type(e).__name__,

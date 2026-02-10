@@ -1,5 +1,6 @@
 """Tests for the A2A agent client (call_agent + _parse_agent_response)."""
 
+import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -9,7 +10,9 @@ from a2a.types import (
     DataPart,
     JSONRPCError,
     JSONRPCErrorResponse,
+    Message,
     Part,
+    Role,
     SendMessageResponse,
     TaskState,
     TextPart,
@@ -17,7 +20,12 @@ from a2a.types import (
 from pydantic import ValidationError
 
 from tests.conftest import data_artifact, make_a2a_task, poll_success, send_success, text_artifact
-from torale.scheduler.agent import _parse_agent_response, call_agent
+from torale.scheduler.agent import (
+    _extract_error_details,
+    _handle_failed_task,
+    _parse_agent_response,
+    call_agent,
+)
 from torale.scheduler.models import MonitoringResponse
 
 
@@ -256,6 +264,149 @@ class TestMonitoringResponseValidation:
         parsed = _parse_agent_response(task)
         with pytest.raises(ValidationError, match=expected_error_field):
             MonitoringResponse.model_validate(parsed)
+
+
+class TestErrorHandling:
+    """Tests for error extraction and handling functions."""
+
+    def test_extract_error_details_valid_json(self):
+        """Valid JSON error details are extracted correctly."""
+        error_data = {
+            "error_type": "ModelHTTPError",
+            "status_code": 429,
+            "model_name": "gemini-3-flash",
+            "message": "Rate limit exceeded",
+        }
+
+        task = make_a2a_task(status_state=TaskState.failed)
+        task.status.message = Message(
+            message_id="msg-1",
+            role=Role.agent,
+            parts=[Part(root=TextPart(text=json.dumps(error_data)))],
+        )
+
+        details = _extract_error_details(task)
+
+        assert details == error_data
+        assert details["error_type"] == "ModelHTTPError"
+        assert details["status_code"] == 429
+
+    def test_extract_error_details_no_message(self):
+        """Missing message returns None."""
+        task = make_a2a_task(status_state=TaskState.failed)
+        task.status.message = None
+
+        assert _extract_error_details(task) is None
+
+    def test_extract_error_details_empty_parts(self):
+        """Empty parts list returns None."""
+        task = make_a2a_task(status_state=TaskState.failed)
+        task.status.message = Message(message_id="msg-1", role=Role.agent, parts=[])
+
+        assert _extract_error_details(task) is None
+
+    def test_extract_error_details_non_text_part(self):
+        """Non-TextPart returns None."""
+        task = make_a2a_task(status_state=TaskState.failed)
+        task.status.message = Message(
+            message_id="msg-1",
+            role=Role.agent,
+            parts=[Part(root=DataPart(data={"error": "wrong type"}))],
+        )
+
+        assert _extract_error_details(task) is None
+
+    def test_extract_error_details_malformed_json(self):
+        """Malformed JSON returns structured fallback error."""
+        task = make_a2a_task(status_state=TaskState.failed)
+        task.status.message = Message(
+            message_id="msg-1",
+            role=Role.agent,
+            parts=[Part(root=TextPart(text="{'invalid': json"))],
+        )
+
+        details = _extract_error_details(task)
+
+        assert details is not None
+        assert details["error_type"] == "JSONParseError"
+        assert "malformed error data" in details["message"]
+        assert "parse_error" in details
+
+    def test_extract_error_details_truncates_long_errors(self):
+        """Very long error messages are truncated in fallback."""
+        long_text = "x" * 1000
+        task = make_a2a_task(status_state=TaskState.failed)
+        task.status.message = Message(
+            message_id="msg-1", role=Role.agent, parts=[Part(root=TextPart(text=long_text))]
+        )
+
+        details = _extract_error_details(task)
+
+        assert details["error_type"] == "JSONParseError"
+        assert len(details["message"]) < len(long_text)
+
+    def test_handle_failed_task_no_error_details(self):
+        """No error details raises RuntimeError with status."""
+        task = make_a2a_task(status_state=TaskState.failed, task_id="task-123")
+        task.status.message = None
+
+        with pytest.raises(RuntimeError, match="failed without error details"):
+            _handle_failed_task(task)
+
+    def test_handle_failed_task_model_http_429(self):
+        """ModelHTTPError with 429 raises A2AClientHTTPError(429)."""
+        error_data = {
+            "error_type": "ModelHTTPError",
+            "status_code": 429,
+            "model_name": "gemini-3-flash",
+            "message": "Rate limit exceeded",
+        }
+
+        task = make_a2a_task(status_state=TaskState.failed, task_id="task-123")
+        task.status.message = Message(
+            message_id="msg-1",
+            role=Role.agent,
+            parts=[Part(root=TextPart(text=json.dumps(error_data)))],
+        )
+
+        with pytest.raises(A2AClientHTTPError) as exc_info:
+            _handle_failed_task(task)
+
+        assert exc_info.value.status_code == 429
+        assert "Rate limit" in str(exc_info.value)
+
+    def test_handle_failed_task_model_http_500(self):
+        """ModelHTTPError with non-429 raises RuntimeError."""
+        error_data = {
+            "error_type": "ModelHTTPError",
+            "status_code": 500,
+            "model_name": "gemini-3-flash",
+            "message": "Internal server error",
+        }
+
+        task = make_a2a_task(status_state=TaskState.failed, task_id="task-123")
+        task.status.message = Message(
+            message_id="msg-1",
+            role=Role.agent,
+            parts=[Part(root=TextPart(text=json.dumps(error_data)))],
+        )
+
+        with pytest.raises(RuntimeError, match="HTTP error 500"):
+            _handle_failed_task(task)
+
+    def test_handle_failed_task_non_http_error(self):
+        """Non-HTTP errors raise RuntimeError with error type."""
+        error_data = {"error_type": "ValidationError", "message": "Invalid response format"}
+
+        task = make_a2a_task(status_state=TaskState.failed, task_id="task-123")
+        task.status.message = Message(
+            message_id="msg-1",
+            role=Role.agent,
+            parts=[Part(root=TextPart(text=json.dumps(error_data)))],
+        )
+
+        with pytest.raises(RuntimeError, match="ValidationError"):
+            _handle_failed_task(task)
 
 
 class TestCallAgent:

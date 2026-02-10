@@ -24,13 +24,15 @@ class TestPaidTierFallback:
         completed_task = make_a2a_task(
             task_id="task-paid-123",
             artifacts=[
-                data_artifact({
-                    "evidence": "Test evidence",
-                    "sources": ["http://example.com"],
-                    "confidence": 95,
-                    "next_run": None,
-                    "notification": "Test notification",
-                })
+                data_artifact(
+                    {
+                        "evidence": "Test evidence",
+                        "sources": ["http://example.com"],
+                        "confidence": 95,
+                        "next_run": None,
+                        "notification": "Test notification",
+                    }
+                )
             ],
         )
 

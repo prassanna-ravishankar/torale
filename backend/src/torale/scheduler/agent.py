@@ -41,7 +41,11 @@ def _extract_error_details(task: Task) -> dict | None:
     """Extract structured error details from a failed task's status.message.
 
     The agent emits error details as JSON-encoded TextPart in status.message.
-    Returns None if error details are missing or malformed.
+
+    Returns:
+        Parsed error dict if valid JSON found.
+        Fallback error dict with error_type="JSONParseError" if parsing fails.
+        None if status.message or parts are missing.
     """
     message = task.status.message
     if not message or not message.parts:
@@ -259,7 +263,8 @@ def _parse_agent_response(task: Task) -> dict:
         for part_wrapper in artifact.parts:
             part = part_wrapper.root
 
-            # Truthy check: empty dict {} falls through to TextPart path
+            # Skip DataPart if data is empty dict (agent error or legacy response).
+            # Empty dict {} is falsy, so we fall through to TextPart legacy parsing.
             if isinstance(part, DataPart) and part.data:
                 data = part.data
                 # Unwrap if agent wrapped response in 'result' key
