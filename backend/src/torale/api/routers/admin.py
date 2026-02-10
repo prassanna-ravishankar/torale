@@ -19,7 +19,7 @@ from torale.core.database import Database, get_db
 from torale.core.database_alchemy import get_async_session
 from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import TaskState
-from torale.tasks.service import TaskService
+from torale.tasks.service import InvalidTransitionError, TaskService
 
 router = APIRouter(prefix="/admin", tags=["admin"], include_in_schema=False)
 
@@ -1014,4 +1014,117 @@ async def admin_execute_task(
         "task_id": str(task_id),
         "status": "pending",
         "message": f"Execution started (notifications {'suppressed' if suppress_notifications else 'enabled'})",
+    }
+
+
+class AdminTaskStateUpdateRequest(BaseModel):
+    """Request model for updating task state.
+
+    Note: While 'completed' is technically supported, the admin UI only exposes
+    pause/resume actions (active ↔ paused). The 'completed' state can be used
+    via API for advanced operations or future features.
+    """
+
+    state: TaskState = Field(
+        ...,
+        description="Target state: 'active' (resume), 'paused' (pause), or 'completed' (archive)",
+    )
+
+
+@router.patch("/tasks/{task_id}/state")
+async def admin_update_task_state(
+    task_id: UUID,
+    request: AdminTaskStateUpdateRequest,
+    admin: ClerkUser = Depends(require_admin),
+    db: Database = Depends(get_db),
+):
+    """
+    Update a task's state (admin-only).
+
+    Allows admins to transition any task through valid state changes:
+    - ACTIVE ↔ PAUSED (pause/resume monitoring)
+    - ACTIVE → COMPLETED (mark as done)
+    - COMPLETED → ACTIVE (reactivate completed task)
+
+    Invalid transitions (e.g., PAUSED → COMPLETED) are rejected with 400 error.
+
+    When transitioning to ACTIVE:
+    - Scheduler job is created or resumed
+    - next_run is preserved from DB or defaults to 1 minute from now
+    - Requires task_name, user_id (both fetched from DB)
+
+    Returns:
+    - 200: State updated successfully
+    - 400: Invalid transition or missing required data
+    - 404: Task not found
+    - 500: Scheduler or database error (may leave task in inconsistent state)
+    """
+    task_row = await db.fetch_one(
+        "SELECT id, name, state, user_id, next_run FROM tasks WHERE id = $1",
+        task_id,
+    )
+
+    if not task_row:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    previous_state = TaskState(task_row["state"])
+    target_state = request.state
+
+    # Reuse existing next_run or default to 1 minute from now
+    next_run = None
+    if target_state == TaskState.ACTIVE:
+        next_run = task_row["next_run"] or datetime.now(UTC) + timedelta(minutes=1)
+
+    try:
+        task_service = TaskService(db)
+        result = await task_service.transition(
+            task_id=task_id,
+            from_state=previous_state,
+            to_state=target_state,
+            user_id=UUID(task_row["user_id"]),
+            task_name=task_row["name"],
+            next_run=next_run,
+        )
+    except InvalidTransitionError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid state transition: {str(e)}",
+        ) from e
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid task data: {str(e)}",
+        ) from e
+    except Exception as e:
+        logger.error(
+            f"Failed to transition task {task_id} from {previous_state.value} to {target_state.value}",
+            exc_info=True,
+            extra={
+                "task_id": str(task_id),
+                "from_state": previous_state.value,
+                "to_state": target_state.value,
+                "admin_clerk_id": admin.clerk_user_id,
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update task state. The task may be in an inconsistent state.",
+        ) from e
+
+    logger.info(
+        f"Admin user {admin.clerk_user_id} changed task {task_id} state: {previous_state.value} -> {target_state.value}",
+        extra={
+            "task_id": str(task_id),
+            "admin_clerk_id": admin.clerk_user_id,
+            "from_state": previous_state.value,
+            "to_state": target_state.value,
+            "schedule_action": result.get("schedule_action"),
+        },
+    )
+
+    return {
+        "id": str(task_id),
+        "state": target_state.value,
+        "previous_state": previous_state.value,
+        "message": f"Task state updated to {target_state.value}",
     }

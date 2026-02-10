@@ -142,7 +142,7 @@ export function TasksTable({ initialExpandedTaskId }: TasksTableProps = {}) {
                   {expandedTaskId === task.id && (
                     <tr>
                       <td colSpan={7} className="p-0">
-                        <TaskDetailPanel task={task} />
+                        <TaskDetailPanel task={task} onTaskUpdate={loadTasks} />
                       </td>
                     </tr>
                   )}
@@ -169,7 +169,7 @@ export function TasksTable({ initialExpandedTaskId }: TasksTableProps = {}) {
                 onToggle={() => toggleExpanded(task.id)}
               />
               {expandedTaskId === task.id && (
-                <TaskDetailPanel task={task} />
+                <TaskDetailPanel task={task} onTaskUpdate={loadTasks} />
               )}
             </div>
           ))

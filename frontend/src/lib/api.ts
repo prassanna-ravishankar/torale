@@ -254,6 +254,25 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
+  /**
+   * Update task state (admin only).
+   *
+   * Note: While the API supports 'completed', the admin UI only exposes
+   * pause/resume functionality ('active' | 'paused'). The 'completed' state
+   * is reserved for future features or API-only operations.
+   */
+  async adminUpdateTaskState(
+    taskId: string,
+    state: 'active' | 'paused' | 'completed'
+  ): Promise<{ id: string; state: string; previous_state: string; message: string }> {
+    const response = await fetch(`${this.baseUrl}/admin/tasks/${taskId}/state`, {
+      method: 'PATCH',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ state }),
+    })
+    return this.handleResponse(response)
+  }
+
   // Waitlist endpoints
   async getWaitlist(statusFilter?: string): Promise<any> {
     const url = statusFilter

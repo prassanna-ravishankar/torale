@@ -83,11 +83,30 @@ class TaskService:
             return result
 
         except Exception as e:
+            rollback_success = False
             try:
                 await self._update_database_state(task_id, from_state)
+                rollback_success = True
             except Exception as rollback_err:
-                logger.error(f"Rollback failed for task {task_id}: {rollback_err}", exc_info=True)
-            logger.error(f"State transition failed for task {task_id}, rolled back: {e}")
+                logger.critical(
+                    f"CRITICAL: Rollback failed for task {task_id}, database state inconsistent",
+                    extra={
+                        "task_id": str(task_id),
+                        "attempted_transition": f"{from_state.value} -> {to_state.value}",
+                        "rollback_error": str(rollback_err),
+                    },
+                    exc_info=True,
+                )
+
+            if not rollback_success:
+                raise RuntimeError(
+                    f"State transition failed and rollback failed. Task {task_id} may be in inconsistent state. "
+                    f"Manual intervention required. Original error: {e}"
+                ) from e
+
+            logger.error(
+                f"State transition failed for task {task_id}, successfully rolled back: {e}"
+            )
             raise
 
     async def activate(

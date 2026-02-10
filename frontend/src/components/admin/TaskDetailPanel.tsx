@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
-import { Loader2, Clock, Zap, AlertTriangle, FileText, Play } from 'lucide-react'
+import { Loader2, Clock, Zap, AlertTriangle, FileText, Play, Pause } from 'lucide-react'
 import { SectionLabel, StatusBadge } from '@/components/torale'
 import { toast } from 'sonner'
 import { stateToVariant } from './types'
@@ -8,6 +8,7 @@ import type { TaskData, ExecutionData } from './types'
 
 interface TaskDetailPanelProps {
   task: TaskData
+  onTaskUpdate?: () => void
 }
 
 function formatDuration(startedAt: string | null, completedAt: string | null): string {
@@ -38,12 +39,13 @@ function formatShortTimestamp(iso: string | null): string {
   })
 }
 
-export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
+export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
   const [executions, setExecutions] = useState<ExecutionData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
   const [isExecuting, setIsExecuting] = useState(false)
+  const [isPauseResuming, setIsPauseResuming] = useState(false)
 
   const handleExecute = async () => {
     setIsExecuting(true)
@@ -55,6 +57,39 @@ export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
       toast.error(err instanceof Error ? err.message : 'Failed to execute task')
     } finally {
       setIsExecuting(false)
+    }
+  }
+
+  const handlePauseResume = async () => {
+    setIsPauseResuming(true)
+    try {
+      const newState = task.state === 'active' ? 'paused' : 'active'
+      await api.adminUpdateTaskState(task.id, newState)
+      toast.success(newState === 'active' ? 'Task resumed' : 'Task paused')
+
+      // Refresh parent and local state
+      try {
+        onTaskUpdate?.()
+      } catch (callbackErr) {
+        console.error('Failed to refresh task list:', callbackErr)
+      }
+      setRetryCount((c) => c + 1)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update task state'
+
+      // Provide specific guidance based on error type
+      if (errorMessage.includes('Invalid state transition')) {
+        toast.error('Cannot change task state from current status. Refresh and try again.')
+      } else if (errorMessage.includes('not found')) {
+        toast.error('Task no longer exists. Refreshing...')
+        onTaskUpdate?.()
+      } else if (errorMessage.includes('inconsistent state')) {
+        toast.error('Task state update failed. Contact support if issue persists.')
+      } else {
+        toast.error(`Failed to update task: ${errorMessage}`)
+      }
+    } finally {
+      setIsPauseResuming(false)
     }
   }
 
@@ -96,6 +131,20 @@ export function TaskDetailPanel({ task }: TaskDetailPanelProps) {
             <Play className="h-3 w-3" />
           )}
           Run Now
+        </button>
+        <button
+          onClick={handlePauseResume}
+          disabled={isPauseResuming || task.state === 'completed'}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-zinc-900 text-zinc-900 text-xs font-mono hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isPauseResuming ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : task.state === 'active' ? (
+            <Pause className="h-3 w-3" />
+          ) : (
+            <Play className="h-3 w-3" />
+          )}
+          {task.state === 'active' ? 'Pause' : 'Resume'}
         </button>
       </div>
 
