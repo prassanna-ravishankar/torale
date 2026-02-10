@@ -1179,7 +1179,7 @@ async def reset_task_history(
         # Log warning if no executions found
         if deleted_count == 0:
             logger.warning(
-                f"Admin {admin.email} reset task {task_id} but found no executions in last {days} day(s)"
+                f"Admin {admin.clerk_user_id} reset task {task_id} but found no executions in last {days} day(s)"
             )
 
         # Reset task state so the agent re-evaluates from scratch
@@ -1198,7 +1198,7 @@ async def reset_task_history(
         await session.commit()
 
         logger.info(
-            f"Admin {admin.email} reset task {task_id}: deleted {deleted_count} executions from last {days} day(s)"
+            f"Admin {admin.clerk_user_id} reset task {task_id}: deleted {deleted_count} executions from last {days} day(s)"
         )
 
         return {
@@ -1214,7 +1214,7 @@ async def reset_task_history(
     except Exception as e:
         await session.rollback()
         logger.error(
-            f"Failed to reset task {task_id} (admin: {admin.email}, days: {days}): {e}",
+            f"Failed to reset task {task_id} (admin: {admin.clerk_user_id}, days: {days}): {e}",
             exc_info=True,
         )
         raise HTTPException(

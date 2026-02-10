@@ -5,6 +5,16 @@ import { SectionLabel, StatusBadge } from '@/components/torale'
 import { toast } from 'sonner'
 import { stateToVariant } from './types'
 import type { TaskData, ExecutionData } from './types'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface TaskDetailPanelProps {
   task: TaskData
@@ -47,6 +57,7 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
   const [isExecuting, setIsExecuting] = useState(false)
   const [isPauseResuming, setIsPauseResuming] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false)
   const isBusy = isExecuting || isPauseResuming || isResetting
 
   const handleExecute = async () => {
@@ -102,12 +113,7 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
 
   const handleResetAndRun = async () => {
     const days = 1
-    const confirmed = confirm(
-      `This will permanently delete the last ${days} day(s) of execution history. ` +
-      'The task will then run fresh. Continue?'
-    )
-    if (!confirmed) return
-
+    setIsResetDialogOpen(false)
     setIsResetting(true)
     let resetSucceeded = false
 
@@ -195,7 +201,7 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
           {task.state === 'active' ? 'Pause' : 'Resume'}
         </button>
         <button
-          onClick={handleResetAndRun}
+          onClick={() => setIsResetDialogOpen(true)}
           disabled={isBusy}
           className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-600 text-white text-xs font-mono hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           title="Delete recent history and re-run fresh"
@@ -278,6 +284,28 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
           </div>
         )}
       </div>
+
+      {/* Reset & Run Confirmation Dialog */}
+      <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset & Run Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the last 1 day of execution history and re-run the task fresh.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResetAndRun}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              Reset & Run
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
