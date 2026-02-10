@@ -4,27 +4,41 @@ import json
 import logging
 import os
 from datetime import UTC, datetime
-from typing import Optional
+from uuid import uuid4
 
 import logfire
+from a2a.server.agent_execution import AgentExecutor
+from a2a.server.agent_execution.context import RequestContext
+from a2a.server.apps import A2AStarletteApplication
+from a2a.server.events.event_queue import EventQueue
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.tasks import InMemoryTaskStore
+from a2a.types import (
+    AgentCapabilities,
+    AgentCard,
+    Artifact,
+    DataPart,
+    Message,
+    Role,
+    Task as A2ATask,
+    TaskState,
+    TaskStatus,
+    TaskStatusUpdateEvent,
+    TextPart,
+)
 from dotenv import load_dotenv
 from mem0 import AsyncMemoryClient
 from perplexity import AsyncPerplexity
-from pydantic import BaseModel, Field
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.models.google import GoogleModelSettings
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from a2a_error_propagation import ErrorAwareStorage, enable_error_propagation
 from models import MonitoringDeps, MonitoringResponse
 
 load_dotenv()
-
-# Enable error propagation for A2A task status
-enable_error_propagation()
 
 logfire.configure()
 logfire.instrument_pydantic_ai()
@@ -141,7 +155,9 @@ def _register_tools(agent: Agent) -> None:
         """Search previous monitoring memories for this task. Use to recall what was found in earlier runs."""
         results = await mem0_client.search(
             query,
-            filters={"AND": [{"user_id": ctx.deps.user_id}, {"app_id": ctx.deps.task_id}]},
+            filters={
+                "AND": [{"user_id": ctx.deps.user_id}, {"app_id": ctx.deps.task_id}]
+            },
             top_k=10,
         )
         return json.dumps(results, default=str)
@@ -179,7 +195,10 @@ def create_monitoring_agent(
         supports_thinking = "gemini-3" in model_lower or "gemini-2.5-pro" in model_lower
         if supports_thinking:
             model_settings = GoogleModelSettings(
-                google_thinking_config={"thinking_level": "low", "include_thoughts": True},
+                google_thinking_config={
+                    "thinking_level": "low",
+                    "include_thoughts": True,
+                },
             )
 
     agent = Agent(
@@ -196,6 +215,184 @@ def create_monitoring_agent(
     return agent
 
 
+class ToraleAgentExecutor(AgentExecutor):
+    """A2A executor that runs the Torale monitoring agent."""
+
+    def __init__(self, agent: Agent) -> None:
+        self.agent = agent
+
+    async def _emit_failure(
+        self, event_queue: EventQueue, task_id: str, context_id: str, error_data: dict
+    ) -> None:
+        """Enqueue a failed A2ATask with structured error details in status.message."""
+        await event_queue.enqueue_event(
+            A2ATask(
+                id=task_id,
+                context_id=context_id,
+                status=TaskStatus(
+                    state=TaskState.failed,
+                    message=Message(
+                        message_id=str(uuid4()),
+                        role=Role.agent,
+                        parts=[TextPart(text=json.dumps(error_data))],
+                    ),
+                ),
+            )
+        )
+
+    async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
+        """Execute a monitoring task received via A2A protocol.
+
+        Extracts user context from A2A metadata, runs the Pydantic AI agent with
+        monitoring dependencies, and emits task results via the A2A event queue.
+
+        Workflow:
+        1. Extract user_id and task_id from context.metadata
+        2. Emit "working" state to caller
+        3. Run agent with MonitoringDeps context
+        4. On success: emit completed task with MonitoringResponse as DataPart artifact
+        5. On error: emit failed task with structured error details in status.message
+
+        Args:
+            context: A2A request context containing task metadata (user_id, task_id required)
+            event_queue: Queue for emitting task state updates and results
+
+        Error Handling:
+            - ConfigurationError: Missing user_id or task_id in metadata
+            - ModelHTTPError: Preserves status_code for 429 rate limit detection
+            - ValueError/RuntimeError: General execution failures
+        """
+        task_id = context.task_id
+        context_id = context.context_id
+        user_input = context.get_user_input()
+
+        # Extract user_id and task_id from A2A metadata
+        # Security note: This agent is deployed as ClusterIP (internal-only) in production,
+        # accessible only from the authenticated backend. The backend validates user sessions
+        # and ensures user_id/task_id match the authenticated user before calling this endpoint.
+        # External spoofing is mitigated by network isolation.
+        metadata = context.metadata
+        user_id = metadata.get("user_id", "")
+        monitoring_task_id = metadata.get("task_id", "")
+
+        if not user_id or not monitoring_task_id:
+            missing = [
+                f"'{field}'"
+                for field, value in (
+                    ("user_id", user_id),
+                    ("task_id", monitoring_task_id),
+                )
+                if not value
+            ]
+            error_msg = f"Missing required metadata: {', '.join(missing)}"
+            logger.error(
+                "Agent task failed: %s",
+                error_msg,
+                extra={"task_id": task_id, "metadata": metadata},
+            )
+            await self._emit_failure(
+                event_queue,
+                task_id,
+                context_id,
+                {
+                    "error_type": "ConfigurationError",
+                    "message": error_msg,
+                    "metadata_received": metadata,
+                },
+            )
+            return
+
+        deps = MonitoringDeps(user_id=user_id, task_id=monitoring_task_id)
+
+        # Signal working state
+        await event_queue.enqueue_event(
+            TaskStatusUpdateEvent(
+                taskId=task_id,
+                contextId=context_id,
+                final=False,
+                status=TaskStatus(state=TaskState.working),
+            )
+        )
+
+        try:
+            result = await self.agent.run(user_input, deps=deps)
+            response = result.output
+
+            # Return completed Task with MonitoringResponse as DataPart artifact
+            await event_queue.enqueue_event(
+                A2ATask(
+                    id=task_id,
+                    context_id=context_id,
+                    status=TaskStatus(state=TaskState.completed),
+                    artifacts=[
+                        Artifact(
+                            artifact_id=str(uuid4()),
+                            parts=[DataPart(data=response.model_dump(mode="json"))],
+                        )
+                    ],
+                )
+            )
+
+        except ModelHTTPError as e:
+            logger.error(
+                "Agent task failed: ModelHTTPError - %s (status=%d, model=%s)",
+                str(e),
+                e.status_code,
+                e.model_name,
+                extra={
+                    "task_id": task_id,
+                    "user_id": user_id,
+                    "monitoring_task_id": monitoring_task_id,
+                    "model_name": e.model_name,
+                    "status_code": e.status_code,
+                },
+            )
+            await self._emit_failure(
+                event_queue,
+                task_id,
+                context_id,
+                {
+                    "error_type": "ModelHTTPError",
+                    "status_code": e.status_code,
+                    "model_name": str(e.model_name),
+                    "message": str(e),
+                },
+            )
+
+        except (ValueError, RuntimeError) as e:
+            logger.error(
+                "Agent task failed: %s - %s",
+                type(e).__name__,
+                str(e),
+                exc_info=True,
+                extra={
+                    "task_id": task_id,
+                    "user_id": user_id,
+                    "monitoring_task_id": monitoring_task_id,
+                    "error_type": type(e).__name__,
+                },
+            )
+            await self._emit_failure(
+                event_queue,
+                task_id,
+                context_id,
+                {
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                },
+            )
+
+    async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
+        await event_queue.enqueue_event(
+            TaskStatusUpdateEvent(
+                taskId=context.task_id,
+                contextId=context.context_id,
+                final=True,
+                status=TaskStatus(state=TaskState.canceled),
+            )
+        )
+
+
 agent = create_monitoring_agent()
 
 
@@ -207,31 +404,29 @@ async def ready(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
 
-async def model_http_error_handler(request: Request, exc: ModelHTTPError) -> Response:
-    """Custom exception handler to preserve HTTP status code from ModelHTTPError.
+executor = ToraleAgentExecutor(agent)
+task_store = InMemoryTaskStore()
+request_handler = DefaultRequestHandler(
+    agent_executor=executor,
+    task_store=task_store,
+)
 
-    When Gemini (or other model providers) return HTTP errors like 429 (rate limit),
-    this handler ensures the status code is propagated to the A2A client rather than
-    being wrapped in a generic 500 error.
-
-    This enables the backend to detect rate limits and fall back to the paid tier.
-    """
-    return Response(
-        status_code=exc.status_code,
-        content=json.dumps({
-            "error": {
-                "status_code": exc.status_code,
-                "model_name": exc.model_name,
-                "message": str(exc),
-            }
-        }),
-        media_type="application/json",
-    )
-
-
-app = agent.to_a2a(
+agent_card = AgentCard(
     name="torale-agent",
+    description="Torale search monitoring agent",
+    url="http://localhost:8001/",
+    version="0.1.0",
+    default_input_modes=["text"],
+    default_output_modes=["text"],
+    capabilities=AgentCapabilities(),
+    skills=[],
+)
+
+a2a_app = A2AStarletteApplication(
+    agent_card=agent_card,
+    http_handler=request_handler,
+)
+
+app = a2a_app.build(
     routes=[Route("/health", health), Route("/ready", ready)],
-    exception_handlers={ModelHTTPError: model_http_error_handler},
-    storage=ErrorAwareStorage(),
 )

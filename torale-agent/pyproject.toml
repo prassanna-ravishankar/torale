@@ -8,7 +8,8 @@ version = "0.1.0"
 description = "Torale monitoring agent"
 requires-python = ">=3.11"
 dependencies = [
-    "pydantic-ai-slim[a2a,google]>=0.2.0",
+    "a2a-sdk[http-server]>=0.3.22",
+    "pydantic-ai-slim[google]>=0.2.0",
     "mem0ai>=1.0.0",
     "perplexityai>=0.27.0",
     "python-dotenv>=1.0.0",
