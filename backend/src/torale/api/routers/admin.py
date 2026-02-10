@@ -19,7 +19,7 @@ from torale.core.database import Database, get_db
 from torale.core.database_alchemy import get_async_session
 from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import TaskState
-from torale.tasks.service import TaskService
+from torale.tasks.service import InvalidTransitionError, TaskService
 
 router = APIRouter(prefix="/admin", tags=["admin"], include_in_schema=False)
 
@@ -1014,4 +1014,62 @@ async def admin_execute_task(
         "task_id": str(task_id),
         "status": "pending",
         "message": f"Execution started (notifications {'suppressed' if suppress_notifications else 'enabled'})",
+    }
+
+
+class AdminTaskStateUpdateRequest(BaseModel):
+    """Request model for updating task state."""
+
+    state: TaskState = Field(..., description="Target state: 'active', 'paused', or 'completed'")
+
+
+@router.patch("/tasks/{task_id}/state")
+async def admin_update_task_state(
+    task_id: UUID,
+    request: AdminTaskStateUpdateRequest,
+    admin: ClerkUser = Depends(require_admin),
+    db: Database = Depends(get_db),
+):
+    """
+    Update a task's state (admin-only).
+
+    Allows admins to pause, resume, or complete any task via TaskService state machine.
+    """
+    task_row = await db.fetch_one(
+        "SELECT id, state, user_id, next_run FROM tasks WHERE id = :task_id",
+        {"task_id": task_id},
+    )
+
+    if not task_row:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    previous_state = TaskState(task_row["state"])
+    target_state = request.state
+
+    # Reuse existing next_run or default to 1 minute from now
+    next_run = None
+    if target_state == TaskState.ACTIVE:
+        next_run = task_row["next_run"] or datetime.now(UTC) + timedelta(minutes=1)
+
+    try:
+        task_service = TaskService(db)
+        await task_service.transition(
+            task_id=task_id,
+            from_state=previous_state,
+            to_state=target_state,
+            user_id=UUID(task_row["user_id"]),
+            next_run=next_run,
+        )
+    except InvalidTransitionError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    logger.info(
+        f"Admin {admin.email} changed task {task_id} state: {previous_state.value} -> {target_state.value}"
+    )
+
+    return {
+        "id": str(task_id),
+        "state": target_state.value,
+        "previous_state": previous_state.value,
+        "message": f"Task state updated to {target_state.value}",
     }

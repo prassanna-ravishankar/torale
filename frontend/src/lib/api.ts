@@ -254,6 +254,18 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
+  async adminUpdateTaskState(
+    taskId: string,
+    state: 'active' | 'paused' | 'completed'
+  ): Promise<{ id: string; state: string; previous_state: string; message: string }> {
+    const response = await fetch(`${this.baseUrl}/admin/tasks/${taskId}/state`, {
+      method: 'PATCH',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ state }),
+    })
+    return this.handleResponse(response)
+  }
+
   // Waitlist endpoints
   async getWaitlist(statusFilter?: string): Promise<any> {
     const url = statusFilter
