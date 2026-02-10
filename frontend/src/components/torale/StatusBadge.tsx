@@ -32,6 +32,7 @@ export type StatusVariant =
   | 'running'
   | 'retrying'
   | 'triggered'
+  | 'cancelled'
   | 'unknown';
 
 interface StatusBadgeProps {
@@ -114,6 +115,13 @@ const variantConfig: Record<
     border: 'border-emerald-200',
     icon: <Zap className="h-3 w-3" />,
     label: 'Triggered',
+  },
+  cancelled: {
+    bg: 'bg-zinc-50',
+    text: 'text-zinc-500',
+    border: 'border-zinc-200',
+    icon: <Pause className="h-3 w-3" />,
+    label: 'Cancelled',
   },
   unknown: {
     bg: 'bg-amber-50',

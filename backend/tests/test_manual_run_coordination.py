@@ -185,7 +185,7 @@ class TestManualRunCoordination:
 
     @pytest.mark.asyncio
     async def test_force_override_stuck_execution(self):
-        """Force=true should override stuck execution and mark it failed."""
+        """Force=true should override stuck execution and mark it cancelled."""
         db_mock = AsyncMock()
         stuck_execution_id = str(uuid4())
 
@@ -215,7 +215,7 @@ class TestManualRunCoordination:
                 force=True,
             )
 
-        # Verify stuck execution was marked failed
+        # Verify stuck execution was marked cancelled
         update_calls = [
             c
             for c in db_mock.execute.call_args_list
@@ -224,8 +224,8 @@ class TestManualRunCoordination:
         assert len(update_calls) == 1
 
         update_query = update_calls[0].args[0]
-        assert "status = 'failed'" in update_query
-        assert "Execution overridden by manual force run" in update_query
+        assert "status = 'cancelled'" in update_query
+        assert "Execution cancelled by manual force run" in update_query
 
         # Verify new execution was created
         assert result["status"] == "pending"

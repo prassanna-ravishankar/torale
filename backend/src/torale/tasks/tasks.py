@@ -25,6 +25,7 @@ class TaskStatus(str, Enum):
     SUCCESS = "success"
     RETRYING = "retrying"  # Transient failure, will retry
     FAILED = "failed"  # Only for persistent/user-actionable failures
+    CANCELLED = "cancelled"  # Execution cancelled by user action
 
 
 # Notification Models

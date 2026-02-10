@@ -294,13 +294,13 @@ async def start_task_execution(
         )
 
     if running_execution:
-        # Force override: mark stuck execution as failed
+        # Force override: mark stuck execution as cancelled
         stuck_id = running_execution["id"]
         await db.execute(
             """
             UPDATE task_executions
-            SET status = 'failed',
-                error_message = 'Execution overridden by manual force run',
+            SET status = 'cancelled',
+                error_message = 'Execution cancelled by manual force run',
                 internal_error = 'Force override triggered from admin/manual execution',
                 completed_at = $1
             WHERE id = $2
@@ -309,7 +309,7 @@ async def start_task_execution(
             stuck_id,
         )
         logger.warning(
-            f"Force-overriding stuck execution {stuck_id} for task {task_id} "
+            f"Force-cancelling stuck execution {stuck_id} for task {task_id} "
             f"(was in status '{running_execution['status']}' since {running_execution['started_at']})"
         )
 

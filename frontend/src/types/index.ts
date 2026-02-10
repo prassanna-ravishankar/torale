@@ -1,4 +1,4 @@
-export type TaskStatus = "pending" | "running" | "success" | "retrying" | "failed";
+export type TaskStatus = "pending" | "running" | "success" | "retrying" | "failed" | "cancelled";
 export type TaskState = "active" | "paused" | "completed";
 export type NotifyBehavior = "once" | "always";
 export type NotificationChannelType = "email" | "webhook";
