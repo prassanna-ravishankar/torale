@@ -254,6 +254,13 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
+  /**
+   * Update task state (admin only).
+   *
+   * Note: While the API supports 'completed', the admin UI only exposes
+   * pause/resume functionality ('active' | 'paused'). The 'completed' state
+   * is reserved for future features or API-only operations.
+   */
   async adminUpdateTaskState(
     taskId: string,
     state: 'active' | 'paused' | 'completed'

@@ -1018,9 +1018,17 @@ async def admin_execute_task(
 
 
 class AdminTaskStateUpdateRequest(BaseModel):
-    """Request model for updating task state."""
+    """Request model for updating task state.
 
-    state: TaskState = Field(..., description="Target state: 'active', 'paused', or 'completed'")
+    Note: While 'completed' is technically supported, the admin UI only exposes
+    pause/resume actions (active ↔ paused). The 'completed' state can be used
+    via API for advanced operations or future features.
+    """
+
+    state: TaskState = Field(
+        ...,
+        description="Target state: 'active' (resume), 'paused' (pause), or 'completed' (archive)",
+    )
 
 
 @router.patch("/tasks/{task_id}/state")
@@ -1033,11 +1041,27 @@ async def admin_update_task_state(
     """
     Update a task's state (admin-only).
 
-    Allows admins to pause, resume, or complete any task via TaskService state machine.
+    Allows admins to transition any task through valid state changes:
+    - ACTIVE ↔ PAUSED (pause/resume monitoring)
+    - ACTIVE → COMPLETED (mark as done)
+    - COMPLETED → ACTIVE (reactivate completed task)
+
+    Invalid transitions (e.g., PAUSED → COMPLETED) are rejected with 400 error.
+
+    When transitioning to ACTIVE:
+    - Scheduler job is created or resumed
+    - next_run is preserved from DB or defaults to 1 minute from now
+    - Requires task_name, user_id (both fetched from DB)
+
+    Returns:
+    - 200: State updated successfully
+    - 400: Invalid transition or missing required data
+    - 404: Task not found
+    - 500: Scheduler or database error (may leave task in inconsistent state)
     """
     task_row = await db.fetch_one(
-        "SELECT id, state, user_id, next_run FROM tasks WHERE id = :task_id",
-        {"task_id": task_id},
+        "SELECT id, name, state, user_id, next_run FROM tasks WHERE id = $1",
+        task_id,
     )
 
     if not task_row:
@@ -1053,18 +1077,49 @@ async def admin_update_task_state(
 
     try:
         task_service = TaskService(db)
-        await task_service.transition(
+        result = await task_service.transition(
             task_id=task_id,
             from_state=previous_state,
             to_state=target_state,
             user_id=UUID(task_row["user_id"]),
+            task_name=task_row["name"],
             next_run=next_run,
         )
     except InvalidTransitionError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid state transition: {str(e)}",
+        ) from e
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid task data: {str(e)}",
+        ) from e
+    except Exception as e:
+        logger.error(
+            f"Failed to transition task {task_id} from {previous_state.value} to {target_state.value}",
+            exc_info=True,
+            extra={
+                "task_id": str(task_id),
+                "from_state": previous_state.value,
+                "to_state": target_state.value,
+                "admin_email": admin.email,
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update task state. The task may be in an inconsistent state.",
+        ) from e
 
     logger.info(
-        f"Admin {admin.email} changed task {task_id} state: {previous_state.value} -> {target_state.value}"
+        f"Admin {admin.email} changed task {task_id} state: {previous_state.value} -> {target_state.value}",
+        extra={
+            "task_id": str(task_id),
+            "admin_email": admin.email,
+            "from_state": previous_state.value,
+            "to_state": target_state.value,
+            "schedule_action": result.get("schedule_action"),
+        },
     )
 
     return {

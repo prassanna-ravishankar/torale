@@ -66,10 +66,28 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
       const newState = task.state === 'active' ? 'paused' : 'active'
       await api.adminUpdateTaskState(task.id, newState)
       toast.success(newState === 'active' ? 'Task resumed' : 'Task paused')
-      onTaskUpdate?.() // Refresh parent table
-      setRetryCount((c) => c + 1) // Refresh executions
+
+      // Refresh parent and local state
+      try {
+        onTaskUpdate?.()
+      } catch (callbackErr) {
+        console.error('Failed to refresh task list:', callbackErr)
+      }
+      setRetryCount((c) => c + 1)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update task state')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update task state'
+
+      // Provide specific guidance based on error type
+      if (errorMessage.includes('Invalid state transition')) {
+        toast.error('Cannot change task state from current status. Refresh and try again.')
+      } else if (errorMessage.includes('not found')) {
+        toast.error('Task no longer exists. Refreshing...')
+        onTaskUpdate?.()
+      } else if (errorMessage.includes('inconsistent state')) {
+        toast.error('Task state update failed. Contact support if issue persists.')
+      } else {
+        toast.error(`Failed to update task: ${errorMessage}`)
+      }
     } finally {
       setIsPauseResuming(false)
     }
