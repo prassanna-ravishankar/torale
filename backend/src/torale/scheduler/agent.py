@@ -36,6 +36,17 @@ AGENT_TIMEOUT = 120  # seconds
 POLL_BACKOFF = [0.5, 1, 2, 4, 8, 16, 32]  # exponential backoff steps
 MAX_CONSECUTIVE_POLL_FAILURES = 3
 
+# Reuse httpx client for connection pooling
+_httpx_client: httpx.AsyncClient | None = None
+
+
+def _get_httpx_client() -> httpx.AsyncClient:
+    """Get or create a shared httpx client for connection reuse."""
+    global _httpx_client
+    if _httpx_client is None:
+        _httpx_client = httpx.AsyncClient(timeout=httpx.Timeout(timeout=AGENT_TIMEOUT))
+    return _httpx_client
+
 
 def _extract_error_details(task: Task) -> dict | None:
     """Extract structured error details from a failed task's status.message.
@@ -137,117 +148,117 @@ async def _call_agent_internal(
     message_id = f"msg-{uuid.uuid4().hex[:12]}"
     request_id = f"req-{uuid.uuid4().hex[:12]}"
 
-    async with httpx.AsyncClient() as httpx_client:
-        client = A2AClient(httpx_client=httpx_client, url=base_url)
-        poll_start_time = time.monotonic()
+    httpx_client = _get_httpx_client()
+    client = A2AClient(httpx_client=httpx_client, url=base_url)
+    poll_start_time = time.monotonic()
 
-        message = Message(
-            role=Role.user,
-            kind="message",
-            message_id=message_id,
-            parts=[Part(root=TextPart(kind="text", text=prompt))],
-        )
+    message = Message(
+        role=Role.user,
+        kind="message",
+        message_id=message_id,
+        parts=[Part(root=TextPart(kind="text", text=prompt))],
+    )
 
-        configuration = MessageSendConfiguration(accepted_output_modes=["application/json"])
+    configuration = MessageSendConfiguration(accepted_output_modes=["application/json"])
 
-        request = SendMessageRequest(
-            id=request_id,
-            params=MessageSendParams(
-                message=message,
-                configuration=configuration,
-                metadata={"user_id": user_id, "task_id": task_id},
-            ),
-        )
+    request = SendMessageRequest(
+        id=request_id,
+        params=MessageSendParams(
+            message=message,
+            configuration=configuration,
+            metadata={"user_id": user_id, "task_id": task_id},
+        ),
+    )
+
+    try:
+        send_response = await client.send_message(request)
+    except A2AClientHTTPError as e:
+        # Re-raise 429 to preserve status_code for fallback logic
+        # Wrap other HTTP errors in RuntimeError for consistent error handling
+        if e.status_code == 429:
+            raise
+        raise RuntimeError(
+            f"Failed to send task to agent at {base_url}: status={e.status_code} {e.message[:200]}"
+        ) from e
+    except Exception as e:
+        raise RuntimeError(f"Failed to send task to agent at {base_url}: {e}") from e
+
+    response = send_response.root
+    if isinstance(response, JSONRPCErrorResponse):
+        raise RuntimeError(f"Agent returned error: {response.error}")
+
+    task = response.result
+    a2a_task_id = task.id
+    logger.info(f"Agent task sent successfully, task_id={a2a_task_id}")
+
+    # Poll for completion
+    deadline = time.monotonic() + AGENT_TIMEOUT
+    backoff_idx = 0
+    consecutive_poll_failures = 0
+    poll_count = 0
+
+    while time.monotonic() < deadline:
+        poll_count += 1
+        delay = POLL_BACKOFF[min(backoff_idx, len(POLL_BACKOFF) - 1)]
+        await asyncio.sleep(delay)
+        backoff_idx += 1
 
         try:
-            send_response = await client.send_message(request)
-        except A2AClientHTTPError as e:
-            # Re-raise 429 to preserve status_code for fallback logic
-            # Wrap other HTTP errors in RuntimeError for consistent error handling
-            if e.status_code == 429:
-                raise
-            raise RuntimeError(
-                f"Failed to send task to agent at {base_url}: status={e.status_code} {e.message[:200]}"
-            ) from e
+            poll_response = await client.get_task(
+                GetTaskRequest(
+                    id=request_id,
+                    params=TaskQueryParams(id=a2a_task_id),
+                )
+            )
+            consecutive_poll_failures = 0
         except Exception as e:
-            raise RuntimeError(f"Failed to send task to agent at {base_url}: {e}") from e
+            consecutive_poll_failures += 1
+            logger.warning(
+                f"Poll failure {consecutive_poll_failures}/{MAX_CONSECUTIVE_POLL_FAILURES} "
+                f"for agent task {a2a_task_id}: {e}"
+            )
+            if consecutive_poll_failures >= MAX_CONSECUTIVE_POLL_FAILURES:
+                raise RuntimeError(
+                    f"Agent poll failed {MAX_CONSECUTIVE_POLL_FAILURES} consecutive times "
+                    f"for task {a2a_task_id}"
+                ) from e
+            continue
 
-        response = send_response.root
-        if isinstance(response, JSONRPCErrorResponse):
-            raise RuntimeError(f"Agent returned error: {response.error}")
+        poll_result = poll_response.root
+        if isinstance(poll_result, JSONRPCErrorResponse):
+            consecutive_poll_failures += 1
+            logger.warning(f"Poll error for task {a2a_task_id}: {poll_result.error}")
+            if consecutive_poll_failures >= MAX_CONSECUTIVE_POLL_FAILURES:
+                raise RuntimeError(
+                    f"Agent poll returned errors {MAX_CONSECUTIVE_POLL_FAILURES} times "
+                    f"for task {a2a_task_id}"
+                )
+            continue
 
-        task = response.result
-        a2a_task_id = task.id
-        logger.info(f"Agent task sent successfully, task_id={a2a_task_id}")
+        task = poll_result.result
+        state = task.status.state
+        logger.debug(f"Agent task {a2a_task_id} state: {state}")
 
-        # Poll for completion
-        deadline = time.monotonic() + AGENT_TIMEOUT
-        backoff_idx = 0
-        consecutive_poll_failures = 0
-        poll_count = 0
-
-        while time.monotonic() < deadline:
-            poll_count += 1
-            delay = POLL_BACKOFF[min(backoff_idx, len(POLL_BACKOFF) - 1)]
-            await asyncio.sleep(delay)
-            backoff_idx += 1
-
-            try:
-                poll_response = await client.get_task(
-                    GetTaskRequest(
-                        id=request_id,
-                        params=TaskQueryParams(id=a2a_task_id),
+        match state:
+            case TaskState.completed:
+                parsed = _parse_agent_response(task)
+                poll_duration = time.monotonic() - poll_start_time
+                if user_id:
+                    posthog_capture(
+                        distinct_id=user_id,
+                        event="agent_task_completed",
+                        properties={
+                            "poll_duration_seconds": round(poll_duration, 2),
+                            "poll_iterations": poll_count,
+                        },
                     )
-                )
-                consecutive_poll_failures = 0
-            except Exception as e:
-                consecutive_poll_failures += 1
-                logger.warning(
-                    f"Poll failure {consecutive_poll_failures}/{MAX_CONSECUTIVE_POLL_FAILURES} "
-                    f"for agent task {a2a_task_id}: {e}"
-                )
-                if consecutive_poll_failures >= MAX_CONSECUTIVE_POLL_FAILURES:
-                    raise RuntimeError(
-                        f"Agent poll failed {MAX_CONSECUTIVE_POLL_FAILURES} consecutive times "
-                        f"for task {a2a_task_id}"
-                    ) from e
+                return MonitoringResponse.model_validate(parsed)
+            case TaskState.failed:
+                _handle_failed_task(task)
+            case TaskState.working | TaskState.submitted:
                 continue
 
-            poll_result = poll_response.root
-            if isinstance(poll_result, JSONRPCErrorResponse):
-                consecutive_poll_failures += 1
-                logger.warning(f"Poll error for task {a2a_task_id}: {poll_result.error}")
-                if consecutive_poll_failures >= MAX_CONSECUTIVE_POLL_FAILURES:
-                    raise RuntimeError(
-                        f"Agent poll returned errors {MAX_CONSECUTIVE_POLL_FAILURES} times "
-                        f"for task {a2a_task_id}"
-                    )
-                continue
-
-            task = poll_result.result
-            state = task.status.state
-            logger.debug(f"Agent task {a2a_task_id} state: {state}")
-
-            match state:
-                case TaskState.completed:
-                    parsed = _parse_agent_response(task)
-                    poll_duration = time.monotonic() - poll_start_time
-                    if user_id:
-                        posthog_capture(
-                            distinct_id=user_id,
-                            event="agent_task_completed",
-                            properties={
-                                "poll_duration_seconds": round(poll_duration, 2),
-                                "poll_iterations": poll_count,
-                            },
-                        )
-                    return MonitoringResponse.model_validate(parsed)
-                case TaskState.failed:
-                    _handle_failed_task(task)
-                case TaskState.working | TaskState.submitted:
-                    continue
-
-        raise TimeoutError(f"Agent did not complete within {AGENT_TIMEOUT}s")
+    raise TimeoutError(f"Agent did not complete within {AGENT_TIMEOUT}s")
 
 
 def _parse_agent_response(task: Task) -> dict:

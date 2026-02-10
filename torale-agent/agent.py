@@ -155,7 +155,9 @@ def _register_tools(agent: Agent) -> None:
         """Search previous monitoring memories for this task. Use to recall what was found in earlier runs."""
         results = await mem0_client.search(
             query,
-            filters={"AND": [{"user_id": ctx.deps.user_id}, {"app_id": ctx.deps.task_id}]},
+            filters={
+                "AND": [{"user_id": ctx.deps.user_id}, {"app_id": ctx.deps.task_id}]
+            },
             top_k=10,
         )
         return json.dumps(results, default=str)
@@ -193,7 +195,10 @@ def create_monitoring_agent(
         supports_thinking = "gemini-3" in model_lower or "gemini-2.5-pro" in model_lower
         if supports_thinking:
             model_settings = GoogleModelSettings(
-                google_thinking_config={"thinking_level": "low", "include_thoughts": True},
+                google_thinking_config={
+                    "thinking_level": "low",
+                    "include_thoughts": True,
+                },
             )
 
     agent = Agent(
@@ -262,22 +267,39 @@ class ToraleAgentExecutor(AgentExecutor):
         user_input = context.get_user_input()
 
         # Extract user_id and task_id from A2A metadata
+        # Security note: This agent is deployed as ClusterIP (internal-only) in production,
+        # accessible only from the authenticated backend. The backend validates user sessions
+        # and ensures user_id/task_id match the authenticated user before calling this endpoint.
+        # External spoofing is mitigated by network isolation.
         metadata = context.metadata
         user_id = metadata.get("user_id", "")
         monitoring_task_id = metadata.get("task_id", "")
 
         if not user_id or not monitoring_task_id:
-            error_msg = f"Missing required metadata - user_id: {bool(user_id)}, task_id: {bool(monitoring_task_id)}"
+            missing = [
+                f"'{field}'"
+                for field, value in (
+                    ("user_id", user_id),
+                    ("task_id", monitoring_task_id),
+                )
+                if not value
+            ]
+            error_msg = f"Missing required metadata: {', '.join(missing)}"
             logger.error(
                 "Agent task failed: %s",
                 error_msg,
                 extra={"task_id": task_id, "metadata": metadata},
             )
-            await self._emit_failure(event_queue, task_id, context_id, {
-                "error_type": "ConfigurationError",
-                "message": error_msg,
-                "metadata_received": metadata,
-            })
+            await self._emit_failure(
+                event_queue,
+                task_id,
+                context_id,
+                {
+                    "error_type": "ConfigurationError",
+                    "message": error_msg,
+                    "metadata_received": metadata,
+                },
+            )
             return
 
         deps = MonitoringDeps(user_id=user_id, task_id=monitoring_task_id)
@@ -323,15 +345,19 @@ class ToraleAgentExecutor(AgentExecutor):
                     "monitoring_task_id": monitoring_task_id,
                     "model_name": e.model_name,
                     "status_code": e.status_code,
-                    "prompt_preview": user_input[:200] if user_input else "",
                 },
             )
-            await self._emit_failure(event_queue, task_id, context_id, {
-                "error_type": "ModelHTTPError",
-                "status_code": e.status_code,
-                "model_name": str(e.model_name),
-                "message": str(e),
-            })
+            await self._emit_failure(
+                event_queue,
+                task_id,
+                context_id,
+                {
+                    "error_type": "ModelHTTPError",
+                    "status_code": e.status_code,
+                    "model_name": str(e.model_name),
+                    "message": str(e),
+                },
+            )
 
         except (ValueError, RuntimeError) as e:
             logger.error(
@@ -344,13 +370,17 @@ class ToraleAgentExecutor(AgentExecutor):
                     "user_id": user_id,
                     "monitoring_task_id": monitoring_task_id,
                     "error_type": type(e).__name__,
-                    "prompt_preview": user_input[:200] if user_input else "",
                 },
             )
-            await self._emit_failure(event_queue, task_id, context_id, {
-                "error_type": type(e).__name__,
-                "message": str(e),
-            })
+            await self._emit_failure(
+                event_queue,
+                task_id,
+                context_id,
+                {
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                },
+            )
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         await event_queue.enqueue_event(
