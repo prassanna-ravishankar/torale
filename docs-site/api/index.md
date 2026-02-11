@@ -32,6 +32,4 @@ Torale provides interactive API documentation at:
 - Production: `https://api.torale.ai/docs` (ReDoc)
 - Swagger UI: `https://api.torale.ai/redoc`
 
-## Getting Started
-
 Start with the [API Overview](./overview) to understand authentication and endpoints, then explore the interactive docs for hands-on testing.

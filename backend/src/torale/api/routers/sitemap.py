@@ -100,18 +100,21 @@ async def generate_changelog_rss():
     Reads changelog.json from frontend/public and converts to RSS format.
     Includes first 50 entries with proper RFC-2822 date formatting.
     """
-    # Find changelog.json - navigate up from backend/src/torale/api/routers/
-    # to project root, then to frontend/public/changelog.json
-    current_file = Path(__file__)
-    project_root = current_file.parent.parent.parent.parent.parent
+    # Find project root by looking for pyproject.toml marker file
+    project_root = Path(__file__).resolve()
+    while not (project_root / "pyproject.toml").exists():
+        if project_root.parent == project_root:
+            raise FileNotFoundError("Could not find project root containing 'pyproject.toml'")
+        project_root = project_root.parent
     changelog_path = project_root / "frontend" / "public" / "changelog.json"
 
     # Read and parse changelog
     with open(changelog_path, encoding="utf-8") as f:
         entries = json.load(f)
 
-    # Take first 50 entries
-    entries = entries[:50]
+    # Take first MAX_RSS_ENTRIES entries
+    MAX_RSS_ENTRIES = 50
+    entries = entries[:MAX_RSS_ENTRIES]
 
     base_url = settings.frontend_url or "https://torale.ai"
 
@@ -146,7 +149,7 @@ async def generate_changelog_rss():
         pub_date = format_datetime(date_obj)
         ET.SubElement(item, "pubDate").text = pub_date
 
-        # Add description as CDATA
+        # Add description (XML-escaped by ElementTree)
         description = ET.SubElement(item, "description")
         description.text = entry["description"]
 

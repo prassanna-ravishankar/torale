@@ -51,7 +51,12 @@ export default function Changelog() {
         />
       </Helmet>
       {structuredData && (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: structuredData.replace(/</g, '\\u003c')
+          }}
+        />
       )}
       <div className="min-h-screen bg-zinc-50 text-zinc-900 font-sans selection:bg-[hsl(10,90%,55%)] selection:text-white">
       {/* Background Grid */}
