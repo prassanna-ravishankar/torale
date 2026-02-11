@@ -1,6 +1,9 @@
 # Multi-stage build for VitePress documentation site
 FROM node:20.19.0-alpine AS builder
 
+# Install git for VitePress lastUpdated feature
+RUN apk add --no-cache git
+
 WORKDIR /app
 
 # Copy package files
