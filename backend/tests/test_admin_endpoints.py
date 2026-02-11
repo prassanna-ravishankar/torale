@@ -499,7 +499,7 @@ class TestAdminResetTaskHistory:
 
     @pytest.mark.asyncio
     async def test_reset_clears_task_state_fields(self, mock_admin):
-        """Test reset properly clears last_execution_id, last_known_state, state_changed_at."""
+        """Test reset properly clears last_execution_id, last_known_state, and updates state_changed_at."""
         task_id = uuid4()
 
         mock_session = AsyncMock()
@@ -534,5 +534,5 @@ class TestAdminResetTaskHistory:
         assert "UPDATE tasks" in query_text
         assert "last_execution_id = NULL" in query_text
         assert "last_known_state = NULL" in query_text
-        assert "state_changed_at = NULL" in query_text
+        assert "state_changed_at = NOW()" in query_text
         assert update_call[0][1]["task_id"] == task_id

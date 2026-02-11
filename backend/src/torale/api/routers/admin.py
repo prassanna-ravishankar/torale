@@ -1188,7 +1188,7 @@ async def reset_task_history(
                 UPDATE tasks
                 SET last_execution_id = NULL,
                     last_known_state = NULL,
-                    state_changed_at = NULL,
+                    state_changed_at = NOW(),
                     updated_at = NOW()
                 WHERE id = :task_id
             """),
