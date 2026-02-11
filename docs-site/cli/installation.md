@@ -1,3 +1,7 @@
+---
+description: Install Torale CLI via pip or pipx. System requirements, virtual environment setup, and platform-specific installation instructions.
+---
+
 # CLI Installation
 
 Install the Torale command-line interface.

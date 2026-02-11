@@ -1,3 +1,7 @@
+---
+description: Admin API reference for platform management. User administration, system stats, task controls, and operational endpoints.
+---
+
 # Admin Endpoints
 
 Platform monitoring and management endpoints for administrators.

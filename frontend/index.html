@@ -52,6 +52,19 @@
 
     <!-- Load runtime config (deferred for better performance) -->
     <script src="/config.js" defer></script>
+
+    <!-- Structured Data - Organization Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Torale",
+      "url": "https://torale.ai",
+      "logo": "https://torale.ai/logo.svg",
+      "description": "AI-powered grounded search monitoring platform",
+      "foundingDate": "2025"
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,3 +1,7 @@
+---
+description: Authenticate Torale CLI with API keys. Generate keys in web dashboard, configure CLI authentication, and manage multiple profiles.
+---
+
 # CLI Authentication
 
 Authenticate the Torale CLI with your account.

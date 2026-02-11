@@ -1,3 +1,7 @@
+---
+description: Self-hosted deployment overview. Hosting options, infrastructure requirements, and deployment strategies for Torale platform.
+---
+
 # Self-Hosted Deployment
 
 Run Torale on your own infrastructure using Docker Compose.

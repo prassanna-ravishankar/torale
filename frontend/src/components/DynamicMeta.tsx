@@ -11,7 +11,7 @@ interface DynamicMetaProps {
 export function DynamicMeta({
   title = 'Torale - AI-Powered Web Monitoring',
   description = 'Monitor the web with AI. Get notified when conditions are met.',
-  image = 'https://torale.ai/og-image.png',
+  image = 'https://torale.ai/og-image.webp',
   url = 'https://torale.ai',
   type = 'website',
 }: DynamicMetaProps) {

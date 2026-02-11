@@ -1,3 +1,7 @@
+---
+description: State tracking and change detection in Torale. How tasks monitor state changes, detect new information, and trigger notifications.
+---
+
 # State Tracking
 
 This page covers state tracking implementation details for the monitoring pipeline.

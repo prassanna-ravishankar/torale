@@ -1,3 +1,7 @@
+---
+description: Kubernetes deployment with Helm charts. Production-grade configuration, scaling, health checks, and Kubernetes best practices.
+---
+
 # Kubernetes Deployment
 
 Deploy Torale to GKE with full production setup.

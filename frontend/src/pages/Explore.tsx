@@ -5,6 +5,7 @@ import type { Task } from '@/types';
 import { BrutalistCard, SectionLabel } from '@/components/torale';
 import { Loader2, Eye, Users, ChevronLeft, ChevronRight, Compass, Copy } from 'lucide-react';
 import { toast } from 'sonner';
+import { DynamicMeta } from '@/components/DynamicMeta';
 
 export function Explore() {
   const navigate = useNavigate();
@@ -53,7 +54,13 @@ export function Explore() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <>
+      <DynamicMeta
+        title="Explore Public Monitoring Tasks - Torale"
+        description="Discover community monitoring tasks. Browse templates, view execution history, and copy tasks to your dashboard with one click. Free web monitoring powered by AI."
+        url="https://torale.ai/explore"
+      />
+      <div className="min-h-screen bg-zinc-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -202,5 +209,6 @@ export function Explore() {
         )}
       </div>
     </div>
+    </>
   );
 }

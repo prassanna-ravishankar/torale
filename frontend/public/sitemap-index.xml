@@ -3,10 +3,12 @@
   <!-- Main application sitemap -->
   <sitemap>
     <loc>https://torale.ai/sitemap.xml</loc>
+    <lastmod>2026-02-11</lastmod>
   </sitemap>
 
   <!-- Documentation sitemap -->
   <sitemap>
     <loc>https://docs.torale.ai/sitemap.xml</loc>
+    <lastmod>2026-02-11</lastmod>
   </sitemap>
 </sitemapindex>

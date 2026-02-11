@@ -1,3 +1,7 @@
+---
+description: Install and use Torale CLI for terminal-based task management. Full API access from the command line with authentication and configuration guide.
+---
+
 # CLI
 
 Install and use the Torale command-line interface.

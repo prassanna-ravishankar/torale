@@ -159,6 +159,23 @@ export function ComparePage() {
 
         {/* FAQ */}
         <section className="py-24 px-6 bg-zinc-50">
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                "mainEntity": data.faq.map(faq => ({
+                  "@type": "Question",
+                  "name": faq.question,
+                  "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": faq.answer
+                  }
+                }))
+              }).replace(/</g, '\\u003c')
+            }}
+          />
           <div className="container mx-auto max-w-3xl">
             <h2 className="text-3xl md:text-4xl font-bold font-grotesk mb-12 text-zinc-900 text-center">
               Frequently Asked Questions

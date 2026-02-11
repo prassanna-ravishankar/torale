@@ -1,3 +1,7 @@
+---
+description: Handle errors in Torale Python SDK. Exception types, error responses, retry logic, and best practices for robust error handling.
+---
+
 # Error Handling
 
 Handle errors gracefully in the Torale Python SDK.

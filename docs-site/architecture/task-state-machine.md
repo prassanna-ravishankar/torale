@@ -1,3 +1,7 @@
+---
+description: Task state machine and lifecycle. Task states, transitions, execution scheduling, and state management in Torale monitoring system.
+---
+
 # Task State Machine
 
 Torale uses an explicit state machine to manage task lifecycle, replacing the previous boolean `is_active` field with a proper state enum.

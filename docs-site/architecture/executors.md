@@ -1,3 +1,7 @@
+---
+description: Task execution architecture. How monitors run, condition evaluation, notification delivery, and execution retry logic.
+---
+
 # Executor System
 
 ## Interface

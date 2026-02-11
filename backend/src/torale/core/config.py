@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     # Frontend URL for SEO (sitemap, OpenGraph, etc.)
     frontend_url: str = "https://torale.ai"
 
+    # Path to changelog.json file (relative to project root or absolute path)
+    changelog_json_path: str = "frontend/public/changelog.json"
+
     # Development/testing mode - disable authentication
     torale_noauth: bool = False
     torale_noauth_email: str = "test@example.com"

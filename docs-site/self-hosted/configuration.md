@@ -1,3 +1,7 @@
+---
+description: Configure self-hosted Torale instance. Environment variables, database settings, API keys, and feature flags for custom deployments.
+---
+
 # Configuration
 
 Environment variables for self-hosted Torale deployments.

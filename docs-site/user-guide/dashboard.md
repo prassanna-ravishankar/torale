@@ -1,3 +1,7 @@
+---
+description: Navigate Torale's dashboard interface. View tasks, filter by status, access execution history, and manage your monitoring workflows efficiently.
+---
+
 # Dashboard Overview
 
 The Torale dashboard provides a complete interface for creating and managing monitoring tasks.

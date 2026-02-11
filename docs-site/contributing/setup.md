@@ -1,3 +1,7 @@
+---
+description: Contributing to Torale development. Local setup, development environment, coding standards, and contribution workflow.
+---
+
 # Development Setup
 
 ## Prerequisites

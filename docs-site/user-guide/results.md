@@ -1,3 +1,7 @@
+---
+description: View and interpret task execution results. Understand execution states, evidence, timestamps, and notification delivery status in Torale.
+---
+
 # Viewing Results
 
 View execution history and check when your conditions are met.

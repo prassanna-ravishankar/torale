@@ -1,3 +1,7 @@
+---
+description: Code conventions and style guide for Torale. Naming patterns, formatting rules, commit messages, and project standards.
+---
+
 # Code Conventions
 
 ## Python

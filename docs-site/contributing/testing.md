@@ -1,3 +1,7 @@
+---
+description: Testing guide for Torale contributions. Unit tests, integration tests, test fixtures, and testing best practices.
+---
+
 # Testing Guide
 
 ## Running Tests

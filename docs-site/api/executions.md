@@ -1,3 +1,7 @@
+---
+description: Executions API reference. View task execution history, check status, retrieve results, and query execution details via REST API.
+---
+
 # Executions API
 
 View task execution history and results.

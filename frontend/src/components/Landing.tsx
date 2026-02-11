@@ -103,9 +103,28 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#fafafa] text-zinc-900 font-sans selection:bg-[hsl(10,90%,55%)] selection:text-white">
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "Torale",
+            "applicationCategory": "WebApplication",
+            "operatingSystem": "Web",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "description": "Create monitoring tasks with natural language. Get notified when conditions are met using Google Search + LLM analysis."
+          }).replace(/</g, '\\u003c')
+        }}
+      />
+      <div className="min-h-screen bg-[#fafafa] text-zinc-900 font-sans selection:bg-[hsl(10,90%,55%)] selection:text-white">
 
-      <BackgroundPattern />
+        <BackgroundPattern />
 
       {/* Navigation */}
       <nav className="sticky top-0 z-50 w-full bg-[#fafafa]/90 backdrop-blur-md border-b border-zinc-200">
@@ -539,5 +558,6 @@ export default function Landing() {
 
       </main>
     </div>
+    </>
   );
 }

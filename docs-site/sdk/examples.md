@@ -1,3 +1,7 @@
+---
+description: Torale Python SDK code examples. Real-world monitoring scenarios with complete code samples for common use cases and integration patterns.
+---
+
 # Examples
 
 Practical examples using the Torale Python SDK.

@@ -1,3 +1,7 @@
+---
+description: Search providers and data pipelines. Gemini, Perplexity integration, result processing, and multi-provider orchestration.
+---
+
 # Agent Architecture
 
 Torale uses a Gemini-powered monitoring agent (Pydantic AI) instead of the previous multi-provider pipeline.

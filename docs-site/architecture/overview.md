@@ -1,3 +1,7 @@
+---
+description: Torale platform architecture overview. System design, component interaction, data flow, and technical architecture documentation.
+---
+
 # System Overview
 
 Torale is a grounded search monitoring platform built for scalability and reliability.

@@ -1,3 +1,7 @@
+---
+description: API authentication with API keys and bearer tokens. Generate keys, secure credential storage, and authentication best practices.
+---
+
 # Authentication
 
 Torale supports two authentication methods: Clerk OAuth for web applications and API keys for programmatic access.

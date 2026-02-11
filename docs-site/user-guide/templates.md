@@ -1,3 +1,7 @@
+---
+description: Use Torale task templates for common monitoring scenarios. Pre-configured templates for product launches, price tracking, and availability monitoring.
+---
+
 # Task Templates
 
 Pre-configured templates for common monitoring scenarios.

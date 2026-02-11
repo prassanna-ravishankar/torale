@@ -1,3 +1,7 @@
+---
+description: Preview Torale SDK features before deployment. Test task configurations, validate conditions, and preview execution behavior locally.
+---
+
 # Preview
 
 Test search queries before creating tasks.

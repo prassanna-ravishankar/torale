@@ -1,3 +1,7 @@
+---
+description: Torale database schema documentation. Tables, relationships, indexes, constraints, and data model for self-hosted deployments.
+---
+
 # Database Schema
 
 Torale uses PostgreSQL for all data storage, with separate tables for users, tasks, executions, and templates.
