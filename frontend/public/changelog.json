@@ -1,5 +1,59 @@
 [
   {
+    "id": "2026-02-11-admin-task-controls",
+    "date": "2026-02-11",
+    "title": "Admin Console Task Controls",
+    "description": "Admin console now has full task lifecycle controls. Pause and resume monitoring tasks without deletion, reset stuck executions with one click, and manually trigger task runs on demand. Improved reliability of manual task execution coordination with scheduled retries.",
+    "category": "improvement",
+    "requestedBy": [],
+    "pr": [162, 163, 161]
+  },
+  {
+    "id": "2026-02-09-premium-welcome-flow",
+    "date": "2026-02-09",
+    "title": "Premium First-Time User Experience",
+    "description": "Arc browser-inspired welcome flow for new users. Beautiful morphing animations transition from search icon to bell with mesh gradient backgrounds. Five-step guided introduction showcases Torale's core value proposition with silky smooth animations and premium design. Accessible anytime at /welcome route.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": 157
+  },
+  {
+    "id": "2026-02-09-posthog-analytics",
+    "date": "2026-02-09",
+    "title": "PostHog Analytics & User Feedback",
+    "description": "Privacy-first analytics powered by PostHog. Track user behavior patterns, task lifecycle events, execution performance, and agent usage metrics without capturing any search queries or sensitive data. New feedback modal and inline widget let users share suggestions directly from the dashboard. Session replay with automatic input masking ensures privacy.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": 153
+  },
+  {
+    "id": "2026-02-09-dashboard-ux-polish",
+    "date": "2026-02-09",
+    "title": "Dashboard & Task Creation UX Polish",
+    "description": "Refined dashboard experience with improved task creation flow, better admin console mobile responsiveness, and fixed Clerk metadata persistence. TaskCreationDialog now has cleaner layout and validation, dashboard filters work more intuitively, and welcome flow properly tracks user onboarding state. Multiple small UX papercuts resolved.",
+    "category": "improvement",
+    "requestedBy": [],
+    "pr": [155, 156, 158, 159]
+  },
+  {
+    "id": "2026-02-10-a2a-sdk-migration",
+    "date": "2026-02-10",
+    "title": "A2A SDK Migration & Agent Infrastructure",
+    "description": "Migrated from fasta2a to official a2a-sdk for agent communication. Pydantic-based structured data exchange ensures type-safe agent responses. Dual agent deployment with automatic paid tier fallback provides reliability when free tier hits rate limits. Clean 429 error propagation via A2A task status improves error visibility.",
+    "category": "infra",
+    "requestedBy": [],
+    "pr": [160, 146, 150, 151]
+  },
+  {
+    "id": "2026-02-08-agent-intelligence",
+    "date": "2026-02-08",
+    "title": "Agent Intelligence & Reliability Improvements",
+    "description": "Major agent reliability and intelligence enhancements. Agent now has improved memory retention across executions, intelligent task failure handling with exponential backoff retry logic, and enhanced temporal awareness to prevent stale results. Admin 'Run Now' button triggers immediate task execution. Simplified backend testing by removing 81 low-value tests while adding comprehensive agent evaluation CLI. Display improvements for notification and evidence fields in execution views.",
+    "category": "improvement",
+    "requestedBy": [],
+    "pr": [140, 141, 142, 144, 145, 147, 148, 149, 152, 154]
+  },
+  {
     "id": "2026-02-02-agentic-monitoring",
     "date": "2026-02-02",
     "title": "Agentic Monitoring",

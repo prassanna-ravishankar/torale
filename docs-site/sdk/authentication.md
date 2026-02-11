@@ -1,3 +1,7 @@
+---
+description: Authenticate with Torale API using Python SDK. Initialize client with API keys, manage credentials, and handle authentication errors.
+---
+
 # Authentication
 
 Authenticate the SDK with your API key.

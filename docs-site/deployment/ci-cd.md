@@ -1,3 +1,7 @@
+---
+description: CI/CD pipeline setup for Torale. GitHub Actions workflows, automated testing, Docker builds, and deployment automation.
+---
+
 # CI/CD with GitHub Actions
 
 Automated CI/CD pipeline using GitHub Actions with Workload Identity Federation for keyless GCP authentication.

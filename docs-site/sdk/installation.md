@@ -1,3 +1,7 @@
+---
+description: Install Torale Python SDK via pip. Requirements, virtual environment setup, and dependency management for programmatic task monitoring.
+---
+
 # Installation
 
 Install the Torale Python SDK.

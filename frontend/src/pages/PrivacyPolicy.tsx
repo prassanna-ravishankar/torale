@@ -1,12 +1,18 @@
 import { useNavigate } from "react-router-dom"
 import { Logo } from "@/components/Logo"
 import { ArrowLeft } from "lucide-react"
+import { Helmet } from "react-helmet-async"
 
 export function PrivacyPolicy() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-[#fafafa]">
+    <>
+      <Helmet>
+        <title>Privacy Policy - Torale</title>
+        <meta name="description" content="Privacy policy for Torale. Learn how we protect your data and monitoring queries." />
+      </Helmet>
+      <div className="min-h-screen bg-[#fafafa]">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full bg-[#fafafa]/90 backdrop-blur-md border-b border-zinc-200">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
@@ -292,5 +298,6 @@ export function PrivacyPolicy() {
         </div>
       </main>
     </div>
+    </>
   )
 }

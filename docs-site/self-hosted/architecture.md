@@ -1,3 +1,7 @@
+---
+description: Self-hosted Torale architecture. System components, service dependencies, data flow, and infrastructure requirements overview.
+---
+
 # Architecture
 
 System architecture for self-hosted Torale deployments.

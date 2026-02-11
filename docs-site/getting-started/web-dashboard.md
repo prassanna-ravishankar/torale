@@ -1,3 +1,7 @@
+---
+description: Get started with Torale's web dashboard. Create monitoring tasks, configure notifications, and track execution results through an intuitive interface.
+---
+
 # Web Dashboard
 
 Use Torale through the web interface at [torale.ai](https://torale.ai).

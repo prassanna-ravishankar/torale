@@ -1,3 +1,7 @@
+---
+description: Configure notification channels in Torale. Set up email and webhook delivery, verify addresses, and manage notification settings for your tasks.
+---
+
 # Notifications
 
 Configure when and how you receive notifications.

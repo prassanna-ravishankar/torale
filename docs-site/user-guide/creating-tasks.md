@@ -1,3 +1,7 @@
+---
+description: Learn how to create monitoring tasks with conditions, schedules, and notifications. Master Torale's task creation interface with templates or custom configuration.
+---
+
 # Creating Tasks
 
 Create monitoring tasks through the web dashboard.

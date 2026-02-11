@@ -1,3 +1,7 @@
+---
+description: Deploy Torale with Docker Compose. Quick setup for local development or small production deployments with database and scheduler.
+---
+
 # Docker Compose Setup
 
 Run Torale locally with Docker Compose.

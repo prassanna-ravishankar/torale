@@ -1,3 +1,7 @@
+---
+description: Notifications API reference. Configure channels, verify emails, manage webhooks, and view notification history via REST API.
+---
+
 # Notifications API
 
 View notifications (executions where conditions were met).

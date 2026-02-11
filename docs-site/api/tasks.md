@@ -1,3 +1,7 @@
+---
+description: Tasks API reference. Create, list, update, and delete monitoring tasks via REST API with JSON request/response examples.
+---
+
 # Tasks API
 
 Create and manage monitoring tasks via REST API.

@@ -1,3 +1,7 @@
+---
+description: Get started with Torale's web monitoring platform. Choose between web dashboard, CLI, Python SDK, or self-hosted deployment based on your workflow.
+---
+
 # Getting Started
 
 Choose how you want to use Torale based on your workflow.

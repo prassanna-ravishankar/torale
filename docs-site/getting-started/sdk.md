@@ -1,3 +1,7 @@
+---
+description: Python SDK guide for programmatic Torale integration. Create tasks, manage executions, and build automated monitoring workflows in your applications.
+---
+
 # Python SDK
 
 Integrate Torale into your Python applications.

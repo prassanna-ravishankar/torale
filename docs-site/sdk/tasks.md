@@ -1,3 +1,7 @@
+---
+description: Manage monitoring tasks with Torale Python SDK. Create, list, update, and delete tasks programmatically with fluent API examples.
+---
+
 # Tasks
 
 Create and manage monitoring tasks with the Python SDK.

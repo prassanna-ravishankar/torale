@@ -1,3 +1,7 @@
+---
+description: Complete Torale CLI command reference. List tasks, create monitors, view executions, check status, and manage notifications from terminal.
+---
+
 # Task Commands
 
 Manage monitoring tasks via CLI.

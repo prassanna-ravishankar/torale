@@ -1,3 +1,7 @@
+---
+description: Manage monitoring tasks lifecycle. Edit configurations, pause/resume execution, delete tasks, and control your monitoring workflows.
+---
+
 # Managing Tasks
 
 Edit, pause, resume, and delete your monitoring tasks.

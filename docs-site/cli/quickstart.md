@@ -1,3 +1,7 @@
+---
+description: Torale CLI quickstart. Install the CLI, authenticate with API keys, and create your first monitoring task from the command line in minutes.
+---
+
 # CLI Quickstart
 
 Get started with the Torale CLI in 5 minutes.

@@ -5,6 +5,7 @@
     <loc>https://torale.ai/</loc>
     <priority>1.0</priority>
     <changefreq>weekly</changefreq>
+    <lastmod>2026-02-11</lastmod>
   </url>
 
   <!-- Public pages -->
@@ -12,7 +13,7 @@
     <loc>https://torale.ai/changelog</loc>
     <priority>0.7</priority>
     <changefreq>weekly</changefreq>
-    <lastmod>2025-12-11</lastmod>
+    <lastmod>2026-02-11</lastmod>
   </url>
   <url>
     <loc>https://torale.ai/explore</loc>

@@ -6,6 +6,8 @@ export default withMermaid(
   title: 'Torale Docs',
   description: 'Grounded search monitoring platform for automated web monitoring',
   base: '/',
+  lang: 'en-US',
+  lastUpdated: true,
 
   sitemap: {
     hostname: 'https://docs.torale.ai'
@@ -24,6 +26,9 @@ export default withMermaid(
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'Torale Documentation' }],
     ['meta', { property: 'og:description', content: 'Automated web monitoring with intelligent condition evaluation' }],
+    ['meta', { property: 'og:image', content: 'https://docs.torale.ai/og-image.png' }],
+    ['meta', { property: 'og:image:width', content: '1200' }],
+    ['meta', { property: 'og:image:height', content: '630' }],
   ],
 
   themeConfig: {

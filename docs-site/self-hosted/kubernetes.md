@@ -1,3 +1,7 @@
+---
+description: Deploy Torale on Kubernetes. Helm charts, ingress configuration, persistent storage, and production-ready Kubernetes deployment.
+---
+
 # Kubernetes Deployment
 
 Deploy Torale to production Kubernetes environments.

@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "@/lib/motion-compat";
-import { ArrowLeft, ArrowUpRight, Github } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Github, Rss } from "lucide-react";
 import { ChangelogEntryCard } from "./ChangelogEntryCard";
 import { ChangelogEntry } from "@/types/changelog";
 import { GITHUB_REPO_URL } from "@/constants/links";
 import { Logo } from "./Logo";
 import { DynamicMeta } from "./DynamicMeta";
 import { generateChangelogStructuredData } from "@/utils/structuredData";
+import { Helmet } from "react-helmet-async";
 
 export default function Changelog() {
   const navigate = useNavigate();
@@ -41,6 +42,14 @@ export default function Changelog() {
         url="https://torale.ai/changelog"
         image="https://torale.ai/og-image.webp"
       />
+      <Helmet>
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title="Torale Changelog"
+          href="https://torale.ai/changelog.xml"
+        />
+      </Helmet>
       {structuredData && (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} />
       )}
@@ -69,7 +78,16 @@ export default function Changelog() {
 
           <Logo className="cursor-default" />
 
-          <div className="w-[120px]"></div>
+          <div className="flex items-center gap-4 w-[120px] justify-end">
+            <a
+              href="/changelog.xml"
+              className="group flex items-center gap-2 text-zinc-500 hover:text-zinc-900 transition-colors"
+              title="Subscribe to RSS feed"
+            >
+              <Rss className="w-4 h-4" />
+              <span className="text-sm font-medium">RSS</span>
+            </a>
+          </div>
         </div>
       </nav>
 

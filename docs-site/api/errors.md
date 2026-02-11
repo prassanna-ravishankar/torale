@@ -1,3 +1,7 @@
+---
+description: API error responses and status codes. HTTP error codes, error message formats, common errors, and troubleshooting guide.
+---
+
 # Error Handling
 
 Understanding and handling errors in Torale API.

@@ -1,3 +1,7 @@
+---
+description: Production deployment guide for Torale. GKE setup, Cloud SQL, monitoring, logging, and production best practices.
+---
+
 # Production Best Practices
 
 ## Monitoring

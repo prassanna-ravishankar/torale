@@ -1,3 +1,7 @@
+---
+description: Grounded search architecture in Torale. Google Search integration, LLM analysis, source attribution, and search result processing.
+---
+
 # Grounded Search
 
 Torale uses Gemini's grounded search to combine Google Search with AI evaluation.

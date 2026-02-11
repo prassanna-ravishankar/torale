@@ -1,3 +1,7 @@
+---
+description: Torale REST API overview. HTTP endpoints, authentication, request/response formats, and API usage patterns for programmatic access.
+---
+
 # API Overview
 
 Torale provides a REST API for programmatic access to all platform functionality.

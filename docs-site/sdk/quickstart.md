@@ -1,3 +1,7 @@
+---
+description: Torale Python SDK quickstart guide. Install the SDK, authenticate, and create monitoring tasks programmatically in minutes with code examples.
+---
+
 # Quickstart
 
 Get started with the Torale Python SDK in minutes.

@@ -1,3 +1,7 @@
+---
+description: Database migrations for self-hosted Torale. Alembic migration guide, schema updates, and database version management.
+---
+
 # Database Migrations
 
 Torale uses Alembic for database schema management with forward-only migrations.

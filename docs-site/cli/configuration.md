@@ -1,3 +1,7 @@
+---
+description: Configure Torale CLI with config files and environment variables. Set default API keys, output formats, and CLI behavior preferences.
+---
+
 # CLI Configuration
 
 Configure the Torale CLI for your environment.

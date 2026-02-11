@@ -1,3 +1,7 @@
+---
+description: Self-host Torale on your infrastructure. Complete deployment guide for Docker Compose and Kubernetes with configuration and migration instructions.
+---
+
 # Self-Hosted
 
 Run Torale on your own infrastructure.

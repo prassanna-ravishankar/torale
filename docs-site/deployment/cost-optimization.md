@@ -1,3 +1,7 @@
+---
+description: Cost optimization for Torale deployments. Resource limits, autoscaling, efficient scheduling, and infrastructure cost reduction.
+---
+
 # Cost Optimization
 
 ## Spot VMs
