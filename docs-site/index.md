@@ -16,7 +16,6 @@ hero:
     - theme: alt
       text: API Reference
       link: /api/overview
-description: Comprehensive Torale documentation. Learn to monitor the web with AI-powered conditional alerts. Guides for web dashboard, CLI, SDK, and self-hosting.
 ---
 
 ## Overview
