@@ -8,7 +8,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, Response
 
-from torale.core.config import settings
+from torale.core.config import PROJECT_ROOT, settings
 from torale.core.database import Database, get_db
 
 router = APIRouter(tags=["seo"])
@@ -100,13 +100,13 @@ async def generate_changelog_rss():
     Reads changelog.json from frontend/public and converts to RSS format.
     Includes first 50 entries with proper RFC-2822 date formatting.
     """
-    # Find project root by looking for pyproject.toml marker file
-    project_root = Path(__file__).resolve()
-    while not (project_root / "pyproject.toml").exists():
-        if project_root.parent == project_root:
-            raise FileNotFoundError("Could not find project root containing 'pyproject.toml'")
-        project_root = project_root.parent
-    changelog_path = project_root / "frontend" / "public" / "changelog.json"
+    # Get changelog path from settings (supports both relative and absolute paths)
+    changelog_path = Path(settings.changelog_json_path)
+    if not changelog_path.is_absolute():
+        changelog_path = PROJECT_ROOT / changelog_path
+
+    if not changelog_path.exists():
+        raise FileNotFoundError(f"Changelog file not found at configured path: {changelog_path}")
 
     # Read and parse changelog
     with open(changelog_path, encoding="utf-8") as f:
