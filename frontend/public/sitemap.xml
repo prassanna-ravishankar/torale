@@ -65,11 +65,11 @@
   <url>
     <loc>https://torale.ai/terms</loc>
     <priority>0.4</priority>
-    <changefreq>yearly</changefreq>
+    <changefreq>monthly</changefreq>
   </url>
   <url>
     <loc>https://torale.ai/privacy</loc>
     <priority>0.4</priority>
-    <changefreq>yearly</changefreq>
+    <changefreq>monthly</changefreq>
   </url>
 </urlset>
