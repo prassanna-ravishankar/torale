@@ -140,6 +140,9 @@ async def generate_changelog_rss():
 
     base_url = settings.frontend_url or "https://torale.ai"
 
+    # Register atom namespace to avoid ns0 prefix
+    ET.register_namespace("atom", "http://www.w3.org/2005/Atom")
+
     # Create RSS structure
     rss = ET.Element("rss", version="2.0")
     rss.set("xmlns:atom", "http://www.w3.org/2005/Atom")
