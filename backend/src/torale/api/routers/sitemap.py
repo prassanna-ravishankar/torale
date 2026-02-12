@@ -51,6 +51,22 @@ async def generate_sitemap(db: Database = Depends(get_db)):
         else datetime.now().strftime("%Y-%m-%d")
     )
 
+    # Get changelog lastmod from most recent entry
+    changelog_lastmod = datetime.now().strftime("%Y-%m-%d")
+    try:
+        changelog_path = Path(settings.changelog_json_path)
+        if not changelog_path.is_absolute():
+            changelog_path = PROJECT_ROOT / changelog_path
+        if changelog_path.exists():
+            with open(changelog_path, encoding="utf-8") as f:
+                changelog_entries = json.load(f)
+                if changelog_entries:
+                    # Get date from most recent entry (entries are sorted newest first)
+                    changelog_lastmod = changelog_entries[0]["date"]
+    except Exception:
+        # Fall back to current date if changelog read fails
+        pass
+
     # Static pages with lastmod
     static_pages = [
         {
@@ -64,6 +80,12 @@ async def generate_sitemap(db: Database = Depends(get_db)):
             "priority": "0.9",
             "changefreq": "hourly",
             "lastmod": explore_lastmod,
+        },
+        {
+            "loc": f"{base_url}/changelog",
+            "priority": "0.7",
+            "changefreq": "weekly",
+            "lastmod": changelog_lastmod,
         },
     ]
 
