@@ -143,11 +143,11 @@ gh run watch               # Watch live run
 ```bash
 # Production
 kubectl get pods -n torale
-kubectl get ingress -n torale
+kubectl get httproute -n clusterkit | grep torale
 
 # Staging
 kubectl get pods -n torale-staging
-kubectl get ingress -n torale-staging
+kubectl get httproute -n clusterkit | grep torale-staging
 ```
 
 ### View Logs

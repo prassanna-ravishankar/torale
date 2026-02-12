@@ -1,17 +1,17 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class NotifyBehavior(str, Enum):
+class NotifyBehavior(StrEnum):
     ONCE = "once"  # Notify once per condition match
     ALWAYS = "always"  # Notify every time condition is met
 
 
-class TaskState(str, Enum):
+class TaskState(StrEnum):
     """Task state enum - represents what the task is currently doing."""
 
     ACTIVE = "active"  # Monitoring on schedule
@@ -19,7 +19,7 @@ class TaskState(str, Enum):
     COMPLETED = "completed"  # Agent returned next_run=null
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     SUCCESS = "success"

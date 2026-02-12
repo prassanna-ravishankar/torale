@@ -1,5 +1,5 @@
 ---
-description: Deploy Torale on Kubernetes. Helm charts, ingress configuration, persistent storage, and production-ready Kubernetes deployment.
+description: Deploy Torale on Kubernetes. Helm charts, Gateway API configuration, persistent storage, and production-ready Kubernetes deployment.
 ---
 
 # Kubernetes Deployment
@@ -50,7 +50,7 @@ Override for production in `values-production.yaml`.
 
 **Frontend & Docs** - nginx serving static assets, lightweight HPA
 
-**Ingress** - GCE Load Balancer with automatic SSL via Managed Certificates
+**Gateway API** - GKE Gateway with HTTPRoute for routing and automatic SSL
 
 **Migration Job** - Helm pre-install/pre-upgrade hook runs Alembic migrations
 

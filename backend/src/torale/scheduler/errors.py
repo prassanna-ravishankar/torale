@@ -1,14 +1,14 @@
 """Error classification and retry strategy for task execution failures."""
 
 import logging
-from enum import Enum
+from enum import StrEnum
 
 import asyncpg.exceptions as asyncpg_ex
 
 logger = logging.getLogger(__name__)
 
 
-class ErrorCategory(str, Enum):
+class ErrorCategory(StrEnum):
     """Categories of execution errors for different handling strategies."""
 
     RATE_LIMIT = "rate_limit"

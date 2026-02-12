@@ -57,19 +57,12 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 kubectl get svc -n "$K8S_NAMESPACE" 2>/dev/null || echo "No services found"
 echo ""
 
-# Check ingress
+# Check HTTPRoute (Gateway API)
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "INGRESS"
+echo "HTTPROUTE (Gateway API)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-ingress_ip=$(kubectl get ingress -n "$K8S_NAMESPACE" -o jsonpath='{.items[0].status.loadBalancer.ingress[0].ip}' 2>/dev/null)
-
-if [ -n "$ingress_ip" ]; then
-    echo -e "${GREEN}✓ Ingress IP: $ingress_ip${NC}"
-else
-    echo -e "${YELLOW}⚠ Ingress IP not yet assigned (this can take 5-10 minutes)${NC}"
-fi
-
-kubectl get ingress -n "$K8S_NAMESPACE" 2>/dev/null || echo "No ingress found"
+httproutes=$(kubectl get httproute -n clusterkit 2>/dev/null | grep -E "torale|NAME" || echo "No HTTPRoutes found")
+echo "$httproutes"
 echo ""
 
 # Check SSL certificate

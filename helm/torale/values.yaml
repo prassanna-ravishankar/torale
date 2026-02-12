@@ -236,30 +236,6 @@ httproute:
   enabled: true
   gatewayName: clusterkit-gateway
 
-# Legacy Ingress (DEPRECATED - using Gateway API now)
-# ClusterKit Terraform manages the Gateway and SSL certificates
-ingress:
-  enabled: false
-  className: gce
-  annotations:
-    kubernetes.io/ingress.class: "gce"
-    kubernetes.io/ingress.global-static-ip-name: "clusterkit-ingress-ip"
-    networking.gke.io/managed-certificates: "torale-cert"
-    networking.gke.io/v1beta1.FrontendConfig: "ssl-redirect"
-    # Keep in sync with HTTPRoute annotation (Origin CA requires proxy on)
-    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
-
-  # SSL/TLS configuration
-  tls:
-    enabled: true
-    certificateName: torale-cert
-
-# GKE Managed Certificate (DEPRECATED - Gateway handles SSL)
-# ClusterKit Terraform manages SSL certificates
-certificate:
-  enabled: false
-  name: torale-cert
-
 # ConfigMap for non-sensitive configuration
 config:
   # Will be populated from values
