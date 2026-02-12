@@ -14,6 +14,29 @@ spec:
   - host: {{ .Values.domains.frontend }}
     http:
       paths:
+      # SEO endpoints served by backend API (must be before frontend catchall)
+      - path: /sitemap.xml
+        pathType: Exact
+        backend:
+          service:
+            name: {{ include "torale.fullname" . }}-api
+            port:
+              number: {{ .Values.api.service.port }}
+      - path: /changelog.xml
+        pathType: Exact
+        backend:
+          service:
+            name: {{ include "torale.fullname" . }}-api
+            port:
+              number: {{ .Values.api.service.port }}
+      - path: /robots.txt
+        pathType: Exact
+        backend:
+          service:
+            name: {{ include "torale.fullname" . }}-api
+            port:
+              number: {{ .Values.api.service.port }}
+      # Frontend catchall (must be last)
       - path: /
         pathType: Prefix
         backend:
