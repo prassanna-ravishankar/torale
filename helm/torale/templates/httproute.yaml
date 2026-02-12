@@ -25,6 +25,41 @@ spec:
   hostnames:
   - {{ .Values.domains.frontend | quote }}
   rules:
+  # SEO endpoints served by backend API (must be before frontend catchall)
+  - matches:
+    - path:
+        type: Exact
+        value: /sitemap.xml
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: {{ $fullName }}-api
+      namespace: {{ $serviceNamespace }}
+      port: {{ .Values.api.service.port }}
+      weight: 1
+  - matches:
+    - path:
+        type: Exact
+        value: /changelog.xml
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: {{ $fullName }}-api
+      namespace: {{ $serviceNamespace }}
+      port: {{ .Values.api.service.port }}
+      weight: 1
+  - matches:
+    - path:
+        type: Exact
+        value: /robots.txt
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: {{ $fullName }}-api
+      namespace: {{ $serviceNamespace }}
+      port: {{ .Values.api.service.port }}
+      weight: 1
+  # Frontend catchall (must be last)
   - matches:
     - path:
         type: PathPrefix
