@@ -9,6 +9,7 @@ import { Logo } from "./Logo";
 import { DynamicMeta } from "./DynamicMeta";
 import { generateChangelogStructuredData } from "@/utils/structuredData";
 import { Helmet } from "react-helmet-async";
+import api from "@/lib/api";
 
 export default function Changelog() {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ export default function Changelog() {
   useEffect(() => {
     const fetchChangelog = async () => {
       try {
-        const response = await fetch("/changelog.json");
+        const response = await fetch(`${api.getBaseUrl()}/static/changelog.json`);
         if (response.ok) {
           const data = await response.json();
           setEntries(data);

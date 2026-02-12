@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -31,7 +32,7 @@ from torale.api.routers import (
     waitlist,
     webhooks,
 )
-from torale.core.config import settings
+from torale.core.config import PROJECT_ROOT, settings
 from torale.core.database import db
 from torale.core.database_alchemy import get_async_session
 from torale.lib.posthog import shutdown as shutdown_posthog
@@ -178,6 +179,9 @@ app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(usernames.router, prefix="/api/v1")
 app.include_router(public_tasks.router, prefix="/api/v1")
 app.include_router(og.router, prefix="/api/v1")
+
+# Serve changelog.json as static file
+app.mount("/static", StaticFiles(directory=str(PROJECT_ROOT / "static")), name="static")
 
 
 @app.get("/health")

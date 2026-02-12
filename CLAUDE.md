@@ -99,6 +99,25 @@ refactor: code change that neither fixes nor adds
 ### Agent-Backend Schema Contract
 `MonitoringResponse` model is duplicated between `torale-agent/agent.py` and `backend/src/torale/scheduler/models.py`. Keep them in sync manually when changing fields. Backend validates agent responses via Pydantic at runtime.
 
+### Changelog Management
+
+**Source of Truth**: `backend/static/changelog.json`
+
+This file is:
+- Served by backend as static file at `/static/changelog.json`
+- Used by backend to generate RSS feed at `/changelog.xml`
+- Fetched by frontend and displayed on `/changelog` page
+
+**To update changelog**:
+1. Edit `backend/static/changelog.json`
+2. Commit
+3. Deploy - all three endpoints update automatically:
+   - https://api.torale.ai/static/changelog.json (JSON)
+   - https://torale.ai/changelog.xml (RSS)
+   - https://torale.ai/changelog (Frontend UI)
+
+**Architecture**: Backend owns the data, frontend consumes it via fetch at runtime.
+
 ## Quick Pointers
 
 | What | Where |
@@ -111,6 +130,6 @@ refactor: code change that neither fixes nor adds
 | DB schema | `docs-site/architecture/database-schema.md` |
 | Migrations | `backend/alembic/versions/` |
 | UI components | `frontend/src/components/torale/` |
-| Changelog | `frontend/public/changelog.json` (auto-rendered) |
+| Changelog | `backend/static/changelog.json` (backend serves, frontend fetches) |
 | Deployment | `docs-site/deployment/` |
 | Architecture | `docs-site/architecture/` |
