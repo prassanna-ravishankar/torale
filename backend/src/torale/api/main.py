@@ -22,6 +22,7 @@ from torale.api.routers import (
     admin,
     auth,
     email_verification,
+    integrations,
     notifications,
     og,
     public_tasks,
@@ -37,6 +38,7 @@ from torale.core.database import db
 from torale.core.database_alchemy import get_async_session
 from torale.lib.posthog import shutdown as shutdown_posthog
 from torale.scheduler import get_scheduler
+from torale.scheduler.jobs.webhook_retry import execute_webhook_retry_job
 from torale.scheduler.migrate import reap_stale_executions, sync_jobs_from_database
 
 logger = logging.getLogger(__name__)
@@ -109,6 +111,16 @@ async def lifespan(app: FastAPI):
         replace_existing=True,
     )
 
+    # Register webhook retry job (runs every 5 minutes)
+    scheduler.add_job(
+        execute_webhook_retry_job,
+        trigger="interval",
+        minutes=5,
+        id="webhook-retry-job",
+        replace_existing=True,
+    )
+    logger.info("Webhook retry job registered")
+
     yield
 
     scheduler.shutdown(wait=False)
@@ -179,6 +191,7 @@ app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(usernames.router, prefix="/api/v1")
 app.include_router(public_tasks.router, prefix="/api/v1")
 app.include_router(og.router, prefix="/api/v1")
+app.include_router(integrations.router, prefix="/api/v1")
 
 # Serve changelog.json as static file
 app.mount("/static", StaticFiles(directory=str(PROJECT_ROOT / "static")), name="static")
