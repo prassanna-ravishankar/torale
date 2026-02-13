@@ -60,5 +60,14 @@ class Settings(BaseSettings):
     posthog_host: str = "https://app.posthog.com"
     posthog_enabled: bool = True
 
+    # Slack OAuth integration
+    slack_client_id: str | None = None
+    slack_client_secret: str | None = None
+    slack_redirect_uri: str = "https://api.torale.ai/api/v1/integrations/slack/callback"
+
+    # OAuth token encryption key (generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+    # REQUIRED for Slack OAuth integration
+    oauth_encryption_key: str | None = None
+
 
 settings = Settings()

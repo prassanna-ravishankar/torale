@@ -53,7 +53,7 @@ class WebhookRepository(BaseRepository):
         response_body: str | None = None,
         error_message: str | None = None,
         delivered_at: str | None = None,
-        retry_count: int | None = None,
+        attempt_number: int | None = None,
         next_retry_at: str | None = None,
     ) -> dict:
         """Update webhook delivery record.
@@ -65,13 +65,14 @@ class WebhookRepository(BaseRepository):
             response_body: HTTP response body
             error_message: Error message if failed
             delivered_at: Delivery timestamp (use "NOW()" for current time)
-            retry_count: Number of retry attempts
+            attempt_number: Number of retry attempts
             next_retry_at: Next retry timestamp
 
         Returns:
             Updated delivery record
         """
         data = {}
+        now_columns = []
 
         if status is not None:
             data["status"] = status
@@ -81,43 +82,55 @@ class WebhookRepository(BaseRepository):
             data["response_body"] = response_body
         if error_message is not None:
             data["error_message"] = error_message
-        if retry_count is not None:
-            data["retry_count"] = retry_count
+        if attempt_number is not None:
+            data["attempt_number"] = attempt_number
         if next_retry_at is not None:
             data["next_retry_at"] = next_retry_at
 
-        if not data and delivered_at is None:
-            return await self.find_by_id(self.deliveries, delivery_id)
-
-        # Handle delivered_at - use PyPika's Now() function for "NOW()"
         if delivered_at == "NOW()":
-            # Build PyPika UPDATE query with Now() function
-            query = PostgreSQLQuery.update(self.deliveries)
-
-            # Add all data fields to SET clause
-            param_index = 1
-            params = []
-            for col, val in data.items():
-                query = query.set(getattr(self.deliveries, col), Parameter(f"${param_index}"))
-                params.append(val)
-                param_index += 1
-
-            # Add delivered_at with Now()
-            query = query.set(self.deliveries.delivered_at, Now())
-
-            # WHERE clause
-            query = query.where(self.deliveries.id == Parameter(f"${param_index}"))
-            params.append(delivery_id)
-
-            # RETURNING clause
-            query = query.returning("*")
-
-            return await self.db.fetch_one(str(query), *params)
+            now_columns.append("delivered_at")
         elif delivered_at is not None:
             data["delivered_at"] = delivered_at
 
-        sql, params = self._build_update_query(self.deliveries, delivery_id, data)
-        return await self.db.fetch_one(sql, *params)
+        if not data and not now_columns:
+            return await self.find_by_id(self.deliveries, delivery_id)
+
+        return await self._build_update_with_now(self.deliveries, delivery_id, data, now_columns)
+
+    async def mark_permanently_failed(self, delivery_id: UUID, error: str) -> dict:
+        """Mark a delivery as permanently failed (sets error_message and failed_at)."""
+        return await self._build_update_with_now(
+            self.deliveries, delivery_id, {"error_message": error}, now_columns=["failed_at"]
+        )
+
+    async def _build_update_with_now(
+        self, table, record_id: UUID, data: dict, now_columns: list[str] | None = None
+    ) -> dict | None:
+        """Build and execute an UPDATE with optional NOW() columns.
+
+        Args:
+            table: PyPika table instance
+            record_id: Record UUID to update
+            data: Dict of column: value pairs (parameterized)
+            now_columns: Column names to set to NOW() (not parameterized)
+        """
+        query = PostgreSQLQuery.update(table)
+
+        param_index = 1
+        params = []
+        for col, val in data.items():
+            query = query.set(getattr(table, col), Parameter(f"${param_index}"))
+            params.append(val)
+            param_index += 1
+
+        for col in now_columns or []:
+            query = query.set(getattr(table, col), Now())
+
+        query = query.where(table.id == Parameter(f"${param_index}"))
+        params.append(record_id)
+
+        query = query.returning("*")
+        return await self.db.fetch_one(str(query), *params)
 
     async def find_pending_retries(self, limit: int = 100) -> list[dict]:
         """Find deliveries pending retry.
@@ -129,13 +142,14 @@ class WebhookRepository(BaseRepository):
             List of delivery records ready for retry
         """
         query = PostgreSQLQuery.from_(self.deliveries).select("*")
-        query = query.where(self.deliveries.status == Parameter("$1"))
+        query = query.where(self.deliveries.delivered_at.isnull())
+        query = query.where(self.deliveries.failed_at.isnull())
         query = query.where(self.deliveries.next_retry_at.isnotnull())
         query = query.where(self.deliveries.next_retry_at <= Now())
         query = query.orderby(self.deliveries.next_retry_at, order=Order.asc)
-        query = query.limit(Parameter("$2"))
+        query = query.limit(Parameter("$1"))
 
-        return await self.db.fetch_all(str(query), "failed", limit)
+        return await self.db.fetch_all(str(query), limit)
 
     async def find_by_task(self, task_id: UUID, limit: int = 50, offset: int = 0) -> list[dict]:
         """Find webhook deliveries for a task.

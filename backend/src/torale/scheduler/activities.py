@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from torale.core.database import db
+from torale.integrations.slack import SlackOAuthService
 from torale.notifications import (
     EmailVerificationService,
     WebhookDeliveryService,
@@ -230,6 +231,59 @@ async def send_email_notification(
     return email_status == "success"
 
 
+async def send_slack_notification(user_id: str, task_name: str, result: dict) -> bool:
+    """Send notification via Slack OAuth integration.
+
+    Returns True if sent, False if no integration exists or delivery failed.
+    """
+    integration = await db.fetch_one(
+        "SELECT * FROM oauth_integrations WHERE user_id = $1 AND provider = 'slack'", UUID(user_id)
+    )
+
+    if not integration or not integration.get("channel_id"):
+        return False
+
+    summary = result.get("summary", result.get("notification", ""))
+    blocks = _build_slack_blocks(task_name, summary, result.get("sources", []))
+
+    service = SlackOAuthService(db)
+    success = await service.post_message(
+        token=integration["access_token"],
+        channel_id=integration["channel_id"],
+        blocks=blocks,
+        fallback_text=summary,
+    )
+
+    if not success:
+        logger.error(f"Slack notification failed for user {user_id}")
+        return False
+
+    await db.execute(
+        "UPDATE oauth_integrations SET last_used_at = NOW() WHERE id = $1",
+        integration["id"],
+    )
+    logger.info(f"Slack notification sent for user {user_id}")
+    return True
+
+
+def _build_slack_blocks(task_name: str, summary: str, sources: list[dict]) -> list[dict]:
+    """Build Slack Block Kit message blocks."""
+    blocks = [
+        {"type": "header", "text": {"type": "plain_text", "text": f"\U0001f514 {task_name}"}},
+        {"type": "section", "text": {"type": "mrkdwn", "text": summary}},
+    ]
+
+    if sources:
+        sources_text = "\n".join(
+            f"\u2022 <{src.get('url', '')}|{src.get('title', 'Source')}>" for src in sources[:3]
+        )
+        blocks.append(
+            {"type": "section", "text": {"type": "mrkdwn", "text": f"*Sources:*\n{sources_text}"}}
+        )
+
+    return blocks
+
+
 async def send_webhook_notification(notification_context: dict, result: dict) -> None:
     """Send webhook notification."""
     task = notification_context["task"]
@@ -248,7 +302,6 @@ async def send_webhook_notification(notification_context: dict, result: dict) ->
     payload = build_webhook_payload(execution_id, task, execution, result)
 
     service = WebhookDeliveryService()
-    signature: str | None = None
     try:
         success, http_status, error, signature = await service.deliver(
             webhook_url, payload, webhook_secret, attempt=1
@@ -260,18 +313,18 @@ async def send_webhook_notification(notification_context: dict, result: dict) ->
         await db.execute(
             """
             INSERT INTO webhook_deliveries (
-                task_id, execution_id, webhook_url, payload, signature,
+                task_id, execution_id, webhook_url, webhook_secret, payload, signature,
                 http_status, attempt_number, delivered_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 1, NOW())
             """,
             UUID(task_id),
             UUID(execution_id),
             webhook_url,
+            webhook_secret,
             payload.model_dump_json(),
             signature,
             http_status,
-            1,
         )
         logger.info(f"Webhook delivered for task {task_id}")
     else:
@@ -279,23 +332,22 @@ async def send_webhook_notification(notification_context: dict, result: dict) ->
         await db.execute(
             """
             INSERT INTO webhook_deliveries (
-                task_id, execution_id, webhook_url, payload, signature,
+                task_id, execution_id, webhook_url, webhook_secret, payload, signature,
                 http_status, error_message, attempt_number, next_retry_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, $9)
             """,
             UUID(task_id),
             UUID(execution_id),
             webhook_url,
+            webhook_secret,
             payload.model_dump_json(),
             signature,
             http_status,
             error,
-            1,
             next_retry,
         )
-        logger.error(f"Webhook delivery failed: {error}")
-        raise RuntimeError(f"Webhook delivery failed: {error}")
+        logger.warning(f"Webhook delivery failed, will retry: {error}")
 
 
 async def fetch_recent_executions(task_id: str, limit: int = 5) -> list[ExecutionRecord]:
