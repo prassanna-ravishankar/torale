@@ -23,7 +23,7 @@ class SlackOAuthService:
         if not settings.oauth_encryption_key:
             raise ValueError(
                 "OAUTH_ENCRYPTION_KEY environment variable is required for Slack integration. "
-                "Generate with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+                'Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
             )
         self.cipher = Fernet(settings.oauth_encryption_key.encode())
 

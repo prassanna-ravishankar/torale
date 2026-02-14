@@ -5,6 +5,7 @@ import time
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from torale.access import CurrentUser
@@ -118,7 +119,11 @@ async def slack_callback(
         oauth_data["workspace_name"],
     )
 
-    return {"success": True, "workspace_name": oauth_data["workspace_name"]}
+    # Redirect to frontend callback handler
+    frontend_url = settings.frontend_url
+    return RedirectResponse(
+        url=f"{frontend_url}/settings/integrations/slack/callback?success=true&workspace={oauth_data['workspace_name']}"
+    )
 
 
 @router.get("/slack/channels")

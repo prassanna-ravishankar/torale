@@ -1,10 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Settings, Mail, Webhook, Key, History } from 'lucide-react';
+import { Settings, Mail, Webhook, Key, History, Slack } from 'lucide-react';
 import { EmailManagementSection } from '@/components/settings/EmailManagementSection';
 import { WebhookConfigSection } from '@/components/settings/WebhookConfigSection';
 import { NotificationHistorySection } from '@/components/settings/NotificationHistorySection';
 import { ApiKeyManagementSection } from '@/components/settings/ApiKeyManagementSection';
+import { IntegrationsSection } from '@/components/settings/IntegrationsSection';
 
 /**
  * NotificationSettingsPage - Brutalist settings panel
@@ -43,6 +44,15 @@ export const NotificationSettingsPage: React.FC = () => {
                 <h2 className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">Email Addresses</h2>
               </div>
               <EmailManagementSection />
+            </section>
+
+            {/* Integrations */}
+            <section>
+              <div className="flex items-center gap-2 mb-3">
+                <Slack className="h-4 w-4 text-zinc-400" />
+                <h2 className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">Integrations</h2>
+              </div>
+              <IntegrationsSection />
             </section>
 
             {/* Webhook Configuration */}
