@@ -38,6 +38,7 @@ export const NoAuthProvider: React.FC<NoAuthProviderProps> = ({ children }) => {
         firstName: 'Dev',
         lastName: 'User',
         username: backendUser.username || undefined,
+        has_seen_welcome: backendUser.has_seen_welcome,
       })
     } catch (error) {
       console.error('Failed to refresh user in noauth mode:', error)

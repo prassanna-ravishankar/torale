@@ -14,12 +14,13 @@ interface ClerkAuthProviderProps {
  * Reduces duplication between initial fetch, fallback, and sync operations.
  */
 const createUserFromData = (
-  backendData: { id: string | null; email: string; username: string | null },
+  backendData: { id: string | null; email: string; username: string | null; has_seen_welcome?: boolean },
   clerkUser: any
 ): User => ({
   id: backendData.id,
   email: backendData.email,
   username: backendData.username,
+  has_seen_welcome: backendData.has_seen_welcome,
   firstName: clerkUser.firstName || undefined,
   lastName: clerkUser.lastName || undefined,
   imageUrl: clerkUser.imageUrl,
@@ -92,9 +93,6 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
   const refreshUser = useCallback(async () => {
     // Refresh user data from backend (used after mutations like username change)
     if (!clerkUser) return
-
-    // Reload Clerk user to pick up server-side metadata changes (e.g., has_seen_welcome)
-    await clerkUser.reload()
 
     const { api } = await import('@/lib/api')
     const userData = await api.getCurrentUser()

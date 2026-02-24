@@ -1,6 +1,5 @@
 """Authentication and user management endpoints."""
 
-import logging
 import secrets
 import uuid
 from datetime import UTC, datetime
@@ -9,7 +8,7 @@ from typing import Annotated
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -370,32 +369,18 @@ async def get_current_user_info(
 @router.post("/mark-welcome-seen")
 async def mark_welcome_seen(
     clerk_user: CurrentUser,
+    session: AsyncSession = Depends(get_async_session),
 ):
     """Mark that the user has seen the welcome flow."""
     # Handle NoAuth mode
     if clerk_user.clerk_user_id == TEST_USER_NOAUTH_ID:
-        return {"status": "success", "note": "NoAuth mode - metadata not persisted"}
+        return {"status": "success", "note": "NoAuth mode - not persisted"}
 
-    # Get auth provider and Clerk client
-    provider = get_auth_provider()
-    if not isinstance(provider, ProductionAuthProvider) or not provider.clerk_client:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Clerk client not available",
-        )
+    await session.execute(
+        update(User)
+        .where(User.clerk_user_id == clerk_user.clerk_user_id)
+        .values(has_seen_welcome=True)
+    )
+    await session.commit()
 
-    try:
-        # Use update_metadata (not update) — it shallow-merges, preserving existing keys like "role"
-        await provider.clerk_client.users.update_metadata_async(
-            user_id=clerk_user.clerk_user_id,
-            public_metadata={"has_seen_welcome": True},
-        )
-
-        return {"status": "success"}
-    except Exception as e:
-        # Log the full exception for debugging
-        logging.exception("Failed to update user metadata")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update user metadata. Please try again later.",
-        ) from e
+    return {"status": "success"}
