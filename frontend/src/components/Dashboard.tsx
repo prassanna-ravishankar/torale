@@ -68,7 +68,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   }, []); // Only load on mount - user sync now happens automatically in auth provider
 
   useEffect(() => {
-    if (isLoaded && !user?.publicMetadata?.has_seen_welcome) {
+    if (isLoaded && user && !user.has_seen_welcome) {
       setShowWelcome(true);
     }
   }, [user, isLoaded]);

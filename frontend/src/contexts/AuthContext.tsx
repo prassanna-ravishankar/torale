@@ -9,6 +9,7 @@ export interface User {
   firstName?: string
   lastName?: string
   imageUrl?: string
+  has_seen_welcome?: boolean
   publicMetadata?: {
     role?: string
     [key: string]: any

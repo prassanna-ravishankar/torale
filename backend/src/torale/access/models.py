@@ -21,6 +21,7 @@ class User(Base):
     first_name = Column(String, nullable=True)
     username = Column(String(30), unique=True, nullable=True, index=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    has_seen_welcome = Column(Boolean, default=False, nullable=False, server_default="false")
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     updated_at = Column(
         DateTime(timezone=True),
@@ -40,6 +41,7 @@ class UserRead(BaseModel):
     first_name: str | None = None
     username: str | None = None
     is_active: bool
+    has_seen_welcome: bool = False
     created_at: datetime
 
     class Config:

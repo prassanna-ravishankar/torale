@@ -110,6 +110,7 @@ export interface User {
   id: string;
   email: string;
   username: string | null;
+  has_seen_welcome?: boolean;
   created_at: string;
 }
 
