@@ -24,6 +24,8 @@ def upgrade() -> None:
         "users",
         sa.Column("has_seen_welcome", sa.Boolean(), nullable=False, server_default="false"),
     )
+    # Backfill existing users to true — they predate this column and have already seen the welcome flow
+    op.execute("UPDATE users SET has_seen_welcome = true")
 
 
 def downgrade() -> None:

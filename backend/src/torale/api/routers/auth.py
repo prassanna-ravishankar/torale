@@ -376,11 +376,18 @@ async def mark_welcome_seen(
     if clerk_user.clerk_user_id == TEST_USER_NOAUTH_ID:
         return {"status": "success", "note": "NoAuth mode - not persisted"}
 
-    await session.execute(
+    result = await session.execute(
         update(User)
         .where(User.clerk_user_id == clerk_user.clerk_user_id)
         .values(has_seen_welcome=True)
     )
+
+    if result.rowcount == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found. Please sync user first.",
+        )
+
     await session.commit()
 
     return {"status": "success"}
