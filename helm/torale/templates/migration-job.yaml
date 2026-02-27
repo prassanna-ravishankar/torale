@@ -16,8 +16,6 @@ metadata:
 spec:
   # Don't keep successful jobs around
   ttlSecondsAfterFinished: 60
-  # Hard cap: migrations should complete well within 5 minutes
-  activeDeadlineSeconds: 300
   template:
     metadata:
       labels:
@@ -27,8 +25,14 @@ spec:
       # Don't restart on failure
       restartPolicy: Never
       serviceAccountName: {{ include "torale.serviceAccountName" . }}-migrations
-      # Run on regular nodes (not Spot) — migrations are on the critical deploy path
-      # and can't afford to wait for Spot node provisioning
+      {{- with .Values.api.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.api.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 
       containers:
       # Migration container
