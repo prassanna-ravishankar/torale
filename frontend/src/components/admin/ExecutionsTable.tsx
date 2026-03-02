@@ -164,7 +164,7 @@ export function ExecutionsTable({ onTaskClick }: ExecutionsTableProps = {}) {
                     <StatusBadge variant={stateToVariant(execution.status)} />
                   </td>
                   <td className="p-3 text-xs font-mono text-zinc-600">
-                    <div className="max-w-xs truncate" title={execution.notification ?? undefined}>{execution.notification || '—'}</div>
+                    <div className="max-w-xs truncate" title={execution.notification || undefined}>{execution.notification || '—'}</div>
                   </td>
                   <td className="p-3 text-xs font-mono text-zinc-500">
                     {execution.started_at
