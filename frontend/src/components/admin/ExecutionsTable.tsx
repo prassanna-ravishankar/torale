@@ -148,11 +148,14 @@ export function ExecutionsTable({ onTaskClick }: ExecutionsTableProps = {}) {
                   key={execution.id}
                   className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors"
                 >
-                  <td className="p-3 text-xs font-mono text-zinc-600">{execution.user_email}</td>
+                  <td className="p-3 text-xs font-mono text-zinc-600">
+                    <div className="max-w-[200px] truncate" title={execution.user_email}>{execution.user_email}</div>
+                  </td>
                   <td className="p-3">
                     <button
                       onClick={() => onTaskClick?.(execution.task_id)}
-                      className="text-left w-full text-xs font-mono text-zinc-700 hover:text-zinc-900 hover:underline max-w-xs truncate"
+                      className="text-left w-full text-xs font-mono text-zinc-700 hover:text-zinc-900 hover:underline block max-w-xs truncate"
+                      title={execution.search_query}
                     >
                       {execution.search_query}
                     </button>
@@ -160,8 +163,8 @@ export function ExecutionsTable({ onTaskClick }: ExecutionsTableProps = {}) {
                   <td className="p-3">
                     <StatusBadge variant={stateToVariant(execution.status)} />
                   </td>
-                  <td className="p-3 text-xs font-mono text-zinc-600 max-w-xs truncate">
-                    {execution.notification || '—'}
+                  <td className="p-3 text-xs font-mono text-zinc-600">
+                    <div className="max-w-xs truncate" title={execution.notification ?? undefined}>{execution.notification || '—'}</div>
                   </td>
                   <td className="p-3 text-xs font-mono text-zinc-500">
                     {execution.started_at

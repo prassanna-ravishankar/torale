@@ -120,9 +120,15 @@ export function TasksTable({ initialExpandedTaskId }: TasksTableProps = {}) {
                       expandedTaskId === task.id ? 'bg-zinc-100' : 'hover:bg-zinc-50'
                     }`}
                   >
-                    <td className="p-3 text-xs font-mono text-zinc-600">{task.user_email}</td>
-                    <td className="p-3 text-sm font-mono text-zinc-900">{task.name}</td>
-                    <td className="p-3 text-xs font-mono text-zinc-700 max-w-xs truncate">{task.search_query}</td>
+                    <td className="p-3 text-xs font-mono text-zinc-600">
+                      <div className="max-w-[200px] truncate" title={task.user_email}>{task.user_email}</div>
+                    </td>
+                    <td className="p-3 text-sm font-mono text-zinc-900">
+                      <div className="max-w-[200px] truncate" title={task.name}>{task.name}</div>
+                    </td>
+                    <td className="p-3 text-xs font-mono text-zinc-700">
+                      <div className="max-w-xs truncate" title={task.search_query}>{task.search_query}</div>
+                    </td>
                     <td className="p-3">
                       <StatusBadge variant={stateToVariant(task.state)} />
                     </td>
