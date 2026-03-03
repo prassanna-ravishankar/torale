@@ -76,9 +76,10 @@ services:
       - NOVU_WORKFLOW_ID=${NOVU_WORKFLOW_ID:-torale-condition-met}
       - NOVU_VERIFICATION_WORKFLOW_ID=${NOVU_VERIFICATION_WORKFLOW_ID:-torale-email-verification}
       - NOVU_API_URL=${NOVU_API_URL:-https://eu.api.novu.co}
-      - TORALE_NOAUTH=${TORALE_NOAUTH:-0}
+      - TORALE_NOAUTH=${TORALE_NOAUTH:-1}
       - TORALE_NOAUTH_EMAIL=${TORALE_NOAUTH_EMAIL:-test@example.com}
       - MAX_USERS=${MAX_USERS:-100}
+      - OAUTH_ENCRYPTION_KEY=${OAUTH_ENCRYPTION_KEY}
     depends_on:
       init-migrations:
         condition: service_completed_successfully

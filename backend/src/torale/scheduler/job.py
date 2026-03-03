@@ -22,6 +22,7 @@ from torale.scheduler.activities import (
     fetch_recent_executions,
     persist_execution_result,
     send_email_notification,
+    send_slack_notification,
     send_webhook_notification,
 )
 from torale.scheduler.agent import call_agent
@@ -108,6 +109,53 @@ async def _merge_execution_result(execution_id: str, data: dict) -> None:
         )
     except Exception as e:
         logger.error(f"Failed to merge execution result for {execution_id}: {e}", exc_info=True)
+
+
+async def _send_notifications(
+    task_id: str,
+    execution_id: str,
+    user_id: str,
+    task_name: str,
+    notification: str,
+    evidence: str,
+    grounding_sources: list[dict],
+) -> bool:
+    """Dispatch notifications. Slack takes priority over email/webhook.
+
+    Returns True if any notification channel failed.
+    """
+    try:
+        notification_context = await fetch_notification_context(task_id, execution_id, user_id)
+        channels = notification_context.get("notification_channels", ["email"])
+
+        enriched_result = {
+            "execution_id": execution_id,
+            "summary": notification or evidence,
+            "sources": grounding_sources,
+            "notification": notification,
+            "is_first_execution": False,
+        }
+
+        # Slack takes priority -- if it succeeds, skip email/webhook
+        if await send_slack_notification(user_id, task_name, enriched_result):
+            return False
+
+        any_failed = False
+
+        if "email" in channels:
+            if not await send_email_notification(
+                user_id, task_name, notification_context, enriched_result
+            ):
+                any_failed = True
+
+        if "webhook" in channels:
+            await send_webhook_notification(notification_context, enriched_result)
+
+        return any_failed
+
+    except Exception as e:
+        logger.error(f"Notification failed for task {task_id}: {e}", exc_info=True)
+        return True
 
 
 async def _execute(
@@ -215,33 +263,15 @@ async def _execute(
         # Send notifications if notification text present
         notification_failed = False
         if notification and not suppress_notifications:
-            try:
-                notification_context = await fetch_notification_context(
-                    task_id, execution_id, user_id
-                )
-
-                channels = notification_context.get("notification_channels", ["email"])
-
-                enriched_result = {
-                    "execution_id": execution_id,
-                    "summary": notification or evidence,
-                    "sources": grounding_sources,
-                    "notification": notification,
-                    "is_first_execution": False,
-                }
-
-                if "email" in channels:
-                    email_delivered = await send_email_notification(
-                        user_id, task_name, notification_context, enriched_result
-                    )
-                    if not email_delivered:
-                        notification_failed = True
-
-                if "webhook" in channels:
-                    await send_webhook_notification(notification_context, enriched_result)
-            except Exception as e:
-                notification_failed = True
-                logger.error(f"Notification failed for task {task_id}: {e}", exc_info=True)
+            notification_failed = await _send_notifications(
+                task_id,
+                execution_id,
+                user_id,
+                task_name,
+                notification,
+                evidence,
+                grounding_sources,
+            )
 
         if notification_failed:
             await _merge_execution_result(execution_id, {"notification_failed": True})

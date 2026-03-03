@@ -10,6 +10,9 @@ import type {
   NotificationSend,
   ApiKey,
   CreateApiKeyResponse,
+  SlackIntegration,
+  SlackChannel,
+  SlackAuthResponse,
 } from '@/types'
 
 interface ApiError {
@@ -523,6 +526,45 @@ class ApiClient {
 
   async getPublicTaskById(taskId: string): Promise<Task> {
     const response = await fetch(`${this.baseUrl}/api/v1/public/tasks/id/${taskId}`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  // Slack Integration endpoints
+  async getSlackIntegration(): Promise<SlackIntegration> {
+    const response = await fetch(`${this.baseUrl}/api/v1/integrations/slack`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async startSlackOAuth(): Promise<SlackAuthResponse> {
+    const response = await fetch(`${this.baseUrl}/api/v1/integrations/slack/authorize`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async listSlackChannels(): Promise<{ channels: SlackChannel[] }> {
+    const response = await fetch(`${this.baseUrl}/api/v1/integrations/slack/channels`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async selectSlackChannel(channelId: string, channelName: string): Promise<{ success: boolean }> {
+    const response = await fetch(`${this.baseUrl}/api/v1/integrations/slack/select-channel`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ channel_id: channelId, channel_name: channelName }),
+    })
+    return this.handleResponse(response)
+  }
+
+  async revokeSlackIntegration(): Promise<{ success: boolean }> {
+    const response = await fetch(`${this.baseUrl}/api/v1/integrations/slack`, {
+      method: 'DELETE',
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)

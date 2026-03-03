@@ -247,3 +247,27 @@ export interface CreateApiKeyResponse {
   key: string; // Full key shown only once
   key_info: ApiKey;
 }
+
+// OAuth Integration Types
+export interface SlackIntegration {
+  connected: boolean;
+  workspace_name?: string;
+  channel_name?: string;
+  connected_at?: string;
+  last_used_at?: string | null;
+}
+
+export interface SlackChannel {
+  id: string;
+  name: string;
+}
+
+export interface SlackAuthResponse {
+  authorization_url: string;
+  state: string;
+}
+
+export interface SlackCallbackResponse {
+  success: boolean;
+  workspace_name: string;
+}

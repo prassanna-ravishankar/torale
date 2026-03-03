@@ -26,6 +26,7 @@ const VanityTaskRedirect = lazy(() => import('@/pages/VanityTaskRedirect').then(
 const ComparePage = lazy(() => import('@/pages/ComparePage').then(m => ({ default: m.ComparePage })))
 const UseCasePage = lazy(() => import('@/pages/UseCasePage').then(m => ({ default: m.UseCasePage })))
 const Welcome = lazy(() => import('@/components/Welcome').then(m => ({ default: m.Welcome })))
+const SlackCallbackHandler = lazy(() => import('@/pages/SlackCallbackHandler').then(m => ({ default: m.SlackCallbackHandler })))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoaded, isAuthenticated } = useAuth()
@@ -285,6 +286,14 @@ export default function App() {
               <AppLayout>
                 <NotificationSettingsPage />
               </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings/integrations/slack/callback"
+          element={
+            <ProtectedRoute>
+              <SlackCallbackHandler />
             </ProtectedRoute>
           }
         />

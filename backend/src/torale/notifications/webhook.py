@@ -4,7 +4,7 @@ import hashlib
 import hmac
 import secrets
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 import httpx
@@ -148,7 +148,7 @@ class WebhookDeliveryService:
             return None  # No more retries
 
         delay_seconds = cls.RETRY_DELAYS[attempt - 1]
-        return datetime.utcnow() + timedelta(seconds=delay_seconds)
+        return datetime.now(UTC) + timedelta(seconds=delay_seconds)
 
 
 def build_webhook_payload(
