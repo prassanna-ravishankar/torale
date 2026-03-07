@@ -184,7 +184,7 @@ def _register_tools(agent: Agent) -> None:
 
 
 def create_monitoring_agent(
-    model_id: str = "google-gla:gemini-3-flash-preview",
+    model_id: str = "google-gla:gemini-3.1-flash-lite-preview",
 ) -> Agent:
     """Create a monitoring agent with the specified model and all tools registered."""
     # Enable thinking for supported Gemini models (gemini-3-*, gemini-2.5-pro).
@@ -196,7 +196,7 @@ def create_monitoring_agent(
         if supports_thinking:
             model_settings = GoogleModelSettings(
                 google_thinking_config={
-                    "thinking_level": "low",
+                    "thinking_level": "high",
                     "include_thoughts": True,
                 },
             )
