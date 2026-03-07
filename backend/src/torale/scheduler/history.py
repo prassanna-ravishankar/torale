@@ -3,9 +3,8 @@
 import json
 import logging
 from datetime import datetime
-from typing import ClassVar
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -41,22 +40,11 @@ def _extract_urls(sources_raw: list) -> list[str]:
 class ExecutionRecord(BaseModel):
     """A single parsed execution result, ready for prompt formatting."""
 
-    MAX_EVIDENCE_LENGTH: ClassVar[int] = 300
-
     completed_at: str | None = None
     confidence: int | None = None
     notification: str | None = None
     evidence: str = ""
     sources: list[str] = Field(default_factory=list)
-
-    @field_validator("evidence", mode="before")
-    @classmethod
-    def truncate_evidence(cls, v: object) -> str:
-        if not isinstance(v, str):
-            return ""
-        if len(v) > cls.MAX_EVIDENCE_LENGTH:
-            return v[: cls.MAX_EVIDENCE_LENGTH] + "..."
-        return v
 
     @classmethod
     def from_db_row(cls, row: dict) -> "ExecutionRecord":
@@ -79,8 +67,14 @@ class ExecutionRecord(BaseModel):
         )
 
 
+MAX_OLDER_EVIDENCE_LENGTH = 500
+
+
 def format_execution_history(executions: list[ExecutionRecord]) -> str:
     """Format execution records into a prompt string with safety delimiters.
+
+    Run 1 (most recent) gets full evidence; older runs are truncated to
+    keep prompt size bounded while preserving trend context.
 
     Returns empty string on first run (no executions).
     """
@@ -97,7 +91,10 @@ def format_execution_history(executions: list[ExecutionRecord]) -> str:
     for i, ex in enumerate(executions, 1):
         lines.append(f"\nRun {i} | {ex.completed_at} | confidence: {ex.confidence}")
         if ex.evidence:
-            lines.append(f"Evidence: {ex.evidence}")
+            evidence = ex.evidence
+            if i > 1 and len(evidence) > MAX_OLDER_EVIDENCE_LENGTH:
+                evidence = evidence[:MAX_OLDER_EVIDENCE_LENGTH] + "..."
+            lines.append(f"Evidence: {evidence}")
         if ex.sources:
             lines.append(f"Sources: {', '.join(ex.sources)}")
         if ex.notification:

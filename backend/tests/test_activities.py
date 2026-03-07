@@ -124,8 +124,8 @@ class TestFetchRecentExecutions:
 
     @pytest.mark.asyncio
     @patch(f"{MODULE}.db")
-    async def test_truncates_long_evidence(self, mock_db):
-        """Evidence longer than 300 chars is truncated."""
+    async def test_preserves_long_evidence(self, mock_db):
+        """Evidence is preserved in full without truncation."""
         long_evidence = "x" * 500
         mock_db.fetch_all = AsyncMock(
             return_value=[
@@ -142,8 +142,7 @@ class TestFetchRecentExecutions:
 
         result = await fetch_recent_executions(TASK_ID)
 
-        assert len(result[0].evidence) == 303  # 300 + "..."
-        assert result[0].evidence.endswith("...")
+        assert result[0].evidence == long_evidence
 
     @pytest.mark.asyncio
     @patch(f"{MODULE}.db")
