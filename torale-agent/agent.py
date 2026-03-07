@@ -153,6 +153,8 @@ def _register_tools(agent: Agent) -> None:
     @agent.tool
     async def search_memories(ctx: RunContext[MonitoringDeps], query: str) -> str:
         """Search previous monitoring memories for this task. Use to recall what was found in earlier runs."""
+        if ctx.deps is None:
+            return json.dumps({"error": "No context available"})
         results = await mem0_client.search(
             query,
             filters={
@@ -165,6 +167,8 @@ def _register_tools(agent: Agent) -> None:
     @agent.tool
     async def add_memory(ctx: RunContext[MonitoringDeps], text: str) -> str:
         """Store a new meta-knowledge memory for this task. Only store patterns and source insights, not individual check results."""
+        if ctx.deps is None:
+            return json.dumps({"error": "No context available"})
         result = await mem0_client.add(
             [{"role": "user", "content": text}],
             user_id=ctx.deps.user_id,
