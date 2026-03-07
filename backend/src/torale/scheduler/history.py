@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 
-def _parse_jsonb(raw: object, field_name: str, expected_type: type, default: object) -> object:
+def parse_jsonb(raw: object, field_name: str, expected_type: type, default: object) -> object:
     """Parse a JSONB column that may be a string, already-deserialized, or None."""
     if isinstance(raw, str):
         try:
@@ -52,8 +52,8 @@ class ExecutionRecord(BaseModel):
 
         Handles corrupt JSON, missing keys, and type mismatches gracefully.
         """
-        result = _parse_jsonb(row.get("result"), "result", dict, {})
-        sources_raw = _parse_jsonb(row.get("grounding_sources"), "grounding_sources", list, [])
+        result = parse_jsonb(row.get("result"), "result", dict, {})
+        sources_raw = parse_jsonb(row.get("grounding_sources"), "grounding_sources", list, [])
 
         completed_at = row.get("completed_at")
         completed_at_str = completed_at.isoformat() if isinstance(completed_at, datetime) else None
