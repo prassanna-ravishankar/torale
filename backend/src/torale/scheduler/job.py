@@ -172,11 +172,15 @@ async def _execute(
 
         last_state = task.get("last_known_state")
         if last_state:
-            state_data = json.loads(last_state) if isinstance(last_state, str) else last_state
-            evidence = state_data.get("evidence", "") if isinstance(state_data, dict) else ""
+            try:
+                state_data = json.loads(last_state) if isinstance(last_state, str) else last_state
+                evidence = state_data.get("evidence", "") if isinstance(state_data, dict) else ""
+            except (json.JSONDecodeError, AttributeError):
+                logger.warning("Corrupt last_known_state for task %s, skipping", task_id)
+                evidence = ""
             if evidence:
                 prompt_parts.append(
-                    f"\n## Current State (from last successful run)\n<current-state>\n{evidence}\n</current-state>"
+                    f"\n## Current State (from last successful run)\n<current-state>\n{evidence[:5000]}\n</current-state>"
                 )
 
         agent_response: MonitoringResponse = await call_agent(
