@@ -134,7 +134,7 @@ async def _execute(
 
         task = await db.fetch_one(
             """SELECT search_query, condition_description, name, notify_behavior,
-                      notification_channels
+                      notification_channels, last_known_state
                FROM tasks WHERE id = $1""",
             uuid.UUID(task_id),
         )
@@ -169,6 +169,15 @@ async def _execute(
         history_block = format_execution_history(recent_executions)
         if history_block:
             prompt_parts.append(history_block)
+
+        last_state = task.get("last_known_state")
+        if last_state:
+            state_data = json.loads(last_state) if isinstance(last_state, str) else last_state
+            evidence = state_data.get("evidence", "") if isinstance(state_data, dict) else ""
+            if evidence:
+                prompt_parts.append(
+                    f"\n## Current State (from last successful run)\n<current-state>\n{evidence}\n</current-state>"
+                )
 
         agent_response: MonitoringResponse = await call_agent(
             "\n".join(prompt_parts), user_id=user_id, task_id=task_id

@@ -3,9 +3,8 @@
 import json
 import logging
 from datetime import datetime
-from typing import ClassVar
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -41,22 +40,11 @@ def _extract_urls(sources_raw: list) -> list[str]:
 class ExecutionRecord(BaseModel):
     """A single parsed execution result, ready for prompt formatting."""
 
-    MAX_EVIDENCE_LENGTH: ClassVar[int] = 300
-
     completed_at: str | None = None
     confidence: int | None = None
     notification: str | None = None
     evidence: str = ""
     sources: list[str] = Field(default_factory=list)
-
-    @field_validator("evidence", mode="before")
-    @classmethod
-    def truncate_evidence(cls, v: object) -> str:
-        if not isinstance(v, str):
-            return ""
-        if len(v) > cls.MAX_EVIDENCE_LENGTH:
-            return v[: cls.MAX_EVIDENCE_LENGTH] + "..."
-        return v
 
     @classmethod
     def from_db_row(cls, row: dict) -> "ExecutionRecord":

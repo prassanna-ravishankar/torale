@@ -4,6 +4,7 @@ Unit tests verify agent call orchestration, notification dispatch,
 auto-completion logic, and error handling.
 """
 
+import json
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -24,7 +25,7 @@ MODULE = "torale.scheduler.job"
 FUTURE = "2099-01-01T00:00:00Z"
 
 
-def _make_task_row():
+def _make_task_row(last_known_state=None):
     return {
         "search_query": "iPhone release date",
         "condition_description": "Release date announced",
@@ -32,6 +33,7 @@ def _make_task_row():
         "notify_behavior": "once",
         "notification_channels": ["email"],
         "state": "active",
+        "last_known_state": last_known_state,
     }
 
 
@@ -224,3 +226,28 @@ class TestExecute:
 
         prompt = job_mocks.agent.call_args[0][0]
         assert "Execution History" not in prompt
+
+    @pytest.mark.asyncio
+    async def test_last_known_state_injected_into_prompt(self, job_mocks):
+        """last_known_state with evidence -> Current State block in prompt."""
+        state = json.dumps({"evidence": "Apple announced iPhone 17 for September 2026"})
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row(last_known_state=state))
+        job_mocks.agent.return_value = _make_agent_response()
+
+        await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
+
+        prompt = job_mocks.agent.call_args[0][0]
+        assert "<current-state>" in prompt
+        assert "Apple announced iPhone 17 for September 2026" in prompt
+        assert "</current-state>" in prompt
+
+    @pytest.mark.asyncio
+    async def test_no_last_known_state_no_current_state_block(self, job_mocks):
+        """No last_known_state -> no Current State block in prompt."""
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
+        job_mocks.agent.return_value = _make_agent_response()
+
+        await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
+
+        prompt = job_mocks.agent.call_args[0][0]
+        assert "Current State" not in prompt
