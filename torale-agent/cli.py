@@ -40,7 +40,7 @@ def _load_results_file(path: Path) -> list[dict]:
 @app.command()
 def query(
     prompt: str = typer.Argument(..., help="Prompt to send to the agent"),
-    model: str = typer.Option("google-gla:gemini-3-flash-preview", help="Model to use"),
+    model: str = typer.Option("google-gla:gemini-3.1-flash-lite-preview", help="Model to use"),
     raw: bool = typer.Option(False, "--raw", help="Show only raw output (no formatting)"),
 ):
     """Run a query against the agent for ad-hoc testing."""
@@ -81,7 +81,7 @@ async def _query_async(prompt: str, model: str, raw: bool):
 
 @eval_app.command()
 def run(
-    model: str = typer.Option("google-gla:gemini-3-flash-preview", help="Model to evaluate (e.g., google-gla:gemini-3-flash-preview, claude-3-5-sonnet-20241022)"),
+    model: str = typer.Option("google-gla:gemini-3.1-flash-lite-preview", help="Model to evaluate (e.g., google-gla:gemini-3.1-flash-lite-preview, claude-3-5-sonnet-20241022)"),
     runs: int = typer.Option(1, help="Number of runs per case"),
     case: str | None = typer.Option(None, help="Specific case name to run"),
     limit: int | None = typer.Option(None, help="Limit to first N test cases"),
