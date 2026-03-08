@@ -59,6 +59,11 @@ mem0_client = AsyncMemoryClient()
 perplexity_client = AsyncPerplexity()
 parallel_client = AsyncParallel()
 
+PARALLEL_SEARCH_MAX_RESULTS = 10
+PARALLEL_SEARCH_MAX_CHARS = 5000
+PARALLEL_SEARCH_BETAS = ["search-extract-2025-10-10"]
+PARALLEL_SEARCH_MAX_EXCERPTS = 2
+
 SYSTEM_PROMPT = """\
 You are a search monitoring agent for Torale. You run as a scheduled API service — called periodically to check if a monitoring condition is met.
 
@@ -206,15 +211,15 @@ def _register_tools(agent: Agent) -> None:
         result = await parallel_client.beta.search(
             objective=query,
             search_queries=[query],
-            max_results=10,
-            max_chars_per_result=5000,
-            betas=["search-extract-2025-10-10"],
+            max_results=PARALLEL_SEARCH_MAX_RESULTS,
+            max_chars_per_result=PARALLEL_SEARCH_MAX_CHARS,
+            betas=PARALLEL_SEARCH_BETAS,
         )
         results = [
             {
                 "title": r.title,
                 "url": r.url,
-                "excerpts": r.excerpts[:2] if r.excerpts else [],
+                "excerpts": r.excerpts[:PARALLEL_SEARCH_MAX_EXCERPTS] if r.excerpts else [],
             }
             for r in (result.results or [])
         ]
