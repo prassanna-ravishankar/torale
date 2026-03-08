@@ -19,6 +19,8 @@ dependencies = [
     "anthropic>=0.40.0",
     "openai>=1.0.0",
     "parallel-web>=0.4.1",
+    "readabilipy>=0.2.0",
+    "markdownify>=0.14.1",
 ]
 
 [tool.hatch.build.targets.wheel]
