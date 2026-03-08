@@ -9,6 +9,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from pydantic_ai.messages import ModelResponse, ToolCallPart
+
 from agent import MonitoringDeps, create_monitoring_agent
 
 logger = logging.getLogger(__name__)
@@ -31,6 +33,7 @@ class EvalResult:
     timestamp: str
     latency_ms: float
     response: dict[str, Any] | None
+    tools_called: list[str] | None
     error: str | None
 
 
@@ -91,6 +94,14 @@ Execute the search and determine if the condition is met."""
 
         response_content = result.output.model_dump()
 
+        tools_called = [
+            part.tool_name
+            for msg in result.all_messages()
+            if isinstance(msg, ModelResponse)
+            for part in msg.parts
+            if isinstance(part, ToolCallPart)
+        ]
+
         return EvalResult(
             case_name=case.name,
             model=model,
@@ -98,6 +109,7 @@ Execute the search and determine if the condition is met."""
             timestamp=timestamp,
             latency_ms=latency_ms,
             response=response_content,
+            tools_called=tools_called,
             error=None,
         )
 
@@ -135,6 +147,7 @@ Execute the search and determine if the condition is met."""
             timestamp=timestamp,
             latency_ms=latency_ms,
             response=response_debug,
+            tools_called=None,
             error=error_msg,
         )
 

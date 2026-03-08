@@ -137,9 +137,10 @@ async def _run_async(model: str, runs: int, case: str | None, limit: int | None)
                 progress.advance(task)
 
                 status = "[green]✓[/green]" if result.error is None else "[red]✗[/red]"
+                tools = ", ".join(result.tools_called) if result.tools_called else "none"
                 console.print(
                     f"  {status} {case_obj.name} (run {run_num}): "
-                    f"{result.latency_ms:.0f}ms"
+                    f"{result.latency_ms:.0f}ms [dim]tools: {tools}[/dim]"
                 )
 
     output_path = save_results(results, RESULTS_DIR)
