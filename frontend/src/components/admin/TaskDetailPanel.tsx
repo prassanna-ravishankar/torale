@@ -171,7 +171,7 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
   }, [task.id, retryCount])
 
   return (
-    <div className="bg-zinc-50 border-t border-zinc-200 p-4 space-y-4">
+    <div className="bg-zinc-50 border-t border-zinc-200 p-4 space-y-4 overflow-hidden">
       {/* Actions */}
       <div className="flex items-center gap-2">
         <SectionLabel>Actions</SectionLabel>

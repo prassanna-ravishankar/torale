@@ -91,7 +91,16 @@ export function TasksTable({ initialExpandedTaskId }: TasksTableProps = {}) {
 
       {/* Desktop Table View */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col className="w-[15%]" />
+            <col className="w-[15%]" />
+            <col className="w-[25%]" />
+            <col className="w-[10%]" />
+            <col className="w-[13%]" />
+            <col className="w-[10%]" />
+            <col className="w-[12%]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-zinc-200 bg-zinc-50">
               <th className="text-left p-3"><SectionLabel>User</SectionLabel></th>
@@ -147,7 +156,7 @@ export function TasksTable({ initialExpandedTaskId }: TasksTableProps = {}) {
                   </tr>
                   {expandedTaskId === task.id && (
                     <tr>
-                      <td colSpan={7} className="p-0">
+                      <td colSpan={7} className="p-0 overflow-hidden">
                         <TaskDetailPanel task={task} onTaskUpdate={loadTasks} />
                       </td>
                     </tr>

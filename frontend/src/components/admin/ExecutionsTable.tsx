@@ -122,7 +122,16 @@ export function ExecutionsTable({ onTaskClick }: ExecutionsTableProps = {}) {
 
       {/* Desktop Table View */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col className="w-[15%]" />
+            <col className="w-[25%]" />
+            <col className="w-[10%]" />
+            <col className="w-[20%]" />
+            <col className="w-[13%]" />
+            <col className="w-[9%]" />
+            <col className="w-[8%]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-zinc-200 bg-zinc-50">
               <th className="text-left p-3"><SectionLabel>User</SectionLabel></th>
