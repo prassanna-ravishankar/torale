@@ -67,14 +67,8 @@ class ExecutionRecord(BaseModel):
         )
 
 
-MAX_OLDER_EVIDENCE_LENGTH = 500
-
-
 def format_execution_history(executions: list[ExecutionRecord]) -> str:
     """Format execution records into a prompt string with safety delimiters.
-
-    Run 1 (most recent) gets full evidence; older runs are truncated to
-    keep prompt size bounded while preserving trend context.
 
     Returns empty string on first run (no executions).
     """
@@ -91,10 +85,7 @@ def format_execution_history(executions: list[ExecutionRecord]) -> str:
     for i, ex in enumerate(executions, 1):
         lines.append(f"\nRun {i} | {ex.completed_at} | confidence: {ex.confidence}")
         if ex.evidence:
-            evidence = ex.evidence
-            if i > 1 and len(evidence) > MAX_OLDER_EVIDENCE_LENGTH:
-                evidence = evidence[:MAX_OLDER_EVIDENCE_LENGTH] + "..."
-            lines.append(f"Evidence: {evidence}")
+            lines.append(f"Evidence: {ex.evidence}")
         if ex.sources:
             lines.append(f"Sources: {', '.join(ex.sources)}")
         if ex.notification:
