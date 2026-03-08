@@ -1,5 +1,14 @@
 [
   {
+    "id": "2026-03-08-parallel-web-search",
+    "date": "2026-03-08",
+    "title": "Parallel Web Search",
+    "description": "The monitoring agent now runs multiple web searches in parallel, casting a wider net for relevant results. Combined with improved search memory handling and an updated default model, task monitoring is more accurate and reliable.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": [174, 173, 171]
+  },
+  {
     "id": "2026-02-11-admin-task-controls",
     "date": "2026-02-11",
     "title": "Admin Console Task Controls",
