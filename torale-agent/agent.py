@@ -169,8 +169,30 @@ def instructions() -> str:
     return f"Current UTC time: {now}\n\n{SYSTEM_PROMPT}"
 
 
+def _is_safe_url(url: str) -> bool:
+    """Check that a URL doesn't point to internal/private network resources."""
+    from ipaddress import ip_address
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+    if not hostname or parsed.scheme not in ("http", "https"):
+        return False
+
+    try:
+        ip = ip_address(hostname)
+        return ip.is_global
+    except ValueError:
+        # It's a hostname, not an IP — block known dangerous hosts
+        blocked = ("localhost", "metadata.google.internal")
+        return hostname not in blocked and not hostname.endswith(".internal")
+
+
 async def _fetch_and_extract(url: str) -> dict:
     """Fetch a URL and extract content as markdown."""
+    if not _is_safe_url(url):
+        return {"url": url, "error": "URL blocked: private or internal address"}
+
     async with httpx.AsyncClient(
         follow_redirects=True,
         timeout=FETCH_TIMEOUT,
@@ -192,7 +214,9 @@ async def _fetch_and_extract(url: str) -> dict:
 
     page_raw = response.text
     is_html = (
-        "<html" in page_raw[:100] or "text/html" in content_type or not content_type
+        "<html" in page_raw[:100].lower()
+        or "text/html" in content_type
+        or not content_type
     )
 
     if is_html:
@@ -200,7 +224,7 @@ async def _fetch_and_extract(url: str) -> dict:
             page_raw, use_readability=True
         )
         title = article.get("title", "")
-        html_content = article.get("content", "") or page_raw
+        html_content = article.get("content", "")
         content = markdownify.markdownify(html_content, heading_style=markdownify.ATX)
     else:
         title = ""
