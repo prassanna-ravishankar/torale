@@ -52,6 +52,11 @@ spec:
             secretKeyRef:
               name: {{ $.Values.secrets.name }}
               key: PERPLEXITY_API_KEY
+        - name: PARALLEL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ $.Values.secrets.name }}
+              key: PARALLEL_API_KEY
         - name: LOGFIRE_TOKEN
           valueFrom:
             secretKeyRef:

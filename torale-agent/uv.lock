@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -1049,6 +1049,23 @@ wheels = [
 ]
 
 [[package]]
+name = "parallel-web"
+version = "0.4.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/26/80/7115d10c0d07235fc155e8c0d06908cc8a9b52d3ff3e45f59bac9546e49f/parallel_web-0.4.1.tar.gz", hash = "sha256:47519dc475fbf8156b3fb117ae018bca50a52c95a712c97999d79491083fc1c3", size = 135251, upload-time = "2026-01-29T00:26:21.776Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/14/c8/a423bfcfb8215bb495385020e025791ef45cc55d35cac36c4caed7627980/parallel_web-0.4.1-py3-none-any.whl", hash = "sha256:f581c373382443720209f201d628a00b845bc4061aeef4774ae2ee8a7f9afd2d", size = 139464, upload-time = "2026-01-29T00:26:20.459Z" },
+]
+
+[[package]]
 name = "perplexityai"
 version = "0.28.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1588,6 +1605,7 @@ dependencies = [
     { name = "logfire" },
     { name = "mem0ai" },
     { name = "openai" },
+    { name = "parallel-web" },
     { name = "perplexityai" },
     { name = "pydantic-ai-slim", extra = ["google"] },
     { name = "python-dotenv" },
@@ -1613,6 +1631,7 @@ requires-dist = [
     { name = "logfire", specifier = ">=4.21.0" },
     { name = "mem0ai", specifier = ">=1.0.0" },
     { name = "openai", specifier = ">=1.0.0" },
+    { name = "parallel-web", specifier = ">=0.4.1" },
     { name = "perplexityai", specifier = ">=0.27.0" },
     { name = "pydantic-ai-slim", extras = ["google"], specifier = ">=0.2.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
