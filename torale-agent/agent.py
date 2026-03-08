@@ -1,5 +1,6 @@
 """Torale monitoring agent service."""
 
+import asyncio
 import json
 import logging
 import os
@@ -169,8 +170,9 @@ def instructions() -> str:
     return f"Current UTC time: {now}\n\n{SYSTEM_PROMPT}"
 
 
-def _is_safe_url(url: str) -> bool:
-    """Check that a URL doesn't point to internal/private network resources."""
+async def _is_safe_url(url: str) -> bool:
+    """Check that a URL doesn't resolve to internal/private network resources."""
+    import socket
     from ipaddress import ip_address
     from urllib.parse import urlparse
 
@@ -180,28 +182,39 @@ def _is_safe_url(url: str) -> bool:
         return False
 
     try:
-        ip = ip_address(hostname)
-        return ip.is_global
-    except ValueError:
-        # It's a hostname, not an IP — block known dangerous hosts
-        blocked = ("localhost", "metadata.google.internal")
-        return hostname not in blocked and not hostname.endswith(".internal")
+        # Resolve hostname to IP and validate it's global
+        loop = asyncio.get_running_loop()
+        addrinfo = await loop.getaddrinfo(hostname, None, family=socket.AF_UNSPEC)
+        return all(ip_address(addr[4][0]).is_global for addr in addrinfo)
+    except (socket.gaierror, ValueError):
+        return False
+
+
+async def _validate_request(request: httpx.Request) -> None:
+    """Event hook to validate every outbound request URL (blocks redirect SSRF)."""
+    from urllib.parse import urlparse
+
+    parsed = urlparse(str(request.url))
+    hostname = parsed.hostname
+    if not hostname or not await _is_safe_url(str(request.url)):
+        raise httpx.RequestError(f"URL blocked: {request.url}", request=request)
 
 
 async def _fetch_and_extract(url: str) -> dict:
     """Fetch a URL and extract content as markdown."""
-    if not _is_safe_url(url):
+    if not await _is_safe_url(url):
         return {"url": url, "error": "URL blocked: private or internal address"}
 
     async with httpx.AsyncClient(
         follow_redirects=True,
         timeout=FETCH_TIMEOUT,
         headers={"User-Agent": FETCH_USER_AGENT},
+        event_hooks={"request": [_validate_request]},
     ) as client:
         response = await client.get(url)
         response.raise_for_status()
 
-    content_type = response.headers.get("content-type", "")
+    content_type = response.headers.get("content-type", "").lower()
 
     # Reject binary content
     if any(
