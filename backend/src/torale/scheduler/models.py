@@ -7,7 +7,7 @@ class ActivityStep(BaseModel):
     """A single step the agent took during monitoring."""
 
     tool: str = Field(description="Tool name (e.g. perplexity_search, fetch_url)")
-    input: str = Field(description="Human-readable summary of what was done")
+    detail: str = Field(description="Human-readable summary of what was done")
 
 
 class MonitoringResponse(BaseModel):

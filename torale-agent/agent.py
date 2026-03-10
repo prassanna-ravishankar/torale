@@ -397,7 +397,7 @@ def _extract_activity(messages: list) -> list[ActivityStep]:
             args = part.args if isinstance(part.args, dict) else {}
             key = _TOOL_INPUT_KEYS.get(tool, "")
             input_val = args.get(key, "") if key else ""
-            steps.append(ActivityStep(tool=tool, input=input_val))
+            steps.append(ActivityStep(tool=tool, detail=input_val))
     return steps
 
 

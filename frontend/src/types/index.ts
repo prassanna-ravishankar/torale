@@ -73,7 +73,7 @@ export interface GroundingSource {
 
 export interface ActivityStep {
   tool: string;
-  input: string;
+  detail: string;
 }
 
 export interface ExecutionResult {

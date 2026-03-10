@@ -56,7 +56,7 @@ export const AgentActivity: React.FC<AgentActivityProps> = ({ activity }) => {
 
                 <span className="text-xs font-mono text-zinc-600 leading-relaxed pt-0.5 break-words">
                   <span className="text-zinc-400">{config.label}:</span>{" "}
-                  {step.input}
+                  {step.detail}
                 </span>
               </div>
             );
