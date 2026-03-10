@@ -11,9 +11,10 @@ from pydantic_evals import Case, Dataset
 
 from evals.evaluators import (
     CUSTOM_EVALUATORS,
-    SourcesWhenNotifying,
+    FetchUrlUsed,
     ReasonableNextRun,
     SearchToolUsed,
+    SourcesWhenNotifying,
 )
 from evals.models import MonitoringCase, MonitoringCaseInput, MonitoringCaseMetadata
 from models import MonitoringResponse
@@ -278,6 +279,7 @@ async def generate_and_save(output_dir: Path) -> Path:
             SourcesWhenNotifying(),
             ReasonableNextRun(),
             SearchToolUsed(),
+            FetchUrlUsed(),
         ],
     )
 
