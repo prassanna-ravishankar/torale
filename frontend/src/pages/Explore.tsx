@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import type { Task } from '@/types';
 import { BrutalistCard, SectionLabel } from '@/components/torale';
-import { Loader2, Eye, Users, ChevronLeft, ChevronRight, Compass, Copy } from 'lucide-react';
+import { Loader2, Eye, Users, ChevronLeft, ChevronRight, Compass, Copy, Rss } from 'lucide-react';
 import { toast } from 'sonner';
 import { DynamicMeta } from '@/components/DynamicMeta';
 
@@ -141,23 +141,34 @@ export function Explore() {
                   <h3 className="text-lg font-bold font-grotesk text-zinc-900 mb-1 group-hover:text-zinc-700 transition-colors">
                     {task.name}
                   </h3>
-                  {task.slug && task.creator_username && (
+                  <div className="flex items-center gap-3">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        const vanityUrl = `${window.location.origin}/t/${task.creator_username}/${task.slug}`;
-                        navigator.clipboard.writeText(vanityUrl);
-                        toast.success('Vanity URL copied to clipboard');
+                        const shareUrl = `${window.location.origin}/t/${task.id}`;
+                        navigator.clipboard.writeText(shareUrl);
+                        toast.success('Share URL copied to clipboard');
                       }}
                       className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-400 hover:text-zinc-900 transition-colors"
-                      title="Copy vanity URL"
+                      title="Copy share URL"
                     >
                       <Copy className="h-3 w-3" />
                       <span className="truncate">
-                        /t/{task.creator_username}/{task.slug}
+                        /t/{task.id}
                       </span>
                     </button>
-                  )}
+                    <a
+                      href={`${api.getBaseUrl()}/t/${task.id}/rss`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-1 text-[10px] font-mono text-zinc-400 hover:text-zinc-900 transition-colors"
+                      title="RSS feed"
+                    >
+                      <Rss className="h-3 w-3" />
+                      <span>RSS</span>
+                    </a>
+                  </div>
                 </div>
 
                 {/* Content */}

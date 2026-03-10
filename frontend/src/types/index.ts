@@ -45,7 +45,6 @@ export interface Task {
 
   // Shareable tasks fields
   is_public: boolean;
-  slug: string | null;
   view_count: number;
   subscriber_count: number;
   forked_from_task_id: string | null;

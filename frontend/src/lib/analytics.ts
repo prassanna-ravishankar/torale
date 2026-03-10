@@ -4,6 +4,6 @@
  */
 export function sanitizePath(path: string): string {
   return path
-    .replace(/\/t\/[^/]+\/[^/]+/, '/t/[username]/[slug]')
+    .replace(/\/t\/[^/]+/, '/t/[id]')
     .replace(/\/tasks\/[a-f0-9-]{36}/, '/tasks/[id]')
 }

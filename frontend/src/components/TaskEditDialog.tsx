@@ -98,14 +98,14 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       const result = await api.updateTaskVisibility(task.id, checked);
       setIsPublic(result.is_public);
 
-      if (result.is_public && result.slug) {
-        const vanityUrl = `${window.location.origin}/t/${user?.username}/${result.slug}`;
-        toast.success(`Task is now public: ${vanityUrl}`);
+      if (result.is_public) {
+        const shareUrl = `${window.location.origin}/t/${task.id}`;
+        toast.success(`Task is now public: ${shareUrl}`);
       } else {
         toast.success('Task is now private');
       }
 
-      onSuccess({ ...task, is_public: result.is_public, slug: result.slug });
+      onSuccess({ ...task, is_public: result.is_public });
     } catch (error) {
       console.error('Failed to toggle visibility:', error);
       toast.error('Failed to update task visibility');
@@ -121,12 +121,12 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
         const result = await api.updateTaskVisibility(task.id, true);
         setIsPublic(result.is_public);
 
-        if (result.is_public && result.slug) {
-          const vanityUrl = `${window.location.origin}/t/${username}/${result.slug}`;
-          toast.success(`Task is now public: ${vanityUrl}`);
+        if (result.is_public) {
+          const shareUrl = `${window.location.origin}/t/${task.id}`;
+          toast.success(`Task is now public: ${shareUrl}`);
         }
 
-        onSuccess({ ...task, is_public: result.is_public, slug: result.slug });
+        onSuccess({ ...task, is_public: result.is_public });
       } catch (error) {
         console.error('Failed to make task public:', error);
         toast.error('Failed to make task public');
@@ -136,10 +136,10 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
     }
   };
 
-  const copyVanityUrl = () => {
-    if (task?.slug && user?.username) {
-      const vanityUrl = `${window.location.origin}/t/${user.username}/${task.slug}`;
-      navigator.clipboard.writeText(vanityUrl);
+  const copyShareUrl = () => {
+    if (task) {
+      const shareUrl = `${window.location.origin}/t/${task.id}`;
+      navigator.clipboard.writeText(shareUrl);
       toast.success('Link copied to clipboard!');
     }
   };
@@ -355,13 +355,13 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
             </div>
 
             {/* Public task details */}
-            {isPublic && task?.slug && user?.username && (
+            {isPublic && (
               <div className="space-y-3 pt-2 border-t border-zinc-200">
                 <div className="space-y-2">
                   <Label className="text-xs text-zinc-500">Public Link</Label>
                   <div className="flex gap-2">
                     <Input
-                      value={`${window.location.origin}/t/${user.username}/${task.slug}`}
+                      value={`${window.location.origin}/t/${task.id}`}
                       readOnly
                       className="font-mono text-sm bg-background"
                     />
@@ -369,7 +369,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={copyVanityUrl}
+                      onClick={copyShareUrl}
                       className="shrink-0"
                     >
                       <Copy className="h-4 w-4" />

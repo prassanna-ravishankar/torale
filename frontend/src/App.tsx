@@ -22,7 +22,6 @@ const PrivacyPolicy = lazy(() => import('@/pages/PrivacyPolicy').then(m => ({ de
 const CapacityGate = lazy(() => import('@/components/CapacityGate').then(m => ({ default: m.CapacityGate })))
 const WaitlistPage = lazy(() => import('@/components/WaitlistPage').then(m => ({ default: m.WaitlistPage })))
 const Explore = lazy(() => import('@/pages/Explore').then(m => ({ default: m.Explore })))
-const VanityTaskRedirect = lazy(() => import('@/pages/VanityTaskRedirect').then(m => ({ default: m.VanityTaskRedirect })))
 const ComparePage = lazy(() => import('@/pages/ComparePage').then(m => ({ default: m.ComparePage })))
 const UseCasePage = lazy(() => import('@/pages/UseCasePage').then(m => ({ default: m.UseCasePage })))
 const Welcome = lazy(() => import('@/components/Welcome').then(m => ({ default: m.Welcome })))
@@ -227,12 +226,8 @@ export default function App() {
           }
         />
         <Route
-          path="/t/:username/:slug"
-          element={
-            <OptionalAuthRoute>
-              <VanityTaskRedirect />
-            </OptionalAuthRoute>
-          }
+          path="/t/:id"
+          element={<PublicTaskRedirect />}
         />
         <Route
           path="/"
@@ -311,6 +306,12 @@ function TaskDetailRoute({ onBack, onDeleted }: { onBack: () => void; onDeleted:
       currentUserId={user?.id}
     />
   )
+}
+
+function PublicTaskRedirect() {
+  const { id } = useParams()
+  if (!id) return <Navigate to="/explore" replace />
+  return <Navigate to={`/tasks/${id}`} replace />
 }
 
 function HomeRoute({ onTaskClick }: { onTaskClick: (taskId: string) => void }) {

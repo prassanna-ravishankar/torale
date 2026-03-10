@@ -477,7 +477,7 @@ class ApiClient {
   async updateTaskVisibility(
     taskId: string,
     isPublic: boolean
-  ): Promise<{ is_public: boolean; slug: string | null; username_required: boolean }> {
+  ): Promise<{ is_public: boolean }> {
     const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/visibility`, {
       method: 'PATCH',
       headers: await this.getAuthHeaders(),
@@ -509,13 +509,6 @@ class ApiClient {
 
     const url = `${this.baseUrl}/api/v1/public/tasks${queryParams.toString() ? `?${queryParams}` : ''}`
     const response = await fetch(url, {
-      headers: await this.getAuthHeaders(),
-    })
-    return this.handleResponse(response)
-  }
-
-  async getPublicTaskByVanityUrl(username: string, slug: string): Promise<Task> {
-    const response = await fetch(`${this.baseUrl}/api/v1/public/tasks/${username}/${slug}`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
