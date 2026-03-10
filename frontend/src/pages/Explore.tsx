@@ -5,6 +5,7 @@ import type { Task } from '@/types';
 import { BrutalistCard, SectionLabel } from '@/components/torale';
 import { Loader2, Eye, Users, ChevronLeft, ChevronRight, Compass, Copy, Rss } from 'lucide-react';
 import { toast } from 'sonner';
+import { getTaskShareUrl } from '@/lib/utils';
 import { DynamicMeta } from '@/components/DynamicMeta';
 
 export function Explore() {
@@ -145,7 +146,7 @@ export function Explore() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        const shareUrl = `${window.location.origin}/t/${task.id}`;
+                        const shareUrl = getTaskShareUrl(task.id);
                         navigator.clipboard.writeText(shareUrl);
                         toast.success('Share URL copied to clipboard');
                       }}

@@ -1,6 +1,5 @@
 """Public task discovery and RSS feeds."""
 
-import json
 import xml.etree.ElementTree as ET
 from email.utils import format_datetime
 from uuid import UUID
@@ -14,7 +13,11 @@ from torale.api.routers.tasks import get_task
 from torale.api.utils.task_parsers import parse_task_with_execution
 from torale.core.config import settings
 from torale.core.database import Database, get_db
+from torale.scheduler.history import _parse_jsonb
 from torale.tasks import Task
+
+# Register atom namespace once at module level (avoids per-request global mutation)
+ET.register_namespace("atom", "http://www.w3.org/2005/Atom")
 
 router = APIRouter(prefix="/public", tags=["public"])
 
@@ -144,11 +147,11 @@ async def get_task_rss_feed(
     if not task_row or not task_row["is_public"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
-    # Fetch last 50 completed executions
+    # Fetch last 50 successful executions
     executions_query = """
-        SELECT id, completed_at, result, condition_met, grounding_sources
+        SELECT id, completed_at, notification, result, grounding_sources
         FROM task_executions
-        WHERE task_id = $1 AND status = 'completed' AND completed_at IS NOT NULL
+        WHERE task_id = $1 AND status = 'success' AND completed_at IS NOT NULL
         ORDER BY completed_at DESC
         LIMIT 50
     """
@@ -157,9 +160,6 @@ async def get_task_rss_feed(
     base_url = settings.frontend_url or "https://torale.ai"
     task_link = f"{base_url}/tasks/{task_id}"
     feed_url = f"{base_url}/t/{task_id}/rss"
-
-    # Register atom namespace to avoid ns0 prefix
-    ET.register_namespace("atom", "http://www.w3.org/2005/Atom")
 
     # Build RSS 2.0 feed
     rss = ET.Element("rss", version="2.0")
@@ -180,19 +180,16 @@ async def get_task_rss_feed(
     atom_link.set("href", feed_url)
 
     for execution in executions:
-        result = execution["result"] or {}
-        if isinstance(result, str):
-            result = json.loads(result)
+        result = _parse_jsonb(execution["result"], "result", dict, {})
+        grounding_sources = _parse_jsonb(
+            execution["grounding_sources"], "grounding_sources", list, []
+        )
 
-        grounding_sources = execution["grounding_sources"] or []
-        if isinstance(grounding_sources, str):
-            grounding_sources = json.loads(grounding_sources)
-
-        # Build title
+        # Build title from notification (condition met) or evidence
         evidence = result.get("evidence", "")
-        notification = result.get("notification", "")
-        if notification:
-            title_text = notification
+        notification_text = execution["notification"] or ""
+        if notification_text:
+            title_text = notification_text
         elif evidence:
             title_text = evidence[:100] + ("..." if len(evidence) > 100 else "")
         else:
@@ -217,7 +214,7 @@ async def get_task_rss_feed(
         ET.SubElement(item, "pubDate").text = format_datetime(execution["completed_at"])
         ET.SubElement(item, "description").text = "\n".join(description_parts)
 
-        if execution["condition_met"]:
+        if notification_text:
             ET.SubElement(item, "category").text = "Condition Met"
 
     xml_output = ET.tostring(rss, encoding="utf-8", xml_declaration=True)

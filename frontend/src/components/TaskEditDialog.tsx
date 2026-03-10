@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { getTaskShareUrl } from '@/lib/utils';
 import type { Task, NotifyBehavior } from '@/types';
 import {
   Loader2,
@@ -99,7 +100,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       setIsPublic(result.is_public);
 
       if (result.is_public) {
-        const shareUrl = `${window.location.origin}/t/${task.id}`;
+        const shareUrl = getTaskShareUrl(task.id);
         toast.success(`Task is now public: ${shareUrl}`);
       } else {
         toast.success('Task is now private');
@@ -122,7 +123,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
         setIsPublic(result.is_public);
 
         if (result.is_public) {
-          const shareUrl = `${window.location.origin}/t/${task.id}`;
+          const shareUrl = getTaskShareUrl(task.id);
           toast.success(`Task is now public: ${shareUrl}`);
         }
 
@@ -138,7 +139,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
 
   const copyShareUrl = () => {
     if (task) {
-      const shareUrl = `${window.location.origin}/t/${task.id}`;
+      const shareUrl = getTaskShareUrl(task.id);
       navigator.clipboard.writeText(shareUrl);
       toast.success('Link copied to clipboard!');
     }
@@ -361,7 +362,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
                   <Label className="text-xs text-zinc-500">Public Link</Label>
                   <div className="flex gap-2">
                     <Input
-                      value={`${window.location.origin}/t/${task.id}`}
+                      value={getTaskShareUrl(task.id)}
                       readOnly
                       className="font-mono text-sm bg-background"
                     />
