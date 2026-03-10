@@ -19,7 +19,6 @@ from torale.api.routers.usernames import (
     check_username_availability,
     set_username,
 )
-from torale.utils.slug import generate_unique_slug
 from torale.utils.username import check_username_available, validate_username
 
 
@@ -228,78 +227,25 @@ class TestUsernameEndpoints:
         assert exc_info.value.status_code == 400
 
 
-class TestSlugGeneration:
-    """Tests for slug generation utility."""
-
-    @pytest.mark.asyncio
-    async def test_generate_unique_slug_simple(self, mock_db):
-        """Test generating slug from task name."""
-        mock_db.fetch_all.return_value = []  # No existing slugs
-
-        slug = await generate_unique_slug("My Cool Task", uuid4(), mock_db)
-
-        assert slug == "my-cool-task"
-
-    @pytest.mark.asyncio
-    async def test_generate_unique_slug_with_collision(self, mock_db):
-        """Test slug generation with collision handling."""
-        user_id = uuid4()
-
-        # Return existing slug "my-task", so next available is "my-task-2"
-        mock_db.fetch_all.return_value = [{"slug": "my-task"}]
-
-        slug = await generate_unique_slug("My Task", user_id, mock_db)
-
-        assert slug == "my-task-2"
-
-    @pytest.mark.asyncio
-    async def test_generate_slug_from_special_characters(self, mock_db):
-        """Test slug generation with special characters."""
-        mock_db.fetch_all.return_value = []  # No existing slugs
-
-        slug = await generate_unique_slug("Task: #1 @home!", uuid4(), mock_db)
-
-        assert slug == "task-1-home"
-
-
 class TestTaskVisibilityToggle:
     """Tests for task visibility endpoint."""
 
     @pytest.mark.asyncio
-    async def test_make_task_public_with_username(self, mock_user, mock_db):
-        """Test making task public when user has username."""
+    async def test_make_task_public(self, mock_user, mock_db):
+        """Test making task public."""
         task_id = uuid4()
         request = VisibilityUpdateRequest(is_public=True)
 
         # Mock task query
-        mock_db.fetch_one.side_effect = [
-            {"id": task_id, "name": "Test Task", "slug": None, "is_public": False},  # Task
-            {"username": "testuser"},  # User has username
-            None,  # Slug availability check (no collision)
-        ]
+        mock_db.fetch_one.return_value = {
+            "id": task_id,
+            "is_public": False,
+        }
 
         result = await update_task_visibility(task_id, request, mock_user, mock_db)
 
         assert result.is_public is True
-        assert result.slug is not None
         mock_db.execute.assert_called()
-
-    @pytest.mark.asyncio
-    async def test_make_task_public_without_username(self, mock_user, mock_db):
-        """Test making task public without username - should fail."""
-        task_id = uuid4()
-        request = VisibilityUpdateRequest(is_public=True)
-
-        mock_db.fetch_one.side_effect = [
-            {"id": task_id, "name": "Test Task", "slug": None, "is_public": False},  # Task
-            {"username": None},  # User has no username
-        ]
-
-        with pytest.raises(HTTPException) as exc_info:
-            await update_task_visibility(task_id, request, mock_user, mock_db)
-
-        assert exc_info.value.status_code == 400
-        assert "username" in exc_info.value.detail.lower()
 
     @pytest.mark.asyncio
     async def test_make_task_private(self, mock_user, mock_db):
@@ -309,8 +255,6 @@ class TestTaskVisibilityToggle:
 
         mock_db.fetch_one.return_value = {
             "id": task_id,
-            "name": "Test Task",
-            "slug": "test-task",
             "is_public": True,
         }
 
@@ -318,22 +262,6 @@ class TestTaskVisibilityToggle:
 
         assert result.is_public is False
         mock_db.execute.assert_called()
-
-    @pytest.mark.asyncio
-    async def test_make_task_public_already_has_slug(self, mock_user, mock_db):
-        """Test making task public when slug already exists."""
-        task_id = uuid4()
-        request = VisibilityUpdateRequest(is_public=True)
-
-        mock_db.fetch_one.side_effect = [
-            {"id": task_id, "name": "Test Task", "slug": "existing-slug", "is_public": False},
-            {"username": "testuser"},
-        ]
-
-        result = await update_task_visibility(task_id, request, mock_user, mock_db)
-
-        assert result.is_public is True
-        assert result.slug == "existing-slug"
 
 
 class TestPublicTaskAccess:
@@ -355,7 +283,6 @@ class TestPublicTaskAccess:
             "user_id": user_id,
             "name": "Public Task",
             "is_public": True,
-            "slug": "public-task",
             "view_count": 0,
             "subscriber_count": 0,
             "last_known_state": None,
@@ -374,7 +301,7 @@ class TestPublicTaskAccess:
             "updated_at": now,
             "state_changed_at": now,
             "last_execution_id": None,
-            "creator_username": "testuser",  # Add missing creator_username field
+            "creator_username": "testuser",
             # Execution fields (LEFT JOIN result - no execution)
             "exec_id": None,
             "exec_notification": None,
@@ -430,7 +357,6 @@ class TestPublicTaskAccess:
             "user_id": mock_user.id,  # Owner
             "name": "Private Task",
             "is_public": False,
-            "slug": None,
             "view_count": 0,
             "subscriber_count": 0,
             "last_known_state": None,
@@ -449,7 +375,7 @@ class TestPublicTaskAccess:
             "updated_at": now,
             "state_changed_at": now,
             "last_execution_id": None,
-            "creator_username": "testuser",  # Add missing creator_username field
+            "creator_username": "testuser",
             # Execution fields (LEFT JOIN result - no execution)
             "exec_id": None,
             "exec_notification": None,
@@ -518,7 +444,6 @@ class TestTaskForking:
             "webhook_url": None,
             "webhook_secret": None,
             "is_public": False,
-            "slug": None,
             "view_count": 0,
             "subscriber_count": 0,
             "forked_from_task_id": source_task_id,
@@ -597,7 +522,6 @@ class TestTaskForking:
             "webhook_url": None,
             "webhook_secret": None,
             "is_public": False,
-            "slug": None,
             "view_count": 0,
             "subscriber_count": 0,
             "forked_from_task_id": task_id,
@@ -660,7 +584,6 @@ class TestTaskForking:
             "webhook_url": None,
             "webhook_secret": None,
             "is_public": False,
-            "slug": None,
             "view_count": 0,
             "subscriber_count": 0,
             "forked_from_task_id": source_task_id,
@@ -724,7 +647,6 @@ class TestTaskForking:
             "webhook_url": None,  # Scrubbed
             "webhook_secret": None,  # Scrubbed
             "is_public": False,
-            "slug": None,
             "view_count": 0,
             "subscriber_count": 0,
             "forked_from_task_id": source_task_id,

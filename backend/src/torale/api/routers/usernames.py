@@ -70,8 +70,8 @@ async def set_username(
     """
     Set the current user's username (AUTH REQUIRED).
 
-    IMPORTANT: Username changes are NOT allowed after initial set to prevent
-    breaking vanity URLs (e.g., /t/username/task-slug). Users must choose carefully.
+    IMPORTANT: Username changes are NOT allowed after initial set.
+    Users must choose carefully.
 
     Args:
         request: SetUsernameRequest with desired username

@@ -118,7 +118,6 @@ class Task(TaskBase):
 
     # Shareable tasks fields
     is_public: bool = False
-    slug: str | None = None
     view_count: int = 0
     subscriber_count: int = 0
     forked_from_task_id: UUID | None = None
