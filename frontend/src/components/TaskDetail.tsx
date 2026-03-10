@@ -482,12 +482,13 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         </div>
 
         <TabsContent value="executions" className="mt-6">
-          <ExecutionTimeline executions={executions} />
+          <ExecutionTimeline executions={executions} isOwner={isOwner} />
         </TabsContent>
 
         <TabsContent value="notifications" className="mt-6">
           <ExecutionTimeline
             executions={notifications}
+            isOwner={isOwner}
           />
         </TabsContent>
       </Tabs>
