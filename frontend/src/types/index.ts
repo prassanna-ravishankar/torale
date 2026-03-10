@@ -71,12 +71,18 @@ export interface GroundingSource {
   title?: string;
 }
 
+export interface ActivityStep {
+  tool: string;
+  input: string;
+}
+
 export interface ExecutionResult {
   evidence?: string;
   notification?: string;
   sources?: GroundingSource[];
   confidence?: number;
   next_run?: string;
+  activity?: ActivityStep[];
   metadata?: {
     changed: boolean;
     current_state: Record<string, unknown> | null;

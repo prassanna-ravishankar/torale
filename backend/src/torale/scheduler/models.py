@@ -3,6 +3,13 @@
 from pydantic import BaseModel, Field
 
 
+class ActivityStep(BaseModel):
+    """A single step the agent took during monitoring."""
+
+    tool: str = Field(description="Tool name (e.g. perplexity_search, fetch_url)")
+    input: str = Field(description="Human-readable summary of what was done")
+
+
 class MonitoringResponse(BaseModel):
     """Response from monitoring check - matches torale-agent schema."""
 
@@ -20,4 +27,8 @@ class MonitoringResponse(BaseModel):
     topic: str | None = Field(
         default=None,
         description="A short, specific 3-5 word title for this monitor (e.g. 'iPhone 16 Release'), if one is needed.",
+    )
+    activity: list[ActivityStep] | None = Field(
+        default=None,
+        description="Steps the agent took during this run (tool calls made)",
     )

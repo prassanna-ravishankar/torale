@@ -200,6 +200,7 @@ async def _execute(
 
         grounding_sources = [{"url": u, "title": urlparse(u).netloc or u} for u in sources]
 
+        activity = agent_response.activity
         await persist_execution_result(
             task_id=task_id,
             execution_id=execution_id,
@@ -209,6 +210,7 @@ async def _execute(
                 "confidence": confidence,
                 "next_run": next_run,
                 "grounding_sources": grounding_sources,
+                "activity": [s.model_dump() for s in activity] if activity else None,
             },
         )
 

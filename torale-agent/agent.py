@@ -36,12 +36,13 @@ from parallel import AsyncParallel
 from perplexity import AsyncPerplexity
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import ModelHTTPError
+from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.google import GoogleModelSettings
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from models import MonitoringDeps, MonitoringResponse
+from models import ActivityStep, MonitoringDeps, MonitoringResponse
 
 load_dotenv()
 
@@ -374,6 +375,32 @@ def create_monitoring_agent(
     return agent
 
 
+_TOOL_INPUT_KEYS: dict[str, str] = {
+    "perplexity_search": "query",
+    "parallel_search": "query",
+    "fetch_url": "url",
+    "search_memories": "query",
+    "add_memory": "text",
+}
+
+
+def _extract_activity(messages: list) -> list[ActivityStep]:
+    """Extract tool call activity from Pydantic AI message history."""
+    steps: list[ActivityStep] = []
+    for msg in messages:
+        if not isinstance(msg, ModelResponse):
+            continue
+        for part in msg.parts:
+            if not isinstance(part, ToolCallPart):
+                continue
+            tool = part.tool_name
+            args = part.args if isinstance(part.args, dict) else {}
+            key = _TOOL_INPUT_KEYS.get(tool, "")
+            input_val = args.get(key, "") if key else ""
+            steps.append(ActivityStep(tool=tool, input=input_val))
+    return steps
+
+
 class ToraleAgentExecutor(AgentExecutor):
     """A2A executor that runs the Torale monitoring agent."""
 
@@ -476,6 +503,11 @@ class ToraleAgentExecutor(AgentExecutor):
         try:
             result = await self.agent.run(user_input, deps=deps)
             response = result.output
+
+            # Extract activity trail from message history
+            activity = _extract_activity(result.all_messages())
+            if activity:
+                response.activity = activity
 
             # Return completed Task with MonitoringResponse as DataPart artifact
             await event_queue.enqueue_event(
