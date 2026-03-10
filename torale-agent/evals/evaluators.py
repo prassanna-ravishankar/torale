@@ -9,7 +9,9 @@ from pydantic_evals.otel._errors import SpanTreeRecordingError
 from evals.models import MonitoringCaseInput, MonitoringCaseMetadata
 from models import MonitoringResponse
 
-EvalCtx = EvaluatorContext[MonitoringCaseInput, MonitoringResponse, MonitoringCaseMetadata]
+EvalCtx = EvaluatorContext[
+    MonitoringCaseInput, MonitoringResponse, MonitoringCaseMetadata
+]
 EvalBase = Evaluator[MonitoringCaseInput, MonitoringResponse, MonitoringCaseMetadata]
 
 
@@ -39,12 +41,22 @@ class ReasonableNextRun(EvalBase):
 
     def evaluate(self, ctx: EvalCtx) -> dict[str, bool | float]:
         if ctx.output.next_run is None:
-            return {"valid_iso": True, "in_future": True, "within_limit": True, "hours_from_now": 0.0}
+            return {
+                "valid_iso": True,
+                "in_future": True,
+                "within_limit": True,
+                "hours_from_now": 0.0,
+            }
 
         try:
             next_run = datetime.fromisoformat(ctx.output.next_run)
         except ValueError:
-            return {"valid_iso": False, "in_future": False, "within_limit": False, "hours_from_now": 0.0}
+            return {
+                "valid_iso": False,
+                "in_future": False,
+                "within_limit": False,
+                "hours_from_now": 0.0,
+            }
 
         now = datetime.now(UTC)
         if next_run.tzinfo is None:
@@ -73,8 +85,9 @@ class SearchToolUsed(EvalBase):
 
         # Tool name lives in gen_ai.tool.name attribute, not the span name
         search_spans = tree.find(
-            lambda node: node.attributes.get("gen_ai.tool.name", "") in (
-                "perplexity_search", "parallel_search"
+            lambda node: (
+                node.attributes.get("gen_ai.tool.name", "")
+                in ("perplexity_search", "parallel_search")
             )
         )
 
@@ -114,7 +127,11 @@ class MultiPassProgression(EvalBase):
 
         tree = _get_span_tree(ctx)
         if tree is None:
-            return {"multi_pass_ok": False, "agent_runs": 0, "expected_passes": expected_passes}
+            return {
+                "multi_pass_ok": False,
+                "agent_runs": 0,
+                "expected_passes": expected_passes,
+            }
 
         agent_spans = tree.find({"name_contains": "agent run"})
 
@@ -123,3 +140,12 @@ class MultiPassProgression(EvalBase):
             "agent_runs": len(agent_spans),
             "expected_passes": expected_passes,
         }
+
+
+CUSTOM_EVALUATORS = [
+    SourcesWhenNotifying,
+    ReasonableNextRun,
+    SearchToolUsed,
+    FetchUrlUsed,
+    MultiPassProgression,
+]

@@ -5,35 +5,18 @@ from pathlib import Path
 
 import logfire
 from pydantic_evals import Dataset
-from pydantic_evals.reporting import EvaluationReport
 
-from evals.evaluators import (
-    FetchUrlUsed,
-    MultiPassProgression,
-    ReasonableNextRun,
-    SearchToolUsed,
-    SourcesWhenNotifying,
+from evals.evaluators import CUSTOM_EVALUATORS
+from evals.models import (
+    MonitoringCaseInput,
+    MonitoringCaseMetadata,
+    MonitoringDataset,
+    MonitoringReport,
 )
-from evals.models import MonitoringCaseInput, MonitoringCaseMetadata
 from evals.task import run_monitoring_task, set_eval_model
 from models import MonitoringResponse
 
 logger = logging.getLogger(__name__)
-
-CUSTOM_EVALUATORS = [
-    SourcesWhenNotifying,
-    ReasonableNextRun,
-    SearchToolUsed,
-    FetchUrlUsed,
-    MultiPassProgression,
-]
-
-MonitoringDataset = Dataset[
-    MonitoringCaseInput, MonitoringResponse, MonitoringCaseMetadata
-]
-MonitoringReport = EvaluationReport[
-    MonitoringCaseInput, MonitoringResponse, MonitoringCaseMetadata
-]
 
 
 def load_dataset(path: Path) -> MonitoringDataset:

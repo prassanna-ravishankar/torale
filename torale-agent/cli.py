@@ -24,8 +24,12 @@ GENERATED_DIR = Path(__file__).parent / "evals" / "generated"
 @app.command()
 def query(
     prompt: str = typer.Argument(..., help="Prompt to send to the agent"),
-    model: str = typer.Option("google-gla:gemini-3.1-flash-lite-preview", help="Model to use"),
-    raw: bool = typer.Option(False, "--raw", help="Show only raw output (no formatting)"),
+    model: str = typer.Option(
+        "google-gla:gemini-3.1-flash-lite-preview", help="Model to use"
+    ),
+    raw: bool = typer.Option(
+        False, "--raw", help="Show only raw output (no formatting)"
+    ),
 ):
     """Run a query against the agent for ad-hoc testing."""
     asyncio.run(_query_async(prompt, model, raw))
@@ -71,13 +75,21 @@ def run(
     ),
     case: str | None = typer.Option(None, help="Specific case name to run"),
     limit: int | None = typer.Option(None, help="Limit to first N test cases"),
-    passes: int = typer.Option(1, help="Number of sequential passes per case (multi-pass)"),
+    passes: int = typer.Option(
+        1, help="Number of sequential passes per case (multi-pass)"
+    ),
     max_concurrency: int = typer.Option(1, help="Max concurrent case evaluations"),
-    with_dynamic: bool = typer.Option(False, "--with-dynamic", help="Include latest dynamic cases"),
-    dataset: Path | None = typer.Option(None, help="Path to a specific dataset YAML file"),
+    with_dynamic: bool = typer.Option(
+        False, "--with-dynamic", help="Include latest dynamic cases"
+    ),
+    dataset: Path | None = typer.Option(
+        None, help="Path to a specific dataset YAML file"
+    ),
 ):
     """Run evaluation suite with specified model."""
-    asyncio.run(_run_async(model, case, limit, passes, max_concurrency, with_dynamic, dataset))
+    asyncio.run(
+        _run_async(model, case, limit, passes, max_concurrency, with_dynamic, dataset)
+    )
 
 
 async def _run_async(
@@ -89,11 +101,8 @@ async def _run_async(
     with_dynamic: bool,
     dataset_path: Path | None,
 ):
-    from pydantic_evals import Dataset
-
-    from evals.models import MonitoringCaseInput, MonitoringCaseMetadata
+    from evals.models import MonitoringDataset
     from evals.runner import load_dataset, merge_datasets, run_eval
-    from models import MonitoringResponse
 
     # Load dataset
     if dataset_path:
@@ -104,35 +113,29 @@ async def _run_async(
     else:
         ds = load_dataset(CASES_PATH)
 
-    # Filter by case name
+    # Filter and slice cases in one pass
+    cases = list(ds.cases)
     if case_name:
-        filtered = [c for c in ds.cases if c.name == case_name]
-        if not filtered:
+        cases = [c for c in cases if c.name == case_name]
+        if not cases:
             console.print(f"[red]Error: Case '{case_name}' not found[/red]")
             raise typer.Exit(1)
-        ds = Dataset[MonitoringCaseInput, MonitoringResponse, MonitoringCaseMetadata](
-            cases=filtered,
-            evaluators=ds.evaluators,
-        )
-
-    # Apply limit
     if limit is not None:
-        ds = Dataset[MonitoringCaseInput, MonitoringResponse, MonitoringCaseMetadata](
-            cases=list(ds.cases)[:limit],
-            evaluators=ds.evaluators,
-        )
+        cases = cases[:limit]
 
-    # Set passes on all cases
-    if passes > 1:
-        for c in ds.cases:
-            c.inputs.passes = passes
-
-    if not ds.cases:
+    if not cases:
         console.print("[yellow]No cases to evaluate after filtering[/yellow]")
         raise typer.Exit(0)
 
+    # Set passes on all cases
+    if passes > 1:
+        for c in cases:
+            c.inputs.passes = passes
+
+    ds = MonitoringDataset(cases=cases, evaluators=ds.evaluators)
+
     console.print(
-        f"\n[bold]Running {len(ds.cases)} case(s) with model [cyan]{model}[/cyan]"
+        f"\n[bold]Running {len(cases)} case(s) with model [cyan]{model}[/cyan]"
         f" ({passes} pass{'es' if passes > 1 else ''} each)[/bold]\n"
     )
 
@@ -196,7 +199,9 @@ def _find_latest_generated() -> Path | None:
     """Find the most recent generated dataset file."""
     if not GENERATED_DIR.exists():
         return None
-    files = sorted(GENERATED_DIR.glob("*.yaml"), key=lambda p: p.stat().st_mtime, reverse=True)
+    files = sorted(
+        GENERATED_DIR.glob("*.yaml"), key=lambda p: p.stat().st_mtime, reverse=True
+    )
     return files[0] if files else None
 
 

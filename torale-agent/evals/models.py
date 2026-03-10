@@ -1,6 +1,12 @@
 """Input and metadata models for pydantic-evals cases."""
 
+from typing import Literal
+
 from pydantic import BaseModel
+from pydantic_evals import Case, Dataset
+from pydantic_evals.reporting import EvaluationReport
+
+from models import MonitoringResponse
 
 
 class MonitoringCaseInput(BaseModel):
@@ -9,7 +15,7 @@ class MonitoringCaseInput(BaseModel):
     search_query: str
     condition_description: str
     category: str
-    notify_behavior: str  # "once" | "always"
+    notify_behavior: Literal["once", "always"]
     passes: int = 1  # sequential runs for multi-pass simulation
 
 
@@ -17,5 +23,14 @@ class MonitoringCaseMetadata(BaseModel):
     """Metadata attached to each evaluation case."""
 
     category: str
-    source: str = "static"  # "static" | "dynamic"
+    source: Literal["static", "dynamic"] = "static"
     generated_at: str | None = None
+
+
+MonitoringCase = Case[MonitoringCaseInput, MonitoringResponse, MonitoringCaseMetadata]
+MonitoringDataset = Dataset[
+    MonitoringCaseInput, MonitoringResponse, MonitoringCaseMetadata
+]
+MonitoringReport = EvaluationReport[
+    MonitoringCaseInput, MonitoringResponse, MonitoringCaseMetadata
+]

@@ -5,9 +5,6 @@ cases:
       condition_description: "A specific release date (day/month) is officially confirmed by Rockstar"
       category: Gaming
       notify_behavior: once
-    metadata:
-      category: Gaming
-      source: static
 
   - name: SpaceX Starship Launch
     inputs:
@@ -15,9 +12,6 @@ cases:
       condition_description: "An official launch window or date is announced by SpaceX or FAA"
       category: Space
       notify_behavior: once
-    metadata:
-      category: Space
-      source: static
 
   - name: Mortgage Rate Drop
     inputs:
@@ -25,9 +19,6 @@ cases:
       condition_description: "The average rate drops below 5.5%"
       category: Finance
       notify_behavior: once
-    metadata:
-      category: Finance
-      source: static
 
   - name: Northern Lights London
     inputs:
@@ -35,9 +26,6 @@ cases:
       condition_description: "Forecast indicates high KP index or red alert for Southern UK visibility"
       category: Nature
       notify_behavior: always
-    metadata:
-      category: Nature
-      source: static
 
   - name: Vintage Film Restock
     inputs:
@@ -45,9 +33,6 @@ cases:
       condition_description: 'Film is listed as "In Stock" and available for purchase'
       category: Photography
       notify_behavior: once
-    metadata:
-      category: Photography
-      source: static
 
   - name: iPhone 18 Rumors
     inputs:
@@ -55,9 +40,6 @@ cases:
       condition_description: "New credible leaks about specs, design, or release timing from major sources"
       category: Tech
       notify_behavior: always
-    metadata:
-      category: Tech
-      source: static
 
   - name: Weekend Train Strikes
     inputs:
@@ -65,9 +47,6 @@ cases:
       condition_description: "Strikes are confirmed that affect major rail lines this weekend"
       category: Travel
       notify_behavior: always
-    metadata:
-      category: Travel
-      source: static
 
   - name: Anthropic Jobs
     inputs:
@@ -75,9 +54,6 @@ cases:
       condition_description: "A new job listing matching the title and location is found"
       category: Careers
       notify_behavior: once
-    metadata:
-      category: Careers
-      source: static
 
   - name: PAOK Transfer
     inputs:
@@ -85,9 +61,6 @@ cases:
       condition_description: "A transfer is officially confirmed by clubs or reliable sources"
       category: Sports
       notify_behavior: once
-    metadata:
-      category: Sports
-      source: static
 
 evaluators:
   - SourcesWhenNotifying: {}

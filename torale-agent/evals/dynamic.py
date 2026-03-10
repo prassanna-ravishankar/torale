@@ -1,5 +1,6 @@
 """Dynamic case generators that fetch real-world data for evaluation."""
 
+import asyncio
 import logging
 import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
@@ -9,28 +10,15 @@ import httpx
 from pydantic_evals import Case, Dataset
 
 from evals.evaluators import (
-    FetchUrlUsed,
-    MultiPassProgression,
+    CUSTOM_EVALUATORS,
+    SourcesWhenNotifying,
     ReasonableNextRun,
     SearchToolUsed,
-    SourcesWhenNotifying,
 )
-from evals.models import MonitoringCaseInput, MonitoringCaseMetadata
+from evals.models import MonitoringCase, MonitoringCaseInput, MonitoringCaseMetadata
 from models import MonitoringResponse
 
 logger = logging.getLogger(__name__)
-
-CUSTOM_EVALUATORS = [
-    SourcesWhenNotifying,
-    ReasonableNextRun,
-    SearchToolUsed,
-    FetchUrlUsed,
-    MultiPassProgression,
-]
-
-MonitoringCase = Case[
-    MonitoringCaseInput, MonitoringResponse, MonitoringCaseMetadata
-]
 
 
 def _meta(category: str) -> MonitoringCaseMetadata:
@@ -41,7 +29,7 @@ def _meta(category: str) -> MonitoringCaseMetadata:
     )
 
 
-async def generate_weather_cases() -> list[MonitoringCase]:
+async def generate_weather_cases(client: httpx.AsyncClient) -> list[MonitoringCase]:
     """Generate weather monitoring cases using Open-Meteo API."""
     cases: list[MonitoringCase] = []
     cities = [
@@ -50,57 +38,53 @@ async def generate_weather_cases() -> list[MonitoringCase]:
         ("Tokyo", 35.68, 139.69),
     ]
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        for city, lat, lon in cities:
-            resp = await client.get(
-                "https://api.open-meteo.com/v1/forecast",
-                params={
-                    "latitude": lat,
-                    "longitude": lon,
-                    "current": "temperature_2m,wind_speed_10m,weather_code",
-                    "forecast_days": 1,
-                },
+    for city, lat, lon in cities:
+        resp = await client.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": lat,
+                "longitude": lon,
+                "current": "temperature_2m,wind_speed_10m,weather_code",
+                "forecast_days": 1,
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        weather_code = data["current"]["weather_code"]
+
+        # Severe weather codes: thunderstorm (95-99), heavy rain (65-67), snow (75-77)
+        if weather_code >= 65:
+            cases.append(
+                Case(
+                    name=f"Weather Alert {city} (active)",
+                    inputs=MonitoringCaseInput(
+                        search_query=f"Is there a severe weather warning for {city} right now?",
+                        condition_description=f"Severe weather conditions detected in {city}",
+                        category="Weather",
+                        notify_behavior="always",
+                    ),
+                    metadata=_meta("Weather"),
+                )
             )
-            resp.raise_for_status()
-            data = resp.json()
-            current = data["current"]
-            weather_code = current["weather_code"]
-
-            # Severe weather codes: thunderstorm (95-99), heavy rain (65-67), snow (75-77)
-            is_severe = weather_code >= 65
-
-            if is_severe:
-                cases.append(
-                    Case(
-                        name=f"Weather Alert {city} (active)",
-                        inputs=MonitoringCaseInput(
-                            search_query=f"Is there a severe weather warning for {city} right now?",
-                            condition_description=f"Severe weather conditions detected in {city}",
-                            category="Weather",
-                            notify_behavior="always",
-                        ),
-                        metadata=_meta("Weather"),
-                    )
+        else:
+            # Should NOT trigger notification — tests false-positive resistance
+            cases.append(
+                Case(
+                    name=f"Weather Alert {city} (clear)",
+                    inputs=MonitoringCaseInput(
+                        search_query=f"Is there a severe weather warning for {city} right now?",
+                        condition_description=f"Active severe weather warning (tornado, hurricane, or blizzard) issued by official meteorological agency for {city}",
+                        category="Weather",
+                        notify_behavior="always",
+                    ),
+                    metadata=_meta("Weather"),
                 )
-            else:
-                # Should NOT trigger notification — tests false-positive resistance
-                cases.append(
-                    Case(
-                        name=f"Weather Alert {city} (clear)",
-                        inputs=MonitoringCaseInput(
-                            search_query=f"Is there a severe weather warning for {city} right now?",
-                            condition_description=f"Active severe weather warning (tornado, hurricane, or blizzard) issued by official meteorological agency for {city}",
-                            category="Weather",
-                            notify_behavior="always",
-                        ),
-                        metadata=_meta("Weather"),
-                    )
-                )
+            )
 
     return cases
 
 
-async def generate_stock_cases() -> list[MonitoringCase]:
+async def generate_stock_cases(client: httpx.AsyncClient) -> list[MonitoringCase]:
     """Generate stock monitoring cases using Yahoo Finance RSS."""
     cases: list[MonitoringCase] = []
 
@@ -110,122 +94,115 @@ async def generate_stock_cases() -> list[MonitoringCase]:
         ("MSFT", "Microsoft"),
     ]
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        for ticker, company in tickers:
-            # Use Yahoo Finance chart API (public, no key needed)
-            resp = await client.get(
-                f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}",
-                params={"interval": "1d", "range": "1d"},
-                headers={"User-Agent": "torale-eval/1.0"},
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            price = data["chart"]["result"][0]["meta"]["regularMarketPrice"]
+    for ticker, company in tickers:
+        resp = await client.get(
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}",
+            params={"interval": "1d", "range": "1d"},
+            headers={"User-Agent": "torale-eval/1.0"},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        price = data["chart"]["result"][0]["meta"]["regularMarketPrice"]
 
-            # Case 1: threshold above current price (should NOT notify)
-            cases.append(
-                Case(
-                    name=f"{ticker} Above {price + 10:.0f} (false)",
-                    inputs=MonitoringCaseInput(
-                        search_query=f"What is the current stock price of {company} ({ticker})?",
-                        condition_description=f"{ticker} stock price rises above ${price + 10:.2f}",
-                        category="Finance",
-                        notify_behavior="once",
-                    ),
-                    metadata=_meta("Finance"),
-                )
+        # Case 1: threshold above current price (should NOT notify)
+        cases.append(
+            Case(
+                name=f"{ticker} Above {price + 10:.0f} (false)",
+                inputs=MonitoringCaseInput(
+                    search_query=f"What is the current stock price of {company} ({ticker})?",
+                    condition_description=f"{ticker} stock price rises above ${price + 10:.2f}",
+                    category="Finance",
+                    notify_behavior="once",
+                ),
+                metadata=_meta("Finance"),
             )
+        )
 
-            # Case 2: threshold below current price (should notify)
-            cases.append(
-                Case(
-                    name=f"{ticker} Below {price - 10:.0f} (true)",
-                    inputs=MonitoringCaseInput(
-                        search_query=f"What is the current stock price of {company} ({ticker})?",
-                        condition_description=f"{ticker} stock price drops below ${price - 10:.2f}",
-                        category="Finance",
-                        notify_behavior="once",
-                    ),
-                    metadata=_meta("Finance"),
-                )
+        # Case 2: threshold below current price (should notify)
+        cases.append(
+            Case(
+                name=f"{ticker} Below {price - 10:.0f} (true)",
+                inputs=MonitoringCaseInput(
+                    search_query=f"What is the current stock price of {company} ({ticker})?",
+                    condition_description=f"{ticker} stock price drops below ${price - 10:.2f}",
+                    category="Finance",
+                    notify_behavior="once",
+                ),
+                metadata=_meta("Finance"),
             )
+        )
 
     return cases
 
 
-async def generate_news_cases() -> list[MonitoringCase]:
+async def _generate_rss_cases(
+    client: httpx.AsyncClient,
+    url: str,
+    category: str,
+    name_prefix: str,
+    query_template: str,
+    condition_template: str,
+) -> list[MonitoringCase]:
+    """Generate monitoring cases from a BBC RSS feed."""
+    cases: list[MonitoringCase] = []
+
+    resp = await client.get(url)
+    resp.raise_for_status()
+
+    root = ET.fromstring(resp.text)
+    items = root.findall(".//item")[:3]
+
+    for item in items:
+        title = item.findtext("title", "")
+        if not title:
+            continue
+
+        cases.append(
+            Case(
+                name=f"{name_prefix}: {title[:50]}",
+                inputs=MonitoringCaseInput(
+                    search_query=query_template.format(title=title),
+                    condition_description=condition_template.format(title=title),
+                    category=category,
+                    notify_behavior="always",
+                ),
+                metadata=_meta(category),
+            )
+        )
+
+    return cases
+
+
+async def generate_news_cases(client: httpx.AsyncClient) -> list[MonitoringCase]:
     """Generate monitoring cases from current BBC News headlines via RSS."""
-    cases: list[MonitoringCase] = []
-
-    async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.get("https://feeds.bbci.co.uk/news/rss.xml")
-        resp.raise_for_status()
-
-        root = ET.fromstring(resp.text)
-        items = root.findall(".//item")[:3]  # top 3 headlines
-
-        for item in items:
-            title = item.findtext("title", "")
-
-            if not title:
-                continue
-
-            cases.append(
-                Case(
-                    name=f"News: {title[:50]}",
-                    inputs=MonitoringCaseInput(
-                        search_query=f"What are the latest developments on: {title}?",
-                        condition_description=f"New significant developments reported about: {title}",
-                        category="News",
-                        notify_behavior="always",
-                    ),
-                    metadata=_meta("News"),
-                )
-            )
-
-    return cases
+    return await _generate_rss_cases(
+        client,
+        url="https://feeds.bbci.co.uk/news/rss.xml",
+        category="News",
+        name_prefix="News",
+        query_template="What are the latest developments on: {title}?",
+        condition_template="New significant developments reported about: {title}",
+    )
 
 
-async def generate_sports_cases() -> list[MonitoringCase]:
+async def generate_sports_cases(client: httpx.AsyncClient) -> list[MonitoringCase]:
     """Generate sports monitoring cases from BBC Sport RSS."""
-    cases: list[MonitoringCase] = []
-
-    async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.get("https://feeds.bbci.co.uk/sport/rss.xml")
-        resp.raise_for_status()
-
-        root = ET.fromstring(resp.text)
-        items = root.findall(".//item")[:3]
-
-        for item in items:
-            title = item.findtext("title", "")
-            if not title:
-                continue
-
-            cases.append(
-                Case(
-                    name=f"Sport: {title[:50]}",
-                    inputs=MonitoringCaseInput(
-                        search_query=f"What is the latest on: {title}?",
-                        condition_description=f"New confirmed development regarding: {title}",
-                        category="Sports",
-                        notify_behavior="always",
-                    ),
-                    metadata=_meta("Sports"),
-                )
-            )
-
-    return cases
+    return await _generate_rss_cases(
+        client,
+        url="https://feeds.bbci.co.uk/sport/rss.xml",
+        category="Sports",
+        name_prefix="Sport",
+        query_template="What is the latest on: {title}?",
+        condition_template="New confirmed development regarding: {title}",
+    )
 
 
-async def generate_webpage_cases() -> list[MonitoringCase]:
+async def generate_webpage_cases(client: httpx.AsyncClient) -> list[MonitoringCase]:
     """Generate cases that require fetch_url to verify page content.
 
     These cases point at specific URLs where search engines won't have
     the live page content — forcing the agent to fetch directly.
     """
-    cases: list[MonitoringCase] = []
-
     pages = [
         {
             "name": "GitHub Trending Python",
@@ -247,27 +224,23 @@ async def generate_webpage_cases() -> list[MonitoringCase]:
         },
     ]
 
-    for page in pages:
-        cases.append(
-            Case(
-                name=f"Webpage: {page['name']}",
-                inputs=MonitoringCaseInput(
-                    search_query=page["query"],
-                    condition_description=page["condition"],
-                    category=page["category"],
-                    notify_behavior="always",
-                ),
-                metadata=_meta(page["category"]),
-            )
+    return [
+        Case(
+            name=f"Webpage: {page['name']}",
+            inputs=MonitoringCaseInput(
+                search_query=page["query"],
+                condition_description=page["condition"],
+                category=page["category"],
+                notify_behavior="always",
+            ),
+            metadata=_meta(page["category"]),
         )
-
-    return cases
+        for page in pages
+    ]
 
 
 async def generate_all() -> list[MonitoringCase]:
-    """Run all generators, catching individual failures."""
-    all_cases: list[MonitoringCase] = []
-
+    """Run all generators concurrently, catching individual failures."""
     generators = [
         ("weather", generate_weather_cases),
         ("stocks", generate_stock_cases),
@@ -276,13 +249,18 @@ async def generate_all() -> list[MonitoringCase]:
         ("webpage", generate_webpage_cases),
     ]
 
-    for name, gen in generators:
-        try:
-            cases = await gen()
-            all_cases.extend(cases)
-            logger.info("Generated %d %s cases", len(cases), name)
-        except Exception:
-            logger.exception("Failed to generate %s cases", name)
+    all_cases: list[MonitoringCase] = []
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        tasks = {name: asyncio.create_task(gen(client)) for name, gen in generators}
+
+        for name, task in tasks.items():
+            try:
+                cases = await task
+                all_cases.extend(cases)
+                logger.info("Generated %d %s cases", len(cases), name)
+            except Exception:
+                logger.exception("Failed to generate %s cases", name)
 
     return all_cases
 
