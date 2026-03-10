@@ -1,0 +1,68 @@
+cases:
+  - name: GTA VI Release Date
+    inputs:
+      search_query: "Has Rockstar Games announced the specific release date for Grand Theft Auto VI?"
+      condition_description: "A specific release date (day/month) is officially confirmed by Rockstar"
+      category: Gaming
+      notify_behavior: once
+
+  - name: SpaceX Starship Launch
+    inputs:
+      search_query: "When is the next SpaceX Starship orbital flight test scheduled?"
+      condition_description: "An official launch window or date is announced by SpaceX or FAA"
+      category: Space
+      notify_behavior: once
+
+  - name: Mortgage Rate Drop
+    inputs:
+      search_query: "What is the current average 30-year fixed mortgage rate in the US?"
+      condition_description: "The average rate drops below 5.5%"
+      category: Finance
+      notify_behavior: once
+
+  - name: Northern Lights London
+    inputs:
+      search_query: "Is there a high probability of seeing the Northern Lights in Southern England/London tonight or tomorrow?"
+      condition_description: "Forecast indicates high KP index or red alert for Southern UK visibility"
+      category: Nature
+      notify_behavior: always
+
+  - name: Vintage Film Restock
+    inputs:
+      search_query: "Is Kodak Gold 200 35mm film in stock at Analogue Wonderland or Parallax?"
+      condition_description: 'Film is listed as "In Stock" and available for purchase'
+      category: Photography
+      notify_behavior: once
+
+  - name: iPhone 18 Rumors
+    inputs:
+      search_query: "What are the latest credible rumors and leaks for the iPhone 18 lineup?"
+      condition_description: "New credible leaks about specs, design, or release timing from major sources"
+      category: Tech
+      notify_behavior: always
+
+  - name: Weekend Train Strikes
+    inputs:
+      search_query: "Are there any rail strikes planned in the UK for this coming weekend?"
+      condition_description: "Strikes are confirmed that affect major rail lines this weekend"
+      category: Travel
+      notify_behavior: always
+
+  - name: Anthropic Jobs
+    inputs:
+      search_query: 'Are there any open "Prompt Engineer" or "Research Engineer" roles at Anthropic in London?'
+      condition_description: "A new job listing matching the title and location is found"
+      category: Careers
+      notify_behavior: once
+
+  - name: PAOK Transfer
+    inputs:
+      search_query: "Has PAOK FC player Konstantelias been transferred to a new club?"
+      condition_description: "A transfer is officially confirmed by clubs or reliable sources"
+      category: Sports
+      notify_behavior: once
+
+evaluators:
+  - SourcesWhenNotifying: {}
+  - ReasonableNextRun: {}
+  - SearchToolUsed: {}

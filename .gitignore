@@ -67,9 +67,9 @@ supabase/functions/.env
 .torale/
 *.log
 
-# Evaluation results
-torale-agent/evals/results/*
-!torale-agent/evals/results/.gitkeep
+# Evaluation results (generated dynamic cases + legacy results dir)
+torale-agent/evals/generated/
+torale-agent/evals/results/
 
 # PyPI packaging (copy of root README)
 backend/README.md

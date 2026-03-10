@@ -259,7 +259,7 @@ async def _fetch_and_extract(url: str) -> dict:
     }
 
 
-def _register_tools(agent: Agent) -> None:
+def _register_tools(agent: Agent[MonitoringDeps, MonitoringResponse]) -> None:
     """Attach monitoring tools (search_memories, add_memory, perplexity_search, parallel_search, fetch_url) to an agent."""
 
     @agent.tool
@@ -342,7 +342,7 @@ def _register_tools(agent: Agent) -> None:
 
 def create_monitoring_agent(
     model_id: str = "google-gla:gemini-3.1-flash-lite-preview",
-) -> Agent:
+) -> Agent[MonitoringDeps, MonitoringResponse]:
     """Create a monitoring agent with the specified model and all tools registered."""
     # Enable thinking for supported Gemini models (gemini-3-*, gemini-2.5-pro).
     # String matching may need updates for new models.
@@ -358,7 +358,9 @@ def create_monitoring_agent(
                 },
             )
 
-    agent = Agent(
+    agent: Agent[MonitoringDeps, MonitoringResponse] = Agent[
+        MonitoringDeps, MonitoringResponse
+    ](
         model_id,
         deps_type=MonitoringDeps,
         output_type=MonitoringResponse,
@@ -375,7 +377,7 @@ def create_monitoring_agent(
 class ToraleAgentExecutor(AgentExecutor):
     """A2A executor that runs the Torale monitoring agent."""
 
-    def __init__(self, agent: Agent) -> None:
+    def __init__(self, agent: Agent[MonitoringDeps, MonitoringResponse]) -> None:
         self.agent = agent
 
     async def _emit_failure(
@@ -391,7 +393,7 @@ class ToraleAgentExecutor(AgentExecutor):
                     message=Message(
                         message_id=str(uuid4()),
                         role=Role.agent,
-                        parts=[TextPart(text=json.dumps(error_data))],
+                        parts=[TextPart(text=json.dumps(error_data))],  # type: ignore
                     ),
                 ),
             )
@@ -419,8 +421,8 @@ class ToraleAgentExecutor(AgentExecutor):
             - ModelHTTPError: Preserves status_code for 429 rate limit detection
             - ValueError/RuntimeError: General execution failures
         """
-        task_id = context.task_id
-        context_id = context.context_id
+        task_id = context.task_id or ""
+        context_id = context.context_id or ""
         user_input = context.get_user_input()
 
         # Extract user_id and task_id from A2A metadata
@@ -464,8 +466,8 @@ class ToraleAgentExecutor(AgentExecutor):
         # Signal working state
         await event_queue.enqueue_event(
             TaskStatusUpdateEvent(
-                taskId=task_id,
-                contextId=context_id,
+                task_id=task_id,
+                context_id=context_id,
                 final=False,
                 status=TaskStatus(state=TaskState.working),
             )
@@ -484,7 +486,7 @@ class ToraleAgentExecutor(AgentExecutor):
                     artifacts=[
                         Artifact(
                             artifact_id=str(uuid4()),
-                            parts=[DataPart(data=response.model_dump(mode="json"))],
+                            parts=[DataPart(data=response.model_dump(mode="json"))],  # type: ignore
                         )
                     ],
                 )
@@ -542,8 +544,8 @@ class ToraleAgentExecutor(AgentExecutor):
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         await event_queue.enqueue_event(
             TaskStatusUpdateEvent(
-                taskId=context.task_id,
-                contextId=context.context_id,
+                task_id=context.task_id or "",
+                context_id=context.context_id or "",
                 final=True,
                 status=TaskStatus(state=TaskState.canceled),
             )
