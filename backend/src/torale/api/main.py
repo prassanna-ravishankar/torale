@@ -170,6 +170,9 @@ app.include_router(waitlist.router, tags=["waitlist"])
 # SEO routes (at root level for standard locations)
 app.include_router(sitemap.router)
 
+# Public task RSS feed (at root level: /t/{task_id}/rss)
+app.include_router(public_tasks.rss_router)
+
 # API routes
 app.include_router(tasks.router, prefix="/api/v1")
 app.include_router(templates.router, prefix="/api/v1")
