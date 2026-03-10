@@ -204,8 +204,8 @@ async def get_task_rss_feed(
             for source in grounding_sources:
                 url = source.get("url", "")
                 source_title = source.get("title", url)
-                if url:
-                    description_parts.append(f'- <a href="{url}">{source_title}</a>')
+                if url and url.startswith(("https://", "http://")):
+                    description_parts.append(f"- {source_title}: {url}")
 
         item = ET.SubElement(channel, "item")
         ET.SubElement(item, "title").text = title_text
