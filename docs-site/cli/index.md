@@ -8,25 +8,32 @@ Manage Torale monitoring tasks from your terminal.
 
 ## Quick Start
 
-**[Quickstart Guide](./quickstart)** - Install via pip and create your first task in minutes
+**[Quickstart Guide](./quickstart)** - Install and create your first task in minutes
 
-**[Installation](./installation)** - System requirements and pip/pipx installation
+**[Installation](./installation)** - System requirements and installation options
 
-**[Authentication](./authentication)** - API key setup and configuration
+**[Authentication](./authentication)** - API key setup
 
-## CLI Usage
+## Reference
 
-**[Commands Reference](./commands)** - Complete command reference with examples
+**[Commands](./commands)** - Complete command reference with examples
 
-**[Configuration](./configuration)** - Config files and environment variables
+**[Configuration](./configuration)** - Config file, environment variables, and auth priority
 
-## Best For
+## Available Commands
 
-- Terminal-based workflows
-- CI/CD automation
-- Scripting and batch operations
-- Quick task management without opening the browser
-
-## Getting Started
-
-Start with the [Quickstart Guide](./quickstart) to install and authenticate, then explore the [Commands Reference](./commands) for all available operations.
+```
+torale version              Show version
+torale config               Show current configuration
+torale auth set-api-key     Save API key
+torale auth status          Check authentication status
+torale auth logout          Clear stored credentials
+torale task create          Create a monitoring task
+torale task list            List tasks
+torale task get             Get task details
+torale task update          Update a task
+torale task delete          Delete a task
+torale task execute         Trigger a manual execution
+torale task logs            View execution logs
+torale task notifications   View notifications
+```

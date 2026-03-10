@@ -1,82 +1,25 @@
 ---
-description: Notifications API reference. Configure channels, verify emails, manage webhooks, and view notification history via REST API.
+description: Notifications API reference. View notification send history and task-scoped notification filtering.
 ---
 
 # Notifications API
 
-View notifications (executions where conditions were met).
+View notification send history and per-task notification filtering.
 
 ## Overview
 
-Base URL: `https://api.torale.ai/api/v1/tasks/{task_id}/notifications`
+Torale has two notification-related endpoints:
 
-This endpoint returns only executions where `condition_met: true` - a filtered view of the executions API optimized for viewing notifications.
-
-All endpoints require authentication via API key or Clerk JWT token.
+1. **`GET /api/v1/notifications/sends`** - Global notification send history (email/webhook delivery records)
+2. **`GET /api/v1/tasks/{task_id}/notifications`** - Task-scoped: executions where condition was met
 
 ## Endpoints
 
-### Get Notifications
+### Notification Send History
 
-Get all notifications (successful condition evaluations) for a task.
+View the delivery history of email and webhook notifications across all your tasks. This tracks actual send attempts, not just condition matches.
 
-**Endpoint:** `GET /api/v1/tasks/{task_id}/notifications`
-
-**Headers:**
-```
-Authorization: Bearer {api_key}
-```
-
-**Query parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `page` | integer | Page number (default: 1) |
-| `limit` | integer | Results per page (default: 20, max: 100) |
-
-**Response:** `200 OK`
-
-```json
-{
-  "notifications": [
-    {
-      "id": "770e8400-e29b-41d4-a716-446655440000",
-      "task_id": "550e8400-e29b-41d4-a716-446655440000",
-      "task_name": "iPhone Release Monitor",
-      "status": "success",
-      "condition_met": true,
-      "answer": "Apple has officially announced that the iPhone 16 will be released on September 20, 2024. Pre-orders begin on September 13, 2024.",
-      "reasoning": "The condition is met because Apple's official press release confirms a specific release date of September 20, 2024.",
-      "grounding_sources": [
-        {
-          "uri": "https://www.apple.com/newsroom/2024/09/apple-announces-iphone-16/",
-          "title": "Apple announces iPhone 16"
-        },
-        {
-          "uri": "https://www.theverge.com/2024/9/10/iphone-16-announcement",
-          "title": "iPhone 16 release date confirmed"
-        }
-      ],
-      "created_at": "2024-01-15T09:00:05Z"
-    }
-  ],
-  "total": 3,
-  "page": 1,
-  "limit": 20
-}
-```
-
-**Example:**
-```bash
-curl -X GET https://api.torale.ai/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/notifications \
-  -H "Authorization: Bearer sk_..."
-```
-
-### Get All User Notifications
-
-Get notifications across all tasks for authenticated user.
-
-**Endpoint:** `GET /api/v1/notifications`
+**Endpoint:** `GET /api/v1/notifications/sends`
 
 **Headers:**
 ```
@@ -87,313 +30,84 @@ Authorization: Bearer {api_key}
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `page` | integer | Page number (default: 1) |
-| `limit` | integer | Results per page (default: 20, max: 100) |
+| `notification_type` | string | Filter by `email` or `webhook` |
+| `task_id` | string | Filter by specific task UUID |
+| `limit` | integer | Max results (default: 50) |
+| `offset` | integer | Pagination offset (default: 0) |
 
 **Response:** `200 OK`
 
 ```json
 {
-  "notifications": [
-    {
-      "id": "770e8400-e29b-41d4-a716-446655440000",
-      "task_id": "550e8400-e29b-41d4-a716-446655440000",
-      "task_name": "iPhone Release Monitor",
-      "condition_met": true,
-      "answer": "iPhone 16 releases September 20, 2024",
-      "created_at": "2024-01-15T09:00:05Z"
-    },
+  "sends": [
     {
       "id": "880e8400-e29b-41d4-a716-446655440000",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
       "task_id": "660e8400-e29b-41d4-a716-446655440000",
-      "task_name": "PS5 Stock Alert",
-      "condition_met": true,
-      "answer": "PS5 is currently in stock at Best Buy for $449",
-      "created_at": "2024-01-15T12:30:15Z"
+      "execution_id": "770e8400-e29b-41d4-a716-446655440000",
+      "recipient": "user@example.com",
+      "notification_type": "email",
+      "status": "sent",
+      "error_message": null,
+      "created_at": "2025-01-15T09:00:10Z"
     }
   ],
-  "total": 8,
-  "page": 1,
-  "limit": 20
+  "total": 42
 }
 ```
 
-**Example:**
+**Examples:**
 ```bash
-curl -X GET https://api.torale.ai/api/v1/notifications \
+# Get all notification sends
+curl -X GET https://api.torale.ai/api/v1/notifications/sends \
+  -H "Authorization: Bearer sk_..."
+
+# Filter by type
+curl -X GET "https://api.torale.ai/api/v1/notifications/sends?notification_type=webhook" \
+  -H "Authorization: Bearer sk_..."
+
+# Filter by task
+curl -X GET "https://api.torale.ai/api/v1/notifications/sends?task_id=660e8400..." \
+  -H "Authorization: Bearer sk_..."
+
+# Paginate
+curl -X GET "https://api.torale.ai/api/v1/notifications/sends?limit=10&offset=20" \
   -H "Authorization: Bearer sk_..."
 ```
 
-## Notification Object Schema
-
-### Fields
+### Notification Send Object
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | UUID | Unique execution/notification ID |
-| `task_id` | UUID | Parent task ID |
-| `task_name` | string | Task name for context |
-| `status` | string | Always `success` for notifications |
-| `condition_met` | boolean | Always `true` for notifications |
-| `answer` | string | Concise answer (2-4 sentences) |
-| `reasoning` | string | Why condition was met |
-| `grounding_sources` | array | Source URLs with metadata |
-| `created_at` | timestamp | When notification was created |
+| `id` | UUID | Send record ID |
+| `user_id` | UUID | Task owner |
+| `task_id` | UUID | Associated task |
+| `execution_id` | UUID | Execution that triggered the send |
+| `recipient` | string | Email address (for email type) |
+| `notification_type` | string | `email` or `webhook` |
+| `status` | string | Delivery status |
+| `error_message` | string/null | Error if delivery failed |
+| `created_at` | timestamp | When the send was attempted |
 
-## Difference from Executions API
+### Task-Scoped Notifications
 
-| Feature | Notifications API | Executions API |
-|---------|------------------|----------------|
-| Filtering | Only `condition_met: true` | All executions |
-| Use case | View notifications | Debug, monitor all runs |
-| Fields | Simplified | Full execution details |
-| Performance | Faster (filtered) | Slower (all records) |
+Get executions where the condition was met for a specific task. This is a filtered view of the [Executions API](/api/executions).
 
-**When to use Notifications API:**
-- Viewing user notifications
-- Checking if conditions were met
-- Building notification UIs
+**Endpoint:** `GET /api/v1/tasks/{task_id}/notifications`
 
-**When to use Executions API:**
-- Debugging task execution
-- Monitoring for failures
-- Viewing full execution history
+See [Executions API - Task-Scoped Notifications](/api/executions#task-scoped-notifications) for details.
 
-## Usage Examples
+## Difference Between Endpoints
 
-### Python SDK
-
-```python
-from torale import ToraleClient
-
-client = ToraleClient(api_key="sk_...")
-
-# Get notifications for specific task
-notifications = client.tasks.get_notifications(
-    task_id="550e8400-e29b-41d4-a716-446655440000"
-)
-
-for notif in notifications:
-    print(f"Task: {notif.task_name}")
-    print(f"Answer: {notif.answer}")
-    print(f"Time: {notif.created_at}")
-    print("---")
-
-# Get all user notifications
-all_notifications = client.notifications.list()
-
-for notif in all_notifications:
-    print(f"{notif.task_name}: {notif.answer}")
-```
-
-### JavaScript/TypeScript
-
-```typescript
-// Get notifications for task
-const response = await fetch(
-  `https://api.torale.ai/api/v1/tasks/${taskId}/notifications`,
-  {
-    headers: {
-      'Authorization': `Bearer ${API_KEY}`
-    }
-  }
-);
-
-const data = await response.json();
-data.notifications.forEach(notification => {
-  console.log(`${notification.task_name}: ${notification.answer}`);
-});
-
-// Get all user notifications
-const allResponse = await fetch(
-  'https://api.torale.ai/api/v1/notifications',
-  {
-    headers: {
-      'Authorization': `Bearer ${API_KEY}`
-    }
-  }
-);
-
-const allData = await allResponse.json();
-```
-
-### cURL
-
-```bash
-# Get notifications for task
-curl -X GET https://api.torale.ai/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/notifications \
-  -H "Authorization: Bearer sk_..."
-
-# Get all user notifications
-curl -X GET https://api.torale.ai/api/v1/notifications \
-  -H "Authorization: Bearer sk_..."
-```
-
-## Building Notification UIs
-
-### Notification Feed
-
-```python
-from torale import ToraleClient
-
-client = ToraleClient(api_key="sk_...")
-
-# Get recent notifications
-notifications = client.notifications.list(limit=10)
-
-# Display in feed
-for notif in notifications:
-    print(f"""
-    Task: {notif.task_name}
-    Answer: {notif.answer}
-    Time: {notif.created_at}
-    Sources: {', '.join([s['uri'] for s in notif.grounding_sources])}
-    ---
-    """)
-```
-
-### Notification Count
-
-```python
-# Get total notification count
-notifications = client.notifications.list(limit=1)
-total_count = notifications.total
-
-print(f"You have {total_count} notifications")
-```
-
-### Recent Activity
-
-```python
-# Get notifications from last 24 hours
-from datetime import datetime, timedelta
-
-notifications = client.notifications.list(limit=100)
-
-yesterday = datetime.now() - timedelta(days=1)
-recent = [
-    n for n in notifications
-    if datetime.fromisoformat(n.created_at.replace('Z', '+00:00')) > yesterday
-]
-
-print(f"Notifications in last 24 hours: {len(recent)}")
-```
-
-## Email Notifications (Coming Soon)
-
-**Planned features:**
-- Email delivery via NotificationAPI
-- Customizable templates
-- Digest mode (daily/weekly)
-- Rich HTML formatting
-
-**Future API:**
-```json
-POST /api/v1/notifications/email/settings
-{
-  "enabled": true,
-  "email": "user@example.com",
-  "digest_frequency": "daily",
-  "digest_time": "09:00"
-}
-```
-
-## Webhook Notifications (Coming Soon)
-
-**Planned features:**
-- POST to your webhook URL
-- Custom payloads
-- Retry logic
-- Signature verification
-
-**Future API:**
-```json
-POST /api/v1/notifications/webhook/settings
-{
-  "enabled": true,
-  "url": "https://your-app.com/webhook",
-  "events": ["condition_met"],
-  "secret": "your-webhook-secret"
-}
-```
-
-**Webhook payload (future):**
-```json
-{
-  "event": "condition_met",
-  "task_id": "550e8400-e29b-41d4-a716-446655440000",
-  "task_name": "iPhone Release Monitor",
-  "answer": "iPhone 16 releases September 20, 2024",
-  "sources": ["https://apple.com/newsroom/..."],
-  "timestamp": "2024-01-15T09:00:05Z",
-  "signature": "sha256=..."
-}
-```
-
-## Error Responses
-
-### Not Found
-
-**Status:** `404 Not Found`
-
-**Response:**
-```json
-{
-  "detail": "Task not found"
-}
-```
-
-### Unauthorized
-
-**Status:** `401 Unauthorized`
-
-**Response:**
-```json
-{
-  "detail": "Invalid API key"
-}
-```
-
-### No Notifications
-
-**Status:** `200 OK`
-
-**Response:**
-```json
-{
-  "notifications": [],
-  "total": 0,
-  "page": 1,
-  "limit": 20
-}
-```
-
-**Note:** Empty list, not an error. Task hasn't triggered condition yet.
-
-## Best Practices
-
-### Performance
-
-1. **Use pagination** - Don't fetch all notifications at once
-2. **Cache results** - Reduce API calls for static data
-3. **Use webhooks** - Receive push notifications (coming soon)
-
-### UI Design
-
-1. **Show most recent first** - Order by created_at DESC
-2. **Group by task** - Organize notifications by task
-3. **Provide context** - Show task name and time
-4. **Link to sources** - Make grounding_sources clickable
-
-### Notification Management
-
-1. **Mark as read** - Track viewed notifications (coming soon)
-2. **Filter by date** - Show recent notifications
-3. **Archive old** - Clear old notifications (coming soon)
+| Feature | `/notifications/sends` | `/tasks/{id}/notifications` |
+|---------|----------------------|---------------------------|
+| Scope | All tasks | Single task |
+| What it tracks | Email/webhook delivery attempts | Executions where condition was met |
+| Response type | Send records with delivery status | Execution objects with results |
+| Use case | Audit notification delivery | View what triggered alerts |
 
 ## Next Steps
 
 - View [Executions API](/api/executions) for full execution history
 - Check [Tasks API](/api/tasks) for task management
 - Read [Error Handling](/api/errors) guide
-- See [SDK Documentation](/sdk/installation)

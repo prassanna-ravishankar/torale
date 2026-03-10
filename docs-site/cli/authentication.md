@@ -1,5 +1,5 @@
 ---
-description: Authenticate Torale CLI with API keys. Generate keys in web dashboard, configure CLI authentication, and manage multiple profiles.
+description: Authenticate Torale CLI with API keys. Generate keys in web dashboard, configure CLI authentication, and check auth status.
 ---
 
 # CLI Authentication
@@ -11,10 +11,12 @@ Authenticate the Torale CLI with your account.
 ### Generate API Key
 
 1. Log in to [torale.ai](https://torale.ai)
-2. Navigate to Settings → API Keys
+2. Navigate to Settings -> API Keys
 3. Click "Generate New Key"
-4. Enter name (e.g., "CLI Key")
-5. Copy key immediately (shown only once)
+4. Enter a name (e.g., "CLI Key")
+5. Copy the key immediately (shown only once)
+
+API keys start with `sk_`.
 
 ### Configure CLI
 
@@ -23,67 +25,58 @@ torale auth set-api-key
 # Paste your API key when prompted
 ```
 
-The key is stored securely in `~/.torale/config.json`.
+You can also specify a custom API URL (useful for local development):
 
-## Verify Authentication
+```bash
+torale auth set-api-key --api-url http://localhost:8000
+```
+
+The key and URL are stored in `~/.torale/config.json`.
+
+## Check Authentication Status
 
 ```bash
 torale auth status
 ```
 
-**Output:**
+**Output (authenticated):**
 ```
-✓ Authenticated as user@example.com
-API Key: sk_...xyz89
-```
-
-## Check Current User
-
-```bash
-torale auth whoami
+Authenticated with API key
+API Key: sk_abc12345...
+API URL: https://api.torale.ai
 ```
 
-**Output:**
-```json
-{
-  "id": "660e8400-e29b-41d4-a716-446655440000",
-  "email": "user@example.com",
-  "state": "active"
-}
+**Output (no-auth mode):**
+```
+Running in NOAUTH mode (TORALE_NOAUTH=1)
+Authentication is disabled for local development.
 ```
 
 ## Logout
+
+Remove stored credentials:
 
 ```bash
 torale auth logout
 ```
 
-Removes stored credentials from `~/.torale/config.json`.
+## Authentication Priority
+
+The SDK resolves credentials in this order:
+
+1. `TORALE_API_KEY` environment variable
+2. `~/.torale/config.json` file
 
 ## Environment Variable
 
-Alternatively, use environment variable:
+Set the API key via environment variable instead of the config file:
 
 ```bash
 export TORALE_API_KEY=sk_...
 torale task list
 ```
 
-**Priority:**
-1. `--api-key` flag (highest)
-2. `TORALE_API_KEY` environment variable
-3. `~/.torale/config.json` file (lowest)
-
-## Using --api-key Flag
-
-```bash
-torale task list --api-key sk_...
-```
-
-Useful for:
-- CI/CD pipelines
-- Temporary access
-- Multiple accounts
+This is useful for CI/CD pipelines where you don't want to run `set-api-key`.
 
 ## Development Mode (No Auth)
 
@@ -91,32 +84,28 @@ For local development without authentication:
 
 ```bash
 export TORALE_NOAUTH=1
-export TORALE_API_URL=http://localhost:8000
-
 torale task list
 ```
 
-**Note:** Only works with local development API.
+When `TORALE_NOAUTH=1` is set, the CLI skips authentication entirely and the API URL defaults to `http://localhost:8000` (unless overridden by `TORALE_API_URL`).
 
 ## Troubleshooting
 
 ### Invalid API Key
 
-```bash
-torale task list
-# Error: Invalid API key
+```
+Not authenticated.
 ```
 
 **Solutions:**
-1. Regenerate key in dashboard
-2. Run `torale auth set-api-key` with new key
-3. Verify key format: `sk_[32 characters]`
+1. Regenerate key in the dashboard
+2. Run `torale auth set-api-key` with the new key
+3. Verify key format starts with `sk_`
 
 ### Missing Configuration
 
-```bash
-torale task list
-# Error: No API key configured
+```
+No configuration found. Please run 'torale auth set-api-key' first.
 ```
 
 **Solution:**
@@ -124,57 +113,14 @@ torale task list
 torale auth set-api-key
 ```
 
-### Connection Refused
-
-```bash
-torale task list
-# Error: Connection refused
-```
-
-**Causes:**
-- API is down
-- Network issue
-- Wrong API URL (if self-hosted)
-
-**For self-hosted:**
-```bash
-export TORALE_API_URL=http://localhost:8000
-```
-
 ## Security Best Practices
 
-### 1. Don't Share API Keys
-
-```bash
-# ✗ Bad - Don't commit to git
-git add .torale/config.json
-
-# ✓ Good - Add to .gitignore
-echo ".torale/" >> ~/.gitignore
-```
-
-### 2. Rotate Keys Regularly
-
-```bash
-# Generate new key in dashboard
-torale auth set-api-key
-# Paste new key
-
-# Revoke old key in dashboard
-```
-
-### 3. Use Separate Keys
-
-- Development: `Dev CLI Key`
-- Production: `Production CLI Key`
-- CI/CD: `GitHub Actions Key`
-
-### 4. Revoke Unused Keys
-
-Visit torale.ai → Settings → API Keys → Revoke
+1. **Don't commit credentials** -- add `.torale/` to your `.gitignore`
+2. **Rotate keys regularly** -- generate a new key, configure CLI, revoke the old one
+3. **Use separate keys** for development vs production vs CI/CD
+4. **Use environment variables** in CI/CD rather than config files
 
 ## Next Steps
 
 - Learn [Task Commands](/cli/commands)
 - Configure [Settings](/cli/configuration)
-- Read [API Reference](/api/authentication)

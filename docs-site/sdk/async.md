@@ -18,21 +18,39 @@ pip install torale
 
 ```python
 import asyncio
-from torale import AsyncToraleClient
+from torale import ToraleAsync
 
 async def main():
-    client = AsyncToraleClient(api_key="sk_...")
-
-    # Create task
-    task = await client.tasks.create(
-        search_query="When is the next iPhone release?",
-        condition_description="A specific date has been announced",
-        schedule="0 9 * * *"
-    )
-
-    print(f"Created: {task.id}")
+    async with ToraleAsync(api_key="sk_...") as client:
+        task = await client.tasks.create(
+            name="iPhone Release Monitor",
+            search_query="When is the next iPhone release?",
+            condition_description="A specific date has been announced",
+        )
+        print(f"Created: {task.id}")
 
 asyncio.run(main())
+```
+
+The `ToraleAsync` client supports the same resources and methods as the sync `Torale` client, with `await` on every call.
+
+## Context Manager
+
+Always use `async with` to ensure the HTTP client is closed properly:
+
+```python
+async with ToraleAsync(api_key="sk_...") as client:
+    tasks = await client.tasks.list()
+```
+
+Or close manually:
+
+```python
+client = ToraleAsync(api_key="sk_...")
+try:
+    tasks = await client.tasks.list()
+finally:
+    await client.close()
 ```
 
 ## Concurrent Operations
@@ -41,29 +59,27 @@ asyncio.run(main())
 
 ```python
 async def create_tasks():
-    client = AsyncToraleClient(api_key="sk_...")
-
-    # Create tasks concurrently
-    tasks = await asyncio.gather(
-        client.tasks.create(
-            search_query="iPhone release date?",
-            condition_description="Date announced",
-            schedule="0 9 * * *"
-        ),
-        client.tasks.create(
-            search_query="PS5 in stock at Target?",
-            condition_description="Available for purchase",
-            schedule="0 */2 * * *"
-        ),
-        client.tasks.create(
-            search_query="MacBook Pro price at Best Buy?",
-            condition_description="Price below $1800",
-            schedule="0 */4 * * *"
+    async with ToraleAsync(api_key="sk_...") as client:
+        tasks = await asyncio.gather(
+            client.tasks.create(
+                name="iPhone Monitor",
+                search_query="iPhone release date?",
+                condition_description="Date announced",
+            ),
+            client.tasks.create(
+                name="PS5 Stock Monitor",
+                search_query="PS5 in stock at Target?",
+                condition_description="Available for purchase",
+            ),
+            client.tasks.create(
+                name="MacBook Price Monitor",
+                search_query="MacBook Pro price at Best Buy?",
+                condition_description="Price below $1800",
+            ),
         )
-    )
 
-    for task in tasks:
-        print(f"Created: {task.name}")
+        for task in tasks:
+            print(f"Created: {task.name}")
 
 asyncio.run(create_tasks())
 ```
@@ -72,15 +88,12 @@ asyncio.run(create_tasks())
 
 ```python
 async def get_task_details(task_ids):
-    client = AsyncToraleClient(api_key="sk_...")
-
-    # Fetch concurrently
-    tasks = await asyncio.gather(*[
-        client.tasks.get(task_id)
-        for task_id in task_ids
-    ])
-
-    return tasks
+    async with ToraleAsync(api_key="sk_...") as client:
+        tasks = await asyncio.gather(*[
+            client.tasks.get(task_id)
+            for task_id in task_ids
+        ])
+        return tasks
 
 task_ids = ["task-id-1", "task-id-2", "task-id-3"]
 tasks = asyncio.run(get_task_details(task_ids))
@@ -89,167 +102,122 @@ for task in tasks:
     print(f"{task.name}: {task.state}")
 ```
 
+## Available Methods
+
+`ToraleAsync` has the same interface as the sync client. All methods are async:
+
+| Resource | Method | Description |
+|----------|--------|-------------|
+| `client.tasks` | `create(...)` | Create a task |
+| `client.tasks` | `list(active=...)` | List tasks |
+| `client.tasks` | `get(task_id)` | Get a task |
+| `client.tasks` | `update(task_id, ...)` | Update a task |
+| `client.tasks` | `delete(task_id)` | Delete a task |
+| `client.tasks` | `execute(task_id)` | Trigger manual execution |
+| `client.tasks` | `executions(task_id, limit=100)` | Get execution history |
+| `client.tasks` | `notifications(task_id, limit=100)` | Get notifications |
+| `client.webhooks` | `get_config()` | Get webhook config |
+| `client.webhooks` | `update_config(url=..., enabled=...)` | Update webhook config |
+| `client.webhooks` | `test(url, secret)` | Test webhook delivery |
+| `client.webhooks` | `list_deliveries(task_id=..., limit=...)` | List webhook deliveries |
+
 ## With FastAPI
 
 ```python
-from fastapi import FastAPI, Depends
-from torale import AsyncToraleClient
 import os
+
+from fastapi import FastAPI, Depends
+from torale import ToraleAsync
 
 app = FastAPI()
 
 async def get_torale_client():
-    return AsyncToraleClient(api_key=os.getenv("TORALE_API_KEY"))
+    client = ToraleAsync(api_key=os.getenv("TORALE_API_KEY"))
+    try:
+        yield client
+    finally:
+        await client.close()
 
 @app.post("/create-task")
 async def create_task(
     query: str,
     condition: str,
-    client: AsyncToraleClient = Depends(get_torale_client)
+    client: ToraleAsync = Depends(get_torale_client),
 ):
     task = await client.tasks.create(
+        name=f"Monitor: {query[:50]}",
         search_query=query,
         condition_description=condition,
-        schedule="0 9 * * *"
     )
-    return {"task_id": task.id}
+    return {"task_id": str(task.id)}
 
 @app.get("/tasks")
 async def list_tasks(
-    client: AsyncToraleClient = Depends(get_torale_client)
+    client: ToraleAsync = Depends(get_torale_client),
 ):
     tasks = await client.tasks.list()
-    return {"tasks": [t.dict() for t in tasks]}
+    return {"tasks": [t.model_dump() for t in tasks]}
 
 @app.get("/tasks/{task_id}/executions")
 async def get_executions(
     task_id: str,
-    client: AsyncToraleClient = Depends(get_torale_client)
+    client: ToraleAsync = Depends(get_torale_client),
 ):
-    executions = await client.tasks.get_executions(task_id)
-    return {"executions": [e.dict() for e in executions]}
+    executions = await client.tasks.executions(task_id)
+    return {"executions": [e.model_dump() for e in executions]}
 ```
 
-## Error Handling
-
-```python
-from torale import AsyncToraleClient
-from torale.exceptions import ValidationError, RateLimitError
-import asyncio
-
-async def safe_create_task(client, **kwargs):
-    try:
-        return await client.tasks.create(**kwargs)
-    except ValidationError as e:
-        print(f"Validation error: {e.detail}")
-    except RateLimitError as e:
-        print(f"Rate limited. Retry after {e.retry_after}s")
-        await asyncio.sleep(e.retry_after)
-        return await client.tasks.create(**kwargs)
-
-async def main():
-    client = AsyncToraleClient(api_key="sk_...")
-
-    task = await safe_create_task(
-        client,
-        search_query="...",
-        condition_description="...",
-        schedule="0 9 * * *"
-    )
-
-asyncio.run(main())
-```
-
-## Batch Operations
-
-```python
-async def batch_update_tasks(task_ids, updates):
-    """Update multiple tasks concurrently"""
-    client = AsyncToraleClient(api_key="sk_...")
-
-    tasks = await asyncio.gather(*[
-        client.tasks.update(task_id, **updates)
-        for task_id in task_ids
-    ])
-
-    return tasks
-
-# Pause multiple tasks
-task_ids = ["task-1", "task-2", "task-3"]
-updated_tasks = asyncio.run(
-    batch_update_tasks(task_ids, {"is_active": False})
-)
-
-print(f"Paused {len(updated_tasks)} tasks")
-```
-
-## Context Manager
-
-```python
-async def main():
-    async with AsyncToraleClient(api_key="sk_...") as client:
-        task = await client.tasks.create(
-            search_query="...",
-            condition_description="...",
-            schedule="0 9 * * *"
-        )
-        print(f"Created: {task.id}")
-
-asyncio.run(main())
-```
-
-## Best Practices
-
-### 1. Use for I/O-bound Operations
-
-```python
-# ✓ Good - Concurrent API calls
-tasks = await asyncio.gather(
-    client.tasks.get("task-1"),
-    client.tasks.get("task-2"),
-    client.tasks.get("task-3")
-)
-
-# ✗ Bad - Sequential (slower)
-task1 = await client.tasks.get("task-1")
-task2 = await client.tasks.get("task-2")
-task3 = await client.tasks.get("task-3")
-```
-
-### 2. Handle Rate Limits
+## Batch Operations with Rate Limiting
 
 ```python
 from asyncio import Semaphore
 
 async def create_tasks_with_limit(task_configs):
-    client = AsyncToraleClient(api_key="sk_...")
-    semaphore = Semaphore(5)  # Max 5 concurrent requests
+    async with ToraleAsync(api_key="sk_...") as client:
+        semaphore = Semaphore(5)  # Max 5 concurrent requests
 
-    async def create_with_semaphore(config):
-        async with semaphore:
-            return await client.tasks.create(**config)
+        async def create_with_semaphore(config):
+            async with semaphore:
+                return await client.tasks.create(**config)
 
-    tasks = await asyncio.gather(*[
-        create_with_semaphore(config)
-        for config in task_configs
-    ])
-
-    return tasks
+        tasks = await asyncio.gather(*[
+            create_with_semaphore(config)
+            for config in task_configs
+        ])
+        return tasks
 ```
 
-### 3. Retry Logic
+## Error Handling
 
 ```python
-from asyncio import sleep
+from torale import ToraleAsync
+from torale.sdk.exceptions import ValidationError, RateLimitError, APIError
+import asyncio
 
-async def create_task_with_retry(client, max_retries=3, **kwargs):
+async def safe_create_task(client, max_retries=3, **kwargs):
     for attempt in range(max_retries):
         try:
             return await client.tasks.create(**kwargs)
-        except RateLimitError as e:
+        except ValidationError as e:
+            print(f"Validation error: {e}")
+            raise  # Don't retry validation errors
+        except APIError as e:
             if attempt == max_retries - 1:
                 raise
-            await sleep(e.retry_after or 2 ** attempt)
+            wait = 2 ** attempt
+            print(f"API error, retrying in {wait}s...")
+            await asyncio.sleep(wait)
+
+async def main():
+    async with ToraleAsync(api_key="sk_...") as client:
+        task = await safe_create_task(
+            client,
+            name="My Monitor",
+            search_query="...",
+            condition_description="...",
+        )
+
+asyncio.run(main())
 ```
 
 ## Next Steps

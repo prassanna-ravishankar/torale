@@ -42,14 +42,14 @@ python -c "import torale; print(torale.__version__)"
 ## Quick Test
 
 ```python
-from torale import ToraleClient
+from torale import Torale
 
 # Initialize client
-client = ToraleClient(api_key="your-api-key")
+client = Torale(api_key="sk_...")
 
-# Test connection
-user = client.auth.me()
-print(f"Authenticated as: {user.email}")
+# Test connection by listing tasks
+tasks = client.tasks.list()
+print(f"Connected. Found {len(tasks)} tasks.")
 ```
 
 ## Next Steps

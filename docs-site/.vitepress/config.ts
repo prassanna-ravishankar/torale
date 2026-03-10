@@ -60,11 +60,12 @@ export default withMermaid(
           text: 'Python SDK',
           items: [
             { text: 'Quickstart', link: '/sdk/quickstart' },
+            { text: 'Installation', link: '/sdk/installation' },
             { text: 'Authentication', link: '/sdk/authentication' },
             { text: 'Tasks', link: '/sdk/tasks' },
-            { text: 'Preview', link: '/sdk/preview' },
             { text: 'Async Client', link: '/sdk/async' },
-            { text: 'Error Handling', link: '/sdk/errors' }
+            { text: 'Error Handling', link: '/sdk/errors' },
+            { text: 'Examples', link: '/sdk/examples' }
           ]
         }
       ],

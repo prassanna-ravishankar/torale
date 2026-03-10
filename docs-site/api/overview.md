@@ -25,7 +25,7 @@ The ReDoc interface provides detailed examples and schema information for every 
 
 ## Authentication
 
-All requests require authentication via API key in the Authorization header:
+All authenticated requests require an API key or Clerk JWT in the Authorization header:
 
 ```bash
 curl -H "Authorization: Bearer sk_..." \
@@ -39,65 +39,114 @@ Generate API keys at [torale.ai/settings/api-keys](https://torale.ai/settings/ap
 ### Tasks
 
 ```
-POST   /api/v1/tasks                    # Create task
-POST   /api/v1/tasks/suggest            # Get suggested task from query
-GET    /api/v1/tasks                    # List tasks
-GET    /api/v1/tasks/{id}               # Get task
-PUT    /api/v1/tasks/{id}               # Update task
-DELETE /api/v1/tasks/{id}               # Delete task
-PATCH  /api/v1/tasks/{id}/visibility    # Update task visibility
-POST   /api/v1/tasks/{id}/execute       # Execute immediately
-POST   /api/v1/tasks/{id}/fork          # Fork task
+POST   /api/v1/tasks                       # Create task
+GET    /api/v1/tasks                       # List user's tasks
+GET    /api/v1/tasks/{id}                  # Get task (public or owned)
+PUT    /api/v1/tasks/{id}                  # Update task
+DELETE /api/v1/tasks/{id}                  # Delete task
+PATCH  /api/v1/tasks/{id}/visibility       # Toggle public/private
+POST   /api/v1/tasks/{id}/execute          # Execute immediately
+POST   /api/v1/tasks/{id}/fork             # Fork a public task
 ```
 
-### Executions
+### Executions & Notifications
 
 ```
-GET    /api/v1/tasks/{id}/executions    # Execution history
-GET    /api/v1/tasks/{id}/notifications # Filtered: condition_met only
+GET    /api/v1/tasks/{id}/executions       # Execution history
+GET    /api/v1/tasks/{id}/notifications    # Filtered: condition met only
+GET    /api/v1/notifications/sends         # Notification send history
 ```
 
-### Authentication
+### Public Tasks (no auth required)
 
 ```
-POST   /auth/sync-user                  # Sync Clerk user
-GET    /auth/me                         # Current user
-POST   /auth/api-keys                   # Generate key
-GET    /auth/api-keys                   # List keys
-DELETE /auth/api-keys/{id}              # Revoke key
+GET    /api/v1/public/tasks                        # Discover public tasks
+GET    /api/v1/public/tasks/{username}/{slug}       # Get task by vanity URL
+GET    /api/v1/public/tasks/id/{task_id}            # Get public task by UUID
 ```
 
-### Admin (requires admin role)
+### Authentication & User Management
 
 ```
-GET    /admin/stats                     # Platform statistics
-GET    /admin/queries                   # All user queries
-GET    /admin/executions                # All executions
-GET    /admin/scheduler/jobs             # APScheduler jobs
-GET    /admin/errors                    # Failed executions
-GET    /admin/users                     # User management
-PATCH  /admin/users/{id}/deactivate     # Deactivate user
+POST   /auth/sync-user                     # Sync Clerk user to DB
+GET    /auth/me                            # Current user info
+POST   /auth/mark-welcome-seen             # Mark welcome flow seen
+POST   /auth/api-keys                      # Generate API key
+GET    /auth/api-keys                      # List API keys
+DELETE /auth/api-keys/{id}                 # Revoke API key
+```
+
+### Users
+
+```
+GET    /api/v1/users/username/available     # Check username availability
+PATCH  /api/v1/users/me/username            # Set username
+```
+
+### Email Verification
+
+```
+POST   /api/v1/email-verification/send           # Send verification code
+POST   /api/v1/email-verification/verify          # Verify email with code
+GET    /api/v1/email-verification/verified-emails  # List verified emails
+DELETE /api/v1/email-verification/verified-emails/{email}  # Remove verified email
+```
+
+### Admin (requires admin role, hidden from OpenAPI schema)
+
+```
+GET    /admin/stats                        # Platform statistics
+GET    /admin/queries                      # All user queries
+GET    /admin/executions                   # All executions
+GET    /admin/scheduler/jobs               # APScheduler jobs
+GET    /admin/errors                       # Failed executions
+GET    /admin/users                        # User management
+PATCH  /admin/users/{id}/deactivate        # Deactivate user
+PATCH  /admin/users/{id}/role              # Update user role
+PATCH  /admin/users/roles                  # Bulk update roles
+GET    /admin/waitlist                     # List waitlist entries
+GET    /admin/waitlist/stats               # Waitlist statistics
+PATCH  /admin/waitlist/{id}                # Update waitlist entry
+DELETE /admin/waitlist/{id}                # Delete waitlist entry
+POST   /admin/tasks/{id}/execute           # Execute any task
+PATCH  /admin/tasks/{id}/state             # Change task state
+DELETE /admin/tasks/{id}/reset             # Reset task history
+```
+
+### Waitlist (public)
+
+```
+POST   /public/waitlist                    # Join waitlist (no auth)
 ```
 
 ## Response Format
 
-All responses use JSON with consistent structure:
+Responses use JSON. Most endpoints return the resource directly:
 
 ```json
 {
   "id": "uuid",
   "field": "value",
-  "timestamp": "2025-01-15T10:30:00Z"
+  "created_at": "2025-01-15T10:30:00Z"
 }
 ```
 
-Lists include pagination metadata:
+List endpoints like `GET /api/v1/tasks` return a bare JSON array:
+
+```json
+[
+  { "id": "uuid-1", "name": "Task 1", ... },
+  { "id": "uuid-2", "name": "Task 2", ... }
+]
+```
+
+Some admin and public task endpoints wrap results with metadata:
 
 ```json
 {
-  "items": [...],
+  "tasks": [...],
   "total": 100,
-  "page": 1,
+  "offset": 0,
   "limit": 20
 }
 ```
@@ -112,14 +161,15 @@ Errors follow standard HTTP status codes with detail messages:
 }
 ```
 
-Validation errors include field-level details:
+Validation errors (422) include field-level details:
 
 ```json
 {
   "detail": [
     {
-      "loc": ["body", "schedule"],
-      "msg": "Invalid cron expression"
+      "loc": ["body", "search_query"],
+      "msg": "Field required",
+      "type": "missing"
     }
   ]
 }
@@ -127,17 +177,11 @@ Validation errors include field-level details:
 
 ## Rate Limits
 
-- 100 requests/minute per API key
-- 1,000 requests/hour per API key
-- 10,000 requests/day per API key
+Public endpoints have per-IP rate limits:
 
-Rate limit headers included in responses:
-
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1737024000
-```
+- Public tasks: 10 requests/minute
+- Vanity URL lookups: 20 requests/minute
+- Waitlist join: 5 requests/minute
 
 ## Next Steps
 

@@ -8,28 +8,30 @@ Direct HTTP API access for Torale monitoring platform.
 
 ## Getting Started
 
-**[API Overview](./overview)** - Base URLs, authentication methods, and interactive docs
+**[API Overview](./overview)** - Base URLs, authentication methods, and complete endpoint listing
 
-**[Authentication](./authentication)** - API keys and bearer token usage
+**[Authentication](./authentication)** - API keys, Clerk JWT, and user management endpoints
 
 ## API Endpoints
 
-**[Tasks API](./tasks)** - Create, list, update, and delete monitoring tasks
+**[Tasks API](./tasks)** - Create, list, update, delete, fork, and execute monitoring tasks
 
-**[Executions API](./executions)** - View execution history and results
+**[Executions API](./executions)** - View execution history, results, and task-scoped notifications
 
-**[Notifications API](./notifications)** - Configure channels and view history
+**[Notifications API](./notifications)** - Notification send history and delivery tracking
 
-**[Admin API](./admin)** - Platform management endpoints (admin only)
+**[Admin API](./admin)** - Platform management, user admin, waitlist, and task controls (admin only)
 
 ## Reference
 
-**[Error Responses](./errors)** - HTTP status codes and error formats
+**[Error Responses](./errors)** - HTTP status codes, error formats, and common mistakes
 
 ## Interactive Documentation
 
 Torale provides interactive API documentation at:
-- Production: `https://api.torale.ai/docs` (ReDoc)
-- Swagger UI: `https://api.torale.ai/redoc`
+- ReDoc: `https://api.torale.ai/redoc`
+- OpenAPI JSON: `https://api.torale.ai/openapi.json`
 
-Start with the [API Overview](./overview) to understand authentication and endpoints, then explore the interactive docs for hands-on testing.
+Note: Admin endpoints are intentionally hidden from the OpenAPI schema.
+
+Start with the [API Overview](./overview) to understand authentication and endpoints.

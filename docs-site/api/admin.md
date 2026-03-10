@@ -10,7 +10,9 @@ Platform monitoring and management endpoints for administrators.
 
 Base URL: `https://api.torale.ai/admin`
 
-**Access:** Requires admin role in Clerk `publicMetadata`
+**Access:** Requires admin role in Clerk `publicMetadata`.
+
+**Note:** All admin endpoints are hidden from the OpenAPI schema (`include_in_schema=False`). They do not appear in `/docs` or `/redoc`.
 
 ## Authentication
 
@@ -18,9 +20,9 @@ Base URL: `https://api.torale.ai/admin`
 
 Set `{"role": "admin"}` in user's `publicMetadata` via Clerk Dashboard:
 
-1. Go to Clerk Dashboard → Users
+1. Go to Clerk Dashboard -> Users
 2. Select user
-3. Navigate to Metadata → Public Metadata
+3. Navigate to Metadata -> Public Metadata
 4. Add:
    ```json
    {
@@ -31,14 +33,12 @@ Set `{"role": "admin"}` in user's `publicMetadata` via Clerk Dashboard:
 
 **Authorization header:**
 ```
-Authorization: Bearer {api_key_or_clerk_jwt}
+Authorization: Bearer {clerk_jwt}
 ```
 
-## Endpoints
+## Platform Monitoring
 
 ### Platform Statistics
-
-Get overview of platform usage.
 
 **Endpoint:** `GET /admin/stats`
 
@@ -47,47 +47,31 @@ Get overview of platform usage.
 ```json
 {
   "users": {
-    "total": 1250,
-    "active_30d": 823,
-    "new_7d": 45
+    "total": 45,
+    "capacity": 100,
+    "available": 55
   },
   "tasks": {
-    "total": 5420,
-    "active": 3891,
-    "paused": 1529
+    "total": 120,
+    "triggered": 34,
+    "trigger_rate": "28.3%"
   },
-  "executions": {
-    "total_24h": 15623,
-    "success_24h": 15201,
-    "failed_24h": 422,
-    "avg_duration_ms": 4200
-  },
-  "notifications": {
-    "sent_24h": 892,
-    "sent_7d": 5234
+  "executions_24h": {
+    "total": 580,
+    "failed": 12,
+    "success_rate": "97.9%"
   },
   "popular_queries": [
     {
-      "query": "iPhone release date",
-      "count": 234
-    },
-    {
-      "query": "PS5 stock",
-      "count": 198
+      "search_query": "iPhone release date",
+      "count": 15,
+      "triggered_count": 3
     }
   ]
 }
 ```
 
-**Example:**
-```bash
-curl -X GET https://api.torale.ai/admin/stats \
-  -H "Authorization: Bearer sk_..."
-```
-
 ### All User Queries
-
-View all user queries with statistics.
 
 **Endpoint:** `GET /admin/queries`
 
@@ -95,8 +79,8 @@ View all user queries with statistics.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `page` | integer | Page number (default: 1) |
-| `limit` | integer | Results per page (default: 50, max: 100) |
+| `limit` | integer | Max results (default: 100, max: 500) |
+| `active_only` | boolean | Only show active tasks (default: false) |
 
 **Response:** `200 OK`
 
@@ -104,37 +88,26 @@ View all user queries with statistics.
 {
   "queries": [
     {
+      "id": "550e8400...",
+      "name": "iPhone Monitor",
       "search_query": "When is the next iPhone being released?",
-      "total_tasks": 234,
-      "active_tasks": 189,
-      "total_executions": 1456,
-      "success_rate": 0.98,
-      "avg_duration_ms": 3800
-    },
-    {
-      "search_query": "Is PS5 in stock at Target?",
-      "total_tasks": 198,
-      "active_tasks": 156,
-      "total_executions": 2341,
-      "success_rate": 0.95,
-      "avg_duration_ms": 4200
+      "condition_description": "A specific date has been announced",
+      "next_run": "2025-01-16T09:00:00Z",
+      "state": "active",
+      "has_notification": false,
+      "created_at": "2025-01-15T10:30:00Z",
+      "user_email": "user@example.com",
+      "execution_count": 15,
+      "trigger_count": 0,
+      "last_known_state": null,
+      "state_changed_at": null
     }
   ],
-  "total": 1247,
-  "page": 1,
-  "limit": 50
+  "total": 120
 }
 ```
 
-**Example:**
-```bash
-curl -X GET https://api.torale.ai/admin/queries \
-  -H "Authorization: Bearer sk_..."
-```
-
 ### All Executions
-
-View execution history across all users.
 
 **Endpoint:** `GET /admin/executions`
 
@@ -142,10 +115,9 @@ View execution history across all users.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `status` | string | Filter by: `success`, `failed` |
-| `hours` | integer | Last N hours (default: 24) |
-| `page` | integer | Page number (default: 1) |
-| `limit` | integer | Results per page (default: 50, max: 100) |
+| `limit` | integer | Max results (default: 50, max: 200) |
+| `status` | string | Filter by: `success`, `failed`, `running`, `pending` |
+| `task_id` | UUID | Filter by specific task |
 
 **Response:** `200 OK`
 
@@ -153,37 +125,24 @@ View execution history across all users.
 {
   "executions": [
     {
-      "id": "770e8400-e29b-41d4-a716-446655440000",
-      "task_id": "550e8400-e29b-41d4-a716-446655440000",
-      "user_email": "user@example.com",
-      "search_query": "When is the next iPhone release?",
+      "id": "770e8400...",
+      "task_id": "550e8400...",
       "status": "success",
-      "condition_met": true,
-      "duration_ms": 4100,
-      "started_at": "2024-01-15T09:00:00Z",
-      "completed_at": "2024-01-15T09:00:04Z"
+      "started_at": "2025-01-15T09:00:00Z",
+      "completed_at": "2025-01-15T09:00:04Z",
+      "result": { "evidence": "...", "confidence": 90 },
+      "error_message": null,
+      "notification": null,
+      "grounding_sources": [...],
+      "search_query": "When is the next iPhone release?",
+      "user_email": "user@example.com"
     }
   ],
-  "total": 15623,
-  "page": 1,
-  "limit": 50
+  "total": 50
 }
 ```
 
-**Example:**
-```bash
-# Get all executions from last 24 hours
-curl -X GET https://api.torale.ai/admin/executions \
-  -H "Authorization: Bearer sk_..."
-
-# Get failed executions from last 6 hours
-curl -X GET "https://api.torale.ai/admin/executions?status=failed&hours=6" \
-  -H "Authorization: Bearer sk_..."
-```
-
 ### Error Monitoring
-
-View recent failed executions for monitoring.
 
 **Endpoint:** `GET /admin/errors`
 
@@ -191,8 +150,7 @@ View recent failed executions for monitoring.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `hours` | integer | Last N hours (default: 24) |
-| `limit` | integer | Results per page (default: 50, max: 100) |
+| `limit` | integer | Max results (default: 50, max: 200) |
 
 **Response:** `200 OK`
 
@@ -200,50 +158,46 @@ View recent failed executions for monitoring.
 {
   "errors": [
     {
-      "execution_id": "880e8400-e29b-41d4-a716-446655440000",
-      "task_id": "550e8400-e29b-41d4-a716-446655440000",
-      "user_email": "user@example.com",
+      "id": "880e8400...",
+      "task_id": "550e8400...",
+      "started_at": "2025-01-15T10:23:15Z",
+      "completed_at": "2025-01-15T10:23:20Z",
+      "error_message": "Agent timeout after 60s",
       "search_query": "When is the next iPhone release?",
-      "error_message": "Rate limit exceeded for Google Search API",
-      "error_type": "RateLimitError",
-      "retry_count": 2,
-      "will_retry": true,
-      "occurred_at": "2024-01-15T10:23:15Z"
+      "task_name": "iPhone Monitor",
+      "user_email": "user@example.com"
     }
   ],
-  "total": 422,
-  "error_types": {
-    "RateLimitError": 312,
-    "TimeoutError": 89,
-    "ValidationError": 21
-  }
+  "total": 12
 }
 ```
 
-**Example:**
-```bash
-# Get errors from last 24 hours
-curl -X GET https://api.torale.ai/admin/errors \
-  -H "Authorization: Bearer sk_..."
+### Scheduler Jobs
 
-# Get errors from last 6 hours
-curl -X GET "https://api.torale.ai/admin/errors?hours=6" \
-  -H "Authorization: Bearer sk_..."
+**Endpoint:** `GET /admin/scheduler/jobs`
+
+**Response:** `200 OK`
+
+```json
+{
+  "jobs": [
+    {
+      "id": "task-550e8400...",
+      "name": "iPhone Monitor",
+      "next_run_time": "2025-01-16T09:00:00Z",
+      "paused": false,
+      "trigger": "date[2025-01-16T09:00:00Z]"
+    }
+  ],
+  "total": 85
+}
 ```
 
-### User Management
+## User Management
 
-List all users with activity statistics.
+### List Users
 
 **Endpoint:** `GET /admin/users`
-
-**Query parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `active_only` | boolean | Show only active users (default: false) |
-| `page` | integer | Page number (default: 1) |
-| `limit` | integer | Results per page (default: 50, max: 100) |
 
 **Response:** `200 OK`
 
@@ -251,125 +205,239 @@ List all users with activity statistics.
 {
   "users": [
     {
-      "id": "660e8400-e29b-41d4-a716-446655440000",
+      "id": "660e8400...",
       "email": "user@example.com",
       "clerk_user_id": "user_2abc...",
-      "state": "active",
-      "tasks_count": 8,
-      "active_tasks_count": 5,
-      "executions_24h": 45,
-      "notifications_7d": 12,
-      "created_at": "2024-01-10T08:30:00Z",
-      "last_login": "2024-01-15T09:00:00Z"
+      "is_active": true,
+      "created_at": "2025-01-10T08:30:00Z",
+      "task_count": 8,
+      "total_executions": 145,
+      "notifications_count": 12,
+      "role": "developer"
     }
   ],
-  "total": 1250,
-  "page": 1,
-  "limit": 50
+  "capacity": {
+    "used": 45,
+    "total": 100,
+    "available": 55
+  }
 }
-```
-
-**Example:**
-```bash
-# Get all users
-curl -X GET https://api.torale.ai/admin/users \
-  -H "Authorization: Bearer sk_..."
-
-# Get only active users
-curl -X GET "https://api.torale.ai/admin/users?active_only=true" \
-  -H "Authorization: Bearer sk_..."
 ```
 
 ### Deactivate User
 
-Deactivate a user account (soft delete).
+Sets `is_active = false` and pauses all active tasks via state machine.
 
-**Endpoint:** `PATCH /admin/users/{id}/deactivate`
+**Endpoint:** `PATCH /admin/users/{user_id}/deactivate`
 
 **Response:** `200 OK`
 
 ```json
 {
-  "message": "User deactivated successfully",
-  "user_id": "660e8400-e29b-41d4-a716-446655440000",
-  "tasks_paused": 8
+  "status": "deactivated",
+  "user_id": "660e8400...",
+  "tasks_paused": 5,
+  "tasks_failed": null
 }
 ```
 
-**Example:**
-```bash
-curl -X PATCH https://api.torale.ai/admin/users/660e8400-e29b-41d4-a716-446655440000/deactivate \
-  -H "Authorization: Bearer sk_..."
+### Update User Role
+
+Update a user's role in Clerk `publicMetadata`. Admins cannot change their own role.
+
+**Endpoint:** `PATCH /admin/users/{user_id}/role`
+
+**Request body:**
+```json
+{
+  "role": "developer"
+}
 ```
 
-**Effects:**
-- User can no longer log in
-- All tasks paused
-- API keys revoked
-- No data deleted (soft delete)
+| Field | Type | Description |
+|-------|------|-------------|
+| `role` | string/null | `"admin"`, `"developer"`, or `null` (remove role) |
 
-## Usage Examples
+**Response:** `200 OK`
 
-### Python
-
-```python
-from torale import ToraleClient
-
-# Client with admin API key
-client = ToraleClient(api_key="sk_admin_...")
-
-# Get platform stats
-stats = client.admin.get_stats()
-print(f"Total users: {stats['users']['total']}")
-print(f"Active tasks: {stats['tasks']['active']}")
-
-# Get recent errors
-errors = client.admin.get_errors(hours=6)
-for error in errors['errors']:
-    print(f"Error: {error['error_message']}")
-    print(f"User: {error['user_email']}")
-    print(f"Will retry: {error['will_retry']}")
-
-# Get all user queries
-queries = client.admin.get_queries()
-for query in queries['queries']:
-    print(f"Query: {query['search_query']}")
-    print(f"Tasks: {query['total_tasks']}")
-    print(f"Success rate: {query['success_rate']:.1%}")
-
+```json
+{
+  "status": "updated",
+  "user_id": "660e8400...",
+  "role": "developer"
+}
 ```
 
-### Dashboard Monitoring
+### Bulk Update Roles
 
-```python
-import time
-from torale import ToraleClient
+**Endpoint:** `PATCH /admin/users/roles`
 
-client = ToraleClient(api_key="sk_admin_...")
+**Request body:**
+```json
+{
+  "user_ids": ["uuid-1", "uuid-2"],
+  "role": "developer"
+}
+```
 
-def monitor_platform():
-    while True:
-        # Get stats
-        stats = client.admin.get_stats()
+| Field | Type | Description |
+|-------|------|-------------|
+| `user_ids` | array | 1-100 user UUIDs |
+| `role` | string/null | `"admin"`, `"developer"`, or `null` |
 
-        # Check error rate
-        executions_24h = stats['executions']['total_24h']
-        failed_24h = stats['executions']['failed_24h']
-        error_rate = failed_24h / executions_24h if executions_24h > 0 else 0
+**Response:** `200 OK`
 
-        print(f"Error rate: {error_rate:.1%}")
+```json
+{
+  "updated": 2,
+  "failed": 0,
+  "errors": []
+}
+```
 
-        if error_rate > 0.05:  # Alert if >5% errors
-            print("⚠️  High error rate detected!")
+## Task Administration
 
-            # Get recent errors
-            errors = client.admin.get_errors(hours=1)
-            print(f"Errors in last hour: {errors['total']}")
-            print(f"Error types: {errors['error_types']}")
+### Execute Any Task
 
-        time.sleep(300)  # Check every 5 minutes
+Manually trigger execution of any user's task.
 
-monitor_platform()
+**Endpoint:** `POST /admin/tasks/{task_id}/execute`
+
+**Query parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `suppress_notifications` | boolean | Suppress notifications (default: false) |
+
+**Response:** `200 OK`
+
+```json
+{
+  "id": "770e8400...",
+  "task_id": "550e8400...",
+  "status": "pending",
+  "message": "Execution started (notifications enabled)"
+}
+```
+
+### Update Task State
+
+Transition any task through valid state changes. Invalid transitions are rejected.
+
+**Endpoint:** `PATCH /admin/tasks/{task_id}/state`
+
+**Request body:**
+```json
+{
+  "state": "paused"
+}
+```
+
+Valid transitions:
+- `active` <-> `paused`
+- `active` -> `completed`
+- `completed` -> `active`
+
+**Response:** `200 OK`
+
+```json
+{
+  "id": "550e8400...",
+  "state": "paused",
+  "previous_state": "active",
+  "message": "Task state updated to paused"
+}
+```
+
+### Reset Task History
+
+Delete recent executions and reset task state so the agent re-evaluates fresh.
+
+**Endpoint:** `DELETE /admin/tasks/{task_id}/reset`
+
+**Query parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `days` | integer | Delete executions from last N days (default: 1, max: 30) |
+
+**Response:** `200 OK`
+
+```json
+{
+  "status": "reset",
+  "task_id": "550e8400...",
+  "executions_deleted": 15,
+  "days": 1
+}
+```
+
+## Waitlist Management
+
+### List Waitlist
+
+**Endpoint:** `GET /admin/waitlist`
+
+**Query parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `status_filter` | string | Filter by: `pending`, `invited`, `converted` |
+
+**Response:** `200 OK`
+
+```json
+[
+  {
+    "id": "990e8400...",
+    "email": "waiting@example.com",
+    "created_at": "2025-01-10T08:00:00Z",
+    "status": "pending",
+    "invited_at": null,
+    "notes": null
+  }
+]
+```
+
+### Waitlist Statistics
+
+**Endpoint:** `GET /admin/waitlist/stats`
+
+**Response:** `200 OK`
+
+```json
+{
+  "pending": 23,
+  "invited": 10,
+  "converted": 45,
+  "total": 78
+}
+```
+
+### Update Waitlist Entry
+
+**Endpoint:** `PATCH /admin/waitlist/{entry_id}`
+
+**Request body:**
+```json
+{
+  "status": "invited",
+  "notes": "Sent invite email"
+}
+```
+
+**Response:** `200 OK` with updated entry.
+
+### Delete Waitlist Entry
+
+**Endpoint:** `DELETE /admin/waitlist/{entry_id}`
+
+**Response:** `200 OK`
+
+```json
+{
+  "status": "deleted"
+}
 ```
 
 ## Error Responses
@@ -378,80 +446,36 @@ monitor_platform()
 
 **Status:** `403 Forbidden`
 
-**Response:**
 ```json
 {
   "detail": "Admin access required"
 }
 ```
 
-**Cause:** User doesn't have admin role in Clerk metadata.
+User doesn't have admin role in Clerk metadata.
 
-### Unauthorized
+### Not Found
 
-**Status:** `401 Unauthorized`
+**Status:** `404 Not Found`
 
-**Response:**
 ```json
 {
-  "detail": "Invalid API key"
+  "detail": "Task not found"
 }
 ```
 
-## Security
+### Invalid State Transition
 
-### Admin Access Control
+**Status:** `400 Bad Request`
 
-- Admin role stored in Clerk `publicMetadata`
-- Backend verifies role on every request
-- Regular users cannot access admin endpoints
-
-### Audit Logging
-
-All admin actions are logged:
-- User deactivations
-- Bulk operations
-- Data access
-
-### Rate Limiting
-
-Admin endpoints have higher rate limits:
-- 1,000 requests/minute
-- 10,000 requests/hour
-
-## Monitoring Best Practices
-
-### Key Metrics to Track
-
-1. **Error Rate**
-   ```python
-   error_rate = failed_executions / total_executions
-   alert_threshold = 0.05  # 5%
-   ```
-
-2. **Average Duration**
-   ```python
-   avg_duration = stats['executions']['avg_duration_ms']
-   alert_threshold = 10000  # 10 seconds
-   ```
-
-3. **User Growth**
-   ```python
-   new_users_7d = stats['users']['new_7d']
-   ```
-
-### Alerting Thresholds
-
-| Metric | Threshold | Action |
-|--------|-----------|--------|
-| Error rate | > 5% | Investigate recent errors |
-| Avg duration | > 10s | Check AI API latency |
-| Failed executions | > 1000/hr | Check rate limits, API status |
-| New errors | > 100/hr | Review error logs |
+```json
+{
+  "detail": "Invalid state transition: paused -> completed"
+}
+```
 
 ## Next Steps
 
 - Check [Tasks API](/api/tasks) for task management
 - View [Executions API](/api/executions) for execution details
 - Read [Error Handling](/api/errors) guide
-- See [Architecture Documentation](/architecture/overview)
