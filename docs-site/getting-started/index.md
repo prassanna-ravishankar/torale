@@ -1,60 +1,42 @@
 ---
-description: Get started with Torale's web monitoring platform. Choose between web dashboard, CLI, Python SDK, or self-hosted deployment based on your workflow.
+description: Get started with Torale. Integrate with the Python SDK, CLI, or REST API.
 ---
 
 # Getting Started
 
-Choose how you want to use Torale based on your workflow.
-
-## Web Dashboard
-
-The hosted platform at [torale.ai](https://torale.ai) provides a complete UI for creating and managing monitoring tasks.
-
-**Best for:** Non-technical users, quick setup, visual task management
-
-[Get started with the Web Dashboard →](/getting-started/web-dashboard)
-
-## CLI
-
-The command-line interface provides terminal-based task management with full API access.
-
-**Best for:** Developers, automation scripts, CI/CD integration
-
-[Get started with the CLI →](/getting-started/cli)
+Choose how you want to integrate with Torale.
 
 ## Python SDK
 
-Programmatic access to Torale through a Python client library.
+Programmatic access through a Python client library.
 
 **Best for:** Python applications, custom integrations, automated workflows
 
 [Get started with the SDK →](/getting-started/sdk)
 
-## Self-Hosted
+## CLI
 
-Run Torale on your own infrastructure with Docker Compose or Kubernetes.
+Command-line interface with full API access.
 
-**Best for:** Privacy requirements, custom deployments, full control
+**Best for:** Terminal workflows, scripting, CI/CD integration
 
-[Get started with Self-Hosted →](/getting-started/self-hosted)
+[Get started with the CLI →](/getting-started/cli)
+
+## REST API
+
+Direct HTTP access to all Torale endpoints.
+
+**Best for:** Non-Python languages, custom HTTP clients
+
+[API Reference →](/api/overview)
 
 ## Quick Comparison
 
 | Method | Setup Time | Use Case | Authentication |
 |--------|------------|----------|----------------|
-| Web Dashboard | 2 minutes | Visual task management | OAuth (Google/GitHub) or email |
-| CLI | 5 minutes | Terminal workflows, scripting | API key |
 | Python SDK | 5 minutes | Application integration | API key |
-| Self-Hosted | 30 minutes | Custom infrastructure | Self-managed |
-
-## Next Steps
-
-After choosing your method, explore:
-
-- [User Guide](/user-guide/dashboard) - Learn how to use the dashboard
-- [API Reference](/api/overview) - Understand the REST API
-- [SDK Documentation](/sdk/quickstart) - Integrate with Python
-- [CLI Commands](/cli/quickstart) - Master the terminal interface
+| CLI | 5 minutes | Terminal workflows, scripting | API key |
+| REST API | Immediate | Any language / HTTP client | API key |
 
 ## Learn More
 
