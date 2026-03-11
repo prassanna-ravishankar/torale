@@ -21,23 +21,28 @@ torale auth set-api-key
 # Paste your key when prompted
 ```
 
+Verify it worked:
+
+```bash
+torale auth status
+```
+
 ## Create a Task
 
 ```bash
 torale task create \
   --query "When is the iPhone 17 being released?" \
-  --condition "Apple has announced a specific release date" \
-  --schedule "0 9 * * *"
+  --condition "Apple has announced a specific release date"
 ```
 
-## Preview First
-
-Test your query without creating a task:
+You can also add a webhook and set notification behavior:
 
 ```bash
-torale task preview \
+torale task create \
   --query "When is the iPhone 17 being released?" \
-  --condition "Apple has announced a specific release date"
+  --condition "Apple has announced a specific release date" \
+  --webhook "https://myapp.com/alert" \
+  --notify-behavior once
 ```
 
 ## View Tasks
@@ -50,6 +55,12 @@ torale task list
 
 ```bash
 torale task logs <task-id>
+```
+
+## Trigger a Manual Run
+
+```bash
+torale task execute <task-id>
 ```
 
 ## Next Steps

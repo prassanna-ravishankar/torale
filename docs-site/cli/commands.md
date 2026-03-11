@@ -1,174 +1,227 @@
 ---
-description: Complete Torale CLI command reference. List tasks, create monitors, view executions, check status, and manage notifications from terminal.
+description: Complete Torale CLI command reference. Create tasks, list monitors, view executions, and manage notifications from the terminal.
 ---
 
-# Task Commands
+# Commands Reference
 
-Manage monitoring tasks via CLI.
+## Global Commands
 
-## Create Task
+### `torale version`
+
+Show version information.
 
 ```bash
-torale task create \
-  --query "When is the next iPhone release?" \
-  --condition "A specific date has been announced" \
-  --schedule "0 9 * * *"
+torale version
+```
+
+### `torale config`
+
+Show current configuration from `~/.torale/config.json`. Displays settings in a table, with API keys partially masked.
+
+```bash
+torale config
+```
+
+---
+
+## Auth Commands
+
+### `torale auth set-api-key`
+
+Save an API key to `~/.torale/config.json`. Prompts for the key interactively (input is hidden).
+
+```bash
+torale auth set-api-key
 ```
 
 **Options:**
 
-| Flag | Required | Description |
-|------|----------|-------------|
-| `--query`, `-q` | Yes | Search query |
-| `--condition`, `-c` | Yes | Condition description |
-| `--schedule`, `-s` | Yes | Cron expression |
-| `--name`, `-n` | No | Task name (auto-generated if omitted) |
-| `--notify-behavior` | No | `once` or `always` (default: `once`) |
-| `--run-immediately` | No | Execute immediately after creation |
+| Flag | Required | Default | Description |
+|------|----------|---------|-------------|
+| `--api-key` | Yes (prompted) | -- | API key (prompted interactively, hidden input) |
+| `--api-url` | No | `https://api.torale.ai` | API URL |
+
+The key must start with `sk_` or it will be rejected.
+
+### `torale auth status`
+
+Check authentication status. Reports whether you're authenticated via API key or running in no-auth mode.
+
+```bash
+torale auth status
+```
+
+### `torale auth logout`
+
+Clear stored credentials by deleting `~/.torale/config.json`.
+
+```bash
+torale auth logout
+```
+
+---
+
+## Task Commands
+
+### `torale task create`
+
+Create a new monitoring task.
+
+```bash
+torale task create \
+  --query "When is the iPhone 17 being released?" \
+  --condition "Apple has announced a specific release date"
+```
+
+**Options:**
+
+| Flag | Required | Default | Description |
+|------|----------|---------|-------------|
+| `--query`, `-q` | Yes | -- | What to monitor (search query) |
+| `--condition`, `-c` | Yes | -- | When to trigger notification |
+| `--name`, `-n` | No | Auto-generated | Task name |
+| `--notify-behavior` | No | `once` | `once` or `always` |
+| `--webhook`, `-w` | No | -- | Webhook URL to call when condition is met |
 
 **Examples:**
 
 ```bash
-# Basic task
+# Minimal
 torale task create \
   -q "When is GPT-5 being released?" \
-  -c "Release date announced" \
-  -s "0 9 * * *"
+  -c "Release date announced"
 
-# With all options
+# With name and webhook
 torale task create \
   --name "iPhone Release Monitor" \
   --query "When is the next iPhone release?" \
   --condition "Apple has announced a specific date" \
-  --schedule "0 9 * * *" \
-  --notify-behavior once \
-  --run-immediately
+  --webhook "https://myapp.com/alert"
 
-# Price monitoring
+# Notify every time condition is met
 torale task create \
   -q "What is the PS5 price at Best Buy?" \
   -c "Price is $449 or lower" \
-  -s "0 */4 * * *" \
   --notify-behavior always
 ```
 
-## Preview Task
+If `--name` is omitted, the name is auto-generated from the query (e.g., "Monitor: When is GPT-5 being released?").
 
-Test query without creating task:
+### `torale task list`
 
-```bash
-torale task preview \
-  --query "When is the next iPhone release?" \
-  --condition "A specific date has been announced"
-```
-
-**Output:**
-```json
-{
-  "condition_met": true,
-  "answer": "Apple has announced iPhone 16 will be released on September 20, 2024",
-  "reasoning": "Official announcement confirms specific date",
-  "sources": [
-    "https://www.apple.com/newsroom/...",
-    "https://www.theverge.com/..."
-  ]
-}
-```
-
-## List Tasks
+List all monitoring tasks in a table.
 
 ```bash
-# List all tasks
+torale task list
+```
+
+**Options:**
+
+| Flag | Required | Default | Description |
+|------|----------|---------|-------------|
+| `--active` | No | `false` | Show only active tasks |
+
+**Examples:**
+
+```bash
+# All tasks
 torale task list
 
-# Filter active only
+# Active tasks only
 torale task list --active
-
-# Filter inactive only
-torale task list --inactive
-
-# JSON output
-torale task list --json
-
-# Limit results
-torale task list --limit 10
 ```
 
 **Output:**
 ```
-ID                                   Name                     Active  Condition Met
-─────────────────────────────────────────────────────────────────────────────────
-550e8400-e29b-41d4-a716-446655440000 iPhone Release Monitor   Yes     Yes
-660e8400-e29b-41d4-a716-446655440000 PS5 Stock Alert          Yes     No
-770e8400-e29b-41d4-a716-446655440000 MacBook Price Tracker    No      No
+        Your Monitoring Tasks
+ID          Name                  Query                      Active  Created
+────────────────────────────────────────────────────────────────────────────
+550e8400... iPhone Release Monitor When is the next iPhone... ✓      2024-01-15 10:30:00
+660e8400... PS5 Stock Alert       Is PS5 in stock at Best... ✗      2024-01-14 08:00:00
 ```
 
-## Get Task Details
+### `torale task get`
+
+Get details of a specific task.
 
 ```bash
 torale task get <task-id>
-
-# JSON output
-torale task get <task-id> --json
 ```
 
 **Output:**
 ```
 Task Details
-─────────────────────────────────────────
-ID:               550e8400-e29b-41d4-a716-446655440000
-Name:             iPhone Release Monitor
-Search Query:     When is the next iPhone release?
-Condition:        A specific date has been announced
-Schedule:         0 9 * * * (Daily at 9:00 AM)
-Notify Behavior:  once
-Status:           Active
-Condition Met:    Yes
-Last Notified:    2024-01-15 14:23:45 UTC
-Created:          2024-01-15 10:30:00 UTC
+ID: 550e8400-e29b-41d4-a716-446655440000
+Name: iPhone Release Monitor
+Query: When is the next iPhone release?
+Condition: A specific date has been announced
+State: active
+Notify Behavior: once
+Created: 2024-01-15 10:30:00
 ```
 
-## Update Task
+If the task has notifications configured or a last known state, those are displayed as well.
+
+### `torale task update`
+
+Update a monitoring task. Only `--name` and `--active/--inactive` are supported.
 
 ```bash
-# Update schedule
-torale task update <task-id> --schedule "0 */6 * * *"
+torale task update <task-id> --name "New Name"
+```
 
-# Change notification behavior
-torale task update <task-id> --notify-behavior always
+**Options:**
 
-# Update name
-torale task update <task-id> --name "New Task Name"
+| Flag | Required | Default | Description |
+|------|----------|---------|-------------|
+| `--name`, `-n` | No | -- | New task name |
+| `--active/--inactive` | No | -- | Set task state to active or paused |
 
-# Pause task
+**Examples:**
+
+```bash
+# Rename
+torale task update <task-id> --name "Updated Monitor"
+
+# Pause
 torale task update <task-id> --inactive
 
-# Activate task
+# Reactivate
 torale task update <task-id> --active
 
-# Multiple updates
-torale task update <task-id> \
-  --schedule "0 9 * * *" \
-  --notify-behavior once \
-  --active
+# Both at once
+torale task update <task-id> --name "Renamed" --active
 ```
 
-## Delete Task
+If no flags are provided, the command prints a warning and does nothing.
+
+### `torale task delete`
+
+Delete a monitoring task. Prompts for confirmation unless `--yes` is passed.
 
 ```bash
-# Delete with confirmation
+torale task delete <task-id>
+```
+
+**Options:**
+
+| Flag | Required | Default | Description |
+|------|----------|---------|-------------|
+| `--yes`, `-y` | No | `false` | Skip confirmation prompt |
+
+**Examples:**
+
+```bash
+# With confirmation prompt
 torale task delete <task-id>
 
 # Skip confirmation
 torale task delete <task-id> --yes
-
-# Delete multiple
-torale task delete <task-id-1> <task-id-2> --yes
 ```
 
-## Execute Task
+### `torale task execute`
 
-Trigger immediate execution:
+Manually trigger a task execution (test run).
 
 ```bash
 torale task execute <task-id>
@@ -176,70 +229,81 @@ torale task execute <task-id>
 
 **Output:**
 ```
-✓ Task execution initiated
+Task execution started!
 Execution ID: 880e8400-e29b-41d4-a716-446655440000
-
-Check status with:
-  torale task logs <task-id>
+Status: pending
 ```
 
-## View Execution Logs
+### `torale task logs`
+
+View execution logs for a task.
 
 ```bash
-# View all executions
+torale task logs <task-id>
+```
+
+**Options:**
+
+| Flag | Required | Default | Description |
+|------|----------|---------|-------------|
+| `--limit`, `-l` | No | `10` | Number of executions to show |
+
+**Examples:**
+
+```bash
+# Default (last 10)
 torale task logs <task-id>
 
-# Filter by status
-torale task logs <task-id> --status success
-torale task logs <task-id> --status failed
-
-# Show only notifications (condition_met = true)
-torale task logs <task-id> --notifications-only
-
-# Limit results
-torale task logs <task-id> --limit 10
-
-# JSON output
-torale task logs <task-id> --json
+# Last 25
+torale task logs <task-id> --limit 25
 ```
 
 **Output:**
 ```
-Execution History for: iPhone Release Monitor
-───────────────────────────────────────────────────────────────────
-
-2024-01-15 09:00:05 UTC | SUCCESS | Condition Met: Yes
-Answer: Apple has announced iPhone 16 will be released on September 20, 2024
-Sources: apple.com, theverge.com
-Duration: 4.2s
-
-2024-01-14 09:00:03 UTC | SUCCESS | Condition Met: No
-Answer: No official release date has been announced yet
-Duration: 3.8s
-
-2024-01-13 09:00:04 UTC | SUCCESS | Condition Met: No
-Answer: No official release date has been announced yet
-Duration: 4.1s
+     Execution Logs (Task: 550e8400...)
+Execution ID  Status   Notification                      Started              Completed
+──────────────────────────────────────────────────────────────────────────────────────────
+880e8400...   success  iPhone 16 releases September 20   2024-01-15 09:00:05  2024-01-15 09:00:09
+990e8400...   success  -                                 2024-01-14 09:00:03  2024-01-14 09:00:07
 ```
+
+### `torale task notifications`
+
+View notifications (executions where the condition was met) for a task.
+
+```bash
+torale task notifications <task-id>
+```
+
+**Options:**
+
+| Flag | Required | Default | Description |
+|------|----------|---------|-------------|
+| `--limit`, `-l` | No | `10` | Number of notifications to show |
+
+**Examples:**
+
+```bash
+torale task notifications <task-id>
+torale task notifications <task-id> --limit 5
+```
+
+---
 
 ## Common Workflows
 
 ### Create and Test
 
 ```bash
-# Preview first
-torale task preview \
+# Create
+torale task create \
   -q "When is the next iPhone release?" \
   -c "A date has been announced"
 
-# If results look good, create
-torale task create \
-  -q "When is the next iPhone release?" \
-  -c "A date has been announced" \
-  -s "0 9 * * *" \
-  --run-immediately
+# Trigger a manual run
+torale task execute <task-id>
 
-# Check execution
+# Check execution result
 torale task logs <task-id> --limit 1
 ```
 
@@ -251,100 +315,29 @@ torale task get <task-id>
 
 # Check recent executions
 torale task logs <task-id> --limit 5
-
-# Check for failures
-torale task logs <task-id> --status failed
 ```
 
-### Bulk Operations
+### Pause and Resume
 
 ```bash
-# Pause all tasks
-for task_id in $(torale task list --json | jq -r '.[].id'); do
-  torale task update $task_id --inactive
-done
+# Pause
+torale task update <task-id> --inactive
 
-# Delete inactive tasks
-for task_id in $(torale task list --inactive --json | jq -r '.[].id'); do
-  torale task delete $task_id --yes
-done
+# Resume
+torale task update <task-id> --active
 ```
 
 ## Troubleshooting
 
-### Invalid Cron Expression
-
-```bash
-torale task create -q "..." -c "..." -s "invalid"
-# Error: Invalid cron expression
-```
-
-**Solution:** Use valid cron syntax. Test at crontab.guru
-
 ### Task Not Found
 
-```bash
-torale task get wrong-id
-# Error: Task not found
+```
+Failed to get task: ...
 ```
 
-**Solution:** Verify task ID with `torale task list`
-
-### Rate Limited
-
-```bash
-torale task create ...
-# Error: Rate limit exceeded. Retry after 60 seconds
-```
-
-**Solution:** Wait 60 seconds and retry
-
-## Output Formats
-
-### Human-Readable (Default)
-
-```bash
-torale task list
-```
-
-```
-ID                    Name                 Active
-───────────────────────────────────────────────
-550e8400...           iPhone Monitor       Yes
-```
-
-### JSON
-
-```bash
-torale task list --json
-```
-
-```json
-[
-  {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "name": "iPhone Monitor",
-    "state": "active",
-    ...
-  }
-]
-```
-
-### Scripting with jq
-
-```bash
-# Get task IDs
-torale task list --json | jq -r '.[].id'
-
-# Filter active tasks
-torale task list --json | jq '.[] | select(.state == "active")'
-
-# Count tasks
-torale task list --json | jq 'length'
-```
+**Solution:** Verify the task ID with `torale task list`.
 
 ## Next Steps
 
 - Configure [Settings](/cli/configuration)
 - Set up [Authentication](/cli/authentication)
-- Read [API Reference](/api/tasks)

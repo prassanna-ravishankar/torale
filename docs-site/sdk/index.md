@@ -24,8 +24,6 @@ Integrate Torale monitoring into your Python applications.
 
 **[Error Handling](./errors)** - Exception types and retry logic
 
-**[Task Preview](./preview)** - Test configurations before deployment
-
 ## Getting Started
 
 Start with the [Quickstart Guide](./quickstart) for a 5-minute introduction, or jump to [Code Examples](./examples) for real-world integration patterns.

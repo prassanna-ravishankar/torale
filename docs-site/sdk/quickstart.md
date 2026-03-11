@@ -15,7 +15,7 @@ pip install torale
 ## Get API Key
 
 1. Log in to [torale.ai](https://torale.ai)
-2. Navigate to Settings → API Keys
+2. Navigate to Settings -> API Keys
 3. Generate new key
 4. Copy key (shown only once)
 
@@ -24,9 +24,9 @@ pip install torale
 ### Initialize Client
 
 ```python
-from torale import ToraleClient
+from torale import Torale
 
-client = ToraleClient(api_key="sk_...")
+client = Torale(api_key="sk_...")
 ```
 
 ### Create a Task
@@ -34,63 +34,62 @@ client = ToraleClient(api_key="sk_...")
 ::: code-group
 
 ```python [Sync]
-from torale import ToraleClient
+from torale import Torale
 
-client = ToraleClient(api_key="sk_...")
+client = Torale(api_key="sk_...")
 
 task = client.tasks.create(
-    search_query="When is the iPhone 17 being released?",  # [!code highlight]
-    condition_description="Apple has announced a specific release date",  # [!code highlight]
-    schedule="0 9 * * *"  # Daily at 9 AM
+    name="iPhone Release Monitor",                                     # [!code highlight]
+    search_query="When is the iPhone 17 being released?",              # [!code highlight]
+    condition_description="Apple has announced a specific release date" # [!code highlight]
 )
 
 print(f"Created: {task.id}")
 ```
 
 ```python [Async]
-from torale import AsyncToraleClient
 import asyncio
+from torale import ToraleAsync
 
 async def create_task():
-    client = AsyncToraleClient(api_key="sk_...")
-
-    task = await client.tasks.create(
-        search_query="When is the iPhone 17 being released?",  # [!code highlight]
-        condition_description="Apple has announced a specific release date",  # [!code highlight]
-        schedule="0 9 * * *"  # Daily at 9 AM
-    )
-
-    print(f"Created: {task.id}")
+    async with ToraleAsync(api_key="sk_...") as client:
+        task = await client.tasks.create(
+            name="iPhone Release Monitor",                                     # [!code highlight]
+            search_query="When is the iPhone 17 being released?",              # [!code highlight]
+            condition_description="Apple has announced a specific release date" # [!code highlight]
+        )
+        print(f"Created: {task.id}")
 
 asyncio.run(create_task())
 ```
 
 :::
 
-::: tip Preview First
-Use `client.tasks.preview()` to test your query before creating a task.
-:::
+### Fluent Builder API
 
-### Preview Before Creating
+The SDK provides a fluent builder for a more readable syntax:
 
 ```python
-# Test query without creating task
-preview = client.tasks.preview(
-    search_query="When is the next iPhone release?",
-    condition_description="A specific date has been announced"
-)
+from torale import Torale
 
-print(f"Condition met: {preview.condition_met}")
-print(f"Answer: {preview.answer}")
-print(f"Sources: {len(preview.grounding_sources)}")
+client = Torale(api_key="sk_...")
 
-# Create if results look good
-if preview.condition_met:
-    task = client.tasks.create(
-        search_query="When is the next iPhone release?",
-        condition_description="A specific date has been announced",
-        schedule="0 9 * * *"
-    )
+task = (client.monitor("When is the iPhone 17 being released?")
+    .when("Apple has announced a specific release date")
+    .notify(email="me@example.com", webhook="https://myapp.com/alert")
+    .named("iPhone Release Monitor")
+    .create())
+```
+
+Or use the standalone `monitor()` function (creates a default client automatically):
+
+```python
+from torale import monitor
+
+task = (monitor("When is the iPhone 17 being released?")
+    .when("Apple has announced a specific release date")
+    .notify(webhook="https://myapp.com/alert")
+    .create())
 ```
 
 ### List Tasks
@@ -114,125 +113,104 @@ task = client.tasks.get("task-id")
 print(f"Name: {task.name}")
 print(f"Query: {task.search_query}")
 print(f"Condition: {task.condition_description}")
-print(f"Schedule: {task.schedule}")
-print(f"Active: {task.state}")
+print(f"State: {task.state}")
 ```
 
 ### Update Task
 
 ```python
-# Update schedule
-task = client.tasks.update(
-    "task-id",
-    schedule="0 */6 * * *"  # Every 6 hours
-)
-
 # Pause task
-task = client.tasks.update(
-    "task-id",
-    state="paused"
-)
+task = client.tasks.update("task-id", state="paused")
 
 # Change notification behavior
-task = client.tasks.update(
-    "task-id",
-    notify_behavior="always"
-)
+task = client.tasks.update("task-id", notify_behavior="always")
+
+# Update search query
+task = client.tasks.update("task-id", search_query="New search query")
 ```
 
 ### Delete Task
 
 ```python
 client.tasks.delete("task-id")
-print("Task deleted")
+```
+
+### Trigger Manual Execution
+
+```python
+execution = client.tasks.execute("task-id")
+print(f"Status: {execution.status}")
 ```
 
 ### View Executions
 
 ```python
-# Get execution history
-executions = client.tasks.get_executions("task-id")
+executions = client.tasks.executions("task-id")
 
 for execution in executions:
     print(f"Status: {execution.status}")
-    print(f"Condition met: {execution.condition_met}")
-    if execution.result:
-        print(f"Answer: {execution.result.get('answer')}")
-    print("---")
+    print(f"Started: {execution.started_at}")
+    if execution.notification:
+        print(f"Notification: {execution.notification}")
 ```
 
 ### View Notifications
 
 ```python
-# Get notifications (condition_met = true only)
-notifications = client.tasks.get_notifications("task-id")
+# Get only executions where condition was met
+notifications = client.tasks.notifications("task-id")
 
 for notif in notifications:
-    print(f"Time: {notif.created_at}")
-    print(f"Answer: {notif.answer}")
-    print(f"Sources: {len(notif.grounding_sources)}")
+    print(f"Time: {notif.started_at}")
+    print(f"Notification: {notif.notification}")
 ```
 
 ## Complete Example
 
 ```python
-from torale import ToraleClient
+from torale import Torale
 
 # Initialize
-client = ToraleClient(api_key="sk_...")
+client = Torale(api_key="sk_...")
 
-# Preview query
-preview = client.tasks.preview(
-    search_query="What is the current price of PS5 at Best Buy?",
-    condition_description="Price is $449 or lower"
-)
-
-print(f"Preview - Condition met: {preview.condition_met}")
-print(f"Preview - Answer: {preview.answer}")
-
-# Create task if preview looks good
+# Create task
 task = client.tasks.create(
     name="PS5 Price Tracker",
     search_query="What is the current price of PS5 at Best Buy?",
     condition_description="Price is $449 or lower",
-    schedule="0 */4 * * *",  # Every 4 hours
     notify_behavior="always",
-    run_immediately=True  # Execute right away
+    notifications=[{"type": "webhook", "url": "https://myapp.com/alert"}],
 )
 
-print(f"\nCreated task: {task.id}")
-print(f"Active: {task.state}")
+print(f"Created task: {task.id}")
+print(f"State: {task.state}")
 
-# Check execution status after a moment
-import time
-time.sleep(5)
+# Trigger a manual execution
+execution = client.tasks.execute(task.id)
+print(f"Execution status: {execution.status}")
 
-executions = client.tasks.get_executions(task.id, limit=1)
-if executions:
-    latest = executions[0]
-    print(f"\nLatest execution status: {latest.status}")
-    if latest.condition_met:
-        print(f"Condition met! {latest.result.get('answer')}")
-    else:
-        print("Condition not yet met")
+# Check execution history
+executions = client.tasks.executions(task.id, limit=5)
+for ex in executions:
+    print(f"  {ex.started_at}: {ex.status}")
 
 # List all tasks
 print("\nAll tasks:")
 for t in client.tasks.list():
-    print(f"- {t.name}: {t.state}")
+    print(f"  - {t.name}: {t.state}")
 ```
 
 ## Environment Variables
 
 ```python
 import os
-from torale import ToraleClient
+from torale import Torale
 
 # Set environment variable
 os.environ["TORALE_API_KEY"] = "sk_..."
 
 # Client reads from environment
-client = ToraleClient()  # No api_key needed
+client = Torale()  # No api_key needed
 ```
 
 Or use `.env` file:
@@ -244,69 +222,36 @@ TORALE_API_KEY=sk_...
 
 ```python
 from dotenv import load_dotenv
-from torale import ToraleClient
+from torale import Torale
 
-load_dotenv()  # Load .env file
-client = ToraleClient()  # Reads from environment
+load_dotenv()
+client = Torale()
 ```
 
 ## Error Handling
 
 ```python
-from torale import ToraleClient
-from torale.exceptions import (
+from torale import Torale
+from torale.sdk.exceptions import (
+    AuthenticationError,
     ValidationError,
     NotFoundError,
-    RateLimitError
 )
 
-client = ToraleClient(api_key="sk_...")
+client = Torale(api_key="sk_...")
 
 try:
     task = client.tasks.create(
+        name="My Monitor",
         search_query="...",
         condition_description="...",
-        schedule="invalid"  # Bad cron
     )
 except ValidationError as e:
-    print(f"Validation error: {e.detail}")
-except RateLimitError as e:
-    print(f"Rate limited. Retry after {e.retry_after}s")
+    print(f"Validation error: {e}")
+except AuthenticationError:
+    print("Invalid API key")
 except NotFoundError:
-    print("Task not found")
-```
-
-## Using with FastAPI
-
-```python
-from fastapi import FastAPI, Depends
-from torale import ToraleClient
-import os
-
-app = FastAPI()
-
-def get_torale_client():
-    return ToraleClient(api_key=os.getenv("TORALE_API_KEY"))
-
-@app.post("/create-monitor")
-async def create_monitor(
-    query: str,
-    condition: str,
-    client: ToraleClient = Depends(get_torale_client)
-):
-    task = client.tasks.create(
-        search_query=query,
-        condition_description=condition,
-        schedule="0 9 * * *"
-    )
-    return {"task_id": task.id}
-
-@app.get("/tasks")
-async def list_tasks(
-    client: ToraleClient = Depends(get_torale_client)
-):
-    tasks = client.tasks.list()
-    return {"tasks": [t.dict() for t in tasks]}
+    print("Resource not found")
 ```
 
 ## Next Steps

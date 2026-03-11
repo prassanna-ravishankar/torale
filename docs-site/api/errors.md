@@ -11,37 +11,36 @@ Understanding and handling errors in Torale API.
 | Code | Status | Meaning |
 |------|--------|---------|
 | 200 | OK | Request successful |
-| 201 | Created | Resource created successfully |
-| 202 | Accepted | Request accepted for processing (async) |
 | 204 | No Content | Successful deletion |
-| 400 | Bad Request | Invalid request format |
+| 400 | Bad Request | Invalid request (bad state transition, invalid notification, etc.) |
 | 401 | Unauthorized | Missing or invalid authentication |
-| 403 | Forbidden | Insufficient permissions |
-| 404 | Not Found | Resource doesn't exist |
-| 422 | Unprocessable Entity | Validation error |
+| 404 | Not Found | Resource doesn't exist or not accessible |
+| 409 | Conflict | Resource conflict (task already running, duplicate entry, etc.) |
+| 422 | Unprocessable Entity | Validation error (missing/invalid fields) |
 | 429 | Too Many Requests | Rate limit exceeded |
 | 500 | Internal Server Error | Server error |
-| 503 | Service Unavailable | Temporary service outage |
+| 503 | Service Unavailable | Dependency unavailable (e.g., Clerk client) |
 
 ## Error Response Format
 
-All errors follow this format:
+All errors use FastAPI's standard format:
 
 ```json
 {
-  "detail": "Error message or details"
+  "detail": "Error message"
 }
 ```
 
-For validation errors (422):
+For validation errors (422), FastAPI returns field-level details:
 
 ```json
 {
   "detail": [
     {
-      "loc": ["body", "schedule"],
-      "msg": "Invalid cron expression",
-      "type": "value_error"
+      "type": "missing",
+      "loc": ["body", "search_query"],
+      "msg": "Field required",
+      "input": {}
     }
   ]
 }
@@ -61,25 +60,7 @@ For validation errors (422):
 }
 ```
 
-**Causes:**
-- API key doesn't exist
-- Key was revoked
-- Key format incorrect
-- Wrong authorization header format
-
-**Solutions:**
-```python
-# Verify API key is correct
-client = ToraleClient(api_key="sk_...")
-
-# Check header format
-headers = {
-    "Authorization": f"Bearer {api_key}"  # Must include "Bearer"
-}
-
-# Regenerate key if needed
-# Visit torale.ai → Settings → API Keys
-```
+**Causes:** Key doesn't exist, was revoked, or format is incorrect.
 
 #### Missing Authorization
 
@@ -91,62 +72,7 @@ headers = {
 }
 ```
 
-**Causes:**
-- No Authorization header sent
-- Header name is wrong (should be `Authorization`)
-
-**Solutions:**
-```python
-# ✓ Correct
-headers = {"Authorization": f"Bearer {api_key}"}
-
-# ✗ Wrong
-headers = {"Auth": api_key}
-headers = {"Bearer": api_key}
-```
-
-#### Token Expired (Clerk)
-
-**Status:** `401 Unauthorized`
-
-```json
-{
-  "detail": "Token has expired"
-}
-```
-
-**Causes:**
-- Clerk JWT token expired
-- Need to refresh authentication
-
-**Solutions:**
-- Web dashboard handles automatically
-- Refresh page if needed
-- Re-authenticate if persistent
-
-### Permission Errors
-
-#### Forbidden
-
-**Status:** `403 Forbidden`
-
-```json
-{
-  "detail": "Not authorized to access this task"
-}
-```
-
-**Causes:**
-- Trying to access another user's resource
-- Missing admin role for admin endpoints
-
-**Solutions:**
-```python
-# Verify task belongs to authenticated user
-task = client.tasks.get(task_id)  # Will return 403 if not yours
-
-# For admin endpoints, verify admin role in Clerk
-```
+**Fix:** Include `Authorization: Bearer {key}` header.
 
 ### Resource Errors
 
@@ -160,59 +86,21 @@ task = client.tasks.get(task_id)  # Will return 403 if not yours
 }
 ```
 
-**Causes:**
-- Task ID doesn't exist
-- Task was deleted
-- Typo in ID
+Returned when a resource doesn't exist or when a non-owner tries to access a private task. Torale returns 404 (not 403) for private resources to avoid leaking existence information.
 
-**Solutions:**
-```python
-from torale.exceptions import NotFoundError
+#### Conflict
 
-try:
-    task = client.tasks.get(task_id)
-except NotFoundError:
-    print("Task doesn't exist")
-```
-
-### Validation Errors
-
-#### Invalid Cron Expression
-
-**Status:** `422 Unprocessable Entity`
+**Status:** `409 Conflict`
 
 ```json
 {
-  "detail": [
-    {
-      "loc": ["body", "schedule"],
-      "msg": "Invalid cron expression",
-      "type": "value_error"
-    }
-  ]
+  "detail": "Task is already running or pending. Use force=true to override."
 }
 ```
 
-**Causes:**
-- Cron syntax is incorrect
-- Wrong number of fields
-- Invalid values
+Returned when trying to execute a task that already has a running/pending execution, or when a waitlist email already exists.
 
-**Solutions:**
-```python
-# ✓ Correct cron (5 fields)
-schedule = "0 9 * * *"  # Daily at 9 AM
-
-# ✗ Wrong
-schedule = "9 * * * *"  # Runs every hour at minute 9
-schedule = "invalid"
-schedule = "0 9 * *"  # Only 4 fields
-
-# Use validator
-from croniter import croniter
-if not croniter.is_valid(schedule):
-    print("Invalid cron")
-```
+### Validation Errors
 
 #### Missing Required Fields
 
@@ -222,29 +110,18 @@ if not croniter.is_valid(schedule):
 {
   "detail": [
     {
+      "type": "missing",
       "loc": ["body", "search_query"],
-      "msg": "field required",
-      "type": "value_error.missing"
+      "msg": "Field required",
+      "input": {}
     }
   ]
 }
 ```
 
-**Causes:**
-- Required field not provided
-- Field is null
+Required fields for task creation: `search_query`.
 
-**Solutions:**
-```python
-# Required fields for task creation
-task = client.tasks.create(
-    search_query="...",       # Required
-    condition_description="...", # Required
-    schedule="..."            # Required
-)
-```
-
-#### Field Too Long
+#### Invalid Field Values
 
 **Status:** `422 Unprocessable Entity`
 
@@ -252,95 +129,80 @@ task = client.tasks.create(
 {
   "detail": [
     {
-      "loc": ["body", "search_query"],
-      "msg": "ensure this value has at most 500 characters",
-      "type": "value_error.any_str.max_length"
+      "type": "enum",
+      "loc": ["body", "state"],
+      "msg": "Input should be 'active', 'paused' or 'completed'",
+      "input": "invalid"
     }
   ]
 }
 ```
 
-**Causes:**
-- Field exceeds maximum length
+### Business Logic Errors
 
-**Limits:**
-- `name`: 200 characters
-- `search_query`: 500 characters
-- `condition_description`: 500 characters
+#### Invalid State Transition
 
-**Solutions:**
-```python
-# Truncate if needed
-search_query = long_query[:500]
+**Status:** `400 Bad Request`
+
+```json
+{
+  "detail": "Invalid state transition: paused -> completed"
+}
+```
+
+Valid state transitions:
+- `active` <-> `paused`
+- `active` -> `completed`
+- `completed` -> `active`
+
+#### Invalid Notification Configuration
+
+**Status:** `400 Bad Request`
+
+```json
+{
+  "detail": "Invalid notification: ..."
+}
+```
+
+#### Duplicate Notification Types
+
+**Status:** `400 Bad Request`
+
+```json
+{
+  "detail": "Multiple notifications of the same type are not supported. Please provide at most one email and one webhook notification."
+}
+```
+
+#### Username Already Set
+
+**Status:** `400 Bad Request`
+
+```json
+{
+  "detail": "Username cannot be changed once set. This protects your public task URLs from breaking."
+}
+```
+
+#### Missing Username for Public Tasks
+
+**Status:** `400 Bad Request`
+
+```json
+{
+  "detail": "You must set a username before making tasks public"
+}
 ```
 
 ### Rate Limit Errors
 
-#### Rate Limit Exceeded
-
 **Status:** `429 Too Many Requests`
 
-```json
-{
-  "detail": "Rate limit exceeded",
-  "retry_after": 60
-}
-```
-
-**Headers:**
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 0
-X-RateLimit-Reset: 1705314000
-Retry-After: 60
-```
-
-**Limits:**
-- 100 requests/minute
-- 1,000 requests/hour
-- 10,000 requests/day
-
-**Solutions:**
-```python
-from torale.exceptions import RateLimitError
-import time
-
-try:
-    task = client.tasks.create(...)
-except RateLimitError as e:
-    # Wait and retry
-    retry_after = e.retry_after
-    print(f"Rate limited. Retry after {retry_after} seconds")
-    time.sleep(retry_after)
-    task = client.tasks.create(...)
-```
-
-**Implement exponential backoff:**
-```python
-import time
-from torale.exceptions import RateLimitError
-
-def create_task_with_retry(client, **kwargs):
-    max_retries = 3
-    retry_delay = 1
-
-    for attempt in range(max_retries):
-        try:
-            return client.tasks.create(**kwargs)
-        except RateLimitError as e:
-            if attempt == max_retries - 1:
-                raise
-            wait_time = e.retry_after or retry_delay
-            print(f"Rate limited. Waiting {wait_time}s...")
-            time.sleep(wait_time)
-            retry_delay *= 2  # Exponential backoff
-
-task = create_task_with_retry(client,
-    search_query="...",
-    condition_description="...",
-    schedule="..."
-)
-```
+Rate limits are applied per-IP on public endpoints:
+- Public tasks listing: 10/minute
+- Public task by vanity URL: 20/minute
+- Waitlist join: 5/minute
 
 ### Server Errors
 
@@ -350,19 +212,11 @@ task = create_task_with_retry(client,
 
 ```json
 {
-  "detail": "Internal server error"
+  "detail": "Failed to change task state: ... Task update rolled back."
 }
 ```
 
-**Causes:**
-- Unexpected server error
-- Database connection issue
-- Agent service connection issue
-
-**Solutions:**
-- Retry request
-- Check status page (coming soon)
-- Contact support if persistent
+When a state transition fails after other fields were updated, the entire update is rolled back and the error is returned.
 
 #### Service Unavailable
 
@@ -370,285 +224,31 @@ task = create_task_with_retry(client,
 
 ```json
 {
-  "detail": "Service temporarily unavailable"
+  "detail": "Clerk client not initialized"
 }
 ```
 
-**Causes:**
-- Planned maintenance
-- Temporary outage
-- Dependency unavailable
+Returned when an external dependency (like Clerk) is unavailable.
 
-**Solutions:**
-- Wait and retry
-- Check status page
-- Implement retry logic with backoff
+## Debugging
 
-## SDK Exception Handling
+### Check Response Status
 
-### Python SDK
-
-```python
-from torale import ToraleClient
-from torale.exceptions import (
-    AuthenticationError,
-    ValidationError,
-    NotFoundError,
-    RateLimitError,
-    ServerError,
-    ToraleAPIError
-)
-
-client = ToraleClient(api_key="sk_...")
-
-# Specific exception handling
-try:
-    task = client.tasks.create(
-        search_query="...",
-        condition_description="...",
-        schedule="invalid"
-    )
-except AuthenticationError:
-    print("Check your API key")
-except ValidationError as e:
-    print(f"Validation failed: {e.detail}")
-except NotFoundError:
-    print("Resource not found")
-except RateLimitError as e:
-    print(f"Rate limited. Retry after {e.retry_after}s")
-except ServerError:
-    print("Server error. Please retry")
-except ToraleAPIError as e:
-    print(f"API error: {e}")
+```bash
+# Verbose curl output shows status code and headers
+curl -v -X GET https://api.torale.ai/api/v1/tasks \
+  -H "Authorization: Bearer sk_..."
 ```
 
-### Generic Error Handler
+### Common Mistakes
 
-```python
-def safe_api_call(func, *args, **kwargs):
-    """
-    Wrapper for safe API calls with automatic retry
-    """
-    max_retries = 3
-    retry_delay = 1
-
-    for attempt in range(max_retries):
-        try:
-            return func(*args, **kwargs)
-
-        except RateLimitError as e:
-            if attempt == max_retries - 1:
-                raise
-            wait = e.retry_after or retry_delay
-            print(f"Rate limited. Waiting {wait}s...")
-            time.sleep(wait)
-
-        except ServerError:
-            if attempt == max_retries - 1:
-                raise
-            print(f"Server error. Retrying in {retry_delay}s...")
-            time.sleep(retry_delay)
-            retry_delay *= 2
-
-        except ValidationError as e:
-            # Don't retry validation errors
-            print(f"Validation error: {e.detail}")
-            raise
-
-        except AuthenticationError:
-            # Don't retry auth errors
-            print("Authentication failed. Check API key.")
-            raise
-
-        except NotFoundError:
-            # Don't retry not found
-            print("Resource not found.")
-            raise
-
-# Usage
-task = safe_api_call(
-    client.tasks.create,
-    search_query="...",
-    condition_description="...",
-    schedule="..."
-)
-```
-
-## Debugging Errors
-
-### Enable Debug Logging
-
-```python
-import logging
-from torale import ToraleClient
-
-# Enable debug logging
-logging.basicConfig(level=logging.DEBUG)
-
-client = ToraleClient(api_key="sk_...")
-
-# API calls will log request/response details
-```
-
-### Check Response Headers
-
-```python
-import requests
-
-response = requests.post(
-    "https://api.torale.ai/api/v1/tasks",
-    headers={"Authorization": f"Bearer {api_key}"},
-    json={...}
-)
-
-# Check rate limit headers
-print(f"Rate limit: {response.headers.get('X-RateLimit-Limit')}")
-print(f"Remaining: {response.headers.get('X-RateLimit-Remaining')}")
-print(f"Reset: {response.headers.get('X-RateLimit-Reset')}")
-
-# Check response
-if response.status_code != 200:
-    print(f"Error: {response.json()}")
-```
-
-### Validate Input Locally
-
-```python
-from croniter import croniter
-
-def validate_task_input(search_query, condition, schedule):
-    """Validate before sending to API"""
-    errors = []
-
-    # Check lengths
-    if len(search_query) > 500:
-        errors.append("search_query too long (max 500 chars)")
-    if len(condition) > 500:
-        errors.append("condition_description too long (max 500 chars)")
-
-    # Check required fields
-    if not search_query or not condition or not schedule:
-        errors.append("Missing required fields")
-
-    # Validate cron
-    if not croniter.is_valid(schedule):
-        errors.append("Invalid cron expression")
-
-    if errors:
-        raise ValueError(f"Validation errors: {', '.join(errors)}")
-
-# Use before API call
-try:
-    validate_task_input(
-        search_query="...",
-        condition="...",
-        schedule="0 9 * * *"
-    )
-    task = client.tasks.create(...)
-except ValueError as e:
-    print(f"Validation failed: {e}")
-```
-
-## Best Practices
-
-### 1. Always Handle Errors
-
-```python
-# ✓ Good - Specific error handling
-try:
-    task = client.tasks.create(...)
-except ValidationError as e:
-    print(f"Invalid input: {e.detail}")
-except AuthenticationError:
-    print("Check API key")
-
-# ✗ Bad - Generic catch
-try:
-    task = client.tasks.create(...)
-except Exception as e:
-    print(f"Error: {e}")
-```
-
-### 2. Implement Retry Logic
-
-```python
-# ✓ Good - Retry with backoff for transient errors
-@retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type((ServerError, RateLimitError))
-)
-def create_task():
-    return client.tasks.create(...)
-
-# ✗ Bad - No retry for transient failures
-task = client.tasks.create(...)
-```
-
-### 3. Validate Input Locally
-
-```python
-# ✓ Good - Validate before API call
-if len(search_query) > 500:
-    raise ValueError("Query too long")
-
-if not croniter.is_valid(schedule):
-    raise ValueError("Invalid cron")
-
-task = client.tasks.create(...)
-
-# ✗ Bad - Rely on API validation only
-task = client.tasks.create(...)  # May fail with 422
-```
-
-### 4. Log Errors Appropriately
-
-```python
-# ✓ Good - Log with context
-logger.error(
-    "Task creation failed",
-    extra={
-        "user_id": user_id,
-        "search_query": search_query,
-        "error": str(e)
-    }
-)
-
-# ✗ Bad - Generic logging
-print(f"Error: {e}")
-```
-
-## Monitoring & Alerting
-
-### Error Rate Monitoring
-
-```python
-from prometheus_client import Counter
-
-api_errors = Counter(
-    'torale_api_errors_total',
-    'Total API errors',
-    ['status_code', 'endpoint']
-)
-
-try:
-    task = client.tasks.create(...)
-except ToraleAPIError as e:
-    api_errors.labels(
-        status_code=e.status_code,
-        endpoint='/tasks'
-    ).inc()
-    raise
-```
-
-### Alert on High Error Rates
-
-- Monitor 429 (rate limits) - may need to reduce frequency
-- Monitor 500/503 (server errors) - indicates service issues
-- Monitor 422 (validation) - indicates client-side bugs
+1. **Sending `schedule` in create/update** - Schedule is not user-settable, it's determined by the agent
+2. **Expecting pagination wrapper on list endpoints** - `GET /api/v1/tasks` and executions return bare arrays
+3. **Using `GET /api/v1/notifications`** - This endpoint doesn't exist. Use `/api/v1/notifications/sends` for send history or `/api/v1/tasks/{id}/notifications` for task-scoped condition matches
+4. **Trying to access private tasks without auth** - Returns 404, not 403
 
 ## Next Steps
 
-- Review [Authentication](/api/authentication) for auth errors
+- Review [Authentication](/api/authentication) for auth setup
 - Check [Tasks API](/api/tasks) for endpoint details
-- See [SDK Documentation](/sdk/quickstart) for SDK usage
+- View [API Overview](/api/overview) for complete endpoint listing

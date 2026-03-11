@@ -1,11 +1,11 @@
 ---
 layout: home
-description: Comprehensive Torale documentation. Learn to monitor the web with AI-powered conditional alerts. Guides for web dashboard, CLI, SDK, and self-hosting.
+description: Torale developer documentation. API reference, Python SDK, and CLI for building with grounded search monitoring.
 
 hero:
   name: Torale Docs
-  text: Technical Documentation
-  tagline: Grounded search monitoring platform
+  text: Developer Documentation
+  tagline: Build with grounded search monitoring
   image:
     src: /logo.svg
     alt: Torale
@@ -42,34 +42,8 @@ if executions[0].condition_met:
     print(executions[0].result["answer"])
 ```
 
-## Architecture
-
-```mermaid
----
-config:
-  look: neo
-  theme: base
----
-flowchart LR
-    A[Task]
-    B[APScheduler]
-    C[Agent]
-    D[Evaluate]
-    E[Store]
-
-    A --> B --> C --> D --> E
-```
-
-**Core Components:**
-- **Monitoring Agent**: Gemini-powered agent (Pydantic AI) with Perplexity search and Mem0 memory
-- **APScheduler**: Cron-based scheduling with agent-driven dynamic rescheduling
-- **Condition Evaluation**: Agent determines if trigger condition is met, returns evidence + sources
-- **Notifications**: Email and webhook delivery when conditions are met
-
 ## Interfaces
 
-- [Web Dashboard](/getting-started/web-dashboard) - Browser-based task management
+- [Python SDK](/getting-started/sdk) - Client library for Python applications
 - [CLI](/getting-started/cli) - Command-line interface
-- [Python SDK](/getting-started/sdk) - Programmatic access
-- [API](/api/overview) - REST API reference
-- [Self-Hosted](/getting-started/self-hosted) - Deploy on your infrastructure
+- [REST API](/api/overview) - API reference

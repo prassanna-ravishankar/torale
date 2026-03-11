@@ -4,7 +4,7 @@ import { withMermaid } from 'vitepress-plugin-mermaid'
 export default withMermaid(
   defineConfig({
   title: 'Torale Docs',
-  description: 'Grounded search monitoring platform for automated web monitoring',
+  description: 'Torale developer documentation — API reference, Python SDK, and CLI',
   base: '/',
   lang: 'en-US',
   lastUpdated: true,
@@ -14,7 +14,7 @@ export default withMermaid(
   },
 
   ignoreDeadLinks: [
-    // Ignore localhost URLs in self-hosted documentation
+    // Ignore localhost URLs in documentation
     /^http:\/\/localhost/
   ],
 
@@ -36,18 +36,9 @@ export default withMermaid(
 
     nav: [
       { text: 'Getting Started', link: '/getting-started/', activeMatch: '/getting-started/' },
-      { text: 'User Guide', link: '/user-guide/dashboard', activeMatch: '/user-guide/' },
+      { text: 'API', link: '/api/overview', activeMatch: '/api/' },
       { text: 'SDK', link: '/sdk/quickstart', activeMatch: '/sdk/' },
       { text: 'CLI', link: '/cli/quickstart', activeMatch: '/cli/' },
-      { text: 'API', link: '/api/overview', activeMatch: '/api/' },
-      {
-        text: 'Self-Hosted',
-        items: [
-          { text: 'Docker Compose', link: '/self-hosted/docker-compose' },
-          { text: 'Kubernetes', link: '/self-hosted/kubernetes' },
-          { text: 'Architecture', link: '/self-hosted/architecture' }
-        ]
-      },
       { text: 'App', link: 'https://torale.ai' }
     ],
 
@@ -57,38 +48,24 @@ export default withMermaid(
           text: 'Getting Started',
           items: [
             { text: 'Overview', link: '/getting-started/' },
-            { text: 'Web Dashboard', link: '/getting-started/web-dashboard' },
-            { text: 'CLI', link: '/getting-started/cli' },
             { text: 'Python SDK', link: '/getting-started/sdk' },
-            { text: 'Self-Hosted', link: '/getting-started/self-hosted' }
+            { text: 'CLI', link: '/getting-started/cli' }
           ]
         }
       ],
 
-      '/user-guide/': [
-        {
-          text: 'User Guide',
-          items: [
-            { text: 'Dashboard Overview', link: '/user-guide/dashboard' },
-            { text: 'Creating Tasks', link: '/user-guide/creating-tasks' },
-            { text: 'Task Templates', link: '/user-guide/templates' },
-            { text: 'Managing Tasks', link: '/user-guide/managing-tasks' },
-            { text: 'Viewing Results', link: '/user-guide/results' },
-            { text: 'Notifications', link: '/user-guide/notifications' }
-          ]
-        }
-      ],
 
       '/sdk/': [
         {
           text: 'Python SDK',
           items: [
             { text: 'Quickstart', link: '/sdk/quickstart' },
+            { text: 'Installation', link: '/sdk/installation' },
             { text: 'Authentication', link: '/sdk/authentication' },
             { text: 'Tasks', link: '/sdk/tasks' },
-            { text: 'Preview', link: '/sdk/preview' },
             { text: 'Async Client', link: '/sdk/async' },
-            { text: 'Error Handling', link: '/sdk/errors' }
+            { text: 'Error Handling', link: '/sdk/errors' },
+            { text: 'Examples', link: '/sdk/examples' }
           ]
         }
       ],
@@ -114,49 +91,11 @@ export default withMermaid(
             { text: 'Tasks', link: '/api/tasks' },
             { text: 'Executions', link: '/api/executions' },
             { text: 'Notifications', link: '/api/notifications' },
-            { text: 'Admin', link: '/api/admin' },
             { text: 'Errors', link: '/api/errors' }
           ]
         }
       ],
 
-      '/self-hosted/': [
-        {
-          text: 'Self-Hosted',
-          items: [
-            { text: 'Docker Compose', link: '/self-hosted/docker-compose' },
-            { text: 'Kubernetes', link: '/self-hosted/kubernetes' },
-            { text: 'Architecture', link: '/self-hosted/architecture' },
-            { text: 'Configuration', link: '/self-hosted/configuration' },
-            { text: 'Migrations', link: '/self-hosted/migrations' }
-          ]
-        }
-      ],
-
-      '/architecture/': [
-        {
-          text: 'Architecture',
-          items: [
-            { text: 'Overview', link: '/architecture/overview' },
-            { text: 'Grounded Search', link: '/architecture/grounded-search' },
-            { text: 'Task State Machine', link: '/architecture/task-state-machine' },
-            { text: 'State Tracking', link: '/architecture/state-tracking' },
-            { text: 'Database Schema', link: '/architecture/database-schema' },
-            { text: 'Executors', link: '/architecture/executors' }
-          ]
-        }
-      ],
-
-      '/contributing/': [
-        {
-          text: 'Contributing',
-          items: [
-            { text: 'Development Setup', link: '/contributing/setup' },
-            { text: 'Testing', link: '/contributing/testing' },
-            { text: 'Code Style', link: '/contributing/conventions' }
-          ]
-        }
-      ]
     },
 
     socialLinks: [
