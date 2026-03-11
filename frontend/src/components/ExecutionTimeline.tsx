@@ -124,7 +124,7 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution }) => {
 
 export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
   executions,
-  isOwner = true,
+  isOwner = false,
 }) => {
   // Filter out RETRYING executions - don't show transient failures to users
   // to avoid alarm/confusion during temporary errors that will auto-resolve
@@ -134,7 +134,7 @@ export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
       if (!isOwner && ex.status === "failed" && !ex.result?.notification) return false;
       return true;
     })
-    .map((ex) => (!isOwner && ex.error_message ? { ...ex, error_message: undefined } : ex));
+    .map((ex) => (!isOwner && ex.error_message ? { ...ex, error_message: null } : ex));
 
   if (visibleExecutions.length === 0) {
     return (

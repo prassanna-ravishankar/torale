@@ -51,15 +51,15 @@ _TASK_WITH_EXECUTION_QUERY = """
 """
 
 
-async def _check_task_access(db: Database, task_id: UUID, user) -> dict:
-    """Verify task exists and user has access (owner or public). Returns task row."""
+async def _check_task_access(db: Database, task_id: UUID, user) -> tuple[dict, bool]:
+    """Verify task exists and user has access (owner or public). Returns (task row, is_owner)."""
     row = await db.fetch_one("SELECT * FROM tasks WHERE id = $1", task_id)
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     is_owner = user is not None and row["user_id"] == user.id
     if not is_owner and not row["is_public"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
-    return dict(row)
+    return dict(row), is_owner
 
 
 async def _validate_and_extract_notifications(
@@ -532,9 +532,7 @@ async def fork_task(
     - User can optionally provide a new name
     """
     # Verify access and get the full source task in one query
-    source = await _check_task_access(db, task_id, user)
-
-    is_owner = source["user_id"] == user.id
+    source, is_owner = await _check_task_access(db, task_id, user)
 
     # Determine base name and notification fields (scrub sensitive data for non-owners)
     base_fork_name = request.name if request.name else f"{source['name']} (Copy)"
@@ -878,7 +876,7 @@ async def execute_task(
 async def get_task_executions(
     task_id: UUID, user: OptionalUser, limit: int = 100, db: Database = Depends(get_db)
 ):
-    await _check_task_access(db, task_id, user)
+    _, is_owner = await _check_task_access(db, task_id, user)
 
     # Get executions (exclude internal_error and other sensitive fields)
     executions_query = """
@@ -893,7 +891,11 @@ async def get_task_executions(
 
     rows = await db.fetch_all(executions_query, task_id, limit)
 
-    return [TaskExecution(**parse_execution_row(row)) for row in rows]
+    executions = [TaskExecution(**parse_execution_row(row)) for row in rows]
+    if not is_owner:
+        for ex in executions:
+            ex.error_message = None
+    return executions
 
 
 @router.get("/{task_id}/notifications", response_model=list[TaskExecution])
@@ -904,7 +906,7 @@ async def get_task_notifications(
     Get task executions where the condition was met (notifications).
     This filters executions to only show when the monitoring condition triggered.
     """
-    await _check_task_access(db, task_id, user)
+    _, is_owner = await _check_task_access(db, task_id, user)
 
     # Get executions where notification was sent (exclude internal_error and other sensitive fields)
     notifications_query = """
@@ -919,4 +921,8 @@ async def get_task_notifications(
 
     rows = await db.fetch_all(notifications_query, task_id, limit)
 
-    return [TaskExecution(**parse_execution_row(row)) for row in rows]
+    executions = [TaskExecution(**parse_execution_row(row)) for row in rows]
+    if not is_owner:
+        for ex in executions:
+            ex.error_message = None
+    return executions
