@@ -15,12 +15,9 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "uvicorn>=0.34.0",
     "logfire>=4.21.0",
-    "httpx>=0.27.0",
     "anthropic>=0.40.0",
     "openai>=1.0.0",
     "parallel-web>=0.4.1",
-    "readabilipy>=0.2.0",
-    "markdownify>=0.14.1",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -36,6 +33,7 @@ eval = [
     "typer>=0.9.0",
     "rich>=13.0.0",
     "pydantic-evals>=0.1.0",
+    "httpx>=0.27.0",
 ]
 
 [project.scripts]

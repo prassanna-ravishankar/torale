@@ -7,10 +7,7 @@ import os
 from datetime import UTC, datetime
 from uuid import uuid4
 
-import httpx
 import logfire
-import markdownify
-import readabilipy.simple_json
 from a2a.server.agent_execution import AgentExecutor
 from a2a.server.agent_execution.context import RequestContext
 from a2a.server.apps import A2AStarletteApplication
@@ -70,8 +67,7 @@ PARALLEL_SEARCH_BETAS = ["search-extract-2025-10-10"]
 PARALLEL_SEARCH_MAX_EXCERPTS = 2
 
 FETCH_MAX_CHARS = 5000
-FETCH_TIMEOUT = 10.0
-FETCH_USER_AGENT = "Torale-Agent/0.1 (monitoring; +https://torale.ai)"
+FETCH_TIMEOUT = 15.0
 
 SYSTEM_PROMPT = """\
 You are a search monitoring agent for Torale. You run as a scheduled API service — called periodically to check if a monitoring condition is met.
@@ -139,7 +135,7 @@ Memory tools store and retrieve meta-knowledge across runs. Call `search_memorie
 - Timing patterns: "London jazz venues post schedules 2-3 months in advance"
 - Domain context: "Arendal sells direct-to-consumer only, rarely on secondhand marketplaces"
 - What doesn't work: "Apple.com product pages stay empty until announcement day"
-- Fetch insights: "torale.ai is a JS-rendered SPA, fetch_url returns empty content — rely on search snippets instead"
+- Fetch insights: "Site X requires scrolling to load all events — search snippets had more complete listings"
 
 Mem0 tracks timestamps automatically. Don't include dates in memory text.
 
@@ -192,68 +188,47 @@ async def _is_safe_url(url: str) -> bool:
         return False
 
 
-async def _validate_request(request: httpx.Request) -> None:
-    """Event hook to validate every outbound request URL (blocks redirect SSRF)."""
-    from urllib.parse import urlparse
-
-    parsed = urlparse(str(request.url))
-    hostname = parsed.hostname
-    if not hostname or not await _is_safe_url(str(request.url)):
-        raise httpx.RequestError(f"URL blocked: {request.url}", request=request)
-
-
 async def _fetch_and_extract(url: str) -> dict:
-    """Fetch a URL and extract content as markdown."""
+    """Fetch a URL using Lightpanda headless browser and return content as markdown."""
     if not await _is_safe_url(url):
         return {"url": url, "error": "URL blocked: private or internal address"}
 
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=FETCH_TIMEOUT,
-        headers={"User-Agent": FETCH_USER_AGENT},
-        event_hooks={"request": [_validate_request]},
-    ) as client:
-        response = await client.get(url)
-        response.raise_for_status()
-
-    content_type = response.headers.get("content-type", "").lower()
-
-    # Reject binary content
-    if any(
-        t in content_type for t in ("application/pdf", "image/", "audio/", "video/")
-    ):
-        return {
-            "url": str(response.url),
-            "error": f"Unsupported content type: {content_type}",
-        }
-
-    page_raw = response.text
-    is_html = (
-        "<html" in page_raw[:100].lower()
-        or "text/html" in content_type
-        or not content_type
+    proc = await asyncio.create_subprocess_exec(
+        "lightpanda",
+        "fetch",
+        "--dump",
+        "markdown",
+        "--strip_mode",
+        "js,css",
+        "--http_timeout",
+        str(int(FETCH_TIMEOUT * 1000)),
+        url,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
-
-    if is_html:
-        article = readabilipy.simple_json.simple_json_from_html_string(
-            page_raw, use_readability=True
+    try:
+        stdout, stderr = await asyncio.wait_for(
+            proc.communicate(), timeout=FETCH_TIMEOUT + 5
         )
-        title = article.get("title", "")
-        html_content = article.get("content", "")
-        content = markdownify.markdownify(html_content, heading_style=markdownify.ATX)
-    else:
-        title = ""
-        content = page_raw
+    except asyncio.TimeoutError:
+        proc.kill()
+        await proc.wait()
+        return {"url": url, "error": "Fetch timed out"}
 
-    # Clean up whitespace
+    if proc.returncode != 0:
+        error_msg = (
+            stderr.decode().strip() if stderr else f"Exit code {proc.returncode}"
+        )
+        return {"url": url, "error": error_msg}
+
+    content = stdout.decode()
     content = "\n".join(line for line in content.splitlines() if line.strip())
 
     full_length = len(content)
     truncated = full_length > FETCH_MAX_CHARS
 
     return {
-        "url": str(response.url),
-        "title": title,
+        "url": url,
         "content": content[:FETCH_MAX_CHARS],
         "content_length": full_length,
         "truncated": truncated,
@@ -329,14 +304,10 @@ def _register_tools(agent: Agent[MonitoringDeps, MonitoringResponse]) -> None:
 
     @agent.tool_plain
     async def fetch_url(url: str) -> str:
-        """Fetch a URL directly and extract its content as markdown. Useful when search snippets are stale or you need to check the source. Note: only works on server-rendered pages — JS-heavy SPAs may return empty or minimal content. If the result looks thin, fall back to search snippets."""
+        """Fetch a URL directly and extract its content as markdown. Uses a headless browser, so JS-rendered pages work. Useful when search snippets are stale or you need to check the source."""
         try:
             result = await _fetch_and_extract(url)
             return json.dumps(result)
-        except httpx.HTTPStatusError as e:
-            return json.dumps({"url": url, "error": f"HTTP {e.response.status_code}"})
-        except httpx.TimeoutException:
-            return json.dumps({"url": url, "error": "Request timed out"})
         except Exception as e:
             return json.dumps({"url": url, "error": str(e)})
 
