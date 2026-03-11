@@ -12,6 +12,7 @@ import {
 
 interface ExecutionTimelineProps {
   executions: TaskExecution[];
+  isOwner?: boolean;
 }
 
 const getStatusIcon = (status: string) => {
@@ -123,10 +124,17 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution }) => {
 
 export const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({
   executions,
+  isOwner = false,
 }) => {
   // Filter out RETRYING executions - don't show transient failures to users
   // to avoid alarm/confusion during temporary errors that will auto-resolve
-  const visibleExecutions = executions.filter((ex) => ex.status !== "retrying");
+  const visibleExecutions = executions
+    .filter((ex) => {
+      if (ex.status === "retrying") return false;
+      if (!isOwner && ex.status === "failed" && !ex.result?.notification) return false;
+      return true;
+    })
+    .map((ex) => (!isOwner && ex.error_message ? { ...ex, error_message: null } : ex));
 
   if (visibleExecutions.length === 0) {
     return (
