@@ -91,7 +91,6 @@ export default withMermaid(
             { text: 'Tasks', link: '/api/tasks' },
             { text: 'Executions', link: '/api/executions' },
             { text: 'Notifications', link: '/api/notifications' },
-            { text: 'Admin', link: '/api/admin' },
             { text: 'Errors', link: '/api/errors' }
           ]
         }

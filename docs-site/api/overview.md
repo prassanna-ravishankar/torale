@@ -92,27 +92,6 @@ GET    /api/v1/email-verification/verified-emails  # List verified emails
 DELETE /api/v1/email-verification/verified-emails/{email}  # Remove verified email
 ```
 
-### Admin (requires admin role, hidden from OpenAPI schema)
-
-```
-GET    /admin/stats                        # Platform statistics
-GET    /admin/queries                      # All user queries
-GET    /admin/executions                   # All executions
-GET    /admin/scheduler/jobs               # APScheduler jobs
-GET    /admin/errors                       # Failed executions
-GET    /admin/users                        # User management
-PATCH  /admin/users/{id}/deactivate        # Deactivate user
-PATCH  /admin/users/{id}/role              # Update user role
-PATCH  /admin/users/roles                  # Bulk update roles
-GET    /admin/waitlist                     # List waitlist entries
-GET    /admin/waitlist/stats               # Waitlist statistics
-PATCH  /admin/waitlist/{id}                # Update waitlist entry
-DELETE /admin/waitlist/{id}                # Delete waitlist entry
-POST   /admin/tasks/{id}/execute           # Execute any task
-PATCH  /admin/tasks/{id}/state             # Change task state
-DELETE /admin/tasks/{id}/reset             # Reset task history
-```
-
 ### Waitlist (public)
 
 ```
@@ -140,7 +119,7 @@ List endpoints like `GET /api/v1/tasks` return a bare JSON array:
 ]
 ```
 
-Some admin and public task endpoints wrap results with metadata:
+Some public task endpoints wrap results with metadata:
 
 ```json
 {
