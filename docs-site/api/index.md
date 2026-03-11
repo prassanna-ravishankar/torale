@@ -20,8 +20,6 @@ Direct HTTP API access for Torale monitoring platform.
 
 **[Notifications API](./notifications)** - Notification send history and delivery tracking
 
-**[Admin API](./admin)** - Platform management, user admin, waitlist, and task controls (admin only)
-
 ## Reference
 
 **[Error Responses](./errors)** - HTTP status codes, error formats, and common mistakes
