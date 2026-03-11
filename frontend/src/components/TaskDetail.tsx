@@ -214,7 +214,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
     setSearchParams(newParams);
   };
 
-  const rssUrl = `${api.getBaseUrl()}/t/${taskId}/rss`;
+  const rssUrl = api.getTaskRssUrl(taskId);
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-8">

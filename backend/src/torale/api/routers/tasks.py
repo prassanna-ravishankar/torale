@@ -36,7 +36,6 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 _TASK_WITH_EXECUTION_QUERY = """
     SELECT t.*,
-           u.username as creator_username,
            e.id as exec_id,
            e.notification as exec_notification,
            e.started_at as exec_started_at,
@@ -45,7 +44,6 @@ _TASK_WITH_EXECUTION_QUERY = """
            e.result as exec_result,
            e.grounding_sources as exec_grounding_sources
     FROM tasks t
-    INNER JOIN users u ON t.user_id = u.id
     LEFT JOIN task_executions e ON t.last_execution_id = e.id
 """
 

@@ -16,7 +16,6 @@ class TaskRepository(BaseRepository):
     def __init__(self, db: Database):
         super().__init__(db)
         self.tasks = tables.tasks
-        self.users = tables.users
         self.executions = tables.task_executions
 
     async def create_task(
@@ -81,7 +80,6 @@ class TaskRepository(BaseRepository):
         # Build query with LEFT JOIN for latest execution
         query = PostgreSQLQuery.from_(self.tasks).select(
             self.tasks.star,
-            self.users.username.as_("creator_username"),
             self.executions.id.as_("exec_id"),
             self.executions.notification.as_("exec_notification"),
             self.executions.started_at.as_("exec_started_at"),
@@ -91,7 +89,6 @@ class TaskRepository(BaseRepository):
             self.executions.grounding_sources.as_("exec_grounding_sources"),
         )
 
-        query = query.join(self.users).on(self.tasks.user_id == self.users.id)
         query = query.left_join(self.executions).on(
             self.tasks.last_execution_id == self.executions.id
         )
@@ -117,7 +114,6 @@ class TaskRepository(BaseRepository):
         """
         query = PostgreSQLQuery.from_(self.tasks).select(
             self.tasks.star,
-            self.users.username.as_("creator_username"),
             self.executions.id.as_("exec_id"),
             self.executions.notification.as_("exec_notification"),
             self.executions.started_at.as_("exec_started_at"),
@@ -127,7 +123,6 @@ class TaskRepository(BaseRepository):
             self.executions.grounding_sources.as_("exec_grounding_sources"),
         )
 
-        query = query.join(self.users).on(self.tasks.user_id == self.users.id)
         query = query.left_join(self.executions).on(
             self.tasks.last_execution_id == self.executions.id
         )
@@ -290,10 +285,7 @@ class TaskRepository(BaseRepository):
         Returns:
             List of public task records
         """
-        query = PostgreSQLQuery.from_(self.tasks).select(
-            self.tasks.star, self.users.username.as_("creator_username")
-        )
-        query = query.join(self.users).on(self.tasks.user_id == self.users.id)
+        query = PostgreSQLQuery.from_(self.tasks).select(self.tasks.star)
         query = query.where(self.tasks.is_public.eq(True))
 
         if search:

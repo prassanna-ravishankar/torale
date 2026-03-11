@@ -13,8 +13,8 @@ from torale.api.routers.tasks import get_task
 from torale.api.utils.task_parsers import parse_task_with_execution
 from torale.core.config import settings
 from torale.core.database import Database, get_db
-from torale.scheduler.history import _parse_jsonb
 from torale.tasks import Task
+from torale.utils.jsonb import parse_jsonb
 
 # Register atom namespace once at module level (avoids per-request global mutation)
 ET.register_namespace("atom", "http://www.w3.org/2005/Atom")
@@ -67,7 +67,6 @@ async def list_public_tasks(
 
     tasks_query = f"""
         SELECT t.*,
-               u.username as creator_username,
                e.id as exec_id,
                e.notification as exec_notification,
                e.started_at as exec_started_at,
@@ -76,7 +75,6 @@ async def list_public_tasks(
                e.result as exec_result,
                e.grounding_sources as exec_grounding_sources
         FROM tasks t
-        INNER JOIN users u ON t.user_id = u.id
         LEFT JOIN task_executions e ON t.last_execution_id = e.id
         WHERE t.is_public = true
         {order_clause}
@@ -117,10 +115,9 @@ async def get_public_task_by_id(
     """
     Get a public task by UUID (NO AUTH REQUIRED).
 
-    This is a fallback for sharing direct task IDs instead of vanity URLs.
+    Get a public task by UUID (NO AUTH REQUIRED).
     """
-    # This is identical to GET /api/v1/tasks/{task_id} but under /public prefix
-    # Delegate to the existing endpoint logic (imported at top of file)
+    # Delegates to the shared get_task logic (handles owner vs public access)
     return await get_task(task_id, user, db)
 
 
@@ -157,9 +154,8 @@ async def get_task_rss_feed(
     """
     executions = await db.fetch_all(executions_query, task_id)
 
-    base_url = settings.frontend_url or "https://torale.ai"
-    task_link = f"{base_url}/tasks/{task_id}"
-    feed_url = f"{base_url}/t/{task_id}/rss"
+    task_link = f"{settings.frontend_url}/tasks/{task_id}"
+    feed_url = str(request.url_for("get_task_rss_feed", task_id=task_id))
 
     # Build RSS 2.0 feed
     rss = ET.Element("rss", version="2.0")
@@ -180,8 +176,8 @@ async def get_task_rss_feed(
     atom_link.set("href", feed_url)
 
     for execution in executions:
-        result = _parse_jsonb(execution["result"], "result", dict, {})
-        grounding_sources = _parse_jsonb(
+        result = parse_jsonb(execution["result"], "result", dict, {})
+        grounding_sources = parse_jsonb(
             execution["grounding_sources"], "grounding_sources", list, []
         )
 

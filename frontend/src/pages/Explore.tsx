@@ -159,7 +159,7 @@ export function Explore() {
                       </span>
                     </button>
                     <a
-                      href={`${api.getBaseUrl()}/t/${task.id}/rss`}
+                      href={api.getTaskRssUrl(task.id)}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}

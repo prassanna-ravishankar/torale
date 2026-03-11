@@ -14,12 +14,6 @@ from torale.api.routers.tasks import (
     get_task,
     update_task_visibility,
 )
-from torale.api.routers.usernames import (
-    SetUsernameRequest,
-    check_username_availability,
-    set_username,
-)
-from torale.utils.username import check_username_available, validate_username
 
 
 @pytest.fixture
@@ -58,173 +52,6 @@ def mock_db():
     db.acquire = MagicMock(return_value=mock_acquire)
 
     return db
-
-
-class TestUsernameValidation:
-    """Tests for username validation."""
-
-    @pytest.mark.asyncio
-    async def test_valid_username(self, mock_db):
-        """Test valid username formats."""
-        mock_db.fetch_one.return_value = None  # Not reserved
-
-        valid_usernames = [
-            "alice",
-            "bob123",
-            "user_name",
-            "test-user",
-            "a1b2c3",
-        ]
-        for username in valid_usernames:
-            is_valid, error = await validate_username(username, mock_db)
-            assert is_valid, f"Username '{username}' should be valid but got error: {error}"
-            assert error == ""
-
-    @pytest.mark.asyncio
-    async def test_username_too_short(self, mock_db):
-        """Test username shorter than 3 characters."""
-        is_valid, error = await validate_username("ab", mock_db)
-        assert not is_valid
-        assert "at least 3 characters" in error
-
-    @pytest.mark.asyncio
-    async def test_username_too_long(self, mock_db):
-        """Test username longer than 30 characters."""
-        is_valid, error = await validate_username("a" * 31, mock_db)
-        assert not is_valid
-        assert "30 characters or less" in error
-
-    @pytest.mark.asyncio
-    async def test_username_invalid_start(self, mock_db):
-        """Test username not starting with letter."""
-        invalid_starts = ["1user", "_user", "-user"]
-        for username in invalid_starts:
-            is_valid, error = await validate_username(username, mock_db)
-            assert not is_valid
-            assert "start with a letter" in error
-
-    @pytest.mark.asyncio
-    async def test_username_invalid_characters(self, mock_db):
-        """Test username with invalid characters."""
-        invalid_usernames = [
-            "user@name",
-            "user.name",
-            "user name",
-            "user!",
-        ]
-        for username in invalid_usernames:
-            is_valid, error = await validate_username(username, mock_db)
-            assert not is_valid
-
-    @pytest.mark.asyncio
-    async def test_reserved_username(self, mock_db):
-        """Test reserved usernames are rejected."""
-        # Mock database returning reserved username match
-        mock_db.fetch_one.return_value = {"username": "admin"}
-
-        reserved = ["admin", "api", "explore", "settings", "support"]
-        for username in reserved:
-            is_valid, error = await validate_username(username, mock_db)
-            assert not is_valid
-            assert "reserved" in error
-
-
-class TestUsernameAvailability:
-    """Tests for username availability checking."""
-
-    @pytest.mark.asyncio
-    async def test_username_available(self, mock_db):
-        """Test checking available username."""
-        mock_db.fetch_one.return_value = None  # No existing user
-
-        available = await check_username_available("newuser", mock_db)
-
-        assert available is True
-
-    @pytest.mark.asyncio
-    async def test_username_taken(self, mock_db):
-        """Test checking taken username."""
-        mock_db.fetch_one.return_value = {"id": uuid4()}  # Existing user
-
-        available = await check_username_available("existinguser", mock_db)
-
-        assert available is False
-
-    @pytest.mark.asyncio
-    async def test_username_available_exclude_self(self, mock_db):
-        """Test checking username availability excluding current user."""
-        user_id = uuid4()
-        mock_db.fetch_one.return_value = None  # No other user with this username
-
-        available = await check_username_available("myusername", mock_db, exclude_user_id=user_id)
-
-        assert available is True
-
-
-class TestUsernameEndpoints:
-    """Tests for username API endpoints."""
-
-    @pytest.mark.asyncio
-    async def test_check_availability_endpoint(self, mock_db):
-        """Test GET /api/v1/users/username/available."""
-        # First call: reserved check (None = not reserved)
-        # Second call: availability check (None = available)
-        mock_db.fetch_one.side_effect = [None, None]
-
-        result = await check_username_availability(None, "newuser", mock_db)
-
-        assert result.available is True
-        assert result.error is None
-
-    @pytest.mark.asyncio
-    async def test_check_availability_invalid_format(self, mock_db):
-        """Test availability check with invalid username format."""
-        result = await check_username_availability(None, "ab", mock_db)
-
-        assert result.available is False
-        assert "at least 3 characters" in result.error
-
-    @pytest.mark.asyncio
-    async def test_set_username_success(self, mock_user, mock_db):
-        """Test PATCH /api/v1/users/me/username - successful update."""
-        request = SetUsernameRequest(username="newusername")
-        # First call: existing username check (None = no username set yet)
-        # Second call: reserved check (None = not reserved)
-        # Third call: availability check (None = available)
-        mock_db.fetch_one.side_effect = [None, None, None]
-
-        result = await set_username(request, mock_user, mock_db)
-
-        assert result.username == "newusername"
-        assert result.updated is True
-        mock_db.execute.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_set_username_taken(self, mock_user, mock_db):
-        """Test setting username that's already taken."""
-        request = SetUsernameRequest(username="takenname")
-        # First call: existing username check (None = no username set yet)
-        # Second call: reserved check (None = not reserved)
-        # Third call: availability check (user found = taken)
-        mock_db.fetch_one.side_effect = [None, None, {"id": uuid4()}]
-
-        with pytest.raises(HTTPException) as exc_info:
-            await set_username(request, mock_user, mock_db)
-
-        assert exc_info.value.status_code == 400
-        assert "already taken" in exc_info.value.detail
-
-    @pytest.mark.asyncio
-    async def test_set_username_invalid(self, mock_user, mock_db):
-        """Test setting invalid username."""
-        request = SetUsernameRequest(username="admin")  # Reserved
-        # Reserved username found in DB
-        mock_db.fetch_one.return_value = {"username": "admin"}
-
-        with pytest.raises(HTTPException) as exc_info:
-            await set_username(request, mock_user, mock_db)
-
-        assert exc_info.value.status_code == 400
 
 
 class TestTaskVisibilityToggle:
@@ -301,7 +128,6 @@ class TestPublicTaskAccess:
             "updated_at": now,
             "state_changed_at": now,
             "last_execution_id": None,
-            "creator_username": "testuser",
             # Execution fields (LEFT JOIN result - no execution)
             "exec_id": None,
             "exec_notification": None,
@@ -375,7 +201,6 @@ class TestPublicTaskAccess:
             "updated_at": now,
             "state_changed_at": now,
             "last_execution_id": None,
-            "creator_username": "testuser",
             # Execution fields (LEFT JOIN result - no execution)
             "exec_id": None,
             "exec_notification": None,

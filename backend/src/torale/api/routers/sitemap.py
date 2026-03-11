@@ -13,9 +13,6 @@ from torale.core.database import Database, get_db
 
 router = APIRouter(tags=["seo"])
 
-# Register atom namespace once at module level (avoids per-request global mutation)
-ET.register_namespace("atom", "http://www.w3.org/2005/Atom")
-
 
 @router.get("/sitemap.xml")
 async def generate_sitemap(db: Database = Depends(get_db)):
@@ -24,7 +21,7 @@ async def generate_sitemap(db: Database = Depends(get_db)):
 
     Includes:
     - Static pages (landing, explore)
-    - Public task pages (vanity URLs)
+    - Public task pages
     """
     # Get all public tasks with updated_at
     # TODO: At scale (>10k public tasks), implement sitemap index pattern:
@@ -41,7 +38,7 @@ async def generate_sitemap(db: Database = Depends(get_db)):
     tasks = await db.fetch_all(tasks_query)
 
     # Build XML sitemap using xml.etree
-    base_url = settings.frontend_url or "https://torale.ai"
+    base_url = settings.frontend_url
 
     # Create root element with namespace
     urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
@@ -140,7 +137,7 @@ async def generate_changelog_rss():
     MAX_RSS_ENTRIES = 50
     entries = entries[:MAX_RSS_ENTRIES]
 
-    base_url = settings.frontend_url or "https://torale.ai"
+    base_url = settings.frontend_url
 
     # Create RSS structure
     rss = ET.Element("rss", version="2.0")
@@ -207,7 +204,7 @@ async def robots_txt():
     - API endpoints
     - Admin endpoints
     """
-    base_url = settings.frontend_url or "https://torale.ai"
+    base_url = settings.frontend_url
 
     robots = f"""User-agent: *
 Allow: /

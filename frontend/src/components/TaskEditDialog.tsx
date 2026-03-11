@@ -29,8 +29,6 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { BrutalistSwitch } from "@/components/torale";
-import { UsernamePickerModal } from "@/components/UsernamePickerModal";
-import { useAuth } from '@/contexts/AuthContext';
 
 interface TaskEditDialogProps {
   open: boolean;
@@ -63,8 +61,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   // Sharing state
   const [isPublic, setIsPublic] = useState(false);
   const [isTogglingVisibility, setIsTogglingVisibility] = useState(false);
-  const [showUsernameModal, setShowUsernameModal] = useState(false);
-  const { user } = useAuth();
 
   // Load task data when task changes
   useEffect(() => {
@@ -89,11 +85,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   const handleVisibilityToggle = async (checked: boolean) => {
     if (!task) return;
 
-    if (checked && !user?.username) {
-      setShowUsernameModal(true);
-      return;
-    }
-
     setIsTogglingVisibility(true);
     try {
       const result = await api.updateTaskVisibility(task.id, checked);
@@ -112,28 +103,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       toast.error('Failed to update task visibility');
     } finally {
       setIsTogglingVisibility(false);
-    }
-  };
-
-  const handleUsernameSet = async (username: string) => {
-    if (task) {
-      setIsTogglingVisibility(true);
-      try {
-        const result = await api.updateTaskVisibility(task.id, true);
-        setIsPublic(result.is_public);
-
-        if (result.is_public) {
-          const shareUrl = getTaskShareUrl(task.id);
-          toast.success(`Task is now public: ${shareUrl}`);
-        }
-
-        onSuccess({ ...task, is_public: result.is_public });
-      } catch (error) {
-        console.error('Failed to make task public:', error);
-        toast.error('Failed to make task public');
-      } finally {
-        setIsTogglingVisibility(false);
-      }
     }
   };
 
@@ -413,13 +382,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
           </Button>
         </DialogFooter>
       </DialogContent>
-
-      {/* Username Picker Modal */}
-      <UsernamePickerModal
-        isOpen={showUsernameModal}
-        onClose={() => setShowUsernameModal(false)}
-        onSuccess={handleUsernameSet}
-      />
     </Dialog>
   );
 };

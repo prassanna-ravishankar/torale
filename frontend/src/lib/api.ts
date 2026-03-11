@@ -29,6 +29,11 @@ class ApiClient {
     return this.baseUrl
   }
 
+  /** Build the RSS feed URL for a public task. */
+  getTaskRssUrl(taskId: string): string {
+    return `${this.baseUrl}/t/${taskId}/rss`
+  }
+
   // Set the token getter function (called from components with Clerk's getToken)
   setTokenGetter(getter: () => Promise<string | null>) {
     this.tokenGetter = getter
@@ -449,26 +454,6 @@ class ApiClient {
     const response = await fetch(`${this.baseUrl}/auth/api-keys/${keyId}`, {
       method: 'DELETE',
       headers: await this.getAuthHeaders(),
-    })
-    return this.handleResponse(response)
-  }
-
-  // Username endpoints
-  async checkUsernameAvailability(username: string): Promise<{ available: boolean; error: string | null }> {
-    const response = await fetch(
-      `${this.baseUrl}/api/v1/users/username/available?username=${encodeURIComponent(username)}`,
-      {
-        headers: await this.getAuthHeaders(),
-      }
-    )
-    return this.handleResponse(response)
-  }
-
-  async setUsername(username: string): Promise<{ username: string; updated: boolean }> {
-    const response = await fetch(`${this.baseUrl}/api/v1/users/me/username`, {
-      method: 'PATCH',
-      headers: await this.getAuthHeaders(),
-      body: JSON.stringify({ username }),
     })
     return this.handleResponse(response)
   }

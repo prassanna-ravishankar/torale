@@ -42,20 +42,6 @@ class UserRepository(BaseRepository):
         )
         return await self.db.fetch_one(str(query), email)
 
-    async def find_by_username(self, username: str) -> dict | None:
-        """
-        Find a user by username.
-
-        Returns:
-            User dict or None if not found.
-        """
-        query = (
-            PostgreSQLQuery.from_(self.users)
-            .select("*")
-            .where(self.users.username == Parameter("$1"))
-        )
-        return await self.db.fetch_one(str(query), username)
-
     async def create_user(
         self, clerk_user_id: str, email: str, first_name: str | None = None
     ) -> dict:
@@ -82,7 +68,6 @@ class UserRepository(BaseRepository):
         user_id: UUID,
         email: str | None = None,
         first_name: str | None = None,
-        username: str | None = None,
         is_active: bool | None = None,
     ) -> dict:
         """
@@ -92,7 +77,6 @@ class UserRepository(BaseRepository):
             user_id: User UUID
             email: New email (optional)
             first_name: New first name (optional)
-            username: New username (optional)
             is_active: New active status (optional)
 
         Returns:
@@ -104,8 +88,6 @@ class UserRepository(BaseRepository):
             data["email"] = email
         if first_name is not None:
             data["first_name"] = first_name
-        if username is not None:
-            data["username"] = username
         if is_active is not None:
             data["is_active"] = is_active
 
@@ -164,22 +146,6 @@ class UserRepository(BaseRepository):
             "secret": row["webhook_secret"],
             "enabled": row["webhook_enabled"],
         }
-
-    async def username_exists(self, username: str) -> bool:
-        """
-        Check if a username already exists.
-
-        Returns:
-            True if username is taken, False otherwise.
-        """
-        query = (
-            PostgreSQLQuery.from_(self.users)
-            .select("COUNT(*)")
-            .where(self.users.username == Parameter("$1"))
-        )
-
-        count = await self.db.fetch_val(str(query), username)
-        return count > 0
 
 
 class ApiKeyRepository(BaseRepository):
