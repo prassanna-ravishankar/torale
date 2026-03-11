@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import { TaskExecution, TaskStatus } from "@/types";
 import { GroundingSourceList } from "@/components/ui/GroundingSourceList";
+import { AgentActivity } from "@/components/AgentActivity";
 import { StatusBadge, SectionLabel, BrutalistCard, CollapsibleSection, type StatusVariant } from "@/components/torale";
 import {
   CheckCircle2,
@@ -94,7 +95,12 @@ const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution }) => {
                 </div>
               )}
 
-              {/* Layer 3: Evidence - collapsible agent reasoning */}
+              {/* Layer 3: Activity - what the agent did */}
+              {execution.result?.activity && execution.result.activity.length > 0 && (
+                <AgentActivity activity={execution.result.activity} />
+              )}
+
+              {/* Layer 4: Evidence - collapsible agent reasoning */}
               {execution.result?.evidence && (
                 <CollapsibleSection
                   title="Agent Reasoning"
