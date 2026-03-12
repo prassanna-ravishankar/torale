@@ -114,8 +114,6 @@ async def get_public_task_by_id(
 ):
     """
     Get a public task by UUID (NO AUTH REQUIRED).
-
-    Get a public task by UUID (NO AUTH REQUIRED).
     """
     # Delegates to the shared get_task logic (handles owner vs public access)
     return await get_task(task_id, user, db)
@@ -154,7 +152,7 @@ async def get_task_rss_feed(
     """
     executions = await db.fetch_all(executions_query, task_id)
 
-    task_link = f"{settings.frontend_url}/tasks/{task_id}"
+    task_link = f"{settings.frontend_url}/t/{task_id}"
     feed_url = str(request.url_for("get_task_rss_feed", task_id=task_id))
 
     # Build RSS 2.0 feed
