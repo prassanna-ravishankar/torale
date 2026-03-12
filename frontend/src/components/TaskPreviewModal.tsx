@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getErrorMessage } from '@/lib/utils';
 import {
   Dialog,
@@ -34,56 +34,78 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [execution, setExecution] = useState<TaskExecution | null>(null);
   const [error, setError] = useState<string>('');
+  const cancelledRef = useRef(false);
 
-  const handleExecute = useCallback(async () => {
+  // Execute task when modal opens, cancel polling on close/unmount
+  useEffect(() => {
+    if (!open) return;
+
+    cancelledRef.current = false;
     setIsLoading(true);
     setError('');
     setExecution(null);
 
-    try {
-      // Execute with suppress_notifications=true
-      const executionResult = await api.executeTask(task.id, true);
+    let timeoutId: ReturnType<typeof setTimeout>;
 
-      // Poll for results
-      let attempts = 0;
-      const maxAttempts = 30; // 30 seconds
-      const pollInterval = 1000; // 1 second
+    const execute = async () => {
+      try {
+        const executionResult = await api.executeTask(task.id, true);
 
-      const poll = async () => {
-        const executions = await api.getTaskExecutions(task.id);
-        const latest = executions.find((e) => e.id === executionResult.id);
+        let attempts = 0;
+        const maxAttempts = 30;
+        const pollInterval = 1000;
 
-        if (latest && (latest.status === 'success' || latest.status === 'failed')) {
-          setExecution(latest);
-          setIsLoading(false);
-          if (latest.status === 'failed') {
-            setError(latest.error_message || 'Execution failed');
+        const poll = async () => {
+          if (cancelledRef.current) return;
+
+          try {
+            const executions = await api.getTaskExecutions(task.id);
+            if (cancelledRef.current) return;
+
+            const latest = executions.find((e) => e.id === executionResult.id);
+
+            if (latest && (latest.status === 'success' || latest.status === 'failed')) {
+              setExecution(latest);
+              setIsLoading(false);
+              if (latest.status === 'failed') {
+                setError(latest.error_message || 'Execution failed');
+              }
+            } else if (attempts < maxAttempts) {
+              attempts++;
+              timeoutId = setTimeout(poll, pollInterval);
+            } else {
+              setIsLoading(false);
+              setError('Execution timed out');
+            }
+          } catch (err) {
+            if (!cancelledRef.current) {
+              console.error('Poll failed:', err);
+              setIsLoading(false);
+              setError(getErrorMessage(err, 'Failed to check results'));
+            }
           }
-        } else if (attempts < maxAttempts) {
-          attempts++;
-          setTimeout(poll, pollInterval);
-        } else {
-          setIsLoading(false);
-          setError('Execution timed out');
+        };
+
+        if (!cancelledRef.current) {
+          timeoutId = setTimeout(poll, pollInterval);
         }
-      };
+      } catch (err) {
+        if (cancelledRef.current) return;
+        console.error('Failed to execute task:', err);
+        const message = getErrorMessage(err, 'Failed to run task');
+        setError(message);
+        toast.error(message);
+        setIsLoading(false);
+      }
+    };
 
-      setTimeout(poll, pollInterval);
-    } catch (err) {
-      console.error('Failed to execute task:', err);
-      const message = getErrorMessage(err, 'Failed to run task');
-      setError(message);
-      toast.error(message);
-      setIsLoading(false);
-    }
-  }, [task.id]);
+    execute();
 
-  // Execute task when modal opens
-  useEffect(() => {
-    if (open) {
-      handleExecute();
-    }
-  }, [open, task.id, handleExecute]);
+    return () => {
+      cancelledRef.current = true;
+      clearTimeout(timeoutId);
+    };
+  }, [open, task.id]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
