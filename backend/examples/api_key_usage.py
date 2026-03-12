@@ -49,7 +49,6 @@ load_dotenv()
 # ruff: noqa: E402
 # SDK must be imported AFTER setting TORALE_DEV environment variable
 from torale.sdk import Torale, ToraleAsync
-from torale.sdk.exceptions import AuthenticationError
 
 
 def example_1_env_variable():
@@ -103,35 +102,6 @@ def example_2_explicit_api_key():
     print(f"✓ Found {len(tasks)} task(s)")
 
     return client
-
-
-def example_3_cli_config():
-    """
-    Method 3: CLI Config File
-
-    If you've run `torale auth set-api-key`, the SDK will automatically
-    read the API key from ~/.torale/config.json
-    """
-    print("\n=== Example 3: CLI Config File ===")
-
-    # First, remove TORALE_API_KEY from environment to test CLI config
-    original_key = os.environ.pop("TORALE_API_KEY", None)
-
-    try:
-        client = Torale()
-        tasks = client.tasks.list()
-        print("✓ Authenticated via ~/.torale/config.json")
-        print(f"✓ Found {len(tasks)} task(s)")
-    except AuthenticationError:
-        print("⚠️  CLI config not found or invalid. The SDK could not find an API key.")
-        print("\nTo set up CLI config, run:")
-        print("  torale auth set-api-key")
-    finally:
-        # Restore environment variable
-        if original_key:
-            os.environ["TORALE_API_KEY"] = original_key
-
-    return None
 
 
 def example_4_create_task():
@@ -371,7 +341,6 @@ def main():
         print("=" * 60)
         example_1_env_variable()
         example_2_explicit_api_key()
-        example_3_cli_config()
 
         # Task creation/operation examples
         print("\n" + "=" * 60)

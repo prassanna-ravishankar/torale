@@ -51,8 +51,8 @@ class ToraleClient:
 
             if not self.api_key:
                 raise AuthenticationError(
-                    "No API key provided. Set TORALE_API_KEY environment variable, "
-                    "pass api_key parameter, or run `torale auth set-api-key` to configure."
+                    "No API key provided. Set TORALE_API_KEY environment variable "
+                    "or pass api_key parameter."
                 )
         else:
             self.api_key = None

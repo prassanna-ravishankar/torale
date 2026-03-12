@@ -47,33 +47,7 @@ The fastest way to get started is using the hosted service at **[torale.ai](http
 2. **Create monitoring tasks** via the web dashboard
 3. **Get notified** when conditions are met
 
-### Option 2: Install the CLI
-
-Install the Torale CLI to manage tasks from your terminal:
-
-```bash
-pip install torale
-```
-
-**Configure authentication:**
-
-```bash
-# Generate an API key at https://torale.ai (or your self-hosted instance)
-torale auth set-api-key
-
-# Create your first monitoring task
-torale task create "iPhone Release Monitor" \
-  --schedule "0 9 * * *" \
-  --prompt "Search for iPhone release date announcements"
-
-# List all tasks
-torale task list
-
-# View task notifications
-torale notifications TASK_ID
-```
-
-### Option 3: Use the Python SDK
+### Option 2: Use the Python SDK
 
 Integrate Torale into your Python applications for programmatic task management.
 
@@ -103,11 +77,6 @@ client = Torale()  # Auto-discovers from environment
 
 # Option 2: Explicit API key (useful for testing, not recommended for production)
 client = Torale(api_key="sk_your_api_key_here")
-
-# Option 3: CLI config file (recommended for local CLI usage)
-# Run: torale auth set-api-key
-# Stores in: ~/.torale/config.json
-client = Torale()  # Auto-discovers from config file
 
 # Create a monitoring task
 task = client.tasks.create(
@@ -321,7 +290,7 @@ except APIError as e:
     print(f"API error: {e.status_code} - {e.message}")
 ```
 
-### Option 4: Self-Hosted Setup
+### Option 3: Self-Hosted Setup
 
 Run Torale on your own infrastructure:
 
@@ -400,7 +369,7 @@ npm run dev
 - **Dashboard**: View and manage all monitoring tasks
 - **Task Creation**: Create new monitoring tasks with search queries and conditions
 - **Task Details**: View execution history, notifications, and state changes
-- **API Key Management**: Generate API keys for CLI access
+- **API Key Management**: Generate API keys for SDK access
 - **Real-time Updates**: Auto-refresh execution status
 - **Toast Notifications**: User feedback for all actions
 
@@ -422,8 +391,6 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 - **Database**: PostgreSQL 16 via Docker Compose
 - **Scheduler**: APScheduler with PostgreSQL job store
 - **Agent**: Gemini-powered monitoring agent via Pydantic AI (Perplexity search + Mem0 memory)
-- **CLI**: Python typer with API key authentication
-
 ### Production (GKE)
 - **Infrastructure**: GKE Autopilot (clusterkit) in us-central1
 - **Database**: Cloud SQL PostgreSQL 16 (managed, zonal)
@@ -443,8 +410,7 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 - In-app notifications endpoint
 - Task templates for common use cases
 - Clerk authentication (OAuth + email/password)
-- API key authentication for CLI
-- CLI for task management
+- API key authentication for SDK
 - Frontend dashboard with task management
 - GKE deployment with cost optimization
 - **Live Search Preview** - Test queries before creating tasks
@@ -594,7 +560,7 @@ Use standard cron expressions:
 ```
 POST   /auth/sync-user                     # Sync Clerk user to database (auto-called)
 GET    /auth/me                            # Get current user info
-POST   /auth/api-keys                      # Generate API key for CLI
+POST   /auth/api-keys                      # Generate API key for SDK
 GET    /auth/api-keys                      # List user's API keys
 DELETE /auth/api-keys/{id}                 # Revoke API key
 ```
@@ -611,28 +577,6 @@ DELETE /api/v1/tasks/{id}                  # Delete task + schedule
 POST   /api/v1/tasks/{id}/execute          # Manual execution (testing)
 GET    /api/v1/tasks/{id}/executions       # Full execution history
 GET    /api/v1/tasks/{id}/notifications    # Filtered: condition_met = true
-```
-
-## CLI Commands
-
-```bash
-# Authentication
-torale auth set-api-key                    # Configure API key
-torale auth status                         # Check auth status
-torale auth logout                         # Remove credentials
-
-# Tasks
-torale task create NAME --schedule CRON --prompt PROMPT
-torale task list [--active]
-torale task get TASK_ID
-torale task update TASK_ID [--name NAME] [--schedule CRON] [--active/--inactive]
-torale task delete TASK_ID [--yes]
-torale task execute TASK_ID               # Manual execution
-torale task logs TASK_ID [--limit N]      # View execution logs
-
-# Development mode (no auth required)
-export TORALE_NOAUTH=1
-torale task list
 ```
 
 ## Environment Variables

@@ -232,7 +232,7 @@ export interface UserWithNotifications extends User {
 }
 
 /**
- * API Key for CLI authentication
+ * API Key for SDK authentication
  */
 export interface ApiKey {
   id: string;

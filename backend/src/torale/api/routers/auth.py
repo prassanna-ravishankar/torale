@@ -199,7 +199,7 @@ async def create_api_key(
     session: AsyncSession = Depends(get_async_session),
 ):
     """
-    Generate a new API key for CLI authentication.
+    Generate a new API key for SDK authentication.
 
     Requires developer role in Clerk publicMetadata.
     Returns the full key once - store it securely!

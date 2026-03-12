@@ -1,6 +1,6 @@
 ---
 layout: home
-description: Torale developer documentation. API reference, Python SDK, and CLI for building with grounded search monitoring.
+description: Torale developer documentation. API reference and Python SDK for building with grounded search monitoring.
 
 hero:
   name: Torale Docs
@@ -45,5 +45,4 @@ if executions[0].condition_met:
 ## Interfaces
 
 - [Python SDK](/getting-started/sdk) - Client library for Python applications
-- [CLI](/getting-started/cli) - Command-line interface
 - [REST API](/api/overview) - API reference

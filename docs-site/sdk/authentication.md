@@ -27,7 +27,7 @@ The client resolves the API key in this order:
 
 1. `api_key` parameter passed to the constructor
 2. `TORALE_API_KEY` environment variable
-3. `~/.torale/config.json` file (set via `torale auth set-api-key`)
+3. `~/.torale/config.json` file
 
 If no key is found and `TORALE_NOAUTH` is not set, an `AuthenticationError` is raised.
 
