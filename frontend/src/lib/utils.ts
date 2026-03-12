@@ -101,6 +101,9 @@ export function getErrorMessage(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback;
 }
 
+/**
+ * Format timestamp as relative time (e.g., "2h ago", "Just now")
+ */
 export function formatTimeAgo(dateString: string): string {
   const date = new Date(dateString);
   if (isNaN(date.getTime())) {
