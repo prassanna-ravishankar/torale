@@ -26,7 +26,7 @@ export function ExecutionsTable({ onTaskClick }: ExecutionsTableProps = {}) {
       if (statusFilter !== 'all') {
         params.status = statusFilter
       }
-      const data = await api.getAdminExecutions(params)
+      const data = await api.getAdminExecutions<{ executions: ExecutionData[] }>(params)
       setExecutions(data.executions)
       setError(null)
     } catch (err) {

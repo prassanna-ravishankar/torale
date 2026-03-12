@@ -18,6 +18,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Mail, CheckCircle2, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/api';
+import { getErrorMessage } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface EmailVerificationModalProps {
@@ -83,9 +84,10 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
       setExpiresAt(new Date(response.expires_at));
       setStep('verify_code');
       toast.success('Verification code sent to ' + email);
-    } catch (err: any) {
-      setError(err.message || 'Failed to send verification code');
-      toast.error(err.message || 'Failed to send verification code');
+    } catch (err) {
+      const message = getErrorMessage(err, 'Failed to send verification code');
+      setError(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -105,9 +107,10 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
       toast.success('Email verified successfully!');
       onVerified(email);
       onOpenChange(false);
-    } catch (err: any) {
-      setError(err.message || 'Invalid verification code');
-      toast.error(err.message || 'Invalid verification code');
+    } catch (err) {
+      const message = getErrorMessage(err, 'Invalid verification code');
+      setError(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

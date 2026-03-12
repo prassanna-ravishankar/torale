@@ -21,7 +21,7 @@ export function TasksTable({ initialExpandedTaskId }: TasksTableProps = {}) {
   const loadTasks = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await api.getAdminQueries({ limit: 100, active_only: activeOnly })
+      const data = await api.getAdminQueries<{ queries: TaskData[] }>({ limit: 100, active_only: activeOnly })
       setTasks(data.queries ?? [])
       setError(null)
     } catch (err) {

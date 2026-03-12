@@ -170,15 +170,15 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
-  // Admin endpoints
-  async getAdminStats(): Promise<any> {
+  // Admin endpoints (callers provide expected response type via generic parameter)
+  async getAdminStats<T = Record<string, unknown>>(): Promise<T> {
     const response = await fetch(`${this.baseUrl}/admin/stats`, {
       headers: await this.getAuthHeaders(),
     })
-    return this.handleResponse(response)
+    return this.handleResponse<T>(response)
   }
 
-  async getAdminQueries(params?: { limit?: number; active_only?: boolean }): Promise<any> {
+  async getAdminQueries<T = Record<string, unknown>>(params?: { limit?: number; active_only?: boolean }): Promise<T> {
     const queryParams = new URLSearchParams()
     if (params?.limit) queryParams.set('limit', params.limit.toString())
     if (params?.active_only) queryParams.set('active_only', 'true')
@@ -187,10 +187,10 @@ class ApiClient {
     const response = await fetch(url, {
       headers: await this.getAuthHeaders(),
     })
-    return this.handleResponse(response)
+    return this.handleResponse<T>(response)
   }
 
-  async getAdminExecutions(params?: { limit?: number; status?: string; task_id?: string }): Promise<any> {
+  async getAdminExecutions<T = Record<string, unknown>>(params?: { limit?: number; status?: string; task_id?: string }): Promise<T> {
     const queryParams = new URLSearchParams()
     if (params?.limit) queryParams.set('limit', params.limit.toString())
     if (params?.status) queryParams.set('status', params.status)
@@ -200,10 +200,10 @@ class ApiClient {
     const response = await fetch(url, {
       headers: await this.getAuthHeaders(),
     })
-    return this.handleResponse(response)
+    return this.handleResponse<T>(response)
   }
 
-  async getAdminErrors(params?: { limit?: number }): Promise<any> {
+  async getAdminErrors<T = Record<string, unknown>>(params?: { limit?: number }): Promise<T> {
     const queryParams = new URLSearchParams()
     if (params?.limit) queryParams.set('limit', params.limit.toString())
 
@@ -211,22 +211,22 @@ class ApiClient {
     const response = await fetch(url, {
       headers: await this.getAuthHeaders(),
     })
-    return this.handleResponse(response)
+    return this.handleResponse<T>(response)
   }
 
-  async getAdminUsers(): Promise<any> {
+  async getAdminUsers<T = Record<string, unknown>>(): Promise<T> {
     const response = await fetch(`${this.baseUrl}/admin/users`, {
       headers: await this.getAuthHeaders(),
     })
-    return this.handleResponse(response)
+    return this.handleResponse<T>(response)
   }
 
-  async deactivateUser(userId: string): Promise<any> {
+  async deactivateUser<T = Record<string, unknown>>(userId: string): Promise<T> {
     const response = await fetch(`${this.baseUrl}/admin/users/${userId}/deactivate`, {
       method: 'PATCH',
       headers: await this.getAuthHeaders(),
     })
-    return this.handleResponse(response)
+    return this.handleResponse<T>(response)
   }
 
   async updateUserRole(userId: string, role: string | null): Promise<{ status: string; user_id: string; role: string | null }> {
@@ -238,7 +238,7 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
-  async bulkUpdateUserRoles(userIds: string[], role: string | null): Promise<{ updated: number; failed: number; errors: any[] }> {
+  async bulkUpdateUserRoles(userIds: string[], role: string | null): Promise<{ updated: number; failed: number; errors: unknown[] }> {
     const response = await fetch(`${this.baseUrl}/admin/users/roles`, {
       method: 'PATCH',
       headers: await this.getAuthHeaders(),
@@ -291,30 +291,30 @@ class ApiClient {
   }
 
   // Waitlist endpoints
-  async getWaitlist(statusFilter?: string): Promise<any> {
+  async getWaitlist<T = Record<string, unknown>>(statusFilter?: string): Promise<T> {
     const url = statusFilter
       ? `${this.baseUrl}/admin/waitlist?status_filter=${statusFilter}`
       : `${this.baseUrl}/admin/waitlist`
     const response = await fetch(url, {
       headers: await this.getAuthHeaders(),
     })
-    return this.handleResponse(response)
+    return this.handleResponse<T>(response)
   }
 
-  async getWaitlistStats(): Promise<any> {
+  async getWaitlistStats<T = Record<string, unknown>>(): Promise<T> {
     const response = await fetch(`${this.baseUrl}/admin/waitlist/stats`, {
       headers: await this.getAuthHeaders(),
     })
-    return this.handleResponse(response)
+    return this.handleResponse<T>(response)
   }
 
-  async updateWaitlistEntry(entryId: string, data: { status?: string; notes?: string }): Promise<any> {
+  async updateWaitlistEntry<T = Record<string, unknown>>(entryId: string, data: { status?: string; notes?: string }): Promise<T> {
     const response = await fetch(`${this.baseUrl}/admin/waitlist/${entryId}`, {
       method: 'PATCH',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify(data),
     })
-    return this.handleResponse(response)
+    return this.handleResponse<T>(response)
   }
 
   async deleteWaitlistEntry(entryId: string): Promise<void> {

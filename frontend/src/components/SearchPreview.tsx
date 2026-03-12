@@ -14,7 +14,7 @@ interface SearchPreviewProps {
   conditionMet: boolean;
   conditionDescription?: string;
   groundingSources: GroundingSource[];
-  currentState?: any;
+  currentState?: Record<string, unknown>;
   showConditionBadge?: boolean;
 }
 

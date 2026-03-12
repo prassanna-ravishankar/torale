@@ -1,4 +1,4 @@
-import React, { ReactNode, useMemo, useEffect, useState, useCallback } from 'react'
+import React, { ReactNode, useMemo, useEffect, useCallback, useState } from 'react'
 import { ClerkProvider, useAuth as useClerkAuth, useUser } from '@clerk/clerk-react'
 import { AuthContext, AuthContextType, User } from './AuthContext'
 import { initPostHog, resetPostHog } from '@/lib/posthog'
@@ -15,7 +15,7 @@ interface ClerkAuthProviderProps {
  */
 const createUserFromData = (
   backendData: { id: string | null; email: string; username: string | null; has_seen_welcome?: boolean },
-  clerkUser: any
+  clerkUser: { firstName?: string | null; lastName?: string | null; imageUrl?: string; publicMetadata?: Record<string, unknown> }
 ): User => ({
   id: backendData.id,
   email: backendData.email,
@@ -24,22 +24,22 @@ const createUserFromData = (
   firstName: clerkUser.firstName || undefined,
   lastName: clerkUser.lastName || undefined,
   imageUrl: clerkUser.imageUrl,
-  publicMetadata: clerkUser.publicMetadata as { role?: string;[key: string]: any } | undefined,
+  publicMetadata: clerkUser.publicMetadata as { role?: string;[key: string]: unknown } | undefined,
 })
 
 const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { isLoaded: clerkIsLoaded, userId, getToken: clerkGetToken, signOut } = useClerkAuth()
   const { user: clerkUser } = useUser()
   const [backendUser, setBackendUser] = useState<User | null>(null)
-  const [isFetchingUser, setIsFetchingUser] = useState(false)
+  const isFetchingRef = React.useRef(false)
 
   // Fetch user data from backend when Clerk user is available
   // Automatically syncs user if not found in database
   useEffect(() => {
-    if (!clerkUser || isFetchingUser) return
+    if (!clerkUser || isFetchingRef.current) return
 
     const fetchBackendUser = async () => {
-      setIsFetchingUser(true)
+      isFetchingRef.current = true
       try {
         const { api } = await import('@/lib/api')
         const userData = await api.getCurrentUser()
@@ -63,7 +63,7 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
           }, clerkUser))
         }
       } finally {
-        setIsFetchingUser(false)
+        isFetchingRef.current = false
       }
     }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -34,14 +34,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
   const [execution, setExecution] = useState<TaskExecution | null>(null);
   const [error, setError] = useState<string>('');
 
-  // Execute task when modal opens
-  useEffect(() => {
-    if (open && task) {
-      handleExecute();
-    }
-  }, [open, task?.id]);
-
-  const handleExecute = async () => {
+  const handleExecute = useCallback(async () => {
     setIsLoading(true);
     setError('');
     setExecution(null);
@@ -82,7 +75,14 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
       toast.error(message);
       setIsLoading(false);
     }
-  };
+  }, [task.id]);
+
+  // Execute task when modal opens
+  useEffect(() => {
+    if (open && task) {
+      handleExecute();
+    }
+  }, [open, task, handleExecute]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

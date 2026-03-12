@@ -1,7 +1,7 @@
 import { motion } from "@/lib/motion-compat";
 import { GitCommit } from "lucide-react";
 import { ChangelogEntry } from "@/types/changelog";
-import { getCategoryIcon, getCategoryLabel, formatChangelogDate } from "@/utils/changelog";
+import { getCategoryIcon, formatChangelogDate } from "@/utils/changelog";
 import { GITHUB_REPO_URL } from "@/constants/links";
 
 interface ChangelogEntryCardProps {

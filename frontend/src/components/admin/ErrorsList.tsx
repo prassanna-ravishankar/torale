@@ -27,7 +27,7 @@ export function ErrorsList() {
   const loadErrors = async () => {
     try {
       setLoading(true)
-      const data = await api.getAdminErrors({ limit: 50 })
+      const data = await api.getAdminErrors<{ errors: ErrorExecution[] }>({ limit: 50 })
       setErrors(data.errors)
       setError(null)
     } catch (err) {

@@ -153,7 +153,7 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
     async function load() {
       try {
         setLoading(true)
-        const data = await api.getAdminExecutions({ task_id: task.id, limit: 20 })
+        const data = await api.getAdminExecutions<{ executions: ExecutionData[] }>({ task_id: task.id, limit: 20 })
         if (!cancelled) {
           setExecutions(data.executions ?? [])
           setError(null)
