@@ -740,22 +740,7 @@ async def update_task(
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
-    # Remove APScheduler job first (uses task_id from URL, no DB query needed)
-    job_id = f"task-{task_id}"
-    try:
-        scheduler = get_scheduler()
-        scheduler.remove_job(job_id)
-        logger.info(f"Removed scheduler job {job_id}")
-    except JobLookupError:
-        logger.info(f"Job {job_id} not found when deleting - already removed or never existed")
-    except Exception as e:
-        logger.error(f"Failed to remove scheduler job {job_id}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to remove scheduler job: {str(e)}",
-        ) from e
-
-    # Single DELETE with ownership check
+    # Delete from DB first (verifies ownership before touching scheduler)
     row = await db.fetch_one(
         "DELETE FROM tasks WHERE id = $1 AND user_id = $2 RETURNING id",
         task_id,
@@ -767,6 +752,18 @@ async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(g
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",
         )
+
+    # Now safe to remove scheduler job — ownership verified by successful DELETE
+    job_id = f"task-{task_id}"
+    try:
+        scheduler = get_scheduler()
+        scheduler.remove_job(job_id)
+        logger.info(f"Removed scheduler job {job_id}")
+    except JobLookupError:
+        logger.info(f"Job {job_id} not found when deleting - already removed or never existed")
+    except Exception as e:
+        # Task already deleted from DB; log but don't fail the request
+        logger.error(f"Failed to remove scheduler job {job_id}: {e}", exc_info=True)
 
     return None
 
