@@ -1,5 +1,32 @@
 [
   {
+    "id": "2026-03-12-headless-browser",
+    "date": "2026-03-12",
+    "title": "Headless Browser for Deep Page Reading",
+    "description": "The monitoring agent can now read full web pages using a Lightpanda headless browser, going beyond search snippets to extract detailed content directly from sources. Includes SSRF protection with DNS resolution validation and redirect safeguards.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": [183, 176]
+  },
+  {
+    "id": "2026-03-12-public-task-rss",
+    "date": "2026-03-12",
+    "title": "Public Task RSS Feeds",
+    "description": "Subscribe to any public task's results via RSS. Each public task now has an auto-discoverable feed so you can follow monitoring results in your favorite reader. Also simplified task URLs by removing the slug system.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": 181
+  },
+  {
+    "id": "2026-03-12-agent-activity-trail",
+    "date": "2026-03-12",
+    "title": "Agent Activity Trail",
+    "description": "Execution timeline now shows a step-by-step trail of what the agent did during each run — searches performed, pages fetched, and decisions made. Full transparency into the monitoring process.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": 180
+  },
+  {
     "id": "2026-03-08-parallel-web-search",
     "date": "2026-03-08",
     "title": "Parallel Web Search",
