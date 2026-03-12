@@ -80,7 +80,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
 
   // Execute task when modal opens
   useEffect(() => {
-    if (open && task) {
+    if (open) {
       handleExecute();
     }
   }, [open, task.id, handleExecute]);
