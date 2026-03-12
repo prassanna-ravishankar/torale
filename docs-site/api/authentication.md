@@ -25,9 +25,9 @@ Used for browser-based authentication in the web dashboard.
 
 **No manual setup required** - handled automatically by the web dashboard.
 
-### 2. API Keys (CLI & SDK)
+### 2. API Keys (SDK)
 
-Used for programmatic access via CLI or Python SDK.
+Used for programmatic access via the Python SDK.
 
 **Key format:**
 ```
@@ -50,7 +50,7 @@ Example: sk_abc123def456ghi789jkl012mno345pq
 1. **Log in** to [torale.ai](https://torale.ai)
 2. **Navigate** to Settings -> API Keys
 3. **Click** "Generate New Key"
-4. **Enter** key name (e.g., "CLI Key", "Production Script")
+4. **Enter** key name (e.g., "My API Key", "Production Script")
 5. **Copy** key immediately (shown only once)
 6. **Save** securely
 
@@ -160,7 +160,7 @@ Create a new API key. Requires developer role.
 **Request body:**
 ```json
 {
-  "name": "CLI Key"
+  "name": "My API Key"
 }
 ```
 
@@ -172,7 +172,7 @@ Create a new API key. Requires developer role.
     "id": "660e8400-e29b-41d4-a716-446655440000",
     "user_id": "550e8400-e29b-41d4-a716-446655440000",
     "key_prefix": "sk_abc123def456...",
-    "name": "CLI Key",
+    "name": "My API Key",
     "created_at": "2025-01-15T10:30:00Z",
     "last_used_at": null,
     "is_active": true
@@ -195,7 +195,7 @@ Create a new API key. Requires developer role.
     "id": "660e8400-e29b-41d4-a716-446655440000",
     "user_id": "550e8400-e29b-41d4-a716-446655440000",
     "key_prefix": "sk_abc123def456...",
-    "name": "CLI Key",
+    "name": "My API Key",
     "created_at": "2025-01-15T10:30:00Z",
     "last_used_at": "2025-01-20T15:45:00Z",
     "is_active": true

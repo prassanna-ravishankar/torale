@@ -4,7 +4,6 @@ import { motion } from "@/lib/motion-compat";
 import {
   ArrowRight,
   Terminal,
-  Database,
   Zap,
   TrendingUp,
   Shield,
@@ -13,7 +12,6 @@ import {
 } from "lucide-react";
 import { UniversalEventStream } from "./ui/UniversalEventStream";
 import { SystemTrace } from "./ui/SystemTrace";
-import { TerminalSection } from "./ui/TerminalSection";
 import { Logo } from "@/components/Logo";
 
 /**
@@ -349,49 +347,6 @@ export default function Landing() {
                 </div>
               </Link>
 
-            </div>
-          </div>
-        </section>
-
-        {/* Developer Experience Section */}
-        <section className="bg-zinc-50 border-b border-zinc-200 py-24 px-6">
-          <div className="container mx-auto max-w-6xl">
-            <div className="flex flex-col lg:flex-row gap-16 items-center">
-              <div className="lg:w-1/2 order-2 lg:order-1">
-                <TerminalSection />
-              </div>
-
-              <div className="lg:w-1/2 order-1 lg:order-2">
-                <SectionHeader
-                  title="You live in the terminal. So do we."
-                  subtitle="Torale is API-first and CLI-native. Script your monitoring infrastructure alongside your code."
-                  label="DX_FOCUSED"
-                />
-
-                <ul className="space-y-6 mt-8">
-                  <li className="flex items-start gap-4">
-                    <div className="p-2 bg-white rounded border border-zinc-200 text-zinc-600"><Terminal className="w-5 h-5" /></div>
-                    <div>
-                      <h4 className="font-bold text-zinc-900 text-lg font-grotesk">Full CLI Control</h4>
-                      <p className="text-zinc-500 text-sm">Create, list, and debug monitors without leaving your shell.</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-4">
-                    <div className="p-2 bg-white rounded border border-zinc-200 text-zinc-600"><Database className="w-5 h-5" /></div>
-                    <div>
-                      <h4 className="font-bold text-zinc-900 text-lg font-grotesk">Structured JSON</h4>
-                      <p className="text-zinc-500 text-sm">We don't send you raw HTML. You get clean, typed JSON objects.</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-4">
-                    <div className="p-2 bg-white rounded border border-zinc-200 text-zinc-600"><Zap className="w-5 h-5" /></div>
-                    <div>
-                      <h4 className="font-bold text-zinc-900 text-lg font-grotesk">Instant Webhooks</h4>
-                      <p className="text-zinc-500 text-sm">Pipe events directly into Slack, Discord, or your own backend.</p>
-                    </div>
-                  </li>
-                </ul>
-              </div>
             </div>
           </div>
         </section>

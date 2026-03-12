@@ -80,11 +80,11 @@ export function PrivacyPolicy() {
               </ul>
 
               <h3 className="text-xl font-bold font-grotesk text-zinc-900 mb-3 mt-6">2.4 API Keys</h3>
-              <p className="text-zinc-600 leading-relaxed mb-4">When you generate API keys for CLI access, we collect:</p>
+              <p className="text-zinc-600 leading-relaxed mb-4">When you generate API keys for programmatic access, we collect:</p>
               <ul className="list-disc pl-6 text-zinc-600 space-y-2">
                 <li><strong>Key hash:</strong> SHA256 hash of the API key (never stored in plain text)</li>
                 <li><strong>Key prefix:</strong> Display-only prefix for identification (e.g., "sk_...abc123")</li>
-                <li><strong>Key name:</strong> User-defined label (e.g., "Production CLI Key")</li>
+                <li><strong>Key name:</strong> User-defined label (e.g., "Production API Key")</li>
                 <li><strong>Usage metadata:</strong> Creation date, last used timestamp</li>
               </ul>
 
