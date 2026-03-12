@@ -144,7 +144,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       const updatedTask = await api.updateTask(task.id, {
         name,
         search_query: instructions,
-        condition_description: instructions,
       });
 
       toast.success('Task updated successfully');

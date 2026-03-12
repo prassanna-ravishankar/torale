@@ -64,8 +64,8 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
       <div className="flex items-start gap-3">
         <Search className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">Trigger</div>
-          <p className="text-sm text-zinc-900 leading-relaxed">{task.condition_description}</p>
+          <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">Monitoring</div>
+          <p className="text-sm text-zinc-900 leading-relaxed">{task.search_query}</p>
         </div>
       </div>
 
@@ -118,8 +118,8 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
   // Card grid for desktop
   const configCards = (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <InfoCard icon={Search} label="Trigger Condition">
-        <p className="text-sm text-zinc-700 leading-relaxed">{task.condition_description}</p>
+      <InfoCard icon={Search} label="Monitoring">
+        <p className="text-sm text-zinc-700 leading-relaxed">{task.search_query}</p>
       </InfoCard>
 
       <InfoCard icon={Clock} label="Scheduling">
