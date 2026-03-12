@@ -1,4 +1,7 @@
 import type { StatusVariant } from '@/components/torale/StatusBadge'
+import type { GroundingSource } from '@/types'
+
+export type { GroundingSource }
 
 export interface TaskData {
   id: string
@@ -45,11 +48,6 @@ export function stateToVariant(state: string): StatusVariant {
     return state as StatusVariant
   }
   return 'unknown'
-}
-
-export interface GroundingSource {
-  title: string
-  uri: string
 }
 
 export interface ExecutionData {

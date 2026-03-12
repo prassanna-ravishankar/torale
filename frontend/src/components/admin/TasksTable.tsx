@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
+import { formatShortDateTime, getErrorMessage } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { TaskCard } from './cards/TaskCard'
 import { TaskDetailPanel } from './TaskDetailPanel'
@@ -25,7 +26,7 @@ export function TasksTable({ initialExpandedTaskId }: TasksTableProps = {}) {
       setTasks(data.queries ?? [])
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tasks')
+      setError(getErrorMessage(err, 'Failed to load tasks'))
     } finally {
       setLoading(false)
     }
@@ -143,7 +144,7 @@ export function TasksTable({ initialExpandedTaskId }: TasksTableProps = {}) {
                     </td>
                     <td className="p-3 text-xs font-mono text-zinc-600">
                       {task.next_run
-                        ? new Date(task.next_run).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                        ? formatShortDateTime(task.next_run)
                         : '-'}
                     </td>
                     <td className="p-3 text-sm font-mono text-zinc-900">{task.execution_count}</td>
