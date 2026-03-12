@@ -76,21 +76,13 @@ async def get_platform_stats(
     - 24-hour execution metrics (total/failed/success_rate)
     - Popular queries (top 10 most common search queries)
     """
-    # User capacity
-    user_result = await session.execute(
-        text("""
-        SELECT COUNT(*) as total_users
-        FROM users
-        WHERE is_active = true
-        """)
-    )
-    user_row = user_result.first()
-    total_users = user_row[0] if user_row else 0
-
     # Get max users from settings (default 100)
     max_users = getattr(settings, "max_users", 100)
 
-    # Task statistics
+    twenty_four_hours_ago = datetime.now(UTC) - timedelta(hours=24)
+
+    # AsyncSession wraps a single connection — cannot run concurrent queries on it
+    user_result = await session.execute(text("SELECT COUNT(*) FROM users WHERE is_active = true"))
     task_result = await session.execute(
         text("""
         SELECT
@@ -101,13 +93,6 @@ async def get_platform_stats(
         WHERE t.state = 'active'
         """)
     )
-    task_row = task_result.first()
-    total_tasks = task_row[0] if task_row else 0
-    triggered_tasks = task_row[1] if task_row and task_row[1] else 0
-    trigger_rate = (triggered_tasks / total_tasks * 100) if total_tasks > 0 else 0
-
-    # 24-hour execution metrics
-    twenty_four_hours_ago = datetime.now(UTC) - timedelta(hours=24)
     exec_result = await session.execute(
         text("""
         SELECT
@@ -118,16 +103,6 @@ async def get_platform_stats(
         """),
         {"since": twenty_four_hours_ago},
     )
-    exec_row = exec_result.first()
-    total_executions = exec_row[0] if exec_row else 0
-    failed_executions = exec_row[1] if exec_row and exec_row[1] else 0
-    success_rate = (
-        (total_executions - failed_executions) / total_executions * 100
-        if total_executions > 0
-        else 100
-    )
-
-    # Popular queries (top 10)
     popular_result = await session.execute(
         text("""
         SELECT
@@ -142,6 +117,24 @@ async def get_platform_stats(
         LIMIT 10
         """)
     )
+
+    user_row = user_result.first()
+    total_users = user_row[0] if user_row else 0
+
+    task_row = task_result.first()
+    total_tasks = task_row[0] if task_row else 0
+    triggered_tasks = task_row[1] if task_row and task_row[1] else 0
+    trigger_rate = (triggered_tasks / total_tasks * 100) if total_tasks > 0 else 0
+
+    exec_row = exec_result.first()
+    total_executions = exec_row[0] if exec_row else 0
+    failed_executions = exec_row[1] if exec_row and exec_row[1] else 0
+    success_rate = (
+        (total_executions - failed_executions) / total_executions * 100
+        if total_executions > 0
+        else 100
+    )
+
     popular_queries = [
         {
             "search_query": row[0],

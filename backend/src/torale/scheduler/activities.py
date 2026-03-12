@@ -309,12 +309,13 @@ async def fetch_recent_executions(task_id: str, limit: int = 5) -> list[Executio
             """
             SELECT completed_at, result, notification, grounding_sources
             FROM task_executions
-            WHERE task_id = $1 AND status = 'success'
+            WHERE task_id = $1 AND status = $3
             ORDER BY completed_at DESC
             LIMIT $2
             """,
             UUID(task_id),
             limit,
+            TaskStatus.SUCCESS.value,
         )
         return [ExecutionRecord.from_db_row(dict(row)) for row in rows]
     except Exception:

@@ -28,29 +28,17 @@ from torale.tasks import (
     TaskStatus,
     TaskUpdate,
 )
+from torale.tasks.repository import TaskRepository
 from torale.tasks.service import InvalidTransitionError, TaskService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
-_TASK_WITH_EXECUTION_QUERY = """
-    SELECT t.*,
-           e.id as exec_id,
-           e.notification as exec_notification,
-           e.started_at as exec_started_at,
-           e.completed_at as exec_completed_at,
-           e.status as exec_status,
-           e.result as exec_result,
-           e.grounding_sources as exec_grounding_sources
-    FROM tasks t
-    LEFT JOIN task_executions e ON t.last_execution_id = e.id
-"""
-
 
 async def _check_task_access(db: Database, task_id: UUID, user) -> tuple[dict, bool]:
     """Verify task exists and user has access (owner or public). Returns (task row, is_owner)."""
-    row = await db.fetch_one("SELECT * FROM tasks WHERE id = $1", task_id)
+    row = await db.fetch_one("SELECT id, user_id, is_public FROM tasks WHERE id = $1", task_id)
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     is_owner = user is not None and row["user_id"] == user.id
@@ -228,15 +216,8 @@ async def create_task(
 async def list_tasks(
     user: CurrentUser, state: TaskState | None = None, db: Database = Depends(get_db)
 ):
-    base_query = _TASK_WITH_EXECUTION_QUERY + " WHERE t.user_id = $1"
-
-    if state is not None:
-        query = base_query + " AND t.state = $2 ORDER BY t.created_at DESC"
-        rows = await db.fetch_all(query, user.id, state.value)
-    else:
-        query = base_query + " ORDER BY t.created_at DESC"
-        rows = await db.fetch_all(query, user.id)
-
+    repo = TaskRepository(db)
+    rows = await repo.find_by_user(user.id, state=state)
     return [parse_task_with_execution(row) for row in rows]
 
 
@@ -281,8 +262,10 @@ async def start_task_execution(
     """Create execution record and launch agent-based execution in background."""
     # Check for running or pending executions to prevent concurrent execution
     running_execution = await db.fetch_one(
-        "SELECT id, status, started_at FROM task_executions WHERE task_id = $1 AND status IN ('running', 'pending')",
+        "SELECT id, status, started_at FROM task_executions WHERE task_id = $1 AND status IN ($2, $3)",
         UUID(task_id),
+        TaskStatus.RUNNING.value,
+        TaskStatus.PENDING.value,
     )
 
     if running_execution and not force:
@@ -337,7 +320,7 @@ async def start_task_execution(
         RETURNING id, task_id, status, started_at, completed_at, result, error_message, created_at
     """
 
-    execution_row = await db.fetch_one(execution_query, UUID(task_id), "pending")
+    execution_row = await db.fetch_one(execution_query, UUID(task_id), TaskStatus.PENDING.value)
 
     if not execution_row:
         raise HTTPException(
@@ -370,8 +353,8 @@ async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get
     - If task is public: read-only access for anyone
     - Otherwise: 404
     """
-    query = _TASK_WITH_EXECUTION_QUERY + " WHERE t.id = $1"
-    row = await db.fetch_one(query, task_id)
+    repo = TaskRepository(db)
+    row = await repo.find_by_id_with_execution(task_id)
 
     if not row:
         raise HTTPException(
@@ -473,8 +456,14 @@ async def fork_task(
     - Tracks original task via forked_from_task_id
     - User can optionally provide a new name
     """
-    # Verify access and get the full source task in one query
-    source, is_owner = await _check_task_access(db, task_id, user)
+    # Fetch full source task (need all columns for forking)
+    source_row = await db.fetch_one("SELECT * FROM tasks WHERE id = $1", task_id)
+    if not source_row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    source = dict(source_row)
+    is_owner = user is not None and source["user_id"] == user.id
+    if not is_owner and not source["is_public"]:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
     # Determine base name and notification fields (scrub sensitive data for non-owners)
     base_fork_name = request.name if request.name else f"{source['name']} (Copy)"
@@ -723,7 +712,8 @@ async def update_task(
             ) from e
 
     # Re-fetch to get the latest state (avoids returning stale data after transitions)
-    fresh_row = await db.fetch_one(_TASK_WITH_EXECUTION_QUERY + " WHERE t.id = $1", task_id)
+    repo = TaskRepository(db)
+    fresh_row = await repo.find_by_id_with_execution(task_id)
     if not fresh_row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
@@ -732,20 +722,20 @@ async def update_task(
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
-    # Verify task exists and belongs to user first
-    verify_query = """
-        SELECT id FROM tasks
-        WHERE id = $1 AND user_id = $2
-    """
-    task = await db.fetch_one(verify_query, task_id, user.id)
+    # Delete from DB first (verifies ownership before touching scheduler)
+    row = await db.fetch_one(
+        "DELETE FROM tasks WHERE id = $1 AND user_id = $2 RETURNING id",
+        task_id,
+        user.id,
+    )
 
-    if not task:
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",
         )
 
-    # Remove APScheduler job (if it exists)
+    # Now safe to remove scheduler job — ownership verified by successful DELETE
     job_id = f"task-{task_id}"
     try:
         scheduler = get_scheduler()
@@ -754,26 +744,8 @@ async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(g
     except JobLookupError:
         logger.info(f"Job {job_id} not found when deleting - already removed or never existed")
     except Exception as e:
+        # Task already deleted from DB; log but don't fail the request
         logger.error(f"Failed to remove scheduler job {job_id}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to remove scheduler job: {str(e)}",
-        ) from e
-
-    # Delete task from database
-    query = """
-        DELETE FROM tasks
-        WHERE id = $1 AND user_id = $2
-        RETURNING id
-    """
-
-    row = await db.fetch_one(query, task_id, user.id)
-
-    if not row:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
 
     return None
 
@@ -814,30 +786,40 @@ async def execute_task(
     return TaskExecution(**parse_execution_row(row))
 
 
-@router.get("/{task_id}/executions", response_model=list[TaskExecution])
-async def get_task_executions(
-    task_id: UUID, user: OptionalUser, limit: int = 100, db: Database = Depends(get_db)
-):
+async def _fetch_task_executions(
+    db: Database, task_id: UUID, user, limit: int, *, notifications_only: bool = False
+) -> list[TaskExecution]:
+    """Fetch task executions with access control. Optionally filter to notifications only."""
     _, is_owner = await _check_task_access(db, task_id, user)
 
-    # Get executions (exclude internal_error and other sensitive fields)
-    executions_query = """
+    where = "WHERE task_id = $1"
+    if notifications_only:
+        where += " AND notification IS NOT NULL"
+
+    query = f"""
         SELECT id, task_id, status, started_at, completed_at,
                result, error_message, notification, grounding_sources,
                created_at
         FROM task_executions
-        WHERE task_id = $1
+        {where}
         ORDER BY started_at DESC
         LIMIT $2
     """
 
-    rows = await db.fetch_all(executions_query, task_id, limit)
+    rows = await db.fetch_all(query, task_id, limit)
 
     executions = [TaskExecution(**parse_execution_row(row)) for row in rows]
     if not is_owner:
         for ex in executions:
             ex.error_message = None
     return executions
+
+
+@router.get("/{task_id}/executions", response_model=list[TaskExecution])
+async def get_task_executions(
+    task_id: UUID, user: OptionalUser, limit: int = 100, db: Database = Depends(get_db)
+):
+    return await _fetch_task_executions(db, task_id, user, limit)
 
 
 @router.get("/{task_id}/notifications", response_model=list[TaskExecution])
@@ -848,23 +830,4 @@ async def get_task_notifications(
     Get task executions where the condition was met (notifications).
     This filters executions to only show when the monitoring condition triggered.
     """
-    _, is_owner = await _check_task_access(db, task_id, user)
-
-    # Get executions where notification was sent (exclude internal_error and other sensitive fields)
-    notifications_query = """
-        SELECT id, task_id, status, started_at, completed_at,
-               result, error_message, notification, grounding_sources,
-               created_at
-        FROM task_executions
-        WHERE task_id = $1 AND notification IS NOT NULL
-        ORDER BY started_at DESC
-        LIMIT $2
-    """
-
-    rows = await db.fetch_all(notifications_query, task_id, limit)
-
-    executions = [TaskExecution(**parse_execution_row(row)) for row in rows]
-    if not is_owner:
-        for ex in executions:
-            ex.error_message = None
-    return executions
+    return await _fetch_task_executions(db, task_id, user, limit, notifications_only=True)

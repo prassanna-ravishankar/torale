@@ -11,7 +11,10 @@ class ActivityStep(BaseModel):
 
 
 class MonitoringResponse(BaseModel):
-    """Response from monitoring check - matches torale-agent schema."""
+    """Response from monitoring check.
+
+    SYNC: Keep in sync with torale-agent/models.py:MonitoringResponse
+    """
 
     evidence: str = Field(description="Internal reasoning and audit trail (not user-facing)")
     sources: list[str] = Field(description="URLs backing the evidence")

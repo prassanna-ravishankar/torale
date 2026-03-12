@@ -7,7 +7,7 @@ from pypika_tortoise.functions import Now
 from torale.core.database import Database
 from torale.repositories.base import BaseRepository
 from torale.repositories.tables import tables
-from torale.tasks.tasks import TaskState
+from torale.tasks.tasks import TaskData, TaskState, TaskStatus
 
 
 class TaskRepository(BaseRepository):
@@ -18,53 +18,38 @@ class TaskRepository(BaseRepository):
         self.tasks = tables.tasks
         self.executions = tables.task_executions
 
-    async def create_task(
-        self,
-        user_id: UUID,
-        name: str,
-        state: str,
-        search_query: str | None,
-        condition_description: str | None,
-        notify_behavior: str,
-        notifications: list[dict],
-        notification_channels: list[str],
-        notification_email: str | None,
-        webhook_url: str | None,
-        webhook_secret: str | None,
-    ) -> dict:
+    def _task_with_execution_query(self) -> PostgreSQLQuery:
+        """Base query selecting task columns + last execution columns."""
+        return (
+            PostgreSQLQuery.from_(self.tasks)
+            .select(
+                self.tasks.star,
+                self.executions.id.as_("exec_id"),
+                self.executions.notification.as_("exec_notification"),
+                self.executions.started_at.as_("exec_started_at"),
+                self.executions.completed_at.as_("exec_completed_at"),
+                self.executions.status.as_("exec_status"),
+                self.executions.result.as_("exec_result"),
+                self.executions.grounding_sources.as_("exec_grounding_sources"),
+            )
+            .left_join(self.executions)
+            .on(self.tasks.last_execution_id == self.executions.id)
+        )
+
+    async def create_task(self, data: TaskData) -> dict:
         """Create a new task.
 
         Args:
-            user_id: User UUID
-            name: Task name
-            state: Task state (active/paused/completed)
-            search_query: Search query for grounded search
-            condition_description: Condition description
-            notify_behavior: Notification behavior (once/always)
-            notifications: List of notification configs
-            notification_channels: List of channel types (email/webhook)
-            notification_email: Email address for notifications
-            webhook_url: Webhook URL
-            webhook_secret: Webhook secret
+            data: Task fields to insert
 
         Returns:
             Created task record dict
         """
-        data = {
-            "user_id": user_id,
-            "name": name,
-            "state": state,
-            "search_query": search_query,
-            "condition_description": condition_description,
-            "notify_behavior": notify_behavior,
-            "notifications": json.dumps(notifications),
-            "notification_channels": notification_channels,
-            "notification_email": notification_email,
-            "webhook_url": webhook_url,
-            "webhook_secret": webhook_secret,
-        }
+        insert_data = dict(data)
+        if "notifications" in insert_data:
+            insert_data["notifications"] = json.dumps(insert_data["notifications"])
 
-        sql, params = self._build_insert_query(self.tasks, data)
+        sql, params = self._build_insert_query(self.tasks, insert_data)
         return await self.db.fetch_one(sql, *params)
 
     async def find_by_user(self, user_id: UUID, state: TaskState | None = None) -> list[dict]:
@@ -77,21 +62,7 @@ class TaskRepository(BaseRepository):
         Returns:
             List of task records with embedded execution data
         """
-        # Build query with LEFT JOIN for latest execution
-        query = PostgreSQLQuery.from_(self.tasks).select(
-            self.tasks.star,
-            self.executions.id.as_("exec_id"),
-            self.executions.notification.as_("exec_notification"),
-            self.executions.started_at.as_("exec_started_at"),
-            self.executions.completed_at.as_("exec_completed_at"),
-            self.executions.status.as_("exec_status"),
-            self.executions.result.as_("exec_result"),
-            self.executions.grounding_sources.as_("exec_grounding_sources"),
-        )
-
-        query = query.left_join(self.executions).on(
-            self.tasks.last_execution_id == self.executions.id
-        )
+        query = self._task_with_execution_query()
         query = query.where(self.tasks.user_id == Parameter("$1"))
 
         if state:
@@ -112,83 +83,29 @@ class TaskRepository(BaseRepository):
         Returns:
             Task record with execution data or None
         """
-        query = PostgreSQLQuery.from_(self.tasks).select(
-            self.tasks.star,
-            self.executions.id.as_("exec_id"),
-            self.executions.notification.as_("exec_notification"),
-            self.executions.started_at.as_("exec_started_at"),
-            self.executions.completed_at.as_("exec_completed_at"),
-            self.executions.status.as_("exec_status"),
-            self.executions.result.as_("exec_result"),
-            self.executions.grounding_sources.as_("exec_grounding_sources"),
-        )
-
-        query = query.left_join(self.executions).on(
-            self.tasks.last_execution_id == self.executions.id
-        )
+        query = self._task_with_execution_query()
         query = query.where(self.tasks.id == Parameter("$1"))
 
         return await self.db.fetch_one(str(query), task_id)
 
-    async def update_task(
-        self,
-        task_id: UUID,
-        name: str | None = None,
-        state: str | None = None,
-        search_query: str | None = None,
-        condition_description: str | None = None,
-        notify_behavior: str | None = None,
-        notification_channels: list[str] | None = None,
-        notification_email: str | None = None,
-        webhook_url: str | None = None,
-        webhook_secret: str | None = None,
-        notifications: list[dict] | None = None,
-    ) -> dict:
+    async def update_task(self, task_id: UUID, data: TaskData) -> dict:
         """Update task fields.
 
         Args:
             task_id: Task UUID
-            name: New task name
-            state: New state
-            search_query: New search query
-            condition_description: New condition
-            notify_behavior: New notify behavior
-            notification_channels: New channels
-            notification_email: New email
-            webhook_url: New webhook URL
-            webhook_secret: New webhook secret (None means keep existing)
-            notifications: New notifications list
+            data: Task fields to update (only provided keys are changed)
 
         Returns:
             Updated task record
         """
-        data = {}
-
-        if name is not None:
-            data["name"] = name
-        if state is not None:
-            data["state"] = state
-        if search_query is not None:
-            data["search_query"] = search_query
-        if condition_description is not None:
-            data["condition_description"] = condition_description
-        if notify_behavior is not None:
-            data["notify_behavior"] = notify_behavior
-        if notification_channels is not None:
-            data["notification_channels"] = notification_channels
-        if notification_email is not None:
-            data["notification_email"] = notification_email
-        if webhook_url is not None:
-            data["webhook_url"] = webhook_url
-        if webhook_secret is not None:
-            data["webhook_secret"] = webhook_secret
-        if notifications is not None:
-            data["notifications"] = json.dumps(notifications)
-
         if not data:
             return await self.find_by_id(self.tasks, task_id)
 
-        sql, params = self._build_update_query(self.tasks, task_id, data)
+        update_data = dict(data)
+        if "notifications" in update_data:
+            update_data["notifications"] = json.dumps(update_data["notifications"])
+
+        sql, params = self._build_update_query(self.tasks, task_id, update_data)
         return await self.db.fetch_one(sql, *params)
 
     async def update_last_execution(
@@ -470,7 +387,7 @@ class TaskExecutionRepository(BaseRepository):
         query = query.orderby(self.executions.completed_at, order=Order.desc)
         query = query.limit(1)
 
-        return await self.db.fetch_one(str(query), task_id, "success")
+        return await self.db.fetch_one(str(query), task_id, TaskStatus.SUCCESS.value)
 
     async def count_by_task(self, task_id: UUID, status: str | None = None) -> int:
         """Count executions for a task.
