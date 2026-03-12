@@ -14,11 +14,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { getTaskShareUrl } from '@/lib/utils';
-import type { Task, NotifyBehavior } from '@/types';
+import type { Task } from '@/types';
 import {
   Loader2,
   Search,
-  Bell,
   AlertCircle,
   Globe,
   Lock,
@@ -49,7 +48,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   // Form data
   const [name, setName] = useState('');
   const [instructions, setInstructions] = useState('');
-  const [notifyBehavior, setNotifyBehavior] = useState<NotifyBehavior>('once');
 
   // UI state
   const [isUpdating, setIsUpdating] = useState(false);
@@ -65,7 +63,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
     if (task && open) {
       setName(task.name);
       setInstructions(task.search_query || '');
-      setNotifyBehavior(task.notify_behavior as NotifyBehavior);
       setIsPublic(task.is_public);
     }
   }, [task, open]);
@@ -148,7 +145,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
         name,
         search_query: instructions,
         condition_description: instructions,
-        notify_behavior: notifyBehavior,
       });
 
       toast.success('Task updated successfully');
@@ -216,41 +212,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
               <FieldError message={validationErrors.instructions} />
             </div>
 
-            {/* Notification Mode - inline toggle */}
-            <div className="flex items-center gap-3 p-3 bg-zinc-50 border-2 border-zinc-100">
-              <Bell className="h-4 w-4 text-zinc-500 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <Label className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider block mb-1">
-                  Notification Mode
-                </Label>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setNotifyBehavior("once")}
-                    className={cn(
-                      "text-xs px-3 py-1.5 border-2 font-mono transition-colors",
-                      notifyBehavior === "once"
-                        ? "border-zinc-900 bg-zinc-900 text-white"
-                        : "border-zinc-200 text-zinc-600 hover:border-zinc-400"
-                    )}
-                  >
-                    Notify once then stop
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNotifyBehavior("always")}
-                    className={cn(
-                      "text-xs px-3 py-1.5 border-2 font-mono transition-colors",
-                      notifyBehavior === "always"
-                        ? "border-zinc-900 bg-zinc-900 text-white"
-                        : "border-zinc-200 text-zinc-600 hover:border-zinc-400"
-                    )}
-                  >
-                    Keep monitoring
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Sharing Section */}

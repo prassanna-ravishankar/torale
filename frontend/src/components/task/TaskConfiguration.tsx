@@ -12,11 +12,6 @@ interface TaskConfigurationProps {
   onToggle: () => void;
 }
 
-const NOTIFY_BEHAVIOR_LABELS = {
-  'once': 'Once only',
-  'always': 'Every time',
-} as const;
-
 // Shared status rendering logic
 const renderTaskStatus = (task: Task, onToggle: () => void) => {
   if (task.state === 'completed') {
@@ -98,9 +93,6 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
         <div className="flex-1 min-w-0">
           <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">Channels</div>
           <div className="text-sm text-zinc-900 space-y-1">
-            <div className="text-xs font-mono text-zinc-500 mb-1">
-              Notify: {NOTIFY_BEHAVIOR_LABELS[task.notify_behavior].toLowerCase()}
-            </div>
             {task.notification_channels && task.notification_channels.length > 0 ? (
               <>
                 {task.notification_channels.includes('email') && (
@@ -154,9 +146,6 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
               notificationEmail={task.notification_email}
               webhookUrl={task.webhook_url}
             />
-            <p className="text-xs font-mono text-zinc-500">
-              Notify: {NOTIFY_BEHAVIOR_LABELS[task.notify_behavior].toLowerCase()}
-            </p>
             <div className="space-y-1 text-xs font-mono text-zinc-600">
               {task.notification_channels.includes('email') && (
                 <div className="flex items-start gap-1.5">

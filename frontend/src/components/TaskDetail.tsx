@@ -18,7 +18,6 @@ import { formatTimeUntil, formatShortDateTime } from '@/lib/utils';
 import {
   ArrowLeft,
   Clock,
-  Bell,
   Play,
   Loader2,
   Trash2,
@@ -299,13 +298,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                 <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 <p className="text-sm text-muted-foreground">
                   Automated checks — frequency determined by AI
-                </p>
-              </div>
-              <div className="flex items-start gap-2">
-                <Bell className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <p className="text-sm text-muted-foreground">
-                  {task.notify_behavior === 'once' && 'Email when condition is met, then monitoring stops'}
-                  {task.notify_behavior === 'always' && 'Email every time condition is met'}
                 </p>
               </div>
             </div>
