@@ -2,24 +2,14 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from '@/lib/motion-compat';
 import type { Task } from '@/types';
 import { getResultDisplayText } from '@/types';
-import { StatusBadge } from '@/components/torale';
+import { StatusBadge, DeleteMonitorDialog } from '@/components/torale';
 import { getTaskStatus } from '@/lib/taskStatus';
-import { formatTimeAgo, formatTimeUntil } from '@/lib/utils';
+import { formatTimeAgo, formatTimeUntil, formatShortDateTime } from '@/lib/utils';
 import { TaskActions } from './TaskActions';
 import {
   ChevronRight,
   Clock,
 } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 interface TaskListRowProps {
   task: Task;
@@ -121,12 +111,7 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
         <td className="hidden md:table-cell p-4">
           {lastExecution ? (
             <span className="text-sm text-zinc-600">
-              {new Date(lastExecution.started_at).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-              })}
+              {formatShortDateTime(lastExecution.started_at)}
             </span>
           ) : (
             <span className="text-sm text-zinc-400">Never</span>
@@ -228,23 +213,12 @@ export const TaskListRow: React.FC<TaskListRowProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="border-2 border-zinc-900 shadow-brutalist-lg">
-          <AlertDialogHeader className="border-b-2 border-zinc-100 pb-4">
-            <AlertDialogTitle className="font-grotesk">Delete Monitor</AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-500">
-              Are you sure you want to delete "{task.name}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-3">
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="shadow-brutalist">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteMonitorDialog
+        taskName={task.name}
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onConfirm={handleDelete}
+      />
     </>
   );
 };

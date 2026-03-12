@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { formatShortDateTime, getErrorMessage } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { Loader2, Clock, Zap, AlertTriangle, FileText, Play, Pause, RotateCcw } from 'lucide-react'
 import { SectionLabel, StatusBadge } from '@/components/torale'
@@ -41,12 +42,7 @@ function formatTimestamp(iso: string | null): string {
 
 function formatShortTimestamp(iso: string | null): string {
   if (!iso) return '-'
-  return new Date(iso).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
+  return formatShortDateTime(iso)
 }
 
 export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
@@ -67,7 +63,7 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
       toast.success('Execution started')
       setRetryCount((c) => c + 1)
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Unknown error'
+      const errorMsg = getErrorMessage(err, 'Unknown error')
       console.error(`[TaskDetailPanel] Execute failed for task ${task.id}:`, err)
       toast.error(
         `Failed to start execution: ${errorMsg}. Check task status and try again.`,
@@ -93,7 +89,7 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
       }
       setRetryCount((c) => c + 1)
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update task state'
+      const errorMessage = getErrorMessage(err, 'Failed to update task state')
 
       // Provide specific guidance based on error type
       if (errorMessage.includes('Invalid state transition')) {
@@ -130,7 +126,7 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
       onTaskUpdate?.()
       setRetryCount((c) => c + 1)
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Unknown error'
+      const errorMsg = getErrorMessage(err, 'Unknown error')
       console.error(`[TaskDetailPanel] Reset & run failed for task ${task.id}:`, err)
 
       if (resetSucceeded) {
@@ -160,7 +156,7 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load executions')
+          setError(getErrorMessage(err, 'Failed to load executions'))
         }
       } finally {
         if (!cancelled) setLoading(false)

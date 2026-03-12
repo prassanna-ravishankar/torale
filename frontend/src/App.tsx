@@ -227,7 +227,7 @@ export default function App() {
         />
         <Route
           path="/"
-          element={<HomeRoute onTaskClick={handleTaskClick} />}
+          element={<HomeRoute />}
         />
         <Route
           path="/welcome"
@@ -304,7 +304,7 @@ function TaskDetailRoute({ onBack, onDeleted }: { onBack: () => void; onDeleted:
   )
 }
 
-function HomeRoute({ onTaskClick: _onTaskClick }: { onTaskClick: (taskId: string) => void }) {
+function HomeRoute() {
   // Always show Landing page at / (even if authenticated)
   return <Landing />
 }

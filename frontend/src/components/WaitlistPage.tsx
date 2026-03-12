@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getErrorMessage } from "@/lib/utils";
 import { motion } from "@/lib/motion-compat";
 import { Mail, CheckCircle2, AlertCircle, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -39,7 +40,7 @@ export function WaitlistPage() {
       setPosition(data.position);
       setIsSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(getErrorMessage(err, "Something went wrong"));
     } finally {
       setIsSubmitting(false);
     }

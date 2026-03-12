@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { getErrorMessage } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { AlertTriangle, Loader2, CheckCircle2, Search, User, Clock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
@@ -31,7 +32,7 @@ export function ErrorsList() {
       setErrors(data.errors)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load errors')
+      setError(getErrorMessage(err, 'Failed to load errors'))
     } finally {
       setLoading(false)
     }

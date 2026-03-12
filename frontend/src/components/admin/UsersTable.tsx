@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { getErrorMessage } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
@@ -60,7 +61,7 @@ export function UsersTable() {
       setData(usersData)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load users')
+      setError(getErrorMessage(err, 'Failed to load users'))
     } finally {
       setLoading(false)
     }
@@ -76,7 +77,7 @@ export function UsersTable() {
       toast.success(`User ${email} has been deactivated`)
       loadUsers()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to deactivate user')
+      toast.error(getErrorMessage(err, 'Failed to deactivate user'))
     }
   }
 
@@ -102,7 +103,7 @@ export function UsersTable() {
       setEditingUser(null)
       loadUsers()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update role')
+      toast.error(getErrorMessage(err, 'Failed to update role'))
     } finally {
       setIsUpdating(false)
     }
@@ -163,7 +164,7 @@ export function UsersTable() {
       loadUsers()
     } catch (err) {
       setIsBulkUpdating(false)
-      toast.error(err instanceof Error ? err.message : 'Failed to update roles')
+      toast.error(getErrorMessage(err, 'Failed to update roles'))
     }
   }
 

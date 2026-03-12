@@ -14,11 +14,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { getTaskShareUrl } from '@/lib/utils';
-import type { Task, NotifyBehavior } from '@/types';
+import type { Task } from '@/types';
 import {
   Loader2,
   Search,
-  Bell,
   AlertCircle,
   Globe,
   Lock,
@@ -27,8 +26,8 @@ import {
   Users
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { cn } from '@/lib/utils';
-import { BrutalistSwitch } from "@/components/torale";
+import { cn, getErrorMessage } from '@/lib/utils';
+import { BrutalistSwitch, FieldError } from "@/components/torale";
 
 interface TaskEditDialogProps {
   open: boolean;
@@ -38,8 +37,7 @@ interface TaskEditDialogProps {
 }
 
 const MIN_NAME_LENGTH = 3;
-const MIN_SEARCH_QUERY_LENGTH = 10;
-const MIN_CONDITION_DESCRIPTION_LENGTH = 10;
+const MIN_INSTRUCTIONS_LENGTH = 10;
 
 export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   open,
@@ -49,9 +47,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
 }) => {
   // Form data
   const [name, setName] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [conditionDescription, setConditionDescription] = useState('');
-  const [notifyBehavior, setNotifyBehavior] = useState<NotifyBehavior>('once');
+  const [instructions, setInstructions] = useState('');
 
   // UI state
   const [isUpdating, setIsUpdating] = useState(false);
@@ -66,9 +62,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   useEffect(() => {
     if (task && open) {
       setName(task.name);
-      setSearchQuery(task.search_query || '');
-      setConditionDescription(task.condition_description || '');
-      setNotifyBehavior(task.notify_behavior as NotifyBehavior);
+      setInstructions(task.search_query || '');
       setIsPublic(task.is_public);
     }
   }, [task, open]);
@@ -124,16 +118,10 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       errors.name = `Task name must be at least ${MIN_NAME_LENGTH} characters`;
     }
 
-    if (!searchQuery.trim()) {
-      errors.searchQuery = "Search query is required";
-    } else if (searchQuery.length < MIN_SEARCH_QUERY_LENGTH) {
-      errors.searchQuery = "Please provide a more specific search query";
-    }
-
-    if (!conditionDescription.trim()) {
-      errors.conditionDescription = "Trigger condition is required";
-    } else if (conditionDescription.length < MIN_CONDITION_DESCRIPTION_LENGTH) {
-      errors.conditionDescription = "Please provide a more specific condition";
+    if (!instructions.trim()) {
+      errors.instructions = "Please describe what to monitor";
+    } else if (instructions.length < MIN_INSTRUCTIONS_LENGTH) {
+      errors.instructions = "Please provide more detail";
     }
 
     setValidationErrors(errors);
@@ -155,9 +143,8 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
     try {
       const updatedTask = await api.updateTask(task.id, {
         name,
-        search_query: searchQuery,
-        condition_description: conditionDescription,
-        notify_behavior: notifyBehavior,
+        search_query: instructions,
+        condition_description: instructions,
       });
 
       toast.success('Task updated successfully');
@@ -165,7 +152,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       onOpenChange(false);
     } catch (err) {
       console.error('Failed to update task:', err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to update task";
+      const errorMessage = getErrorMessage(err, "Failed to update task");
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -202,99 +189,29 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
                 disabled={isUpdating}
                 className={cn(validationErrors.name && "border-destructive")}
               />
-              {validationErrors.name && (
-                <p className="text-xs text-destructive flex items-center gap-1.5">
-                  <AlertCircle className="h-3 w-3" />
-                  {validationErrors.name}
-                </p>
-              )}
+              <FieldError message={validationErrors.name} />
             </div>
 
-            {/* Search Query */}
+            {/* What to Monitor */}
             <div className="space-y-2">
-              <Label htmlFor="searchQuery" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
+              <Label htmlFor="instructions" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
                 <Search className="h-3 w-3" />
                 What to Monitor
               </Label>
               <Textarea
-                id="searchQuery"
-                value={searchQuery}
+                id="instructions"
+                value={instructions}
                 onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  if (validationErrors.searchQuery) setValidationErrors(prev => ({ ...prev, searchQuery: "" }));
+                  setInstructions(e.target.value);
+                  if (validationErrors.instructions) setValidationErrors(prev => ({ ...prev, instructions: "" }));
                 }}
                 disabled={isUpdating}
-                rows={3}
-                className={cn("resize-none", validationErrors.searchQuery && "border-destructive")}
+                rows={6}
+                className={cn("resize-none", validationErrors.instructions && "border-destructive")}
               />
-              {validationErrors.searchQuery && (
-                <p className="text-xs text-destructive flex items-center gap-1.5">
-                  <AlertCircle className="h-3 w-3" />
-                  {validationErrors.searchQuery}
-                </p>
-              )}
+              <FieldError message={validationErrors.instructions} />
             </div>
 
-            {/* Condition Description */}
-            <div className="space-y-2">
-              <Label htmlFor="condition" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
-                <Bell className="h-3 w-3" />
-                When to Notify
-              </Label>
-              <Textarea
-                id="condition"
-                value={conditionDescription}
-                onChange={(e) => {
-                  setConditionDescription(e.target.value);
-                  if (validationErrors.conditionDescription) setValidationErrors(prev => ({ ...prev, conditionDescription: "" }));
-                }}
-                disabled={isUpdating}
-                rows={3}
-                className={cn("resize-none", validationErrors.conditionDescription && "border-destructive")}
-              />
-              {validationErrors.conditionDescription && (
-                <p className="text-xs text-destructive flex items-center gap-1.5">
-                  <AlertCircle className="h-3 w-3" />
-                  {validationErrors.conditionDescription}
-                </p>
-              )}
-            </div>
-
-            {/* Notification Mode - inline toggle */}
-            <div className="flex items-center gap-3 p-3 bg-zinc-50 border-2 border-zinc-100">
-              <Bell className="h-4 w-4 text-zinc-500 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <Label className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider block mb-1">
-                  Notification Mode
-                </Label>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setNotifyBehavior("once")}
-                    className={cn(
-                      "text-xs px-3 py-1.5 border-2 font-mono transition-colors",
-                      notifyBehavior === "once"
-                        ? "border-zinc-900 bg-zinc-900 text-white"
-                        : "border-zinc-200 text-zinc-600 hover:border-zinc-400"
-                    )}
-                  >
-                    Notify once then stop
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNotifyBehavior("always")}
-                    className={cn(
-                      "text-xs px-3 py-1.5 border-2 font-mono transition-colors",
-                      notifyBehavior === "always"
-                        ? "border-zinc-900 bg-zinc-900 text-white"
-                        : "border-zinc-200 text-zinc-600 hover:border-zinc-400"
-                    )}
-                  >
-                    Keep monitoring
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Sharing Section */}

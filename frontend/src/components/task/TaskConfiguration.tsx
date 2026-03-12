@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Search, Mail, Webhook, CheckCircle, Clock } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,15 +9,8 @@ import type { Task } from '@/types';
 
 interface TaskConfigurationProps {
   task: Task;
-  configExpanded: boolean;
-  onConfigExpandedChange: (expanded: boolean) => void;
   onToggle: () => void;
 }
-
-const NOTIFY_BEHAVIOR_LABELS = {
-  'once': 'Once only',
-  'always': 'Every time',
-} as const;
 
 // Shared status rendering logic
 const renderTaskStatus = (task: Task, onToggle: () => void) => {
@@ -60,10 +53,9 @@ const renderTaskStatus = (task: Task, onToggle: () => void) => {
 
 export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
   task,
-  configExpanded,
-  onConfigExpandedChange,
   onToggle,
 }) => {
+  const [configExpanded, setConfigExpanded] = useState(false);
   const statusControls = renderTaskStatus(task, onToggle);
   // Compact list for mobile/tablet
   const configList = (
@@ -72,8 +64,8 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
       <div className="flex items-start gap-3">
         <Search className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">Trigger</div>
-          <p className="text-sm text-zinc-900 leading-relaxed">{task.condition_description}</p>
+          <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">Monitoring</div>
+          <p className="text-sm text-zinc-900 leading-relaxed">{task.search_query}</p>
         </div>
       </div>
 
@@ -101,9 +93,6 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
         <div className="flex-1 min-w-0">
           <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">Channels</div>
           <div className="text-sm text-zinc-900 space-y-1">
-            <div className="text-xs font-mono text-zinc-500 mb-1">
-              Notify: {NOTIFY_BEHAVIOR_LABELS[task.notify_behavior].toLowerCase()}
-            </div>
             {task.notification_channels && task.notification_channels.length > 0 ? (
               <>
                 {task.notification_channels.includes('email') && (
@@ -129,8 +118,8 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
   // Card grid for desktop
   const configCards = (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <InfoCard icon={Search} label="Trigger Condition">
-        <p className="text-sm text-zinc-700 leading-relaxed">{task.condition_description}</p>
+      <InfoCard icon={Search} label="Monitoring">
+        <p className="text-sm text-zinc-700 leading-relaxed">{task.search_query}</p>
       </InfoCard>
 
       <InfoCard icon={Clock} label="Scheduling">
@@ -157,9 +146,6 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
               notificationEmail={task.notification_email}
               webhookUrl={task.webhook_url}
             />
-            <p className="text-xs font-mono text-zinc-500">
-              Notify: {NOTIFY_BEHAVIOR_LABELS[task.notify_behavior].toLowerCase()}
-            </p>
             <div className="space-y-1 text-xs font-mono text-zinc-600">
               {task.notification_channels.includes('email') && (
                 <div className="flex items-start gap-1.5">
@@ -193,7 +179,7 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
         <CollapsibleSection
           title="Task Configuration"
           open={configExpanded}
-          onOpenChange={onConfigExpandedChange}
+          onOpenChange={setConfigExpanded}
           variant="mobile"
         >
           {configList}

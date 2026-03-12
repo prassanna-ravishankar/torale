@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { getErrorMessage } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { Users, ListChecks, Activity, TrendingUp, Loader2, Search, Zap } from 'lucide-react'
 import { SectionLabel, BrutalistCard } from '@/components/torale'
@@ -42,7 +43,7 @@ export function OverviewStats() {
       setStats(data)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load stats')
+      setError(getErrorMessage(err, 'Failed to load stats'))
     } finally {
       setLoading(false)
     }

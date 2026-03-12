@@ -6,6 +6,7 @@ import { Helmet } from 'react-helmet-async'
 import type { Task, TaskExecution } from '@/types'
 import { getResultDisplayText } from '@/types'
 import api from '@/lib/api'
+import { markdownCompact } from '@/lib/markdown'
 import { toast } from 'sonner'
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,11 +14,10 @@ import { StatusBadge } from "@/components/torale";
 import { ExecutionTimeline } from "@/components/ExecutionTimeline";
 import { TaskConfiguration } from "@/components/task/TaskConfiguration";
 import { getTaskStatus } from '@/lib/taskStatus';
-import { formatTimeUntil } from '@/lib/utils';
+import { formatTimeUntil, formatShortDateTime } from '@/lib/utils';
 import {
   ArrowLeft,
   Clock,
-  Bell,
   Play,
   Loader2,
   Trash2,
@@ -29,17 +29,7 @@ import {
   Users,
   Rss,
 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { DeleteMonitorDialog } from "@/components/torale";
 
 interface TaskDetailProps {
   taskId: string;
@@ -65,8 +55,8 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isExecuting, setIsExecuting] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "executions");
-  const [configExpanded, setConfigExpanded] = useState(false);
   const [isForking, setIsForking] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const loadData = useCallback(async (skipLoadingState = false) => {
     if (!skipLoadingState) {
@@ -310,13 +300,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                   Automated checks — frequency determined by AI
                 </p>
               </div>
-              <div className="flex items-start gap-2">
-                <Bell className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <p className="text-sm text-muted-foreground">
-                  {task.notify_behavior === 'once' && 'Email when condition is met, then monitoring stops'}
-                  {task.notify_behavior === 'always' && 'Email every time condition is met'}
-                </p>
-              </div>
             </div>
           </div>
         </div>
@@ -368,12 +351,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               </span>
             </div>
             <span className="text-xs font-mono text-zinc-400">
-              {new Date(firstExecution.started_at).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-              })}
+              {formatShortDateTime(firstExecution.started_at)}
             </span>
           </div>
           {(() => {
@@ -382,13 +360,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               <div className="text-sm text-zinc-700 leading-relaxed line-clamp-3 prose prose-sm max-w-none">
                 <ReactMarkdown
                   rehypePlugins={[rehypeSanitize]}
-                  components={{
-                    p: ({ children }) => <p className="mb-0 leading-relaxed text-zinc-700">{children}</p>,
-                    ul: ({ children }) => <ul className="list-disc pl-5 mb-0 space-y-0">{children}</ul>,
-                    ol: ({ children }) => <ol className="list-decimal pl-5 mb-0 space-y-0">{children}</ol>,
-                    li: ({ children }) => <li className="text-sm leading-relaxed text-zinc-700">{children}</li>,
-                    strong: ({ children }) => <strong className="font-bold text-zinc-900">{children}</strong>,
-                  }}
+                  components={markdownCompact}
                 >
                   {displayText}
                 </ReactMarkdown>
@@ -456,27 +428,17 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               Run Now
             </Button>
 
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="border-2 border-zinc-900 shadow-brutalist-lg">
-                <AlertDialogHeader className="border-b-2 border-zinc-100 pb-4">
-                  <AlertDialogTitle className="font-grotesk">Delete Monitor</AlertDialogTitle>
-                  <AlertDialogDescription className="text-zinc-500">
-                    Are you sure you want to delete "{task.name}"? This action cannot be
-                    undone. All execution history will be permanently deleted.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter className="gap-3">
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="shadow-brutalist">Delete</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+            <DeleteMonitorDialog
+              taskName={task.name}
+              open={showDeleteDialog}
+              onOpenChange={setShowDeleteDialog}
+              onConfirm={handleDelete}
+              extraDescription="All execution history will be permanently deleted."
+            />
           </>
         )}
       </div>
@@ -484,8 +446,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       {/* Task Configuration - Collapsible on Mobile, Always Visible on Desktop */}
       <TaskConfiguration
         task={task}
-        configExpanded={configExpanded}
-        onConfigExpandedChange={setConfigExpanded}
         onToggle={handleToggle}
       />
 

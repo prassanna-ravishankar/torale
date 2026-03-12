@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CollapsibleSection } from "@/components/torale";
+import { CollapsibleSection, FieldError } from "@/components/torale";
 import type { TaskTemplate, Task } from "@/types";
 import api from "@/lib/api";
 import {
@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from 'sonner';
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 
 interface TaskCreationDialogProps {
   open: boolean;
@@ -153,7 +153,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
       onTaskCreated(newTask);
       onOpenChange(false);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to create task";
+      const errorMessage = getErrorMessage(err, "Failed to create task");
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -199,12 +199,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                   disabled={isSubmitting}
                   rows={6}
                 />
-                {validationErrors.instructions && (
-                  <p className="text-xs text-destructive flex items-center gap-1.5">
-                    <AlertCircle className="h-3 w-3" />
-                    {validationErrors.instructions}
-                  </p>
-                )}
+                <FieldError message={validationErrors.instructions} />
               </div>
             </div>
 

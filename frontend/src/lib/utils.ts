@@ -83,9 +83,26 @@ export function formatTimeUntil(dateString: string): string {
 }
 
 /**
+ * Format a date string as a short absolute date/time (e.g., "Jan 5, 3:42 PM")
+ */
+export function formatShortDateTime(dateString: string): string {
+  return new Date(dateString).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+/**
+ * Extract a human-readable error message from an unknown caught error.
+ */
+export function getErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback;
+}
+
+/**
  * Format timestamp as relative time (e.g., "2h ago", "Just now")
- * @param dateString - ISO 8601 timestamp string
- * @returns Formatted relative time string
  */
 export function formatTimeAgo(dateString: string): string {
   const date = new Date(dateString);
@@ -106,8 +123,4 @@ export function formatTimeAgo(dateString: string): string {
   if (diffMins < MINS_IN_DAY) return `${Math.floor(diffMins / MINS_IN_HOUR)}h ago`;
   if (diffMins < MINS_IN_WEEK) return `${Math.floor(diffMins / MINS_IN_DAY)}d ago`;
   return date.toLocaleDateString();
-}
-
-export function getErrorMessage(err: unknown, fallback: string): string {
-  return err instanceof Error ? err.message : fallback;
 }

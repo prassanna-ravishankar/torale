@@ -1,4 +1,5 @@
 import { Search, User } from 'lucide-react'
+import { formatShortDateTime } from '@/lib/utils'
 import { StatusBadge } from '@/components/torale'
 import { stateToVariant } from '../types'
 import type { TaskData } from '../types'
@@ -46,7 +47,7 @@ export function TaskCard({ task, isExpanded, onToggle }: TaskCardProps) {
             <span className="text-zinc-400">Next Run:</span>{' '}
             <span className="text-zinc-700">
               {task.next_run
-                ? new Date(task.next_run).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                ? formatShortDateTime(task.next_run)
                 : '-'}
             </span>
           </div>
