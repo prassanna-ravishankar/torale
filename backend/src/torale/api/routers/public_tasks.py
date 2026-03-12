@@ -123,7 +123,7 @@ async def get_public_task_by_id(
 rss_router = APIRouter(tags=["public"])
 
 
-@rss_router.get("/t/{task_id}/rss")
+@rss_router.get("/tasks/{task_id}/rss")
 @limiter.limit("10/minute")
 async def get_task_rss_feed(
     request: Request,
@@ -152,7 +152,7 @@ async def get_task_rss_feed(
     """
     executions = await db.fetch_all(executions_query, task_id)
 
-    task_link = f"{settings.frontend_url}/t/{task_id}"
+    task_link = f"{settings.frontend_url}/tasks/{task_id}"
     feed_url = str(request.url_for("get_task_rss_feed", task_id=task_id))
 
     # Build RSS 2.0 feed

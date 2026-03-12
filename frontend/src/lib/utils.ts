@@ -4,7 +4,7 @@ import type { TaskState } from "@/types"
 
 /** Build the public share URL for a task. */
 export function getTaskShareUrl(taskId: string): string {
-  return `${window.location.origin}/t/${taskId}`
+  return `${window.location.origin}/tasks/${taskId}`
 }
 
 export function cn(...inputs: ClassValue[]) {

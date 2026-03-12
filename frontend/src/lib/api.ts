@@ -31,7 +31,7 @@ class ApiClient {
 
   /** Build the RSS feed URL for a public task. */
   getTaskRssUrl(taskId: string): string {
-    return `${this.baseUrl}/t/${taskId}/rss`
+    return `${this.baseUrl}/tasks/${taskId}/rss`
   }
 
   // Set the token getter function (called from components with Clerk's getToken)

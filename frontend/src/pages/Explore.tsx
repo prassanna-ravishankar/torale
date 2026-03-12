@@ -155,7 +155,7 @@ export function Explore() {
                     >
                       <Copy className="h-3 w-3" />
                       <span className="truncate">
-                        /t/{task.id}
+                        /tasks/{task.id}
                       </span>
                     </button>
                     <a

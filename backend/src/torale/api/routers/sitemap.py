@@ -98,7 +98,7 @@ async def generate_sitemap(db: Database = Depends(get_db)):
 
     # Public task pages
     for task in tasks:
-        task_url = f"{base_url}/t/{task['id']}"
+        task_url = f"{base_url}/tasks/{task['id']}"
         lastmod = task["updated_at"].strftime("%Y-%m-%d")
 
         url_elem = ET.SubElement(urlset, "url")
@@ -210,7 +210,7 @@ async def robots_txt():
     robots = f"""User-agent: *
 Allow: /
 Allow: /explore
-Allow: /t/
+Allow: /tasks/
 
 Disallow: /api/
 Disallow: /auth/

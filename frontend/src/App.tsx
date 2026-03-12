@@ -226,10 +226,6 @@ export default function App() {
           }
         />
         <Route
-          path="/t/:id"
-          element={<PublicTaskRedirect />}
-        />
-        <Route
           path="/"
           element={<HomeRoute onTaskClick={handleTaskClick} />}
         />
@@ -306,12 +302,6 @@ function TaskDetailRoute({ onBack, onDeleted }: { onBack: () => void; onDeleted:
       currentUserId={user?.id}
     />
   )
-}
-
-function PublicTaskRedirect() {
-  const { id } = useParams()
-  if (!id) return <Navigate to="/explore" replace />
-  return <Navigate to={`/tasks/${id}`} replace />
 }
 
 function HomeRoute({ onTaskClick }: { onTaskClick: (taskId: string) => void }) {
