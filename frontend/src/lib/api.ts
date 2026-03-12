@@ -29,6 +29,19 @@ class ApiClient {
     return this.baseUrl
   }
 
+  private buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
+    const url = `${this.baseUrl}${path}`
+    if (!params) return url
+    const searchParams = new URLSearchParams()
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null) {
+        searchParams.set(key, String(value))
+      }
+    }
+    const qs = searchParams.toString()
+    return qs ? `${url}?${qs}` : url
+  }
+
   /** Build the RSS feed URL for a public task. */
   getTaskRssUrl(taskId: string): string {
     return `${this.baseUrl}/tasks/${taskId}/rss`
@@ -127,9 +140,9 @@ class ApiClient {
   }
 
   async executeTask(id: string, suppressNotifications: boolean = false): Promise<TaskExecution> {
-    const url = suppressNotifications
-      ? `${this.baseUrl}/api/v1/tasks/${id}/execute?suppress_notifications=true`
-      : `${this.baseUrl}/api/v1/tasks/${id}/execute`
+    const url = this.buildUrl(`/api/v1/tasks/${id}/execute`, {
+      suppress_notifications: suppressNotifications || undefined,
+    })
 
     const response = await fetch(url, {
       method: 'POST',
@@ -155,9 +168,7 @@ class ApiClient {
 
   // Template endpoints
   async getTemplates(category?: string): Promise<TaskTemplate[]> {
-    const url = category
-      ? `${this.baseUrl}/api/v1/templates/?category=${encodeURIComponent(category)}`
-      : `${this.baseUrl}/api/v1/templates/`
+    const url = this.buildUrl('/api/v1/templates/', { category })
     const response = await fetch(url)
     return this.handleResponse(response)
   }
@@ -176,11 +187,10 @@ class ApiClient {
   }
 
   async getAdminQueries<T = Record<string, unknown>>(params?: { limit?: number; active_only?: boolean }): Promise<T> {
-    const queryParams = new URLSearchParams()
-    if (params?.limit) queryParams.set('limit', params.limit.toString())
-    if (params?.active_only) queryParams.set('active_only', 'true')
-
-    const url = `${this.baseUrl}/admin/queries${queryParams.toString() ? `?${queryParams}` : ''}`
+    const url = this.buildUrl('/admin/queries', {
+      limit: params?.limit,
+      active_only: params?.active_only,
+    })
     const response = await fetch(url, {
       headers: await this.getAuthHeaders(),
     })
@@ -188,12 +198,11 @@ class ApiClient {
   }
 
   async getAdminExecutions<T = Record<string, unknown>>(params?: { limit?: number; status?: string; task_id?: string }): Promise<T> {
-    const queryParams = new URLSearchParams()
-    if (params?.limit) queryParams.set('limit', params.limit.toString())
-    if (params?.status) queryParams.set('status', params.status)
-    if (params?.task_id) queryParams.set('task_id', params.task_id)
-
-    const url = `${this.baseUrl}/admin/executions${queryParams.toString() ? `?${queryParams}` : ''}`
+    const url = this.buildUrl('/admin/executions', {
+      limit: params?.limit,
+      status: params?.status,
+      task_id: params?.task_id,
+    })
     const response = await fetch(url, {
       headers: await this.getAuthHeaders(),
     })
@@ -201,10 +210,7 @@ class ApiClient {
   }
 
   async getAdminErrors<T = Record<string, unknown>>(params?: { limit?: number }): Promise<T> {
-    const queryParams = new URLSearchParams()
-    if (params?.limit) queryParams.set('limit', params.limit.toString())
-
-    const url = `${this.baseUrl}/admin/errors${queryParams.toString() ? `?${queryParams}` : ''}`
+    const url = this.buildUrl('/admin/errors', { limit: params?.limit })
     const response = await fetch(url, {
       headers: await this.getAuthHeaders(),
     })
@@ -248,7 +254,9 @@ class ApiClient {
     taskId: string,
     suppressNotifications: boolean = false
   ): Promise<{ id: string; task_id: string; status: string; message: string }> {
-    const url = `${this.baseUrl}/admin/tasks/${taskId}/execute?suppress_notifications=${suppressNotifications}`
+    const url = this.buildUrl(`/admin/tasks/${taskId}/execute`, {
+      suppress_notifications: suppressNotifications,
+    })
     const response = await fetch(url, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
@@ -279,7 +287,7 @@ class ApiClient {
     taskId: string,
     days: number = 1
   ): Promise<{ status: string; task_id: string; executions_deleted: number; days: number }> {
-    const url = `${this.baseUrl}/admin/tasks/${taskId}/reset?days=${days}`
+    const url = this.buildUrl(`/admin/tasks/${taskId}/reset`, { days })
     const response = await fetch(url, {
       method: 'DELETE',
       headers: await this.getAuthHeaders(),
@@ -289,9 +297,7 @@ class ApiClient {
 
   // Waitlist endpoints
   async getWaitlist<T = Record<string, unknown>>(statusFilter?: string): Promise<T> {
-    const url = statusFilter
-      ? `${this.baseUrl}/admin/waitlist?status_filter=${statusFilter}`
-      : `${this.baseUrl}/admin/waitlist`
+    const url = this.buildUrl('/admin/waitlist', { status_filter: statusFilter })
     const response = await fetch(url, {
       headers: await this.getAuthHeaders(),
     })
@@ -390,12 +396,11 @@ class ApiClient {
     limit?: number
     offset?: number
   }): Promise<{ deliveries: WebhookDelivery[]; total: number }> {
-    const queryParams = new URLSearchParams()
-    if (params?.task_id) queryParams.set('task_id', params.task_id)
-    if (params?.limit) queryParams.set('limit', params.limit.toString())
-    if (params?.offset) queryParams.set('offset', params.offset.toString())
-
-    const url = `${this.baseUrl}/api/v1/webhooks/deliveries${queryParams.toString() ? `?${queryParams}` : ''}`
+    const url = this.buildUrl('/api/v1/webhooks/deliveries', {
+      task_id: params?.task_id,
+      limit: params?.limit,
+      offset: params?.offset,
+    })
     const response = await fetch(url, {
       headers: await this.getAuthHeaders(),
     })
@@ -409,13 +414,12 @@ class ApiClient {
     limit?: number
     offset?: number
   }): Promise<{ sends: NotificationSend[]; total: number }> {
-    const queryParams = new URLSearchParams()
-    if (params?.task_id) queryParams.set('task_id', params.task_id)
-    if (params?.notification_type) queryParams.set('notification_type', params.notification_type)
-    if (params?.limit) queryParams.set('limit', params.limit.toString())
-    if (params?.offset) queryParams.set('offset', params.offset.toString())
-
-    const url = `${this.baseUrl}/api/v1/notifications/sends${queryParams.toString() ? `?${queryParams}` : ''}`
+    const url = this.buildUrl('/api/v1/notifications/sends', {
+      task_id: params?.task_id,
+      notification_type: params?.notification_type,
+      limit: params?.limit,
+      offset: params?.offset,
+    })
     const response = await fetch(url, {
       headers: await this.getAuthHeaders(),
     })
@@ -484,12 +488,11 @@ class ApiClient {
     limit?: number
     sort_by?: 'recent' | 'popular'
   }): Promise<{ tasks: Task[]; total: number; offset: number; limit: number }> {
-    const queryParams = new URLSearchParams()
-    if (params?.offset !== undefined) queryParams.set('offset', params.offset.toString())
-    if (params?.limit) queryParams.set('limit', params.limit.toString())
-    if (params?.sort_by) queryParams.set('sort_by', params.sort_by)
-
-    const url = `${this.baseUrl}/api/v1/public/tasks${queryParams.toString() ? `?${queryParams}` : ''}`
+    const url = this.buildUrl('/api/v1/public/tasks', {
+      offset: params?.offset,
+      limit: params?.limit,
+      sort_by: params?.sort_by,
+    })
     const response = await fetch(url, {
       headers: await this.getAuthHeaders(),
     })

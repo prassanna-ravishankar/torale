@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn, getErrorMessage } from '@/lib/utils';
-import { BrutalistSwitch } from "@/components/torale";
+import { BrutalistSwitch, FieldError } from "@/components/torale";
 
 interface TaskEditDialogProps {
   open: boolean;
@@ -202,12 +202,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
                 disabled={isUpdating}
                 className={cn(validationErrors.name && "border-destructive")}
               />
-              {validationErrors.name && (
-                <p className="text-xs text-destructive flex items-center gap-1.5">
-                  <AlertCircle className="h-3 w-3" />
-                  {validationErrors.name}
-                </p>
-              )}
+              <FieldError message={validationErrors.name} />
             </div>
 
             {/* Search Query */}
@@ -227,12 +222,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
                 rows={3}
                 className={cn("resize-none", validationErrors.searchQuery && "border-destructive")}
               />
-              {validationErrors.searchQuery && (
-                <p className="text-xs text-destructive flex items-center gap-1.5">
-                  <AlertCircle className="h-3 w-3" />
-                  {validationErrors.searchQuery}
-                </p>
-              )}
+              <FieldError message={validationErrors.searchQuery} />
             </div>
 
             {/* Condition Description */}
@@ -252,12 +242,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
                 rows={3}
                 className={cn("resize-none", validationErrors.conditionDescription && "border-destructive")}
               />
-              {validationErrors.conditionDescription && (
-                <p className="text-xs text-destructive flex items-center gap-1.5">
-                  <AlertCircle className="h-3 w-3" />
-                  {validationErrors.conditionDescription}
-                </p>
-              )}
+              <FieldError message={validationErrors.conditionDescription} />
             </div>
 
             {/* Notification Mode - inline toggle */}

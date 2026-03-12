@@ -21,6 +21,8 @@ export { DeleteMonitorDialog } from './DeleteMonitorDialog';
 
 export { EmptyState } from './EmptyState';
 
+export { FieldError } from './FieldError';
+
 export {
   BrutalistTable,
   BrutalistTableHeader,

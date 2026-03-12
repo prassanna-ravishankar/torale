@@ -50,7 +50,7 @@ _TASK_WITH_EXECUTION_QUERY = """
 
 async def _check_task_access(db: Database, task_id: UUID, user) -> tuple[dict, bool]:
     """Verify task exists and user has access (owner or public). Returns (task row, is_owner)."""
-    row = await db.fetch_one("SELECT * FROM tasks WHERE id = $1", task_id)
+    row = await db.fetch_one("SELECT id, user_id, is_public FROM tasks WHERE id = $1", task_id)
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     is_owner = user is not None and row["user_id"] == user.id
@@ -279,21 +279,48 @@ async def start_task_execution(
     force: bool = False,
 ) -> dict:
     """Create execution record and launch agent-based execution in background."""
-    # Check for running or pending executions to prevent concurrent execution
-    running_execution = await db.fetch_one(
-        "SELECT id, status, started_at FROM task_executions WHERE task_id = $1 AND status IN ('running', 'pending')",
+    # Single query: check for running/pending executions and get retry count from latest
+    combined_row = await db.fetch_one(
+        """
+        WITH running AS (
+            SELECT id, status, started_at
+            FROM task_executions
+            WHERE task_id = $1 AND status IN ('running', 'pending')
+            LIMIT 1
+        ),
+        latest AS (
+            SELECT retry_count
+            FROM task_executions
+            WHERE task_id = $1
+            ORDER BY started_at DESC
+            LIMIT 1
+        )
+        SELECT r.id AS running_id, r.status AS running_status, r.started_at AS running_started_at,
+               l.retry_count AS last_retry_count
+        FROM (VALUES (1)) AS dummy(x)
+        LEFT JOIN running r ON true
+        LEFT JOIN latest l ON true
+        """,
         UUID(task_id),
     )
 
-    if running_execution and not force:
+    running_id = combined_row["running_id"] if combined_row else None
+    running_status = combined_row["running_status"] if combined_row else None
+    running_started_at = combined_row["running_started_at"] if combined_row else None
+    retry_count = (
+        combined_row["last_retry_count"]
+        if combined_row and combined_row["last_retry_count"] is not None
+        else 0
+    )
+
+    if running_id and not force:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Task is already running or pending. Use force=true to override.",
         )
 
-    if running_execution:
+    if running_id:
         # Force override: mark stuck execution as cancelled
-        stuck_id = running_execution["id"]
         await db.execute(
             """
             UPDATE task_executions
@@ -307,11 +334,11 @@ async def start_task_execution(
             "Execution cancelled by manual force run",
             "Force override triggered from admin/manual execution",
             datetime.now(UTC),
-            stuck_id,
+            running_id,
         )
         logger.warning(
-            f"Force-cancelling stuck execution {stuck_id} for task {task_id} "
-            f"(was in status '{running_execution['status']}' since {running_execution['started_at']})"
+            f"Force-cancelling stuck execution {running_id} for task {task_id} "
+            f"(was in status '{running_status}' since {running_started_at})"
         )
 
     # Cancel any pending retry jobs before starting manual execution
@@ -321,15 +348,6 @@ async def start_task_execution(
     if existing_job:
         await asyncio.to_thread(scheduler.remove_job, job_id)
         logger.info(f"Cancelled pending retry job for task {task_id} (manual run triggered)")
-
-    # Inherit retry count from last execution (if it exists)
-    last_execution = await db.fetch_one(
-        """SELECT retry_count FROM task_executions
-           WHERE task_id = $1
-           ORDER BY started_at DESC LIMIT 1""",
-        UUID(task_id),
-    )
-    retry_count = last_execution["retry_count"] if last_execution else 0
 
     execution_query = """
         INSERT INTO task_executions (task_id, status)
@@ -473,8 +491,12 @@ async def fork_task(
     - Tracks original task via forked_from_task_id
     - User can optionally provide a new name
     """
-    # Verify access and get the full source task in one query
-    source, is_owner = await _check_task_access(db, task_id, user)
+    # Verify access then fetch the full source task for forking
+    _, is_owner = await _check_task_access(db, task_id, user)
+    source_row = await db.fetch_one("SELECT * FROM tasks WHERE id = $1", task_id)
+    if not source_row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    source = dict(source_row)
 
     # Determine base name and notification fields (scrub sensitive data for non-owners)
     base_fork_name = request.name if request.name else f"{source['name']} (Copy)"
@@ -732,20 +754,7 @@ async def update_task(
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
-    # Verify task exists and belongs to user first
-    verify_query = """
-        SELECT id FROM tasks
-        WHERE id = $1 AND user_id = $2
-    """
-    task = await db.fetch_one(verify_query, task_id, user.id)
-
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-
-    # Remove APScheduler job (if it exists)
+    # Remove APScheduler job first (uses task_id from URL, no DB query needed)
     job_id = f"task-{task_id}"
     try:
         scheduler = get_scheduler()
@@ -760,14 +769,12 @@ async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(g
             detail=f"Failed to remove scheduler job: {str(e)}",
         ) from e
 
-    # Delete task from database
-    query = """
-        DELETE FROM tasks
-        WHERE id = $1 AND user_id = $2
-        RETURNING id
-    """
-
-    row = await db.fetch_one(query, task_id, user.id)
+    # Single DELETE with ownership check
+    row = await db.fetch_one(
+        "DELETE FROM tasks WHERE id = $1 AND user_id = $2 RETURNING id",
+        task_id,
+        user.id,
+    )
 
     if not row:
         raise HTTPException(
@@ -814,30 +821,40 @@ async def execute_task(
     return TaskExecution(**parse_execution_row(row))
 
 
-@router.get("/{task_id}/executions", response_model=list[TaskExecution])
-async def get_task_executions(
-    task_id: UUID, user: OptionalUser, limit: int = 100, db: Database = Depends(get_db)
-):
+async def _fetch_task_executions(
+    db: Database, task_id: UUID, user, limit: int, *, notifications_only: bool = False
+) -> list[TaskExecution]:
+    """Fetch task executions with access control. Optionally filter to notifications only."""
     _, is_owner = await _check_task_access(db, task_id, user)
 
-    # Get executions (exclude internal_error and other sensitive fields)
-    executions_query = """
+    where = "WHERE task_id = $1"
+    if notifications_only:
+        where += " AND notification IS NOT NULL"
+
+    query = f"""
         SELECT id, task_id, status, started_at, completed_at,
                result, error_message, notification, grounding_sources,
                created_at
         FROM task_executions
-        WHERE task_id = $1
+        {where}
         ORDER BY started_at DESC
         LIMIT $2
     """
 
-    rows = await db.fetch_all(executions_query, task_id, limit)
+    rows = await db.fetch_all(query, task_id, limit)
 
     executions = [TaskExecution(**parse_execution_row(row)) for row in rows]
     if not is_owner:
         for ex in executions:
             ex.error_message = None
     return executions
+
+
+@router.get("/{task_id}/executions", response_model=list[TaskExecution])
+async def get_task_executions(
+    task_id: UUID, user: OptionalUser, limit: int = 100, db: Database = Depends(get_db)
+):
+    return await _fetch_task_executions(db, task_id, user, limit)
 
 
 @router.get("/{task_id}/notifications", response_model=list[TaskExecution])
@@ -848,23 +865,4 @@ async def get_task_notifications(
     Get task executions where the condition was met (notifications).
     This filters executions to only show when the monitoring condition triggered.
     """
-    _, is_owner = await _check_task_access(db, task_id, user)
-
-    # Get executions where notification was sent (exclude internal_error and other sensitive fields)
-    notifications_query = """
-        SELECT id, task_id, status, started_at, completed_at,
-               result, error_message, notification, grounding_sources,
-               created_at
-        FROM task_executions
-        WHERE task_id = $1 AND notification IS NOT NULL
-        ORDER BY started_at DESC
-        LIMIT $2
-    """
-
-    rows = await db.fetch_all(notifications_query, task_id, limit)
-
-    executions = [TaskExecution(**parse_execution_row(row)) for row in rows]
-    if not is_owner:
-        for ex in executions:
-            ex.error_message = None
-    return executions
+    return await _fetch_task_executions(db, task_id, user, limit, notifications_only=True)

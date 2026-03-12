@@ -6,6 +6,7 @@ import { Helmet } from 'react-helmet-async'
 import type { Task, TaskExecution } from '@/types'
 import { getResultDisplayText } from '@/types'
 import api from '@/lib/api'
+import { markdownCompact } from '@/lib/markdown'
 import { toast } from 'sonner'
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -367,13 +368,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
               <div className="text-sm text-zinc-700 leading-relaxed line-clamp-3 prose prose-sm max-w-none">
                 <ReactMarkdown
                   rehypePlugins={[rehypeSanitize]}
-                  components={{
-                    p: ({ children }) => <p className="mb-0 leading-relaxed text-zinc-700">{children}</p>,
-                    ul: ({ children }) => <ul className="list-disc pl-5 mb-0 space-y-0">{children}</ul>,
-                    ol: ({ children }) => <ol className="list-decimal pl-5 mb-0 space-y-0">{children}</ol>,
-                    li: ({ children }) => <li className="text-sm leading-relaxed text-zinc-700">{children}</li>,
-                    strong: ({ children }) => <strong className="font-bold text-zinc-900">{children}</strong>,
-                  }}
+                  components={markdownCompact}
                 >
                   {displayText}
                 </ReactMarkdown>
