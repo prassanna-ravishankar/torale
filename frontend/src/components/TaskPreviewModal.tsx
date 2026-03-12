@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { getErrorMessage } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -70,7 +71,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
       setTimeout(poll, pollInterval);
     } catch (err) {
       console.error('Failed to execute task:', err);
-      const message = err instanceof Error ? err.message : 'Failed to run task';
+      const message = getErrorMessage(err, 'Failed to run task');
       setError(message);
       toast.error(message);
       setIsLoading(false);

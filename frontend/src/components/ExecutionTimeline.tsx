@@ -5,6 +5,7 @@ import { TaskExecution } from "@/types";
 import { GroundingSourceList } from "@/components/ui/GroundingSourceList";
 import { AgentActivity } from "@/components/AgentActivity";
 import { StatusBadge, SectionLabel, BrutalistCard, CollapsibleSection, type StatusVariant } from "@/components/torale";
+import { formatShortDateTime } from "@/lib/utils";
 import {
   CheckCircle2,
   XCircle,
@@ -27,15 +28,7 @@ const getStatusIcon = (status: string) => {
   }
 };
 
-const formatDate = (dateStr: string) => {
-  const date = new Date(dateStr);
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-};
+const formatDate = formatShortDateTime;
 
 interface ExecutionCardProps {
   execution: TaskExecution;

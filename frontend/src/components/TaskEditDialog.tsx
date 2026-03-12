@@ -27,7 +27,7 @@ import {
   Users
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 import { BrutalistSwitch } from "@/components/torale";
 
 interface TaskEditDialogProps {
@@ -165,7 +165,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       onOpenChange(false);
     } catch (err) {
       console.error('Failed to update task:', err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to update task";
+      const errorMessage = getErrorMessage(err, "Failed to update task");
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {

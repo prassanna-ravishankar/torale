@@ -1,19 +1,9 @@
 import React, { useState } from 'react';
 import type { Task } from '@/types';
-import { StatusBadge, SectionLabel, ActionMenu, BrutalistCard, type Action } from '@/components/torale';
+import { StatusBadge, SectionLabel, ActionMenu, BrutalistCard, DeleteMonitorDialog, type Action } from '@/components/torale';
 import { Clock, Globe, Trash2, Play, Edit, Pause, Zap } from 'lucide-react';
 import { getTaskStatus } from '@/lib/taskStatus';
-import { formatTimeAgo, formatTimeUntil, getTaskExecuteLabel } from '@/lib/utils';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { formatTimeAgo, formatTimeUntil, formatShortDateTime, getTaskExecuteLabel } from '@/lib/utils';
 
 /**
  * TaskCard - Signal Card design from MockDashboard.tsx
@@ -150,28 +140,17 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         <StatusBadge variant={status.activityState} />
         <span className="text-[10px] text-zinc-400 font-mono">
           {task.last_execution?.completed_at
-            ? `Run: ${new Date(task.last_execution.completed_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+            ? `Run: ${formatShortDateTime(task.last_execution.completed_at)}`
             : 'Not run yet'}
         </span>
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="border-2 border-zinc-900 shadow-brutalist-lg">
-          <AlertDialogHeader className="border-b-2 border-zinc-100 pb-4">
-            <AlertDialogTitle className="font-grotesk">Delete Monitor</AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-500">
-              Are you sure you want to delete "{task.name}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-3">
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="shadow-brutalist">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteMonitorDialog
+        taskName={task.name}
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onConfirm={handleDelete}
+      />
     </BrutalistCard>
   );
 };

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { formatDistanceToNow } from 'date-fns'
-import { formatDuration } from '@/lib/utils'
+import { formatDuration, getErrorMessage } from '@/lib/utils'
 import { ExecutionCard } from './cards/ExecutionCard'
 import { Loader2, Activity, ChevronDown, Link2 } from 'lucide-react'
 import { SectionLabel, BrutalistCard, StatusBadge } from '@/components/torale'
@@ -30,7 +30,7 @@ export function ExecutionsTable({ onTaskClick }: ExecutionsTableProps = {}) {
       setExecutions(data.executions)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load executions')
+      setError(getErrorMessage(err, 'Failed to load executions'))
     } finally {
       setLoading(false)
     }

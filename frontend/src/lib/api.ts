@@ -72,10 +72,7 @@ class ApiClient {
   }
 
   async getCurrentUser(): Promise<User> {
-    const response = await fetch(`${this.baseUrl}/auth/me`, {
-      headers: await this.getAuthHeaders(),
-    })
-    return this.handleResponse(response)
+    return this.getUserWithNotifications()
   }
 
   async markWelcomeSeen(): Promise<void> {

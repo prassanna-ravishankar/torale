@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from 'sonner';
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 
 interface TaskCreationDialogProps {
   open: boolean;
@@ -153,7 +153,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
       onTaskCreated(newTask);
       onOpenChange(false);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to create task";
+      const errorMessage = getErrorMessage(err, "Failed to create task");
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {

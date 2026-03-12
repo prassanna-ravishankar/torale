@@ -7,7 +7,7 @@ from pypika_tortoise.functions import Now
 from torale.core.database import Database
 from torale.repositories.base import BaseRepository
 from torale.repositories.tables import tables
-from torale.tasks.tasks import TaskState
+from torale.tasks.tasks import TaskState, TaskStatus
 
 
 class TaskRepository(BaseRepository):
@@ -470,7 +470,7 @@ class TaskExecutionRepository(BaseRepository):
         query = query.orderby(self.executions.completed_at, order=Order.desc)
         query = query.limit(1)
 
-        return await self.db.fetch_one(str(query), task_id, "success")
+        return await self.db.fetch_one(str(query), task_id, TaskStatus.SUCCESS.value)
 
     async def count_by_task(self, task_id: UUID, status: str | None = None) -> int:
         """Count executions for a task.

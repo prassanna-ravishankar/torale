@@ -17,6 +17,8 @@ export { InfoCard } from './InfoCard';
 export { ActionMenu } from './ActionMenu';
 export type { Action } from './ActionMenu';
 
+export { DeleteMonitorDialog } from './DeleteMonitorDialog';
+
 export { EmptyState } from './EmptyState';
 
 export {

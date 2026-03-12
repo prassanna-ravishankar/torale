@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Search, Mail, Webhook, CheckCircle, Clock } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,6 @@ import type { Task } from '@/types';
 
 interface TaskConfigurationProps {
   task: Task;
-  configExpanded: boolean;
-  onConfigExpandedChange: (expanded: boolean) => void;
   onToggle: () => void;
 }
 
@@ -60,10 +58,9 @@ const renderTaskStatus = (task: Task, onToggle: () => void) => {
 
 export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
   task,
-  configExpanded,
-  onConfigExpandedChange,
   onToggle,
 }) => {
+  const [configExpanded, setConfigExpanded] = useState(false);
   const statusControls = renderTaskStatus(task, onToggle);
   // Compact list for mobile/tablet
   const configList = (
@@ -193,7 +190,7 @@ export const TaskConfiguration: React.FC<TaskConfigurationProps> = ({
         <CollapsibleSection
           title="Task Configuration"
           open={configExpanded}
-          onOpenChange={onConfigExpandedChange}
+          onOpenChange={setConfigExpanded}
           variant="mobile"
         >
           {configList}

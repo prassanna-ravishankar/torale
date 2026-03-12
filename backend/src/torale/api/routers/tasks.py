@@ -337,7 +337,7 @@ async def start_task_execution(
         RETURNING id, task_id, status, started_at, completed_at, result, error_message, created_at
     """
 
-    execution_row = await db.fetch_one(execution_query, UUID(task_id), "pending")
+    execution_row = await db.fetch_one(execution_query, UUID(task_id), TaskStatus.PENDING.value)
 
     if not execution_row:
         raise HTTPException(
