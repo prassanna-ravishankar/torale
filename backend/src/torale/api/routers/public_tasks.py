@@ -48,15 +48,6 @@ async def list_public_tasks(
     - recent: Most recently created tasks
     - popular: Most viewed tasks
     """
-    # Get total count
-    count_query = """
-        SELECT COUNT(*) as total
-        FROM tasks
-        WHERE is_public = true
-    """
-    count_row = await db.fetch_one(count_query)
-    total = count_row["total"] if count_row else 0
-
     # Build query with dynamic ORDER BY clause (validated by FastAPI enum)
     # Use dictionary mapping to prevent any possibility of SQL injection
     order_clauses = {
@@ -73,7 +64,8 @@ async def list_public_tasks(
                e.completed_at as exec_completed_at,
                e.status as exec_status,
                e.result as exec_result,
-               e.grounding_sources as exec_grounding_sources
+               e.grounding_sources as exec_grounding_sources,
+               count(*) OVER() as total_count
         FROM tasks t
         LEFT JOIN task_executions e ON t.last_execution_id = e.id
         WHERE t.is_public = true
@@ -82,6 +74,12 @@ async def list_public_tasks(
     """
 
     rows = await db.fetch_all(tasks_query, limit, offset)
+    if rows:
+        total = rows[0]["total_count"]
+    else:
+        # Window function returns nothing when offset is past end; fall back to COUNT
+        count_row = await db.fetch_one("SELECT COUNT(*) as total FROM tasks WHERE is_public = true")
+        total = count_row["total"] if count_row else 0
 
     # Parse tasks using shared utility
     tasks = [parse_task_with_execution(row) for row in rows]

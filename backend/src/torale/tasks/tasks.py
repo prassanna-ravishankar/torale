@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, TypedDict
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -42,6 +42,22 @@ class NotificationConfig(BaseModel):
     url: str | None = None
     method: str = "POST"
     headers: dict[str, str] | None = None
+
+
+class TaskData(TypedDict, total=False):
+    """Database-level task fields for create/update operations."""
+
+    user_id: UUID
+    name: str
+    state: str
+    search_query: str | None
+    condition_description: str | None
+    notify_behavior: str
+    notifications: list[dict]
+    notification_channels: list[str]
+    notification_email: str | None
+    webhook_url: str | None
+    webhook_secret: str | None
 
 
 class TaskBase(BaseModel):

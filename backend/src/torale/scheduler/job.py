@@ -128,8 +128,9 @@ async def _execute(
 
     try:
         await db.execute(
-            "UPDATE task_executions SET status = 'running' WHERE id = $1",
+            "UPDATE task_executions SET status = $2 WHERE id = $1",
             uuid.UUID(execution_id),
+            TaskStatus.RUNNING.value,
         )
 
         task = await db.fetch_one(

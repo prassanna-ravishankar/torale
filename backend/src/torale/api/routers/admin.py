@@ -76,48 +76,58 @@ async def get_platform_stats(
     - 24-hour execution metrics (total/failed/success_rate)
     - Popular queries (top 10 most common search queries)
     """
-    # User capacity
-    user_result = await session.execute(
-        text("""
-        SELECT COUNT(*) as total_users
-        FROM users
-        WHERE is_active = true
-        """)
-    )
-    user_row = user_result.first()
-    total_users = user_row[0] if user_row else 0
-
     # Get max users from settings (default 100)
     max_users = getattr(settings, "max_users", 100)
 
-    # Task statistics
-    task_result = await session.execute(
-        text("""
-        SELECT
-            COUNT(*) as total_tasks,
-            SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END) as triggered_tasks
-        FROM tasks t
-        LEFT JOIN task_executions e ON t.last_execution_id = e.id
-        WHERE t.state = 'active'
-        """)
+    twenty_four_hours_ago = datetime.now(UTC) - timedelta(hours=24)
+
+    # Run all 4 independent queries concurrently
+    user_result, task_result, exec_result, popular_result = await asyncio.gather(
+        session.execute(text("SELECT COUNT(*) FROM users WHERE is_active = true")),
+        session.execute(
+            text("""
+            SELECT
+                COUNT(*) as total_tasks,
+                SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END) as triggered_tasks
+            FROM tasks t
+            LEFT JOIN task_executions e ON t.last_execution_id = e.id
+            WHERE t.state = 'active'
+            """)
+        ),
+        session.execute(
+            text("""
+            SELECT
+                COUNT(*) as total_executions,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_executions
+            FROM task_executions
+            WHERE created_at >= :since
+            """),
+            {"since": twenty_four_hours_ago},
+        ),
+        session.execute(
+            text("""
+            SELECT
+                t.search_query,
+                COUNT(*) as task_count,
+                SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END) as triggered_count
+            FROM tasks t
+            LEFT JOIN task_executions e ON t.last_execution_id = e.id
+            WHERE t.search_query IS NOT NULL
+            GROUP BY t.search_query
+            ORDER BY task_count DESC
+            LIMIT 10
+            """)
+        ),
     )
+
+    user_row = user_result.first()
+    total_users = user_row[0] if user_row else 0
+
     task_row = task_result.first()
     total_tasks = task_row[0] if task_row else 0
     triggered_tasks = task_row[1] if task_row and task_row[1] else 0
     trigger_rate = (triggered_tasks / total_tasks * 100) if total_tasks > 0 else 0
 
-    # 24-hour execution metrics
-    twenty_four_hours_ago = datetime.now(UTC) - timedelta(hours=24)
-    exec_result = await session.execute(
-        text("""
-        SELECT
-            COUNT(*) as total_executions,
-            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_executions
-        FROM task_executions
-        WHERE created_at >= :since
-        """),
-        {"since": twenty_four_hours_ago},
-    )
     exec_row = exec_result.first()
     total_executions = exec_row[0] if exec_row else 0
     failed_executions = exec_row[1] if exec_row and exec_row[1] else 0
@@ -127,21 +137,6 @@ async def get_platform_stats(
         else 100
     )
 
-    # Popular queries (top 10)
-    popular_result = await session.execute(
-        text("""
-        SELECT
-            t.search_query,
-            COUNT(*) as task_count,
-            SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END) as triggered_count
-        FROM tasks t
-        LEFT JOIN task_executions e ON t.last_execution_id = e.id
-        WHERE t.search_query IS NOT NULL
-        GROUP BY t.search_query
-        ORDER BY task_count DESC
-        LIMIT 10
-        """)
-    )
     popular_queries = [
         {
             "search_query": row[0],
