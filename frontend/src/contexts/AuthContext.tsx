@@ -12,7 +12,7 @@ export interface User {
   has_seen_welcome?: boolean
   publicMetadata?: {
     role?: string
-    [key: string]: any
+    [key: string]: unknown
   }
 }
 

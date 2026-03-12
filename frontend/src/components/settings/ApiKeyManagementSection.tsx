@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, Key, Plus, Trash2, Copy, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { api } from '@/lib/api';
+import { getErrorMessage } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ApiKey } from '@/types';
@@ -53,7 +54,7 @@ export const ApiKeyManagementSection: React.FC = () => {
     try {
       const keys = await api.getApiKeys();
       setApiKeys(keys);
-    } catch (err: any) {
+    } catch (err) {
       toast.error('Failed to load API keys');
       console.error(err);
     } finally {
@@ -80,8 +81,8 @@ export const ApiKeyManagementSection: React.FC = () => {
       setShowCreateDialog(false);
       setShowCreatedKeyDialog(true);
       toast.success('API key created successfully');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to create API key');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to create API key'));
     } finally {
       setIsCreating(false);
     }
@@ -110,8 +111,8 @@ export const ApiKeyManagementSection: React.FC = () => {
       await api.revokeApiKey(keyToRevoke.id);
       await loadApiKeys();
       toast.success('API key revoked successfully');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to revoke API key');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to revoke API key'));
     } finally {
       setIsRevoking(null);
       setKeyToRevoke(null);

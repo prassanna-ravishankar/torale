@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CollapsibleSection } from "@/components/torale";
-import type { NotifyBehavior, TaskTemplate, Task } from "@/types";
+import type { TaskTemplate, Task } from "@/types";
 import api from "@/lib/api";
 import {
   Loader2,
@@ -25,7 +25,6 @@ import {
   Smartphone,
   TrainFront,
   Briefcase,
-  Bot,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from 'sonner';

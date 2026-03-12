@@ -102,3 +102,7 @@ export function formatTimeAgo(dateString: string): string {
   if (diffMins < MINS_IN_WEEK) return `${Math.floor(diffMins / MINS_IN_DAY)}d ago`;
   return date.toLocaleDateString();
 }
+
+export function getErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback;
+}

@@ -32,7 +32,7 @@ export function initPostHog(userId?: string) {
   }
 }
 
-export function captureEvent(event: string, properties?: Record<string, any>) {
+export function captureEvent(event: string, properties?: Record<string, unknown>) {
   if (!initialized) return
 
   try {

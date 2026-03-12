@@ -313,7 +313,7 @@ function TaskDetailRoute({ onBack, onDeleted }: { onBack: () => void; onDeleted:
   )
 }
 
-function HomeRoute({ onTaskClick }: { onTaskClick: (taskId: string) => void }) {
+function HomeRoute({ onTaskClick: _onTaskClick }: { onTaskClick: (taskId: string) => void }) {
   // Always show Landing page at / (even if authenticated)
   return <Landing />
 }

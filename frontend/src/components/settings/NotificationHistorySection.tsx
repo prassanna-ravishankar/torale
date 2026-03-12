@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, Mail, Webhook } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { WebhookDelivery, NotificationSend } from '@/types';
-import { SectionLabel, BrutalistCard, StatusBadge, type StatusVariant } from '@/components/torale';
+import { BrutalistCard, StatusBadge, type StatusVariant } from '@/components/torale';
 import { formatTimeAgo } from '@/lib/utils';
 
 export const NotificationHistorySection: React.FC = () => {
@@ -25,7 +25,7 @@ export const NotificationHistorySection: React.FC = () => {
         limit: 10,
       });
       setEmailSends(emailResponse.sends || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to load email history:', err);
     } finally {
       setIsLoadingEmails(false);
@@ -36,7 +36,7 @@ export const NotificationHistorySection: React.FC = () => {
     try {
       const webhookResponse = await api.getWebhookDeliveries({ limit: 10 });
       setWebhookDeliveries(webhookResponse.deliveries || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to load webhook history:', err);
     } finally {
       setIsLoadingWebhooks(false);

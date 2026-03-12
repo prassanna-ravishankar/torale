@@ -17,23 +17,6 @@ export const getCategoryIcon = (category: string) => {
   }
 };
 
-export const getCategoryLabel = (category: string) => {
-  switch (category) {
-    case "feature":
-      return "New Feature";
-    case "improvement":
-      return "Improvement";
-    case "fix":
-      return "Bug Fix";
-    case "infra":
-      return "Infrastructure";
-    case "research":
-      return "Research";
-    default:
-      return "Update";
-  }
-};
-
 /**
  * Format a date string to avoid timezone issues
  * Appends T00:00:00 to ensure date is parsed in local timezone

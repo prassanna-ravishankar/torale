@@ -10,7 +10,8 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { SectionLabel, BrutalistCard, CollapsibleSection, BrutalistSwitch } from '@/components/torale';
+import { BrutalistCard, CollapsibleSection, BrutalistSwitch } from '@/components/torale';
+import { getErrorMessage } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { WebhookConfig } from '@/types';
 
@@ -34,7 +35,7 @@ export const WebhookConfigSection: React.FC = () => {
       const response = await api.getWebhookConfig();
       setConfig(response);
       setWebhookUrl(response.url || '');
-    } catch (err: any) {
+    } catch (err) {
       toast.error('Failed to load webhook configuration');
       console.error(err);
     } finally {
@@ -59,8 +60,8 @@ export const WebhookConfigSection: React.FC = () => {
       setConfig(response);
       setWebhookUrl(response.url || '');
       toast.success('Webhook configuration saved');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to save webhook configuration');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to save webhook configuration'));
     } finally {
       setIsSaving(false);
     }
@@ -76,8 +77,8 @@ export const WebhookConfigSection: React.FC = () => {
     try {
       await api.testWebhook(config.url, config.secret);
       toast.success('Test webhook sent successfully!');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to send test webhook');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to send test webhook'));
     } finally {
       setIsTesting(false);
     }
@@ -103,8 +104,8 @@ export const WebhookConfigSection: React.FC = () => {
       const response = await api.updateWebhookConfig(webhookUrl, config.enabled);
       setConfig(response);
       toast.success('Webhook secret regenerated');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to regenerate secret');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to regenerate secret'));
     } finally {
       setIsSaving(false);
     }
@@ -121,8 +122,8 @@ export const WebhookConfigSection: React.FC = () => {
       const response = await api.updateWebhookConfig(webhookUrl, enabled);
       setConfig(response);
       toast.success(enabled ? 'Webhook enabled' : 'Webhook disabled');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to update webhook status');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to update webhook status'));
     } finally {
       setIsSaving(false);
     }

@@ -27,7 +27,7 @@ export interface Task {
   notify_behavior: NotifyBehavior;
   state: TaskState;
 
-  last_known_state: Record<string, any> | null;
+  last_known_state: Record<string, unknown> | null;
 
   // Latest execution reference
   last_execution_id: string | null;

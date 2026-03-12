@@ -56,7 +56,7 @@ export function UsersTable() {
   const loadUsers = async () => {
     try {
       setLoading(true)
-      const usersData = await api.getAdminUsers()
+      const usersData = await api.getAdminUsers<UsersDataResponse>()
       setData(usersData)
       setError(null)
     } catch (err) {

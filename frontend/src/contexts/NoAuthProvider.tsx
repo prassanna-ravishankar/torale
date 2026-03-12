@@ -56,6 +56,7 @@ export const NoAuthProvider: React.FC<NoAuthProviderProps> = ({ children }) => {
         console.log('Sign out called in no-auth mode (no-op)')
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [refreshUser]
   )
 

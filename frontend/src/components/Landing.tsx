@@ -7,9 +7,7 @@ import {
   Database,
   Zap,
   TrendingUp,
-  FileText,
   Shield,
-  Wifi,
   GitBranch,
   Globe,
 } from "lucide-react";
@@ -54,25 +52,6 @@ const SectionHeader = ({ title, subtitle, label }: { title: string; subtitle: st
       <p className="text-zinc-500 text-lg font-light leading-relaxed max-w-xl">{subtitle}</p>
     </div>
     {label && <span className="font-mono text-sm font-bold text-zinc-300 mt-4 md:mt-0 tracking-widest uppercase">[{label}]</span>}
-  </motion.div>
-);
-
-// Feature Card
-const FeatureCard = ({ icon: Icon, title, desc, delay }: { icon: any; title: string; desc: string; delay: number }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true }}
-    transition={{ duration: 0.5, delay: delay * 0.1 }}
-    className="bg-white p-8 border-2 border-transparent hover:border-zinc-900 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 group h-full"
-  >
-    <div className="mb-6 p-3 bg-zinc-50 inline-block rounded border border-zinc-100 group-hover:bg-zinc-900 group-hover:text-white transition-colors">
-      <Icon className="h-6 w-6" strokeWidth={2} />
-    </div>
-    <h3 className="text-xl font-bold font-grotesk text-zinc-900 mb-3">{title}</h3>
-    <p className="text-zinc-500 leading-relaxed text-sm">
-      {desc}
-    </p>
   </motion.div>
 );
 

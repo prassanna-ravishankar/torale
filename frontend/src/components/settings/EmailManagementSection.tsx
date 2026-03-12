@@ -9,8 +9,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Mail, Plus, Trash2, CheckCircle2 } from 'lucide-react';
+import { Loader2, Mail, Plus, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { getErrorMessage } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { EmailVerificationModal } from './EmailVerificationModal';
@@ -35,7 +36,7 @@ export const EmailManagementSection: React.FC = () => {
     try {
       const response = await api.getVerifiedEmails();
       setVerifiedEmails(response.verified_emails || []);
-    } catch (err: any) {
+    } catch (err) {
       toast.error('Failed to load verified emails');
       console.error(err);
     } finally {
@@ -59,8 +60,8 @@ export const EmailManagementSection: React.FC = () => {
       await api.removeVerifiedEmail(emailToDelete);
       setVerifiedEmails((prev) => prev.filter((e) => e !== emailToDelete));
       toast.success('Email removed successfully');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to remove email');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to remove email'));
     } finally {
       setIsDeleting(null);
       setEmailToDelete(null);

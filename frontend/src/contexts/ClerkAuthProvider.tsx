@@ -15,7 +15,7 @@ interface ClerkAuthProviderProps {
  */
 const createUserFromData = (
   backendData: { id: string | null; email: string; username: string | null; has_seen_welcome?: boolean },
-  clerkUser: any
+  clerkUser: { firstName?: string | null; lastName?: string | null; imageUrl?: string; publicMetadata?: Record<string, unknown> }
 ): User => ({
   id: backendData.id,
   email: backendData.email,
@@ -24,7 +24,7 @@ const createUserFromData = (
   firstName: clerkUser.firstName || undefined,
   lastName: clerkUser.lastName || undefined,
   imageUrl: clerkUser.imageUrl,
-  publicMetadata: clerkUser.publicMetadata as { role?: string;[key: string]: any } | undefined,
+  publicMetadata: clerkUser.publicMetadata as { role?: string;[key: string]: unknown } | undefined,
 })
 
 const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -68,6 +68,7 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
 
     fetchBackendUser()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clerkUser])
 
   const user: User | null = backendUser

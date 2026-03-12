@@ -1,7 +1,7 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
-import { TaskExecution, TaskStatus } from "@/types";
+import { TaskExecution } from "@/types";
 import { GroundingSourceList } from "@/components/ui/GroundingSourceList";
 import { AgentActivity } from "@/components/AgentActivity";
 import { StatusBadge, SectionLabel, BrutalistCard, CollapsibleSection, type StatusVariant } from "@/components/torale";

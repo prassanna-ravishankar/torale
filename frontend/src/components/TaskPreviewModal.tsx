@@ -39,6 +39,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
     if (open && task) {
       handleExecute();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, task?.id]);
 
   const handleExecute = async () => {

@@ -18,6 +18,7 @@ export function Explore() {
 
   useEffect(() => {
     loadTasks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy, offset]);
 
   const loadTasks = async () => {

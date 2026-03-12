@@ -29,7 +29,7 @@ export function WaitlistTable() {
   const loadWaitlist = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await api.getWaitlist(statusFilter || undefined)
+      const data = await api.getWaitlist<WaitlistEntry[]>(statusFilter || undefined)
       setEntries(data)
     } catch (error) {
       console.error('Failed to load waitlist:', error)
@@ -41,7 +41,7 @@ export function WaitlistTable() {
 
   const loadStats = useCallback(async () => {
     try {
-      const data = await api.getWaitlistStats()
+      const data = await api.getWaitlistStats<WaitlistStats>()
       setStats(data)
     } catch (error) {
       console.error('Failed to load stats:', error)

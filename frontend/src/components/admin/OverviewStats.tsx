@@ -38,7 +38,7 @@ export function OverviewStats() {
   const loadStats = async () => {
     try {
       setLoading(true)
-      const data = await api.getAdminStats()
+      const data = await api.getAdminStats<PlatformStats>()
       setStats(data)
       setError(null)
     } catch (err) {
