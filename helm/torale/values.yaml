@@ -53,7 +53,7 @@ api:
   # Right-size resources for cost optimization
   resources:
     requests:
-      cpu: 100m
+      cpu: 200m
       memory: 256Mi
     limits:
       cpu: 500m
@@ -72,6 +72,13 @@ api:
       path: /health
       port: 8000
     initialDelaySeconds: 5
+    periodSeconds: 5
+
+  startupProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    failureThreshold: 30
     periodSeconds: 5
 
   service:
@@ -146,8 +153,8 @@ docs:
   # Lightweight resources for nginx
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
+      cpu: 10m
+      memory: 16Mi
     limits:
       cpu: 200m
       memory: 128Mi
@@ -191,7 +198,7 @@ agent:
 
   resources:
     requests:
-      cpu: 50m
+      cpu: 200m
       memory: 256Mi
     limits:
       cpu: 500m
@@ -213,11 +220,11 @@ cloudsql:
   image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.19.0
   resources:
     requests:
-      cpu: 50m
-      memory: 128Mi
+      cpu: 10m
+      memory: 32Mi
     limits:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 100m
+      memory: 64Mi
 
 # Platform capacity limit for beta
 capacity:

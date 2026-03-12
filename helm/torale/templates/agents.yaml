@@ -78,6 +78,12 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 5
           timeoutSeconds: 5
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          failureThreshold: 30
+          periodSeconds: 5
         resources:
           {{- toYaml $.Values.agent.resources | nindent 10 }}
 ---

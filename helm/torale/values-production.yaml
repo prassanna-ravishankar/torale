@@ -26,7 +26,7 @@ api:
     targetCPUUtilizationPercentage: 90
   resources:
     requests:
-      cpu: 50m
+      cpu: 200m
       memory: 256Mi
     limits:
       cpu: 500m
@@ -40,8 +40,8 @@ frontend:
     targetCPUUtilizationPercentage: 90
   resources:
     requests:
-      cpu: 25m
-      memory: 64Mi
+      cpu: 10m
+      memory: 16Mi
     limits:
       cpu: 200m
       memory: 128Mi
@@ -50,7 +50,7 @@ agent:
   replicaCount: 1
   resources:
     requests:
-      cpu: 50m
+      cpu: 200m
       memory: 256Mi
     limits:
       cpu: 500m
