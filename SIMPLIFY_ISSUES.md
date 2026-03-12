@@ -28,13 +28,13 @@ Full-codebase review. Issues grouped by size. Check off as fixed.
 
 ## Large Fixes (architectural)
 
-- [ ] **L1: Router bypasses repository** — `api/routers/tasks.py` has 480+ lines of raw SQL duplicating `TaskRepository`.
+- [x] **L1: Router bypasses repository** — Migrated `list_tasks`, `get_task`, and `update_task` re-fetch to use `TaskRepository`. Complex endpoints (create, update core, fork) kept as-is.
 - [ ] **L2: Repository parameter sprawl** — `create_task`/`update_task` take 11 params each.
-- [ ] **L3: MonitoringResponse cross-repo duplication** — Style drifting between agent and backend.
+- [x] **L3: MonitoringResponse cross-repo duplication** — Synced styles, added SYNC comments.
 - ~~L4: WebhookDeliveryService per-call httpx client~~ — N/A; already uses persistent client in `__init__`; per-call instantiation acceptable at current scale.
 - ~~L5: Agent per-call httpx client~~ — N/A after Lightpanda migration (#183).
-- [ ] **L6: InMemoryTaskStore grows unbounded** — Slow memory leak.
-- [ ] **L7: `_TASK_WITH_EXECUTION_QUERY` raw SQL vs repository** — Duplicates PyPika join logic.
+- [x] **L6: InMemoryTaskStore grows unbounded** — Added `BoundedTaskStore` with time-based (1h) and count-based (1000) eviction.
+- [x] **L7: `_TASK_WITH_EXECUTION_QUERY` raw SQL vs repository** — Removed; endpoints now use `TaskRepository` methods.
 
 ## Skipping (behavior change risk / not worth it)
 

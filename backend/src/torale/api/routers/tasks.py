@@ -28,24 +28,12 @@ from torale.tasks import (
     TaskStatus,
     TaskUpdate,
 )
+from torale.tasks.repository import TaskRepository
 from torale.tasks.service import InvalidTransitionError, TaskService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
-
-_TASK_WITH_EXECUTION_QUERY = """
-    SELECT t.*,
-           e.id as exec_id,
-           e.notification as exec_notification,
-           e.started_at as exec_started_at,
-           e.completed_at as exec_completed_at,
-           e.status as exec_status,
-           e.result as exec_result,
-           e.grounding_sources as exec_grounding_sources
-    FROM tasks t
-    LEFT JOIN task_executions e ON t.last_execution_id = e.id
-"""
 
 
 async def _check_task_access(db: Database, task_id: UUID, user) -> tuple[dict, bool]:
@@ -228,15 +216,8 @@ async def create_task(
 async def list_tasks(
     user: CurrentUser, state: TaskState | None = None, db: Database = Depends(get_db)
 ):
-    base_query = _TASK_WITH_EXECUTION_QUERY + " WHERE t.user_id = $1"
-
-    if state is not None:
-        query = base_query + " AND t.state = $2 ORDER BY t.created_at DESC"
-        rows = await db.fetch_all(query, user.id, state.value)
-    else:
-        query = base_query + " ORDER BY t.created_at DESC"
-        rows = await db.fetch_all(query, user.id)
-
+    repo = TaskRepository(db)
+    rows = await repo.find_by_user(user.id, state=state)
     return [parse_task_with_execution(row) for row in rows]
 
 
@@ -388,8 +369,8 @@ async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get
     - If task is public: read-only access for anyone
     - Otherwise: 404
     """
-    query = _TASK_WITH_EXECUTION_QUERY + " WHERE t.id = $1"
-    row = await db.fetch_one(query, task_id)
+    repo = TaskRepository(db)
+    row = await repo.find_by_id_with_execution(task_id)
 
     if not row:
         raise HTTPException(
@@ -745,7 +726,8 @@ async def update_task(
             ) from e
 
     # Re-fetch to get the latest state (avoids returning stale data after transitions)
-    fresh_row = await db.fetch_one(_TASK_WITH_EXECUTION_QUERY + " WHERE t.id = $1", task_id)
+    repo = TaskRepository(db)
+    fresh_row = await repo.find_by_id_with_execution(task_id)
     if not fresh_row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
