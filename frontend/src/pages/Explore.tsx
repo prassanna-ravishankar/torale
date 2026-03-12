@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import type { Task } from '@/types';
@@ -16,12 +16,7 @@ export function Explore() {
   const [total, setTotal] = useState(0);
   const limit = 20;
 
-  useEffect(() => {
-    loadTasks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortBy, offset]);
-
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     setIsLoading(true);
     try {
       const result = await api.getPublicTasks({ offset, limit, sort_by: sortBy });
@@ -33,7 +28,11 @@ export function Explore() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [offset, limit, sortBy]);
+
+  useEffect(() => {
+    loadTasks();
+  }, [loadTasks]);
 
   const handleTaskClick = (task: Task) => {
     navigate(`/tasks/${task.id}`);

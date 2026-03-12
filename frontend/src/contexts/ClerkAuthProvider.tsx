@@ -1,4 +1,4 @@
-import React, { ReactNode, useMemo, useEffect, useState, useCallback } from 'react'
+import React, { ReactNode, useMemo, useEffect, useCallback, useState } from 'react'
 import { ClerkProvider, useAuth as useClerkAuth, useUser } from '@clerk/clerk-react'
 import { AuthContext, AuthContextType, User } from './AuthContext'
 import { initPostHog, resetPostHog } from '@/lib/posthog'
@@ -31,15 +31,15 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { isLoaded: clerkIsLoaded, userId, getToken: clerkGetToken, signOut } = useClerkAuth()
   const { user: clerkUser } = useUser()
   const [backendUser, setBackendUser] = useState<User | null>(null)
-  const [isFetchingUser, setIsFetchingUser] = useState(false)
+  const isFetchingRef = React.useRef(false)
 
   // Fetch user data from backend when Clerk user is available
   // Automatically syncs user if not found in database
   useEffect(() => {
-    if (!clerkUser || isFetchingUser) return
+    if (!clerkUser || isFetchingRef.current) return
 
     const fetchBackendUser = async () => {
-      setIsFetchingUser(true)
+      isFetchingRef.current = true
       try {
         const { api } = await import('@/lib/api')
         const userData = await api.getCurrentUser()
@@ -63,12 +63,11 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
           }, clerkUser))
         }
       } finally {
-        setIsFetchingUser(false)
+        isFetchingRef.current = false
       }
     }
 
     fetchBackendUser()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clerkUser])
 
   const user: User | null = backendUser
