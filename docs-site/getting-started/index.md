@@ -1,5 +1,5 @@
 ---
-description: Get started with Torale. Integrate with the Python SDK, CLI, or REST API.
+description: Get started with Torale. Integrate with the Python SDK or REST API.
 ---
 
 # Getting Started
@@ -14,14 +14,6 @@ Programmatic access through a Python client library.
 
 [Get started with the SDK →](/getting-started/sdk)
 
-## CLI
-
-Command-line interface with full API access.
-
-**Best for:** Terminal workflows, scripting, CI/CD integration
-
-[Get started with the CLI →](/getting-started/cli)
-
 ## REST API
 
 Direct HTTP access to all Torale endpoints.
@@ -35,7 +27,6 @@ Direct HTTP access to all Torale endpoints.
 | Method | Setup Time | Use Case | Authentication |
 |--------|------------|----------|----------------|
 | Python SDK | 5 minutes | Application integration | API key |
-| CLI | 5 minutes | Terminal workflows, scripting | API key |
 | REST API | Immediate | Any language / HTTP client | API key |
 
 ## Learn More

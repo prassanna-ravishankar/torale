@@ -4,7 +4,7 @@ import { withMermaid } from 'vitepress-plugin-mermaid'
 export default withMermaid(
   defineConfig({
   title: 'Torale Docs',
-  description: 'Torale developer documentation — API reference, Python SDK, and CLI',
+  description: 'Torale developer documentation — API reference and Python SDK',
   base: '/',
   lang: 'en-US',
   lastUpdated: true,
@@ -38,7 +38,6 @@ export default withMermaid(
       { text: 'Getting Started', link: '/getting-started/', activeMatch: '/getting-started/' },
       { text: 'API', link: '/api/overview', activeMatch: '/api/' },
       { text: 'SDK', link: '/sdk/quickstart', activeMatch: '/sdk/' },
-      { text: 'CLI', link: '/cli/quickstart', activeMatch: '/cli/' },
       { text: 'App', link: 'https://torale.ai' }
     ],
 
@@ -48,8 +47,7 @@ export default withMermaid(
           text: 'Getting Started',
           items: [
             { text: 'Overview', link: '/getting-started/' },
-            { text: 'Python SDK', link: '/getting-started/sdk' },
-            { text: 'CLI', link: '/getting-started/cli' }
+            { text: 'Python SDK', link: '/getting-started/sdk' }
           ]
         }
       ],
@@ -66,18 +64,6 @@ export default withMermaid(
             { text: 'Async Client', link: '/sdk/async' },
             { text: 'Error Handling', link: '/sdk/errors' },
             { text: 'Examples', link: '/sdk/examples' }
-          ]
-        }
-      ],
-
-      '/cli/': [
-        {
-          text: 'CLI',
-          items: [
-            { text: 'Quickstart', link: '/cli/quickstart' },
-            { text: 'Authentication', link: '/cli/authentication' },
-            { text: 'Commands', link: '/cli/commands' },
-            { text: 'Configuration', link: '/cli/configuration' }
           ]
         }
       ],
