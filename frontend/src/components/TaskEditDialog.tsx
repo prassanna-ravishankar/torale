@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { getTaskShareUrl } from '@/lib/utils';
 import type { Task, NotifyBehavior } from '@/types';
 import {
   Loader2,
@@ -28,8 +29,6 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { BrutalistSwitch } from "@/components/torale";
-import { UsernamePickerModal } from "@/components/UsernamePickerModal";
-import { useAuth } from '@/contexts/AuthContext';
 
 interface TaskEditDialogProps {
   open: boolean;
@@ -62,8 +61,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   // Sharing state
   const [isPublic, setIsPublic] = useState(false);
   const [isTogglingVisibility, setIsTogglingVisibility] = useState(false);
-  const [showUsernameModal, setShowUsernameModal] = useState(false);
-  const { user } = useAuth();
 
   // Load task data when task changes
   useEffect(() => {
@@ -88,24 +85,19 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   const handleVisibilityToggle = async (checked: boolean) => {
     if (!task) return;
 
-    if (checked && !user?.username) {
-      setShowUsernameModal(true);
-      return;
-    }
-
     setIsTogglingVisibility(true);
     try {
       const result = await api.updateTaskVisibility(task.id, checked);
       setIsPublic(result.is_public);
 
-      if (result.is_public && result.slug) {
-        const vanityUrl = `${window.location.origin}/t/${user?.username}/${result.slug}`;
-        toast.success(`Task is now public: ${vanityUrl}`);
+      if (result.is_public) {
+        const shareUrl = getTaskShareUrl(task.id);
+        toast.success(`Task is now public: ${shareUrl}`);
       } else {
         toast.success('Task is now private');
       }
 
-      onSuccess({ ...task, is_public: result.is_public, slug: result.slug });
+      onSuccess({ ...task, is_public: result.is_public });
     } catch (error) {
       console.error('Failed to toggle visibility:', error);
       toast.error('Failed to update task visibility');
@@ -114,32 +106,10 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
     }
   };
 
-  const handleUsernameSet = async (username: string) => {
+  const copyShareUrl = () => {
     if (task) {
-      setIsTogglingVisibility(true);
-      try {
-        const result = await api.updateTaskVisibility(task.id, true);
-        setIsPublic(result.is_public);
-
-        if (result.is_public && result.slug) {
-          const vanityUrl = `${window.location.origin}/t/${username}/${result.slug}`;
-          toast.success(`Task is now public: ${vanityUrl}`);
-        }
-
-        onSuccess({ ...task, is_public: result.is_public, slug: result.slug });
-      } catch (error) {
-        console.error('Failed to make task public:', error);
-        toast.error('Failed to make task public');
-      } finally {
-        setIsTogglingVisibility(false);
-      }
-    }
-  };
-
-  const copyVanityUrl = () => {
-    if (task?.slug && user?.username) {
-      const vanityUrl = `${window.location.origin}/t/${user.username}/${task.slug}`;
-      navigator.clipboard.writeText(vanityUrl);
+      const shareUrl = getTaskShareUrl(task.id);
+      navigator.clipboard.writeText(shareUrl);
       toast.success('Link copied to clipboard!');
     }
   };
@@ -355,13 +325,13 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
             </div>
 
             {/* Public task details */}
-            {isPublic && task?.slug && user?.username && (
+            {isPublic && (
               <div className="space-y-3 pt-2 border-t border-zinc-200">
                 <div className="space-y-2">
                   <Label className="text-xs text-zinc-500">Public Link</Label>
                   <div className="flex gap-2">
                     <Input
-                      value={`${window.location.origin}/t/${user.username}/${task.slug}`}
+                      value={getTaskShareUrl(task.id)}
                       readOnly
                       className="font-mono text-sm bg-background"
                     />
@@ -369,7 +339,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={copyVanityUrl}
+                      onClick={copyShareUrl}
                       className="shrink-0"
                     >
                       <Copy className="h-4 w-4" />
@@ -412,13 +382,6 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
           </Button>
         </DialogFooter>
       </DialogContent>
-
-      {/* Username Picker Modal */}
-      <UsernamePickerModal
-        isOpen={showUsernameModal}
-        onClose={() => setShowUsernameModal(false)}
-        onSuccess={handleUsernameSet}
-      />
     </Dialog>
   );
 };

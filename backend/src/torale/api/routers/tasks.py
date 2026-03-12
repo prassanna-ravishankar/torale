@@ -29,7 +29,6 @@ from torale.tasks import (
     TaskUpdate,
 )
 from torale.tasks.service import InvalidTransitionError, TaskService
-from torale.utils.slug import generate_unique_slug
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +36,6 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 _TASK_WITH_EXECUTION_QUERY = """
     SELECT t.*,
-           u.username as creator_username,
            e.id as exec_id,
            e.notification as exec_notification,
            e.started_at as exec_started_at,
@@ -46,7 +44,6 @@ _TASK_WITH_EXECUTION_QUERY = """
            e.result as exec_result,
            e.grounding_sources as exec_grounding_sources
     FROM tasks t
-    INNER JOIN users u ON t.user_id = u.id
     LEFT JOIN task_executions e ON t.last_execution_id = e.id
 """
 
@@ -418,7 +415,6 @@ class VisibilityUpdateResponse(BaseModel):
     """Response after updating visibility."""
 
     is_public: bool
-    slug: str | None = None
 
 
 @router.patch("/{task_id}/visibility", response_model=VisibilityUpdateResponse)
@@ -430,14 +426,10 @@ async def update_task_visibility(
 ):
     """
     Toggle task visibility between public and private.
-
-    When making a task public:
-    - User must have a username set
-    - A slug will be auto-generated from the task name if not already set
     """
     # Verify task belongs to user
     task_query = """
-        SELECT id, name, slug, is_public
+        SELECT id, is_public
         FROM tasks
         WHERE id = $1 AND user_id = $2
     """
@@ -450,64 +442,14 @@ async def update_task_visibility(
             detail="Task not found",
         )
 
-    # If making public, check user has username
-    if request.is_public:
-        user_query = "SELECT username FROM users WHERE id = $1"
-        user_row = await db.fetch_one(user_query, user.id)
-
-        if not user_row or not user_row["username"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You must set a username before making tasks public",
-            )
-
-        # Generate slug if not already set
-        slug = task["slug"]
-        if not slug:
-            # Retry loop to handle race condition on slug uniqueness
-            max_retries = 3
-            for attempt in range(max_retries):
-                try:
-                    slug = await generate_unique_slug(task["name"], user.id, db)
-                    # Update both is_public and slug
-                    await db.execute(
-                        "UPDATE tasks SET is_public = $1, slug = $2 WHERE id = $3",
-                        request.is_public,
-                        slug,
-                        task_id,
-                    )
-                    break  # Success, exit retry loop
-                except UniqueViolationError as e:
-                    # Slug collision - retry with new slug
-                    if attempt < max_retries - 1:
-                        logger.warning(f"Slug collision on attempt {attempt + 1}, retrying...")
-                        continue
-                    # Out of retries
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="Failed to generate unique slug after multiple attempts",
-                    ) from e
-                except Exception:
-                    # Other database errors - don't retry
-                    raise
-        else:
-            # Update only is_public
-            await db.execute(
-                "UPDATE tasks SET is_public = $1 WHERE id = $2",
-                request.is_public,
-                task_id,
-            )
-
-        return VisibilityUpdateResponse(is_public=True, slug=slug)
-
-    # Making private - just update is_public
+    # Update is_public
     await db.execute(
         "UPDATE tasks SET is_public = $1 WHERE id = $2",
         request.is_public,
         task_id,
     )
 
-    return VisibilityUpdateResponse(is_public=False)
+    return VisibilityUpdateResponse(is_public=request.is_public)
 
 
 class ForkTaskRequest(BaseModel):
@@ -550,7 +492,7 @@ async def fork_task(
         notification_channels = []
 
     # Retry loop to handle race condition on task name uniqueness
-    # Similar to slug generation logic - try up to 3 times with incremented counter
+    # Try up to 3 times with incremented counter to handle name collisions
     max_retries = 3
     forked_row = None
 

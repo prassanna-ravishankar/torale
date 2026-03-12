@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import rehypeSanitize from 'rehype-sanitize'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import type { Task, TaskExecution } from '@/types'
 import { getResultDisplayText } from '@/types'
 import api from '@/lib/api'
@@ -26,6 +27,7 @@ import {
   Copy,
   Eye,
   Users,
+  Rss,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -212,8 +214,20 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
     setSearchParams(newParams);
   };
 
+  const rssUrl = api.getTaskRssUrl(taskId);
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-8">
+      {task.is_public && (
+        <Helmet>
+          <link
+            rel="alternate"
+            type="application/rss+xml"
+            title={`${task.name} - RSS Feed`}
+            href={rssUrl}
+          />
+        </Helmet>
+      )}
       {/* Breadcrumb */}
       <div className="font-mono text-xs text-zinc-400 mb-4">
         <a href="/dashboard" className="hover:text-zinc-900 transition-colors">Monitors</a>
@@ -412,6 +426,16 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                   <Users className="h-4 w-4" />
                   {task.subscriber_count}
                 </div>
+                <a
+                  href={rssUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 hover:text-foreground transition-colors"
+                  title="RSS feed"
+                >
+                  <Rss className="h-4 w-4" />
+                  <span className="text-xs font-mono">RSS</span>
+                </a>
               </div>
             )}
           </>

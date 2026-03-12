@@ -65,11 +65,9 @@ Content-Type: application/json
   "state": "active",
   "next_run": "2025-01-15T10:31:00Z",
   "is_public": false,
-  "slug": null,
   "view_count": 0,
   "subscriber_count": 0,
   "forked_from_task_id": null,
-  "creator_username": null,
   "last_known_state": null,
   "last_execution_id": null,
   "last_execution": null,
@@ -124,11 +122,9 @@ Authorization: Bearer {api_key}
     "state": "active",
     "next_run": "2025-01-16T09:00:00Z",
     "is_public": false,
-    "slug": null,
     "view_count": 0,
     "subscriber_count": 0,
     "forked_from_task_id": null,
-    "creator_username": "alice",
     "last_known_state": null,
     "last_execution_id": null,
     "last_execution": null,
@@ -250,7 +246,7 @@ Returns `409 Conflict` if task is already running (unless force override).
 
 ### Update Task Visibility
 
-Toggle a task between public and private. Making public requires a username to be set.
+Toggle a task between public and private.
 
 **Endpoint:** `PATCH /api/v1/tasks/{id}/visibility`
 
@@ -264,12 +260,9 @@ Toggle a task between public and private. Making public requires a username to b
 **Response:** `200 OK`
 ```json
 {
-  "is_public": true,
-  "slug": "iphone-release-monitor"
+  "is_public": true
 }
 ```
-
-A slug is auto-generated from the task name when first made public.
 
 ### Fork Task
 
@@ -317,11 +310,9 @@ Fork a public task. Creates a copy for the current user in `paused` state.
 | `state` | string | `active`, `paused`, or `completed` |
 | `next_run` | timestamp/null | Next scheduled execution time (set by agent) |
 | `is_public` | boolean | Whether task is publicly visible |
-| `slug` | string/null | URL slug for public vanity URL |
 | `view_count` | integer | Number of public views |
 | `subscriber_count` | integer | Number of forks by other users |
 | `forked_from_task_id` | UUID/null | Source task if this is a fork |
-| `creator_username` | string/null | Username of the task owner |
 | `last_known_state` | object/null | Agent's state tracking data |
 | `last_execution_id` | UUID/null | ID of the most recent execution |
 | `last_execution` | object/null | Embedded last execution (when available) |

@@ -2,7 +2,7 @@ import json
 from uuid import UUID
 
 from pypika_tortoise import Order, Parameter, PostgreSQLQuery
-from pypika_tortoise.functions import Count, Now
+from pypika_tortoise.functions import Now
 
 from torale.core.database import Database
 from torale.repositories.base import BaseRepository
@@ -16,7 +16,6 @@ class TaskRepository(BaseRepository):
     def __init__(self, db: Database):
         super().__init__(db)
         self.tasks = tables.tasks
-        self.users = tables.users
         self.executions = tables.task_executions
 
     async def create_task(
@@ -81,7 +80,6 @@ class TaskRepository(BaseRepository):
         # Build query with LEFT JOIN for latest execution
         query = PostgreSQLQuery.from_(self.tasks).select(
             self.tasks.star,
-            self.users.username.as_("creator_username"),
             self.executions.id.as_("exec_id"),
             self.executions.notification.as_("exec_notification"),
             self.executions.started_at.as_("exec_started_at"),
@@ -91,7 +89,6 @@ class TaskRepository(BaseRepository):
             self.executions.grounding_sources.as_("exec_grounding_sources"),
         )
 
-        query = query.join(self.users).on(self.tasks.user_id == self.users.id)
         query = query.left_join(self.executions).on(
             self.tasks.last_execution_id == self.executions.id
         )
@@ -117,7 +114,6 @@ class TaskRepository(BaseRepository):
         """
         query = PostgreSQLQuery.from_(self.tasks).select(
             self.tasks.star,
-            self.users.username.as_("creator_username"),
             self.executions.id.as_("exec_id"),
             self.executions.notification.as_("exec_notification"),
             self.executions.started_at.as_("exec_started_at"),
@@ -127,7 +123,6 @@ class TaskRepository(BaseRepository):
             self.executions.grounding_sources.as_("exec_grounding_sources"),
         )
 
-        query = query.join(self.users).on(self.tasks.user_id == self.users.id)
         query = query.left_join(self.executions).on(
             self.tasks.last_execution_id == self.executions.id
         )
@@ -236,22 +231,17 @@ class TaskRepository(BaseRepository):
         )
         return await self.db.fetch_one(str(query), state, task_id)
 
-    async def update_visibility(
-        self, task_id: UUID, is_public: bool, slug: str | None = None
-    ) -> dict:
+    async def update_visibility(self, task_id: UUID, is_public: bool) -> dict:
         """Update task visibility (public/private).
 
         Args:
             task_id: Task UUID
             is_public: Whether task should be public
-            slug: URL slug (required if making public)
 
         Returns:
             Updated task record
         """
         data = {"is_public": is_public}
-        if slug is not None:
-            data["slug"] = slug
 
         sql, params = self._build_update_query(self.tasks, task_id, data)
         return await self.db.fetch_one(sql, *params)
@@ -295,10 +285,7 @@ class TaskRepository(BaseRepository):
         Returns:
             List of public task records
         """
-        query = PostgreSQLQuery.from_(self.tasks).select(
-            self.tasks.star, self.users.username.as_("creator_username")
-        )
-        query = query.join(self.users).on(self.tasks.user_id == self.users.id)
+        query = PostgreSQLQuery.from_(self.tasks).select(self.tasks.star)
         query = query.where(self.tasks.is_public.eq(True))
 
         if search:
@@ -316,42 +303,6 @@ class TaskRepository(BaseRepository):
         if search:
             return await self.db.fetch_all(str(query), search_param)
         return await self.db.fetch_all(str(query))
-
-    async def find_by_slug(self, slug: str) -> dict | None:
-        """Find public task by slug.
-
-        Args:
-            slug: Task slug
-
-        Returns:
-            Task record or None
-        """
-        query = PostgreSQLQuery.from_(self.tasks).select(
-            self.tasks.star, self.users.username.as_("creator_username")
-        )
-        query = query.join(self.users).on(self.tasks.user_id == self.users.id)
-        query = query.where(self.tasks.slug == Parameter("$1"))
-        query = query.where(self.tasks.is_public.eq(True))
-
-        return await self.db.fetch_one(str(query), slug)
-
-    async def slug_exists(self, slug: str) -> bool:
-        """Check if slug already exists.
-
-        Args:
-            slug: Slug to check
-
-        Returns:
-            True if slug exists
-        """
-        query = (
-            PostgreSQLQuery.from_(self.tasks)
-            .select(Count("*"))
-            .where(self.tasks.slug == Parameter("$1"))
-        )
-
-        count = await self.db.fetch_val(str(query), slug)
-        return count > 0
 
 
 class TaskExecutionRepository(BaseRepository):

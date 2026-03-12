@@ -29,6 +29,11 @@ class ApiClient {
     return this.baseUrl
   }
 
+  /** Build the RSS feed URL for a public task. */
+  getTaskRssUrl(taskId: string): string {
+    return `${this.baseUrl}/tasks/${taskId}/rss`
+  }
+
   // Set the token getter function (called from components with Clerk's getToken)
   setTokenGetter(getter: () => Promise<string | null>) {
     this.tokenGetter = getter
@@ -453,31 +458,11 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
-  // Username endpoints
-  async checkUsernameAvailability(username: string): Promise<{ available: boolean; error: string | null }> {
-    const response = await fetch(
-      `${this.baseUrl}/api/v1/users/username/available?username=${encodeURIComponent(username)}`,
-      {
-        headers: await this.getAuthHeaders(),
-      }
-    )
-    return this.handleResponse(response)
-  }
-
-  async setUsername(username: string): Promise<{ username: string; updated: boolean }> {
-    const response = await fetch(`${this.baseUrl}/api/v1/users/me/username`, {
-      method: 'PATCH',
-      headers: await this.getAuthHeaders(),
-      body: JSON.stringify({ username }),
-    })
-    return this.handleResponse(response)
-  }
-
   // Task visibility endpoints
   async updateTaskVisibility(
     taskId: string,
     isPublic: boolean
-  ): Promise<{ is_public: boolean; slug: string | null; username_required: boolean }> {
+  ): Promise<{ is_public: boolean }> {
     const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/visibility`, {
       method: 'PATCH',
       headers: await this.getAuthHeaders(),
@@ -509,13 +494,6 @@ class ApiClient {
 
     const url = `${this.baseUrl}/api/v1/public/tasks${queryParams.toString() ? `?${queryParams}` : ''}`
     const response = await fetch(url, {
-      headers: await this.getAuthHeaders(),
-    })
-    return this.handleResponse(response)
-  }
-
-  async getPublicTaskByVanityUrl(username: string, slug: string): Promise<Task> {
-    const response = await fetch(`${this.baseUrl}/api/v1/public/tasks/${username}/${slug}`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)

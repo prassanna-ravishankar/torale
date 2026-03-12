@@ -201,7 +201,8 @@ Valid state transitions:
 
 Rate limits are applied per-IP on public endpoints:
 - Public tasks listing: 10/minute
-- Public task by vanity URL: 20/minute
+- Public task by ID: 20/minute
+- Task RSS feed: 10/minute
 - Waitlist join: 5/minute
 
 ### Server Errors

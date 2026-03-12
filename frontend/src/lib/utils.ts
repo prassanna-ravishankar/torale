@@ -2,6 +2,11 @@ import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import type { TaskState } from "@/types"
 
+/** Build the public share URL for a task. */
+export function getTaskShareUrl(taskId: string): string {
+  return `${window.location.origin}/tasks/${taskId}`
+}
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }

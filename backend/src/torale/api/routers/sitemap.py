@@ -21,17 +21,16 @@ async def generate_sitemap(db: Database = Depends(get_db)):
 
     Includes:
     - Static pages (landing, explore)
-    - Public task pages (vanity URLs)
+    - Public task pages
     """
-    # Get all public tasks with username and updated_at
+    # Get all public tasks with updated_at
     # TODO: At scale (>10k public tasks), implement sitemap index pattern:
     # - Split into multiple sitemap files (50k URLs each per Google guidelines)
     # - Use sitemap index file to reference individual sitemaps
     # - Consider caching the generated sitemap with periodic regeneration
     tasks_query = """
-        SELECT t.slug, u.username, t.updated_at
+        SELECT t.id, t.updated_at
         FROM tasks t
-        INNER JOIN users u ON t.user_id = u.id
         WHERE t.is_public = true
         ORDER BY t.updated_at DESC
     """
@@ -39,7 +38,7 @@ async def generate_sitemap(db: Database = Depends(get_db)):
     tasks = await db.fetch_all(tasks_query)
 
     # Build XML sitemap using xml.etree
-    base_url = settings.frontend_url or "https://torale.ai"
+    base_url = settings.frontend_url
 
     # Create root element with namespace
     urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
@@ -99,7 +98,7 @@ async def generate_sitemap(db: Database = Depends(get_db)):
 
     # Public task pages
     for task in tasks:
-        task_url = f"{base_url}/t/{task['username']}/{task['slug']}"
+        task_url = f"{base_url}/tasks/{task['id']}"
         lastmod = task["updated_at"].strftime("%Y-%m-%d")
 
         url_elem = ET.SubElement(urlset, "url")
@@ -138,9 +137,7 @@ async def generate_changelog_rss():
     MAX_RSS_ENTRIES = 50
     entries = entries[:MAX_RSS_ENTRIES]
 
-    base_url = settings.frontend_url or "https://torale.ai"
-
-    # Register atom namespace to avoid ns0 prefix
+    base_url = settings.frontend_url
     ET.register_namespace("atom", "http://www.w3.org/2005/Atom")
 
     # Create RSS structure
@@ -208,12 +205,12 @@ async def robots_txt():
     - API endpoints
     - Admin endpoints
     """
-    base_url = settings.frontend_url or "https://torale.ai"
+    base_url = settings.frontend_url
 
     robots = f"""User-agent: *
 Allow: /
 Allow: /explore
-Allow: /t/
+Allow: /tasks/
 
 Disallow: /api/
 Disallow: /auth/

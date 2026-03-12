@@ -61,7 +61,6 @@ GET    /api/v1/notifications/sends         # Notification send history
 
 ```
 GET    /api/v1/public/tasks                        # Discover public tasks
-GET    /api/v1/public/tasks/{username}/{slug}       # Get task by vanity URL
 GET    /api/v1/public/tasks/id/{task_id}            # Get public task by UUID
 ```
 
