@@ -83,7 +83,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
     if (open && task) {
       handleExecute();
     }
-  }, [open, task, handleExecute]);
+  }, [open, task.id, handleExecute]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 import os
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import logfire
@@ -14,7 +14,6 @@ from a2a.server.apps import A2AStarletteApplication
 from a2a.server.events.event_queue import EventQueue
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
-from a2a.server.tasks.task_store import ServerCallContext
 from a2a.types import (
     AgentCapabilities,
     AgentCard,
@@ -567,75 +566,8 @@ async def ready(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
 
-class BoundedTaskStore(InMemoryTaskStore):
-    """InMemoryTaskStore with automatic eviction of old completed tasks.
-
-    Prevents unbounded memory growth by removing terminal tasks (completed,
-    canceled, failed, rejected) older than MAX_AGE. Eviction runs on each save.
-    """
-
-    MAX_AGE = timedelta(hours=1)
-    MAX_TASKS = 1000
-    _TERMINAL_STATES = frozenset(
-        {TaskState.completed, TaskState.canceled, TaskState.failed, TaskState.rejected}
-    )
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._timestamps: dict[str, datetime] = {}
-
-    async def save(
-        self, task: A2ATask, context: ServerCallContext | None = None
-    ) -> None:
-        await self._evict_stale()
-        await super().save(task, context)
-        async with self.lock:
-            self._timestamps.setdefault(task.id, datetime.now(UTC))
-
-    async def delete(
-        self, task_id: str, context: ServerCallContext | None = None
-    ) -> None:
-        await super().delete(task_id, context)
-        async with self.lock:
-            self._timestamps.pop(task_id, None)
-
-    async def _evict_stale(self) -> None:
-        now = datetime.now(UTC)
-        cutoff = now - self.MAX_AGE
-        async with self.lock:
-            to_delete: list[str] = []
-            for tid, task in self.tasks.items():
-                ts = self._timestamps.get(tid)
-                if (
-                    task.status.state in self._TERMINAL_STATES
-                    and ts is not None
-                    and ts < cutoff
-                ):
-                    to_delete.append(tid)
-
-            # Hard cap: if still over limit, evict oldest terminal tasks
-            remaining = len(self.tasks) - len(to_delete)
-            if remaining > self.MAX_TASKS:
-                terminal = [
-                    (tid, self._timestamps.get(tid, now))
-                    for tid in self.tasks
-                    if tid not in to_delete
-                    and self.tasks[tid].status.state in self._TERMINAL_STATES
-                ]
-                terminal.sort(key=lambda x: x[1])
-                excess = remaining - self.MAX_TASKS
-                to_delete.extend(tid for tid, _ in terminal[:excess])
-
-            for tid in to_delete:
-                del self.tasks[tid]
-                self._timestamps.pop(tid, None)
-
-            if to_delete:
-                logger.info("Evicted %d stale tasks from store", len(to_delete))
-
-
 executor = ToraleAgentExecutor(agent)
-task_store = BoundedTaskStore()
+task_store = InMemoryTaskStore()
 request_handler = DefaultRequestHandler(
     agent_executor=executor,
     task_store=task_store,

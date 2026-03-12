@@ -266,7 +266,7 @@ async def start_task_execution(
         WITH running AS (
             SELECT id, status, started_at
             FROM task_executions
-            WHERE task_id = $1 AND status IN ('running', 'pending')
+            WHERE task_id = $1 AND status IN ($2, $3)
             LIMIT 1
         ),
         latest AS (
@@ -283,6 +283,8 @@ async def start_task_execution(
         LEFT JOIN latest l ON true
         """,
         UUID(task_id),
+        TaskStatus.RUNNING.value,
+        TaskStatus.PENDING.value,
     )
 
     running_id = combined_row["running_id"] if combined_row else None
@@ -472,12 +474,14 @@ async def fork_task(
     - Tracks original task via forked_from_task_id
     - User can optionally provide a new name
     """
-    # Verify access then fetch the full source task for forking
-    _, is_owner = await _check_task_access(db, task_id, user)
+    # Fetch full source task (need all columns for forking)
     source_row = await db.fetch_one("SELECT * FROM tasks WHERE id = $1", task_id)
     if not source_row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     source = dict(source_row)
+    is_owner = user is not None and source["user_id"] == user.id
+    if not is_owner and not source["is_public"]:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
     # Determine base name and notification fields (scrub sensitive data for non-owners)
     base_fork_name = request.name if request.name else f"{source['name']} (Copy)"

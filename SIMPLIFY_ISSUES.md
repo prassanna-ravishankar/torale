@@ -33,7 +33,7 @@ Full-codebase review. Issues grouped by size. Check off as fixed.
 - [x] **L3: MonitoringResponse cross-repo duplication** — Synced styles, added SYNC comments.
 - ~~L4: WebhookDeliveryService per-call httpx client~~ — N/A; already uses persistent client in `__init__`; per-call instantiation acceptable at current scale.
 - ~~L5: Agent per-call httpx client~~ — N/A after Lightpanda migration (#183).
-- [x] **L6: InMemoryTaskStore grows unbounded** — Added `BoundedTaskStore` with time-based (1h) and count-based (1000) eviction.
+- ~~L6: InMemoryTaskStore grows unbounded~~ — Reverted `BoundedTaskStore` (code smell; O(n) scan + triple lock per save). Accept at current scale.
 - [x] **L7: `_TASK_WITH_EXECUTION_QUERY` raw SQL vs repository** — Removed; endpoints now use `TaskRepository` methods.
 
 ## Skipping (behavior change risk / not worth it)

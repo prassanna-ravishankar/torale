@@ -11,6 +11,9 @@ from fastapi import APIRouter, Depends, Response
 from torale.core.config import PROJECT_ROOT, settings
 from torale.core.database import Database, get_db
 
+# Register atom namespace once at module level (avoids per-request global mutation)
+ET.register_namespace("atom", "http://www.w3.org/2005/Atom")
+
 router = APIRouter(tags=["seo"])
 
 
@@ -138,7 +141,6 @@ async def generate_changelog_rss():
     entries = entries[:MAX_RSS_ENTRIES]
 
     base_url = settings.frontend_url
-    ET.register_namespace("atom", "http://www.w3.org/2005/Atom")
 
     # Create RSS structure
     rss = ET.Element("rss", version="2.0")

@@ -74,7 +74,12 @@ async def list_public_tasks(
     """
 
     rows = await db.fetch_all(tasks_query, limit, offset)
-    total = rows[0]["total_count"] if rows else 0
+    if rows:
+        total = rows[0]["total_count"]
+    else:
+        # Window function returns nothing when offset is past end; fall back to COUNT
+        count_row = await db.fetch_one("SELECT COUNT(*) as total FROM tasks WHERE is_public = true")
+        total = count_row["total"] if count_row else 0
 
     # Parse tasks using shared utility
     tasks = [parse_task_with_execution(row) for row in rows]
