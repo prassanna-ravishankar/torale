@@ -38,8 +38,7 @@ interface TaskEditDialogProps {
 }
 
 const MIN_NAME_LENGTH = 3;
-const MIN_SEARCH_QUERY_LENGTH = 10;
-const MIN_CONDITION_DESCRIPTION_LENGTH = 10;
+const MIN_INSTRUCTIONS_LENGTH = 10;
 
 export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   open,
@@ -49,8 +48,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
 }) => {
   // Form data
   const [name, setName] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [conditionDescription, setConditionDescription] = useState('');
+  const [instructions, setInstructions] = useState('');
   const [notifyBehavior, setNotifyBehavior] = useState<NotifyBehavior>('once');
 
   // UI state
@@ -66,8 +64,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   useEffect(() => {
     if (task && open) {
       setName(task.name);
-      setSearchQuery(task.search_query || '');
-      setConditionDescription(task.condition_description || '');
+      setInstructions(task.search_query || '');
       setNotifyBehavior(task.notify_behavior as NotifyBehavior);
       setIsPublic(task.is_public);
     }
@@ -124,16 +121,10 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       errors.name = `Task name must be at least ${MIN_NAME_LENGTH} characters`;
     }
 
-    if (!searchQuery.trim()) {
-      errors.searchQuery = "Search query is required";
-    } else if (searchQuery.length < MIN_SEARCH_QUERY_LENGTH) {
-      errors.searchQuery = "Please provide a more specific search query";
-    }
-
-    if (!conditionDescription.trim()) {
-      errors.conditionDescription = "Trigger condition is required";
-    } else if (conditionDescription.length < MIN_CONDITION_DESCRIPTION_LENGTH) {
-      errors.conditionDescription = "Please provide a more specific condition";
+    if (!instructions.trim()) {
+      errors.instructions = "Please describe what to monitor";
+    } else if (instructions.length < MIN_INSTRUCTIONS_LENGTH) {
+      errors.instructions = "Please provide more detail";
     }
 
     setValidationErrors(errors);
@@ -155,8 +146,8 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
     try {
       const updatedTask = await api.updateTask(task.id, {
         name,
-        search_query: searchQuery,
-        condition_description: conditionDescription,
+        search_query: instructions,
+        condition_description: instructions,
         notify_behavior: notifyBehavior,
       });
 
@@ -205,44 +196,24 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
               <FieldError message={validationErrors.name} />
             </div>
 
-            {/* Search Query */}
+            {/* What to Monitor */}
             <div className="space-y-2">
-              <Label htmlFor="searchQuery" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
+              <Label htmlFor="instructions" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
                 <Search className="h-3 w-3" />
                 What to Monitor
               </Label>
               <Textarea
-                id="searchQuery"
-                value={searchQuery}
+                id="instructions"
+                value={instructions}
                 onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  if (validationErrors.searchQuery) setValidationErrors(prev => ({ ...prev, searchQuery: "" }));
+                  setInstructions(e.target.value);
+                  if (validationErrors.instructions) setValidationErrors(prev => ({ ...prev, instructions: "" }));
                 }}
                 disabled={isUpdating}
-                rows={3}
-                className={cn("resize-none", validationErrors.searchQuery && "border-destructive")}
+                rows={6}
+                className={cn("resize-none", validationErrors.instructions && "border-destructive")}
               />
-              <FieldError message={validationErrors.searchQuery} />
-            </div>
-
-            {/* Condition Description */}
-            <div className="space-y-2">
-              <Label htmlFor="condition" className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex items-center gap-2">
-                <Bell className="h-3 w-3" />
-                When to Notify
-              </Label>
-              <Textarea
-                id="condition"
-                value={conditionDescription}
-                onChange={(e) => {
-                  setConditionDescription(e.target.value);
-                  if (validationErrors.conditionDescription) setValidationErrors(prev => ({ ...prev, conditionDescription: "" }));
-                }}
-                disabled={isUpdating}
-                rows={3}
-                className={cn("resize-none", validationErrors.conditionDescription && "border-destructive")}
-              />
-              <FieldError message={validationErrors.conditionDescription} />
+              <FieldError message={validationErrors.instructions} />
             </div>
 
             {/* Notification Mode - inline toggle */}
