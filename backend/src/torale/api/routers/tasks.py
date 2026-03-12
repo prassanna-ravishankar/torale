@@ -260,50 +260,23 @@ async def start_task_execution(
     force: bool = False,
 ) -> dict:
     """Create execution record and launch agent-based execution in background."""
-    # Single query: check for running/pending executions and get retry count from latest
-    combined_row = await db.fetch_one(
-        """
-        WITH running AS (
-            SELECT id, status, started_at
-            FROM task_executions
-            WHERE task_id = $1 AND status IN ($2, $3)
-            LIMIT 1
-        ),
-        latest AS (
-            SELECT retry_count
-            FROM task_executions
-            WHERE task_id = $1
-            ORDER BY started_at DESC
-            LIMIT 1
-        )
-        SELECT r.id AS running_id, r.status AS running_status, r.started_at AS running_started_at,
-               l.retry_count AS last_retry_count
-        FROM (VALUES (1)) AS dummy(x)
-        LEFT JOIN running r ON true
-        LEFT JOIN latest l ON true
-        """,
+    # Check for running or pending executions to prevent concurrent execution
+    running_execution = await db.fetch_one(
+        "SELECT id, status, started_at FROM task_executions WHERE task_id = $1 AND status IN ($2, $3)",
         UUID(task_id),
         TaskStatus.RUNNING.value,
         TaskStatus.PENDING.value,
     )
 
-    running_id = combined_row["running_id"] if combined_row else None
-    running_status = combined_row["running_status"] if combined_row else None
-    running_started_at = combined_row["running_started_at"] if combined_row else None
-    retry_count = (
-        combined_row["last_retry_count"]
-        if combined_row and combined_row["last_retry_count"] is not None
-        else 0
-    )
-
-    if running_id and not force:
+    if running_execution and not force:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Task is already running or pending. Use force=true to override.",
         )
 
-    if running_id:
+    if running_execution:
         # Force override: mark stuck execution as cancelled
+        stuck_id = running_execution["id"]
         await db.execute(
             """
             UPDATE task_executions
@@ -317,11 +290,11 @@ async def start_task_execution(
             "Execution cancelled by manual force run",
             "Force override triggered from admin/manual execution",
             datetime.now(UTC),
-            running_id,
+            stuck_id,
         )
         logger.warning(
-            f"Force-cancelling stuck execution {running_id} for task {task_id} "
-            f"(was in status '{running_status}' since {running_started_at})"
+            f"Force-cancelling stuck execution {stuck_id} for task {task_id} "
+            f"(was in status '{running_execution['status']}' since {running_execution['started_at']})"
         )
 
     # Cancel any pending retry jobs before starting manual execution
@@ -331,6 +304,15 @@ async def start_task_execution(
     if existing_job:
         await asyncio.to_thread(scheduler.remove_job, job_id)
         logger.info(f"Cancelled pending retry job for task {task_id} (manual run triggered)")
+
+    # Inherit retry count from last execution (if it exists)
+    last_execution = await db.fetch_one(
+        """SELECT retry_count FROM task_executions
+           WHERE task_id = $1
+           ORDER BY started_at DESC LIMIT 1""",
+        UUID(task_id),
+    )
+    retry_count = last_execution["retry_count"] if last_execution else 0
 
     execution_query = """
         INSERT INTO task_executions (task_id, status)

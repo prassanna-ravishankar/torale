@@ -18,6 +18,24 @@ class TaskRepository(BaseRepository):
         self.tasks = tables.tasks
         self.executions = tables.task_executions
 
+    def _task_with_execution_query(self) -> PostgreSQLQuery:
+        """Base query selecting task columns + last execution columns."""
+        return (
+            PostgreSQLQuery.from_(self.tasks)
+            .select(
+                self.tasks.star,
+                self.executions.id.as_("exec_id"),
+                self.executions.notification.as_("exec_notification"),
+                self.executions.started_at.as_("exec_started_at"),
+                self.executions.completed_at.as_("exec_completed_at"),
+                self.executions.status.as_("exec_status"),
+                self.executions.result.as_("exec_result"),
+                self.executions.grounding_sources.as_("exec_grounding_sources"),
+            )
+            .left_join(self.executions)
+            .on(self.tasks.last_execution_id == self.executions.id)
+        )
+
     async def create_task(self, data: TaskData) -> dict:
         """Create a new task.
 
@@ -44,21 +62,7 @@ class TaskRepository(BaseRepository):
         Returns:
             List of task records with embedded execution data
         """
-        # Build query with LEFT JOIN for latest execution
-        query = PostgreSQLQuery.from_(self.tasks).select(
-            self.tasks.star,
-            self.executions.id.as_("exec_id"),
-            self.executions.notification.as_("exec_notification"),
-            self.executions.started_at.as_("exec_started_at"),
-            self.executions.completed_at.as_("exec_completed_at"),
-            self.executions.status.as_("exec_status"),
-            self.executions.result.as_("exec_result"),
-            self.executions.grounding_sources.as_("exec_grounding_sources"),
-        )
-
-        query = query.left_join(self.executions).on(
-            self.tasks.last_execution_id == self.executions.id
-        )
+        query = self._task_with_execution_query()
         query = query.where(self.tasks.user_id == Parameter("$1"))
 
         if state:
@@ -79,20 +83,7 @@ class TaskRepository(BaseRepository):
         Returns:
             Task record with execution data or None
         """
-        query = PostgreSQLQuery.from_(self.tasks).select(
-            self.tasks.star,
-            self.executions.id.as_("exec_id"),
-            self.executions.notification.as_("exec_notification"),
-            self.executions.started_at.as_("exec_started_at"),
-            self.executions.completed_at.as_("exec_completed_at"),
-            self.executions.status.as_("exec_status"),
-            self.executions.result.as_("exec_result"),
-            self.executions.grounding_sources.as_("exec_grounding_sources"),
-        )
-
-        query = query.left_join(self.executions).on(
-            self.tasks.last_execution_id == self.executions.id
-        )
+        query = self._task_with_execution_query()
         query = query.where(self.tasks.id == Parameter("$1"))
 
         return await self.db.fetch_one(str(query), task_id)

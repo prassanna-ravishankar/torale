@@ -81,43 +81,41 @@ async def get_platform_stats(
 
     twenty_four_hours_ago = datetime.now(UTC) - timedelta(hours=24)
 
-    # Run all 4 independent queries concurrently
-    user_result, task_result, exec_result, popular_result = await asyncio.gather(
-        session.execute(text("SELECT COUNT(*) FROM users WHERE is_active = true")),
-        session.execute(
-            text("""
-            SELECT
-                COUNT(*) as total_tasks,
-                SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END) as triggered_tasks
-            FROM tasks t
-            LEFT JOIN task_executions e ON t.last_execution_id = e.id
-            WHERE t.state = 'active'
-            """)
-        ),
-        session.execute(
-            text("""
-            SELECT
-                COUNT(*) as total_executions,
-                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_executions
-            FROM task_executions
-            WHERE created_at >= :since
-            """),
-            {"since": twenty_four_hours_ago},
-        ),
-        session.execute(
-            text("""
-            SELECT
-                t.search_query,
-                COUNT(*) as task_count,
-                SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END) as triggered_count
-            FROM tasks t
-            LEFT JOIN task_executions e ON t.last_execution_id = e.id
-            WHERE t.search_query IS NOT NULL
-            GROUP BY t.search_query
-            ORDER BY task_count DESC
-            LIMIT 10
-            """)
-        ),
+    # AsyncSession wraps a single connection — cannot run concurrent queries on it
+    user_result = await session.execute(text("SELECT COUNT(*) FROM users WHERE is_active = true"))
+    task_result = await session.execute(
+        text("""
+        SELECT
+            COUNT(*) as total_tasks,
+            SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END) as triggered_tasks
+        FROM tasks t
+        LEFT JOIN task_executions e ON t.last_execution_id = e.id
+        WHERE t.state = 'active'
+        """)
+    )
+    exec_result = await session.execute(
+        text("""
+        SELECT
+            COUNT(*) as total_executions,
+            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_executions
+        FROM task_executions
+        WHERE created_at >= :since
+        """),
+        {"since": twenty_four_hours_ago},
+    )
+    popular_result = await session.execute(
+        text("""
+        SELECT
+            t.search_query,
+            COUNT(*) as task_count,
+            SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END) as triggered_count
+        FROM tasks t
+        LEFT JOIN task_executions e ON t.last_execution_id = e.id
+        WHERE t.search_query IS NOT NULL
+        GROUP BY t.search_query
+        ORDER BY task_count DESC
+        LIMIT 10
+        """)
     )
 
     user_row = user_result.first()
