@@ -29,7 +29,7 @@ Full-codebase review. Issues grouped by size. Check off as fixed.
 ## Large Fixes (architectural)
 
 - [x] **L1: Router bypasses repository** — Migrated `list_tasks`, `get_task`, and `update_task` re-fetch to use `TaskRepository`. Complex endpoints (create, update core, fork) kept as-is.
-- [ ] **L2: Repository parameter sprawl** — `create_task`/`update_task` take 11 params each.
+- [x] **L2: Repository parameter sprawl** — Replaced 11 loose params with `TaskData` TypedDict.
 - [x] **L3: MonitoringResponse cross-repo duplication** — Synced styles, added SYNC comments.
 - ~~L4: WebhookDeliveryService per-call httpx client~~ — N/A; already uses persistent client in `__init__`; per-call instantiation acceptable at current scale.
 - ~~L5: Agent per-call httpx client~~ — N/A after Lightpanda migration (#183).

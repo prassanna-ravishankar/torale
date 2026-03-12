@@ -4,6 +4,7 @@ from .tasks import (
     NotifyBehavior,
     Task,
     TaskCreate,
+    TaskData,
     TaskExecution,
     TaskState,
     TaskStatus,
@@ -17,6 +18,7 @@ __all__ = [
     # Models
     "Task",
     "TaskCreate",
+    "TaskData",
     "TaskUpdate",
     "TaskExecution",
     "TaskState",
