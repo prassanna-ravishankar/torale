@@ -29,7 +29,7 @@ async def main():
             },
             "execution": {
                 "id": "test_exec_123",
-                "condition_met": True,
+                "notification": "Apple announced the iPhone 16 will be released on September 20, 2024",
                 "completed_at": "2024-11-09T10:30:00Z",
             },
             "result": {

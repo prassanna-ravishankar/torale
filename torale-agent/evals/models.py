@@ -1,7 +1,5 @@
 """Input and metadata models for pydantic-evals cases."""
 
-from typing import Literal
-
 from pydantic import BaseModel
 from pydantic_evals import Case, Dataset
 from pydantic_evals.reporting import EvaluationReport
@@ -15,7 +13,6 @@ class MonitoringCaseInput(BaseModel):
     search_query: str
     condition_description: str
     category: str
-    notify_behavior: Literal["once", "always"]
     passes: int = 1  # sequential runs for multi-pass simulation
 
 

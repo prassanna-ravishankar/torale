@@ -202,7 +202,7 @@ return <>{tabs}{dropdown}</>
 variant={execution.status}
 
 // 2. Boolean ternary - self-documenting
-variant={condition_met ? 'met' : 'not_met'}
+variant={notification ? 'met' : 'not_met'}
 variant={user.is_active ? 'active' : 'paused'}
 
 // 3. Map object - when values don't align

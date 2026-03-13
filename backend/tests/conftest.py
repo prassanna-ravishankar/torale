@@ -106,7 +106,6 @@ def sample_execution(sample_task):
     execution.id = uuid4()
     execution.task_id = sample_task.id
     execution.status = "success"
-    execution.condition_met = True
     execution.result = {"answer": "Test answer"}
     execution.grounding_sources = [{"url": "https://example.com", "title": "Example"}]
     execution.started_at = datetime.now(UTC)

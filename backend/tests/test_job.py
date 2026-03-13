@@ -29,7 +29,6 @@ def _make_task_row():
         "search_query": "iPhone release date",
         "condition_description": "Release date announced",
         "name": TASK_NAME,
-        "notify_behavior": "once",
         "notification_channels": ["email"],
         "state": "active",
     }

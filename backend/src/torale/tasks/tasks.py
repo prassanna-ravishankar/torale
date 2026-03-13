@@ -6,11 +6,6 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class NotifyBehavior(StrEnum):
-    ONCE = "once"  # Notify once per condition match
-    ALWAYS = "always"  # Notify every time condition is met
-
-
 class TaskState(StrEnum):
     """Task state enum - represents what the task is currently doing."""
 
@@ -52,7 +47,6 @@ class TaskData(TypedDict, total=False):
     state: str
     search_query: str | None
     condition_description: str | None
-    notify_behavior: str
     notifications: list[dict]
     notification_channels: list[str]
     notification_email: str | None
@@ -67,8 +61,6 @@ class TaskBase(BaseModel):
     # Grounded search fields
     search_query: str | None = None
     condition_description: str | None = None
-    notify_behavior: NotifyBehavior = NotifyBehavior.ONCE
-
     # Notification configuration
     notifications: list[NotificationConfig] = Field(default_factory=list)
 
@@ -86,7 +78,6 @@ class TaskUpdate(BaseModel):
     state: TaskState | None = None
     search_query: str | None = None
     condition_description: str | None = None
-    notify_behavior: NotifyBehavior | None = None
     notifications: list[NotificationConfig] | None = None
 
 
@@ -147,7 +138,6 @@ class TaskTemplateBase(BaseModel):
     icon: str | None = None
     search_query: str
     condition_description: str
-    notify_behavior: NotifyBehavior = NotifyBehavior.ALWAYS
 
 
 class TaskTemplateCreate(TaskTemplateBase):

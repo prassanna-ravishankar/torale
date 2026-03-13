@@ -122,9 +122,6 @@ print(f"State: {task.state}")
 # Pause task
 task = client.tasks.update("task-id", state="paused")
 
-# Change notification behavior
-task = client.tasks.update("task-id", notify_behavior="always")
-
 # Update search query
 task = client.tasks.update("task-id", search_query="New search query")
 ```
@@ -178,7 +175,6 @@ task = client.tasks.create(
     name="PS5 Price Tracker",
     search_query="What is the current price of PS5 at Best Buy?",
     condition_description="Price is $449 or lower",
-    notify_behavior="always",
     notifications=[{"type": "webhook", "url": "https://myapp.com/alert"}],
 )
 

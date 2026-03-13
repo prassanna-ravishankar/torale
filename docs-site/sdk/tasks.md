@@ -21,13 +21,12 @@ task = client.tasks.create(
 **With all options:**
 
 ```python
-from torale.tasks import NotifyBehavior, TaskState
+from torale.tasks import TaskState
 
 task = client.tasks.create(
     name="iPhone Release Monitor",
     search_query="When is the iPhone 17 being released?",
     condition_description="Apple has announced a specific release date",
-    notify_behavior=NotifyBehavior.ALWAYS,  # or "always"
     notifications=[
         {"type": "email", "address": "me@example.com"},
         {"type": "webhook", "url": "https://myapp.com/alert"},
@@ -43,7 +42,6 @@ task = client.tasks.create(
 | `name` | `str` | Yes | - | Task name |
 | `search_query` | `str` | Yes | - | Query to monitor |
 | `condition_description` | `str` | Yes | - | Condition that triggers notification |
-| `notify_behavior` | `str` or `NotifyBehavior` | No | `"once"` | `"once"` or `"always"` |
 | `notifications` | `list[dict]` | No | `[]` | Notification channels |
 | `state` | `str` or `TaskState` | No | `"active"` | `"active"` or `"paused"` |
 
@@ -68,7 +66,6 @@ For a more readable syntax, use the fluent builder:
 task = (client.monitor("When is iPhone 17 being released?")
     .when("Apple has announced a specific release date")
     .notify(email="me@example.com", webhook="https://myapp.com/alert")
-    .notify(behavior="always")
     .named("iPhone Release Monitor")
     .create())
 
@@ -97,7 +94,7 @@ The standalone `monitor()` creates a default `Torale` client automatically (usin
 | Method | Description |
 |--------|-------------|
 | `.when(condition)` | Set the condition description (required) |
-| `.notify(email=..., webhook=..., behavior=...)` | Add notification channels |
+| `.notify(email=..., webhook=...)` | Add notification channels |
 | `.named(name)` | Set a custom task name |
 | `.paused()` | Create task in paused state |
 | `.create()` | Build and create the task |
@@ -138,7 +135,6 @@ Key fields on the returned `Task` object:
 | `state` | `TaskState` | `"active"`, `"paused"`, or `"completed"` |
 | `search_query` | `str` | Search query |
 | `condition_description` | `str` | Trigger condition |
-| `notify_behavior` | `NotifyBehavior` | `"once"` or `"always"` |
 | `notifications` | `list[NotificationConfig]` | Notification channels |
 | `created_at` | `datetime` | Creation timestamp |
 | `next_run` | `datetime` or `None` | Next scheduled execution |
@@ -154,9 +150,6 @@ task = client.tasks.update("task-id", state="paused")
 
 # Resume task
 task = client.tasks.update("task-id", state="active")
-
-# Change notification behavior
-task = client.tasks.update("task-id", notify_behavior="always")
 
 # Update search query and condition
 task = client.tasks.update(

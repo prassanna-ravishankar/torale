@@ -165,7 +165,6 @@ class NovuService:
         task_name: str,
         search_query: str,
         condition_description: str,
-        notify_behavior: str,
         first_execution_result: dict | None,
         task_id: str,
     ) -> dict:
@@ -180,8 +179,7 @@ class NovuService:
         - When next check runs
         - How user will be notified
         - First execution results with sources
-        - notify_behavior explanation
-        - Next steps (conditional based on condition_met and notify_behavior)
+        - Next steps (conditional based on condition_met)
 
         Returns: {"success": bool, "transaction_id": str, "error": str}
         """
@@ -226,7 +224,6 @@ class NovuService:
                         "task_name": task_name,
                         "search_query": search_query,
                         "condition_description": condition_description,
-                        "notify_behavior": notify_behavior,
                         "schedule_description": schedule_description,
                         "answer": answer_html,
                         "condition_met": (

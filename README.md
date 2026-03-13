@@ -83,8 +83,6 @@ task = client.tasks.create(
     name="iPhone Release Monitor",
     search_query="When is the next iPhone being released?",
     condition_description="A specific release date has been announced",
-    schedule="0 9 * * *",  # Daily at 9am
-    notify_behavior="once",  # Options: "once", "always", "track_state"
     notifications=[
         {"type": "webhook", "url": "https://myapp.com/alert"}
     ]
@@ -165,7 +163,7 @@ result = client.tasks.preview(
 )
 
 print(result["answer"])
-print(f"Condition met: {result['condition_met']}")
+print(f"Notification: {result.get('notification', 'None')}")
 if "inferred_condition" in result:
     print(f"Inferred: {result['inferred_condition']}")
 
@@ -341,7 +339,6 @@ curl -X POST http://localhost:8000/api/v1/tasks \
     "schedule": "0 9 * * *",
     "search_query": "When is the next iPhone being released?",
     "condition_description": "A specific release date has been announced",
-    "notify_behavior": "once"
   }'
 ```
 
@@ -535,24 +532,8 @@ See [Kubernetes Deployment](https://docs.torale.ai/deployment/kubernetes) for de
 3. **Agent Search**: Agent searches via Perplexity, uses Mem0 for cross-run memory
 4. **Condition Evaluation**: Agent evaluates if condition is met, returns evidence + sources
 5. **Notification**: If condition met → notifies via email/webhook
-6. **Auto-disable** (optional): If `notify_behavior = "once"`, task deactivates after first alert
+6. **Completion**: Agent returns `next_run=null` when monitoring is complete
 7. **Dynamic Reschedule**: Agent returns `next_run` to adjust check frequency
-
-## Configuration
-
-### Notify Behaviors
-
-- **`once`**: Alert once when condition is first met, then auto-disable task
-- **`always`**: Alert every time condition is met (use with caution)
-
-### Schedule Formats
-
-Use standard cron expressions:
-- `* * * * *`: Every minute (testing only)
-- `0 * * * *`: Every hour
-- `0 9 * * *`: Every day at 9 AM
-- `0 9 * * 1`: Every Monday at 9 AM
-- `0 9 1 * *`: First day of every month at 9 AM
 
 ## API Endpoints
 
@@ -576,7 +557,7 @@ PUT    /api/v1/tasks/{id}                  # Update task
 DELETE /api/v1/tasks/{id}                  # Delete task + schedule
 POST   /api/v1/tasks/{id}/execute          # Manual execution (testing)
 GET    /api/v1/tasks/{id}/executions       # Full execution history
-GET    /api/v1/tasks/{id}/notifications    # Filtered: condition_met = true
+GET    /api/v1/tasks/{id}/notifications    # Filtered: notification IS NOT NULL
 ```
 
 ## Environment Variables

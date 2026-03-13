@@ -38,7 +38,7 @@ task = client.tasks.create(
 
 # Check results
 executions = client.tasks.get_executions(task.id)
-if executions[0].condition_met:
+if executions[0].notification:
     print(executions[0].result["answer"])
 ```
 

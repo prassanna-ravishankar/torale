@@ -141,10 +141,10 @@ async def create_task(
     query = """
         INSERT INTO tasks (
             user_id, name, state, next_run,
-            search_query, condition_description, notify_behavior, notifications,
+            search_query, condition_description, notifications,
             notification_channels, notification_email, webhook_url, webhook_secret
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
     """
 
@@ -156,7 +156,6 @@ async def create_task(
         initial_next_run,
         task.search_query,
         final_condition,
-        task.notify_behavior,
         json.dumps(validated_notifications),
         extracted["notification_channels"],
         extracted["notification_email"],
@@ -512,11 +511,11 @@ async def fork_task(
                     fork_query = """
                         INSERT INTO tasks (
                             user_id, name, state,
-                            search_query, condition_description, notify_behavior, notifications,
+                            search_query, condition_description, notifications,
                             notification_channels, notification_email, webhook_url, webhook_secret,
                             forked_from_task_id, is_public
                         )
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                         RETURNING *
                     """
 
@@ -527,7 +526,6 @@ async def fork_task(
                         TaskState.PAUSED.value,
                         source["search_query"],
                         source["condition_description"],
-                        source["notify_behavior"],
                         notifications,
                         notification_channels,
                         notification_email,
@@ -623,10 +621,6 @@ async def update_task(
         if field == "notifications":
             set_clauses.append(f"{field} = ${param_num}")
             params.append(json.dumps(value))
-        elif field == "notify_behavior":
-            # Convert enum to string value
-            set_clauses.append(f"{field} = ${param_num}")
-            params.append(value.value if hasattr(value, "value") else value)
         else:
             set_clauses.append(f"{field} = ${param_num}")
             params.append(value)

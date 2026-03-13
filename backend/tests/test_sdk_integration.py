@@ -69,7 +69,6 @@ def test_task(sdk_client):
         search_query="When is the next iPhone being released?",
         condition_description="A specific release date has been announced",
         schedule="0 9 * * *",
-        notify_behavior="once",
     )
     yield task
     # Cleanup
@@ -277,10 +276,10 @@ class TestSDKExecution:
         # Get notifications
         notifications = sdk_client.tasks.notifications(test_task.id, limit=10)
 
-        # Should return empty or contain executions with condition_met=True
+        # Should return empty or contain executions where notification is present
         assert isinstance(notifications, list)
         if len(notifications) > 0:
-            assert all(n.condition_met is True for n in notifications)
+            assert all(n.notification is not None for n in notifications)
 
 
 class TestSDKValidation:

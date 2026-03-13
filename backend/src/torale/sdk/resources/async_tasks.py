@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from torale.tasks import NotificationConfig, NotifyBehavior, Task, TaskExecution, TaskState
+from torale.tasks import NotificationConfig, Task, TaskExecution, TaskState
 
 if TYPE_CHECKING:
     from torale.sdk.async_client import ToraleAsyncClient
@@ -22,7 +22,6 @@ class AsyncTasksResource:
         name: str,
         search_query: str,
         condition_description: str,
-        notify_behavior: str | NotifyBehavior = NotifyBehavior.ONCE,
         notifications: list[dict | NotificationConfig] | None = None,
         state: str | TaskState = TaskState.ACTIVE,
     ) -> Task:
@@ -33,7 +32,6 @@ class AsyncTasksResource:
             name: Task name
             search_query: Query to monitor
             condition_description: Condition to trigger on
-            notify_behavior: When to notify
             notifications: List of notification configs
             state: Task state ("active" or "paused")
 
@@ -48,9 +46,6 @@ class AsyncTasksResource:
             ...         condition_description="A specific release date is announced"
             ...     )
         """
-        if isinstance(notify_behavior, NotifyBehavior):
-            notify_behavior = notify_behavior.value
-
         if isinstance(state, TaskState):
             state = state.value
 
@@ -63,7 +58,6 @@ class AsyncTasksResource:
             "name": name,
             "search_query": search_query,
             "condition_description": condition_description,
-            "notify_behavior": notify_behavior,
             "notifications": notifications or [],
             "state": state,
         }
@@ -99,7 +93,6 @@ class AsyncTasksResource:
         name: str | None = None,
         search_query: str | None = None,
         condition_description: str | None = None,
-        notify_behavior: str | NotifyBehavior | None = None,
         notifications: list[dict | NotificationConfig] | None = None,
         state: str | TaskState | None = None,
     ) -> Task:
@@ -112,10 +105,6 @@ class AsyncTasksResource:
             data["search_query"] = search_query
         if condition_description is not None:
             data["condition_description"] = condition_description
-        if notify_behavior is not None:
-            if isinstance(notify_behavior, NotifyBehavior):
-                notify_behavior = notify_behavior.value
-            data["notify_behavior"] = notify_behavior
         if notifications is not None:
             notifications = [
                 n.model_dump() if isinstance(n, NotificationConfig) else n for n in notifications

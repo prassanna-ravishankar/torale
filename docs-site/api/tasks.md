@@ -32,7 +32,6 @@ Content-Type: application/json
   "name": "iPhone Release Monitor",
   "search_query": "When is the next iPhone being released?",
   "condition_description": "Apple has officially announced a specific release date",
-  "notify_behavior": "once",
   "run_immediately": false,
   "notifications": [
     { "type": "email", "address": "me@example.com" }
@@ -48,7 +47,6 @@ Content-Type: application/json
 | `search_query` | string | Yes | Search query for grounded search |
 | `condition_description` | string | No | Condition to evaluate (defaults to `search_query` if omitted) |
 | `state` | string | No | Initial state: `active` (default) or `paused` |
-| `notify_behavior` | string | No | `once` or `always` (default: `once`) |
 | `run_immediately` | boolean | No | Execute task immediately after creation (default: `false`) |
 | `notifications` | array | No | Notification channel configs (email, webhook) |
 
@@ -61,7 +59,6 @@ Content-Type: application/json
   "name": "iPhone Release Monitor",
   "search_query": "When is the next iPhone being released?",
   "condition_description": "Apple has officially announced a specific release date",
-  "notify_behavior": "once",
   "state": "active",
   "next_run": "2025-01-15T10:31:00Z",
   "is_public": false,
@@ -118,7 +115,6 @@ Authorization: Bearer {api_key}
     "name": "iPhone Release Monitor",
     "search_query": "When is the next iPhone being released?",
     "condition_description": "A specific date has been announced",
-    "notify_behavior": "once",
     "state": "active",
     "next_run": "2025-01-16T09:00:00Z",
     "is_public": false,
@@ -179,7 +175,6 @@ Content-Type: application/json
   "name": "Updated Task Name",
   "search_query": "New search query",
   "condition_description": "New condition",
-  "notify_behavior": "always",
   "state": "paused",
   "notifications": [
     { "type": "email", "address": "new@example.com" }
@@ -194,7 +189,6 @@ Content-Type: application/json
 | `name` | string | Task name |
 | `search_query` | string | Search query |
 | `condition_description` | string | Condition to evaluate |
-| `notify_behavior` | string | `once` or `always` |
 | `state` | string | `active`, `paused`, or `completed` |
 | `notifications` | array | Notification channel configs |
 
@@ -285,7 +279,7 @@ Fork a public task. Creates a copy for the current user in `paused` state.
 
 **Behavior:**
 - Forked task starts in `paused` state, `is_public: false`
-- Copies `search_query`, `condition_description`, `notify_behavior`
+- Copies `search_query`, `condition_description`
 - If forking another user's task, notification config is not copied (scrubbed)
 - If forking your own task, notification config is preserved
 - Forking another user's task increments `subscriber_count` on the original
@@ -306,7 +300,6 @@ Fork a public task. Creates a copy for the current user in `paused` state.
 | `name` | string | Task name |
 | `search_query` | string | Search query for grounded search |
 | `condition_description` | string | Condition to evaluate |
-| `notify_behavior` | enum | `once` or `always` |
 | `state` | string | `active`, `paused`, or `completed` |
 | `next_run` | timestamp/null | Next scheduled execution time (set by agent) |
 | `is_public` | boolean | Whether task is publicly visible |
