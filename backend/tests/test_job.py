@@ -213,6 +213,20 @@ class TestExecute:
         assert "Notification sent: Early rumors suggest September launch" in prompt
 
     @pytest.mark.asyncio
+    async def test_first_execution_sets_flag(self, job_mocks):
+        """First successful execution -> is_first_execution=True in enriched_result."""
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
+        job_mocks.agent.return_value = _make_agent_response(notification="Condition met")
+        job_mocks.fetch_ctx.return_value = {"notification_channels": ["email"]}
+        job_mocks.email.return_value = True
+        job_mocks.db.fetch_val = AsyncMock(return_value=1)
+
+        await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
+
+        enriched_result = job_mocks.email.call_args[0][3]
+        assert enriched_result["is_first_execution"] is True
+
+    @pytest.mark.asyncio
     async def test_first_run_no_history(self, job_mocks):
         """No previous executions -> no history block in prompt."""
         job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
