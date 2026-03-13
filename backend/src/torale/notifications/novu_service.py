@@ -75,6 +75,9 @@ class NovuService:
                 for s in grounding_sources[:5]  # Limit to 5 sources
             ]
 
+            # Format confidence as percentage string for Novu template
+            confidence_str = f"{round(confidence * 100)}%" if confidence is not None else None
+
             # Trigger Novu workflow
             response = await self._client.trigger_async(
                 trigger_event_request_dto=novu_py.TriggerEventRequestDto(
@@ -91,7 +94,7 @@ class NovuService:
                         "task_id": task_id,
                         "execution_id": execution_id,
                         "next_run": next_run,
-                        "confidence": confidence,
+                        "confidence": confidence_str,
                     },
                 )
             )
