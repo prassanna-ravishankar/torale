@@ -1,5 +1,7 @@
 """Input and metadata models for pydantic-evals cases."""
 
+from typing import Literal
+
 from pydantic import BaseModel
 from pydantic_evals import Case, Dataset
 from pydantic_evals.reporting import EvaluationReport
