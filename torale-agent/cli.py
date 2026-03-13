@@ -162,14 +162,11 @@ def list_cases():
     table.add_column("Name", style="cyan")
     table.add_column("Category")
     table.add_column("Search Query", max_width=60)
-    table.add_column("Notify")
-
     for case in ds.cases:
         table.add_row(
             case.name or "",
             case.inputs.category,
             case.inputs.search_query,
-            case.inputs.notify_behavior,
         )
 
     console.print(table)

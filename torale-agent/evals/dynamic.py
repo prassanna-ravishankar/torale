@@ -62,7 +62,6 @@ async def generate_weather_cases(client: httpx.AsyncClient) -> list[MonitoringCa
                         search_query=f"Is there a severe weather warning for {city} right now?",
                         condition_description=f"Severe weather conditions detected in {city}",
                         category="Weather",
-                        notify_behavior="always",
                     ),
                     metadata=_meta("Weather"),
                 )
@@ -76,7 +75,6 @@ async def generate_weather_cases(client: httpx.AsyncClient) -> list[MonitoringCa
                         search_query=f"Is there a severe weather warning for {city} right now?",
                         condition_description=f"Active severe weather warning (tornado, hurricane, or blizzard) issued by official meteorological agency for {city}",
                         category="Weather",
-                        notify_behavior="always",
                     ),
                     metadata=_meta("Weather"),
                 )
@@ -113,7 +111,6 @@ async def generate_stock_cases(client: httpx.AsyncClient) -> list[MonitoringCase
                     search_query=f"What is the current stock price of {company} ({ticker})?",
                     condition_description=f"{ticker} stock price rises above ${price + 10:.2f}",
                     category="Finance",
-                    notify_behavior="once",
                 ),
                 metadata=_meta("Finance"),
             )
@@ -127,7 +124,6 @@ async def generate_stock_cases(client: httpx.AsyncClient) -> list[MonitoringCase
                     search_query=f"What is the current stock price of {company} ({ticker})?",
                     condition_description=f"{ticker} stock price drops below ${price - 10:.2f}",
                     category="Finance",
-                    notify_behavior="once",
                 ),
                 metadata=_meta("Finance"),
             )
@@ -165,7 +161,6 @@ async def _generate_rss_cases(
                     search_query=query_template.format(title=title),
                     condition_description=condition_template.format(title=title),
                     category=category,
-                    notify_behavior="always",
                 ),
                 metadata=_meta(category),
             )
@@ -232,7 +227,6 @@ async def generate_webpage_cases(client: httpx.AsyncClient) -> list[MonitoringCa
                 search_query=page["query"],
                 condition_description=page["condition"],
                 category=page["category"],
-                notify_behavior="always",
             ),
             metadata=_meta(page["category"]),
         )

@@ -118,14 +118,12 @@ def example_4_create_task():
         name="iPhone 16 Release Monitor",
         search_query="When is iPhone 16 being released?",
         condition_description="A specific release date or month has been officially announced",
-        notify_behavior="once",  # Notify only once when condition is met
     )
 
     print("✓ Task created successfully!")
     print(f"\n  📝 Name: {task.name}")
     print(f"  🆔 ID: {task.id}")
     print(f"  🎯 Condition: {task.condition_description}")
-    print(f"  🔔 Notify: {task.notify_behavior}")
 
     return task
 
@@ -140,12 +138,7 @@ def example_5_fluent_api():
 
     # Create task using fluent API
     print("Creating task with fluent API...")
-    task = (
-        client.monitor("Bitcoin price today")
-        .when("Price exceeds $50,000")
-        .notify(behavior="once")  # Notify once when condition is met
-        .create()
-    )
+    task = client.monitor("Bitcoin price today").when("Price exceeds $50,000").create()
 
     print("✓ Task created with fluent API!")
     print(f"\n  📝 Name: {task.name}")
@@ -221,8 +214,8 @@ def example_7_task_operations():
     print("\n▶️  Executing task manually...")
     result = client.tasks.execute(task_id)
     print(f"  Status: {result.status}")
-    if result.condition_met:
-        print("  ✅ Condition MET!")
+    if result.notification:
+        print("  ✅ Notification sent!")
     else:
         print("  ⏳ Condition not met yet")
 
@@ -299,11 +292,11 @@ async def example_9_async_usage():
 
             print("✓ All executions completed\n")
             for i, result in enumerate(results):
-                condition_icon = "✅" if result.condition_met else "⏳"
+                notification_icon = "✅" if result.notification else "⏳"
                 print(f"  Task {i + 1}:")
                 print(f"    Status: {result.status}")
                 print(
-                    f"    Condition: {condition_icon} {'MET' if result.condition_met else 'Not met yet'}"
+                    f"    Notification: {notification_icon} {'Sent' if result.notification else 'Not yet'}"
                 )
         else:
             print("⚠️  Need at least 2 tasks to demonstrate concurrent execution")

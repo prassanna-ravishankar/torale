@@ -15,7 +15,6 @@ class MonitoringCaseInput(BaseModel):
     search_query: str
     condition_description: str
     category: str
-    notify_behavior: Literal["once", "always"]
     passes: int = 1  # sequential runs for multi-pass simulation
 
 

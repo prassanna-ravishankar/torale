@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from torale.tasks import NotifyBehavior, Task, TaskState
+from torale.tasks import Task, TaskState
 
 if TYPE_CHECKING:
     from torale.sdk import Torale
@@ -26,7 +26,6 @@ class MonitorBuilder:
         self.client = client
         self._search_query = search_query
         self._condition_description: str | None = None
-        self._notify_behavior: NotifyBehavior = NotifyBehavior.ONCE
         self._notifications: list[dict] = []
         self._name: str | None = None
         self._state: TaskState = TaskState.ACTIVE
@@ -51,7 +50,6 @@ class MonitorBuilder:
         self,
         email: str | None = None,
         webhook: str | None = None,
-        behavior: str | NotifyBehavior = NotifyBehavior.ONCE,
         **kwargs,
     ) -> MonitorBuilder:
         """
@@ -60,7 +58,6 @@ class MonitorBuilder:
         Args:
             email: Email address to notify
             webhook: Webhook URL to call
-            behavior: When to notify ("once" or "always")
             **kwargs: Additional notification configuration
 
         Returns:
@@ -70,16 +67,7 @@ class MonitorBuilder:
             >>> (monitor("iPhone 16")
             ...     .when("released")
             ...     .notify(email="me@example.com", webhook="https://myapp.com/hook"))
-            >>> (monitor("Bitcoin")
-            ...     .when("price > 50k")
-            ...     .notify(webhook="https://api.myapp.com/crypto", behavior="always"))
         """
-        # Set notify behavior
-        if isinstance(behavior, str):
-            self._notify_behavior = NotifyBehavior(behavior)
-        else:
-            self._notify_behavior = behavior
-
         # Add email notification
         if email:
             self._notifications.append(
@@ -156,7 +144,6 @@ class MonitorBuilder:
             name=name,
             search_query=self._search_query,
             condition_description=self._condition_description,
-            notify_behavior=self._notify_behavior,
             notifications=self._notifications,
             state=self._state,
         )

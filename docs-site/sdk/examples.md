@@ -18,7 +18,6 @@ iphone_task = client.tasks.create(
     name="iPhone 17 Release Monitor",
     search_query="When is the iPhone 17 being released?",
     condition_description="Apple has officially announced a specific release date",
-    notify_behavior="once",
     notifications=[{"type": "email", "address": "me@example.com"}],
 )
 
@@ -27,7 +26,6 @@ gpt5_task = client.tasks.create(
     name="GPT-5 Release Monitor",
     search_query="When is GPT-5 being released by OpenAI?",
     condition_description="OpenAI has announced an official release date",
-    notify_behavior="once",
 )
 
 print(f"Monitoring {len([iphone_task, gpt5_task])} product releases")
@@ -41,7 +39,6 @@ macbook_task = client.tasks.create(
     name="MacBook Pro Price Alert",
     search_query="What is the current price of MacBook Pro M3 14-inch at Best Buy?",
     condition_description="The price is $1799 or lower",
-    notify_behavior="always",
     notifications=[{"type": "webhook", "url": "https://myapp.com/price-alert"}],
 )
 
@@ -50,7 +47,6 @@ ps5_task = client.tasks.create(
     name="PS5 Price Tracker",
     search_query="What is the current price of PS5 at Amazon?",
     condition_description="Price is $449 or lower",
-    notify_behavior="always",
 )
 ```
 

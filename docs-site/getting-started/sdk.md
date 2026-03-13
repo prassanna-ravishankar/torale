@@ -35,26 +35,6 @@ task = client.tasks.create(
 print(f"Created task: {task.id}")
 ```
 
-## Preview Before Creating
-
-```python
-# Test your query first
-preview = client.tasks.preview(
-    search_query="When is the iPhone 17 being released?",
-    condition_description="Apple has announced a specific release date"
-)
-
-print(f"Condition met: {preview.condition_met}")
-print(f"Answer: {preview.answer}")
-
-# Create if results look good
-if preview.condition_met:
-    task = client.tasks.create(
-        search_query="When is the iPhone 17 being released?",
-        condition_description="Apple has announced a specific release date",
-        schedule="0 9 * * *"
-    )
-```
 
 ## Check Results
 
@@ -63,7 +43,7 @@ if preview.condition_met:
 executions = client.tasks.get_executions(task.id)
 
 for execution in executions:
-    if execution.condition_met:
+    if execution.notification:
         print(f"Answer: {execution.result['answer']}")
         print(f"Sources: {execution.grounding_sources}")
 ```

@@ -1,6 +1,5 @@
 export type TaskStatus = "pending" | "running" | "success" | "retrying" | "failed" | "cancelled";
 export type TaskState = "active" | "paused" | "completed";
-export type NotifyBehavior = "once" | "always";
 export type NotificationChannelType = "email" | "webhook";
 export type NotificationDeliveryStatus = "success" | "failed" | "retrying";
 
@@ -24,7 +23,6 @@ export interface Task {
   name: string;
   search_query: string;
   condition_description: string;
-  notify_behavior: NotifyBehavior;
   state: TaskState;
 
   last_known_state: Record<string, unknown> | null;
@@ -58,7 +56,6 @@ export interface TaskCreatePayload {
   name?: string;
   search_query: string;
   condition_description: string;
-  notify_behavior: NotifyBehavior;
   state: TaskState;
   run_immediately?: boolean;  // Execute task immediately after creation
   notifications?: NotificationConfig[];  // Notification configurations (optional)
@@ -132,7 +129,6 @@ export interface TaskTemplate {
   icon?: string;
   search_query: string;
   condition_description: string;
-  notify_behavior: NotifyBehavior;
   state: TaskState;
   created_at: string;
   updated_at: string | null;

@@ -117,7 +117,6 @@ class TestPublicTaskAccess:
             "schedule": "0 9 * * *",
             "search_query": "test query",
             "condition_description": "test condition",
-            "notify_behavior": "always",
             "notification_channels": [],
             "notification_email": None,  # These will be scrubbed for public viewers
             "webhook_url": None,
@@ -190,7 +189,6 @@ class TestPublicTaskAccess:
             "schedule": "0 9 * * *",
             "search_query": "test query",
             "condition_description": "test condition",
-            "notify_behavior": "always",
             "notification_channels": [],
             "notification_email": None,
             "webhook_url": None,
@@ -244,7 +242,6 @@ class TestTaskForking:
             "schedule": "0 9 * * *",
             "search_query": "test query",
             "condition_description": "test condition",
-            "notify_behavior": "always",
             "notifications": "[]",
             "notification_channels": [],
             "notification_email": None,
@@ -262,7 +259,6 @@ class TestTaskForking:
             "state": "paused",
             "search_query": "test query",
             "condition_description": "test condition",
-            "notify_behavior": "always",
             "notifications": "[]",
             "notification_channels": [],
             "notification_email": None,
@@ -322,7 +318,6 @@ class TestTaskForking:
             "schedule": "0 9 * * *",
             "search_query": "test query",
             "condition_description": "test condition",
-            "notify_behavior": "always",
             "notifications": "[]",
             "notification_channels": [],
             "notification_email": None,
@@ -340,7 +335,6 @@ class TestTaskForking:
             "state": "paused",
             "search_query": "test query",
             "condition_description": "test condition",
-            "notify_behavior": "always",
             "notifications": "[]",
             "notification_channels": [],
             "notification_email": None,
@@ -384,7 +378,6 @@ class TestTaskForking:
             "schedule": "0 9 * * *",
             "search_query": "test",
             "condition_description": "test",
-            "notify_behavior": "always",
             "notifications": "[]",
             "notification_channels": [],
             "notification_email": None,
@@ -403,7 +396,6 @@ class TestTaskForking:
             "state": "paused",
             "search_query": "test",
             "condition_description": "test",
-            "notify_behavior": "always",
             "notification_channels": [],
             "notification_email": None,
             "webhook_url": None,
@@ -447,7 +439,6 @@ class TestTaskForking:
             "schedule": "0 9 * * *",
             "search_query": "test query",
             "condition_description": "test condition",
-            "notify_behavior": "always",
             "notifications": '[{"type": "email", "address": "owner@example.com"}]',
             "notification_channels": ["email", "webhook"],
             "notification_email": "owner@example.com",  # Should be scrubbed
@@ -465,7 +456,6 @@ class TestTaskForking:
             "state": "paused",
             "search_query": "test query",
             "condition_description": "test condition",
-            "notify_behavior": "always",
             "notifications": '[{"type": "email", "address": "owner@example.com"}]',
             "notification_channels": [],  # Scrubbed
             "notification_email": None,  # Scrubbed
@@ -495,12 +485,12 @@ class TestTaskForking:
 
         # The first arg is the query string. The subsequent args are the values.
         # Positional args to fetchrow after query: user_id(1), name(2), state(3),
-        # search_query(4), condition_description(5), notify_behavior(6),
-        # notifications(7), notification_channels(8), notification_email(9), webhook_url(10), webhook_secret(11)
-        assert insert_args[7] == json.dumps(
+        # search_query(4), condition_description(5), notifications(6),
+        # notification_channels(7), notification_email(8), webhook_url(9), webhook_secret(10)
+        assert insert_args[6] == json.dumps(
             []
         )  # notifications should be an empty JSON array string
-        assert insert_args[8] == []  # notification_channels should be empty list
-        assert insert_args[9] is None  # notification_email should be None
-        assert insert_args[10] is None  # webhook_url should be None
-        assert insert_args[11] is None  # webhook_secret should be None
+        assert insert_args[7] == []  # notification_channels should be empty list
+        assert insert_args[8] is None  # notification_email should be None
+        assert insert_args[9] is None  # webhook_url should be None
+        assert insert_args[10] is None  # webhook_secret should be None

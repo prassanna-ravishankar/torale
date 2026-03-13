@@ -153,7 +153,6 @@ async def send_email_notification(
             task_name=task["name"],
             search_query=task["search_query"],
             condition_description=task["condition_description"],
-            notify_behavior=task["notify_behavior"],
             first_execution_result={
                 "answer": result.get("summary", ""),
                 "condition_met": result.get("notification") is not None,

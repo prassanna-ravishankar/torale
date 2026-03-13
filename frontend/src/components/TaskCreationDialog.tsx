@@ -145,7 +145,6 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
       const newTask = await api.createTask({
         search_query: instructions,
         condition_description: instructions,
-        notify_behavior: "once",
         state: "active",
         run_immediately: true,
       });

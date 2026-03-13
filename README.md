@@ -83,8 +83,6 @@ task = client.tasks.create(
     name="iPhone Release Monitor",
     search_query="When is the next iPhone being released?",
     condition_description="A specific release date has been announced",
-    schedule="0 9 * * *",  # Daily at 9am
-    notify_behavior="once",  # Options: "once", "always", "track_state"
     notifications=[
         {"type": "webhook", "url": "https://myapp.com/alert"}
     ]
@@ -146,31 +144,6 @@ client.tasks.delete(task_id="550e8400-...")
 # Manual execution (test run)
 execution = client.tasks.execute(task_id="550e8400-...")
 print(execution.status)  # "pending", "running", "success", "failed"
-```
-
-**Preview Queries**
-
-Test search queries before creating tasks:
-
-```python
-# Preview with explicit condition
-result = client.tasks.preview(
-    search_query="When is iPhone 16 being released?",
-    condition_description="A specific release date is announced"
-)
-
-# Preview without condition (LLM will infer)
-result = client.tasks.preview(
-    search_query="What's the latest news on GPT-5?"
-)
-
-print(result["answer"])
-print(f"Condition met: {result['condition_met']}")
-if "inferred_condition" in result:
-    print(f"Inferred: {result['inferred_condition']}")
-
-for source in result["grounding_sources"]:
-    print(f"- {source['title']}: {source['url']}")
 ```
 
 **Execution History & Notifications**
@@ -341,7 +314,6 @@ curl -X POST http://localhost:8000/api/v1/tasks \
     "schedule": "0 9 * * *",
     "search_query": "When is the next iPhone being released?",
     "condition_description": "A specific release date has been announced",
-    "notify_behavior": "once"
   }'
 ```
 
@@ -413,7 +385,6 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 - API key authentication for SDK
 - Frontend dashboard with task management
 - GKE deployment with cost optimization
-- **Live Search Preview** - Test queries before creating tasks
 - **Immediate Task Execution** - Run monitoring tasks instantly after creation
 - **AI-Powered Task Creation** - "Magic Input" uses LLM to generate task configuration from natural language
 - **Context-Aware Task Refinement** - "Magic Refine" updates existing tasks while preserving context
@@ -535,24 +506,8 @@ See [Kubernetes Deployment](https://docs.torale.ai/deployment/kubernetes) for de
 3. **Agent Search**: Agent searches via Perplexity, uses Mem0 for cross-run memory
 4. **Condition Evaluation**: Agent evaluates if condition is met, returns evidence + sources
 5. **Notification**: If condition met → notifies via email/webhook
-6. **Auto-disable** (optional): If `notify_behavior = "once"`, task deactivates after first alert
+6. **Completion**: Agent returns `next_run=null` when monitoring is complete
 7. **Dynamic Reschedule**: Agent returns `next_run` to adjust check frequency
-
-## Configuration
-
-### Notify Behaviors
-
-- **`once`**: Alert once when condition is first met, then auto-disable task
-- **`always`**: Alert every time condition is met (use with caution)
-
-### Schedule Formats
-
-Use standard cron expressions:
-- `* * * * *`: Every minute (testing only)
-- `0 * * * *`: Every hour
-- `0 9 * * *`: Every day at 9 AM
-- `0 9 * * 1`: Every Monday at 9 AM
-- `0 9 1 * *`: First day of every month at 9 AM
 
 ## API Endpoints
 
@@ -567,8 +522,6 @@ DELETE /auth/api-keys/{id}                 # Revoke API key
 
 ### Tasks
 ```
-POST   /api/v1/tasks/suggest               # AI-powered task suggestion from natural language (context-aware)
-POST   /api/v1/tasks/preview               # Preview search query (test without creating task)
 POST   /api/v1/tasks                       # Create monitoring task
 GET    /api/v1/tasks                       # List tasks
 GET    /api/v1/tasks/{id}                  # Get task details
@@ -576,7 +529,7 @@ PUT    /api/v1/tasks/{id}                  # Update task
 DELETE /api/v1/tasks/{id}                  # Delete task + schedule
 POST   /api/v1/tasks/{id}/execute          # Manual execution (testing)
 GET    /api/v1/tasks/{id}/executions       # Full execution history
-GET    /api/v1/tasks/{id}/notifications    # Filtered: condition_met = true
+GET    /api/v1/tasks/{id}/notifications    # Filtered: notification IS NOT NULL
 ```
 
 ## Environment Variables

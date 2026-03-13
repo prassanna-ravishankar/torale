@@ -69,7 +69,6 @@ def test_task(sdk_client):
         search_query="When is the next iPhone being released?",
         condition_description="A specific release date has been announced",
         schedule="0 9 * * *",
-        notify_behavior="once",
     )
     yield task
     # Cleanup
@@ -277,10 +276,10 @@ class TestSDKExecution:
         # Get notifications
         notifications = sdk_client.tasks.notifications(test_task.id, limit=10)
 
-        # Should return empty or contain executions with condition_met=True
+        # Should return empty or contain executions where notification is present
         assert isinstance(notifications, list)
         if len(notifications) > 0:
-            assert all(n.condition_met is True for n in notifications)
+            assert all(n.notification is not None for n in notifications)
 
 
 class TestSDKValidation:
@@ -444,95 +443,6 @@ class TestSDKEdgeCases:
         tasks = sdk_client.tasks.list()
         assert isinstance(tasks, list)
         assert len(tasks) == 0
-
-
-class TestSDKPreview:
-    """Test SDK preview() method for search query testing."""
-
-    def test_preview_with_explicit_condition(self, sdk_client):
-        """Test preview with user-provided condition."""
-        # Note: This requires GOOGLE_API_KEY to be set for real execution
-        # For now, we test that the method exists and has correct signature
-        try:
-            result = sdk_client.tasks.preview(
-                search_query="When is the next iPhone release?",
-                condition_description="A specific release date is announced",
-            )
-
-            # Verify response structure
-            assert "answer" in result
-            assert "condition_met" in result
-            assert "grounding_sources" in result
-            assert "current_state" in result
-            assert isinstance(result["condition_met"], bool)
-            assert isinstance(result["grounding_sources"], list)
-
-        except Exception as e:
-            # If API key not set, we just verify method signature works
-            if "API key" in str(e) or "not configured" in str(e):
-                pytest.skip("Google API key not configured")
-            raise
-
-    def test_preview_without_condition_infers(self, sdk_client):
-        """Test preview without condition (LLM should infer)."""
-        try:
-            result = sdk_client.tasks.preview(
-                search_query="Latest news on GPT-5 release"
-                # No condition_description - should be inferred
-            )
-
-            # Should include inferred_condition in response
-            assert "answer" in result
-            assert "condition_met" in result
-            # Inferred condition should be present when not explicitly provided
-            # Note: This depends on API implementation
-            if "inferred_condition" in result:
-                assert isinstance(result["inferred_condition"], str)
-
-        except Exception as e:
-            if "API key" in str(e) or "not configured" in str(e):
-                pytest.skip("Google API key not configured")
-            raise
-
-    def test_preview_with_custom_model(self, sdk_client):
-        """Test preview with custom model parameter."""
-        try:
-            result = sdk_client.tasks.preview(
-                search_query="Bitcoin price today",
-                condition_description="Price exceeds $50,000",
-                model="gemini-2.0-flash-exp",
-            )
-
-            assert "answer" in result
-            assert "condition_met" in result
-
-        except Exception as e:
-            if "API key" in str(e) or "not configured" in str(e):
-                pytest.skip("Google API key not configured")
-            raise
-
-    def test_preview_returns_grounding_sources(self, sdk_client):
-        """Test that preview returns grounding sources with URLs."""
-        try:
-            result = sdk_client.tasks.preview(
-                search_query="Current weather in New York",
-                condition_description="Temperature above 70F",
-            )
-
-            # Grounding sources should be a list
-            assert isinstance(result["grounding_sources"], list)
-
-            # Each source should have url and title
-            for source in result["grounding_sources"]:
-                assert "url" in source
-                assert "title" in source
-                assert isinstance(source["url"], str)
-                assert isinstance(source["title"], str)
-
-        except Exception as e:
-            if "API key" in str(e) or "not configured" in str(e):
-                pytest.skip("Google API key not configured")
-            raise
 
 
 class TestSDKWebhooks:

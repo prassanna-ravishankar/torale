@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from torale.tasks import NotificationConfig, NotifyBehavior, Task, TaskExecution, TaskState
+from torale.tasks import NotificationConfig, Task, TaskExecution, TaskState
 
 if TYPE_CHECKING:
     from torale.sdk.client import ToraleClient
@@ -22,7 +22,6 @@ class TasksResource:
         name: str,
         search_query: str,
         condition_description: str,
-        notify_behavior: str | NotifyBehavior = NotifyBehavior.ONCE,
         notifications: list[dict | NotificationConfig] | None = None,
         state: str | TaskState = TaskState.ACTIVE,
     ) -> Task:
@@ -33,7 +32,6 @@ class TasksResource:
             name: Task name
             search_query: Query to monitor (e.g., "When is iPhone 16 being released?")
             condition_description: Condition to trigger on (e.g., "A specific date is announced")
-            notify_behavior: When to notify ("once" or "always")
             notifications: List of notification configs
             state: Task state ("active" or "paused")
 
@@ -50,10 +48,6 @@ class TasksResource:
             ...     ]
             ... )
         """
-        # Convert notify_behavior to string if enum
-        if isinstance(notify_behavior, NotifyBehavior):
-            notify_behavior = notify_behavior.value
-
         # Convert state to string if enum
         if isinstance(state, TaskState):
             state = state.value
@@ -68,7 +62,6 @@ class TasksResource:
             "name": name,
             "search_query": search_query,
             "condition_description": condition_description,
-            "notify_behavior": notify_behavior,
             "notifications": notifications or [],
             "state": state,
         }
@@ -121,7 +114,6 @@ class TasksResource:
         name: str | None = None,
         search_query: str | None = None,
         condition_description: str | None = None,
-        notify_behavior: str | NotifyBehavior | None = None,
         notifications: list[dict | NotificationConfig] | None = None,
         state: str | TaskState | None = None,
     ) -> Task:
@@ -133,7 +125,6 @@ class TasksResource:
             name: New task name
             search_query: New search query
             condition_description: New condition description
-            notify_behavior: New notify behavior
             notifications: New notification configs
             state: New task state ("active", "paused", "completed")
 
@@ -154,10 +145,6 @@ class TasksResource:
             data["search_query"] = search_query
         if condition_description is not None:
             data["condition_description"] = condition_description
-        if notify_behavior is not None:
-            if isinstance(notify_behavior, NotifyBehavior):
-                notify_behavior = notify_behavior.value
-            data["notify_behavior"] = notify_behavior
         if notifications is not None:
             notifications = [
                 n.model_dump() if isinstance(n, NotificationConfig) else n for n in notifications
