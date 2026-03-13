@@ -766,24 +766,13 @@ async def list_waitlist(
 
     Optionally filter by status: pending, invited, or converted.
     """
+    query = "SELECT id, email, created_at, status, invited_at, notes FROM waitlist"
+    params: list[Any] = []
     if status_filter:
-        rows = await db.fetch_all(
-            """
-            SELECT id, email, created_at, status, invited_at, notes
-            FROM waitlist
-            WHERE status = $1
-            ORDER BY created_at ASC
-            """,
-            status_filter,
-        )
-    else:
-        rows = await db.fetch_all(
-            """
-            SELECT id, email, created_at, status, invited_at, notes
-            FROM waitlist
-            ORDER BY created_at ASC
-            """
-        )
+        query += " WHERE status = $1"
+        params.append(status_filter)
+    query += " ORDER BY created_at ASC"
+    rows = await db.fetch_all(query, *params)
 
     return [_serialize_waitlist_row(row) for row in rows]
 
