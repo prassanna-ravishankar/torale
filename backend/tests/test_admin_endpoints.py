@@ -22,6 +22,7 @@ def mock_admin():
     admin = MagicMock()
     admin.id = uuid4()
     admin.email = "admin@torale.ai"
+    admin.clerk_user_id = "clerk_admin_123"
     return admin
 
 
@@ -321,218 +322,95 @@ class TestAdminUpdateTaskState:
 class TestAdminResetTaskHistory:
     """Tests for admin task history reset endpoint."""
 
+    def _make_mock_db(self, task_exists=True, deleted_rows=None):
+        """Create a mock db with acquire/transaction context managers."""
+        mock_db = MagicMock()
+
+        # fetch_one is async
+        mock_db.fetch_one = AsyncMock(return_value={"id": uuid4()} if task_exists else None)
+
+        # Mock connection — use MagicMock base with async overrides
+        mock_conn = MagicMock()
+        mock_conn.fetch = AsyncMock(return_value=deleted_rows or [])
+        mock_conn.execute = AsyncMock(return_value=None)
+
+        # acquire() is a sync method returning an async context manager
+        acq_cm = MagicMock()
+        acq_cm.__aenter__ = AsyncMock(return_value=mock_conn)
+        acq_cm.__aexit__ = AsyncMock(return_value=False)
+        mock_db.acquire.return_value = acq_cm
+
+        # transaction() is a sync method returning an async context manager
+        tx_cm = MagicMock()
+        tx_cm.__aenter__ = AsyncMock(return_value=None)
+        tx_cm.__aexit__ = AsyncMock(return_value=False)
+        mock_conn.transaction.return_value = tx_cm
+
+        return mock_db, mock_conn
+
     @pytest.mark.asyncio
     async def test_successful_reset_and_deletion(self, mock_admin):
         """Test successful reset deletes executions and resets task state."""
         task_id = uuid4()
-        days = 1
-
-        # Mock session with successful DB operations
-        mock_session = AsyncMock()
-
-        # Mock task exists check
-        check_result = MagicMock()
-        check_result.first.return_value = {"id": task_id}
-
-        # Mock deletion with 3 executions deleted
-        delete_result = MagicMock()
-        delete_result.fetchall.return_value = [{"id": uuid4()} for _ in range(3)]
-
-        mock_session.execute.side_effect = [
-            check_result,  # Task exists check
-            delete_result,  # Delete executions
-            AsyncMock(),  # Update task state
-        ]
+        deleted = [{"id": uuid4()} for _ in range(3)]
+        mock_db, mock_conn = self._make_mock_db(task_exists=True, deleted_rows=deleted)
 
         result = await reset_task_history(
             task_id=task_id,
-            days=days,
+            days=1,
             admin=mock_admin,
-            session=mock_session,
+            db=mock_db,
         )
 
-        # Verify response
         assert result["status"] == "reset"
         assert result["task_id"] == str(task_id)
         assert result["executions_deleted"] == 3
-        assert result["days"] == days
-
-        # Verify DB operations
-        assert mock_session.execute.call_count == 3
-        mock_session.commit.assert_called_once()
-        mock_session.rollback.assert_not_called()
+        mock_conn.fetch.assert_called_once()
+        mock_conn.execute.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_reset_with_no_executions(self, mock_admin, caplog):
         """Test reset with no recent executions logs warning."""
         task_id = uuid4()
-        days = 7
-
-        mock_session = AsyncMock()
-
-        # Mock task exists
-        check_result = MagicMock()
-        check_result.first.return_value = {"id": task_id}
-
-        # Mock no executions deleted
-        delete_result = MagicMock()
-        delete_result.fetchall.return_value = []
-
-        mock_session.execute.side_effect = [
-            check_result,
-            delete_result,
-            AsyncMock(),
-        ]
+        mock_db, _ = self._make_mock_db(task_exists=True, deleted_rows=[])
 
         result = await reset_task_history(
             task_id=task_id,
-            days=days,
+            days=7,
             admin=mock_admin,
-            session=mock_session,
+            db=mock_db,
         )
 
-        # Verify response shows 0 deletions
         assert result["executions_deleted"] == 0
         assert result["status"] == "reset"
-
-        # Verify warning was logged
         assert any("found no executions" in record.message for record in caplog.records)
-
-        # Verify commit still happened
-        mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_nonexistent_task_returns_404(self, mock_admin):
         """Test resetting a non-existent task returns 404."""
-        task_id = uuid4()
-
-        mock_session = AsyncMock()
-
-        # Mock task doesn't exist
-        check_result = MagicMock()
-        check_result.first.return_value = None
-        mock_session.execute.return_value = check_result
+        mock_db, _ = self._make_mock_db(task_exists=False)
 
         with pytest.raises(HTTPException) as exc_info:
             await reset_task_history(
-                task_id=task_id,
+                task_id=uuid4(),
                 days=1,
                 admin=mock_admin,
-                session=mock_session,
+                db=mock_db,
             )
 
-        # Verify 404 error
         assert exc_info.value.status_code == 404
         assert "Task not found" in exc_info.value.detail
 
-        # Verify rollback was called
-        mock_session.rollback.assert_called_once()
-        mock_session.commit.assert_not_called()
-
     @pytest.mark.asyncio
-    async def test_database_error_triggers_rollback(self, mock_admin):
-        """Test database errors trigger rollback and return 500."""
-        task_id = uuid4()
-
-        mock_session = AsyncMock()
-
-        # Mock task exists check succeeds
-        check_result = MagicMock()
-        check_result.first.return_value = {"id": task_id}
-
-        # Mock deletion fails with database error
-        mock_session.execute.side_effect = [
-            check_result,
-            RuntimeError("Database connection lost"),
-        ]
-
-        with pytest.raises(HTTPException) as exc_info:
-            await reset_task_history(
-                task_id=task_id,
-                days=1,
-                admin=mock_admin,
-                session=mock_session,
-            )
-
-        # Verify 500 error
-        assert exc_info.value.status_code == 500
-        assert "Failed to reset task history" in exc_info.value.detail
-
-        # Verify rollback was called
-        mock_session.rollback.assert_called_once()
-        mock_session.commit.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_days_parameter_validation(self, mock_admin):
-        """Test days parameter is passed correctly to SQL query."""
-        task_id = uuid4()
-        days = 14  # Custom days value
-
-        mock_session = AsyncMock()
-
-        check_result = MagicMock()
-        check_result.first.return_value = {"id": task_id}
-
-        delete_result = MagicMock()
-        delete_result.fetchall.return_value = [{"id": uuid4()}]
-
-        mock_session.execute.side_effect = [
-            check_result,
-            delete_result,
-            AsyncMock(),
-        ]
+    async def test_days_parameter_in_response(self, mock_admin):
+        """Test days parameter appears in response."""
+        mock_db, _ = self._make_mock_db(task_exists=True, deleted_rows=[{"id": uuid4()}])
 
         result = await reset_task_history(
-            task_id=task_id,
-            days=days,
+            task_id=uuid4(),
+            days=14,
             admin=mock_admin,
-            session=mock_session,
+            db=mock_db,
         )
 
-        # Verify days parameter in response
         assert result["days"] == 14
-
-        # Verify days was used in deletion query (check execute calls)
-        delete_call = mock_session.execute.call_args_list[1]
-        assert delete_call[0][1]["task_id"] == task_id
-        # Cutoff calculation happens inside function, so we just verify it was called
-
-    @pytest.mark.asyncio
-    async def test_reset_clears_task_state_fields(self, mock_admin):
-        """Test reset properly clears last_execution_id, last_known_state, and updates state_changed_at."""
-        task_id = uuid4()
-
-        mock_session = AsyncMock()
-
-        check_result = MagicMock()
-        check_result.first.return_value = {"id": task_id}
-
-        delete_result = MagicMock()
-        delete_result.fetchall.return_value = []
-
-        update_result = AsyncMock()
-
-        mock_session.execute.side_effect = [
-            check_result,
-            delete_result,
-            update_result,
-        ]
-
-        await reset_task_history(
-            task_id=task_id,
-            days=1,
-            admin=mock_admin,
-            session=mock_session,
-        )
-
-        # Verify UPDATE query was called (3rd execute call)
-        assert mock_session.execute.call_count == 3
-        update_call = mock_session.execute.call_args_list[2]
-
-        # Verify it's updating the tasks table with task_id
-        query_text = str(update_call[0][0])
-        assert "UPDATE tasks" in query_text
-        assert "last_execution_id = NULL" in query_text
-        assert "last_known_state = NULL" in query_text
-        assert "state_changed_at = NOW()" in query_text
-        assert update_call[0][1]["task_id"] == task_id

@@ -9,7 +9,6 @@ from .auth_provider import (
     set_auth_provider,
 )
 from .clerk_auth import ClerkUser, clerk_client
-from .models import User as UserDBModel
 from .repository import ApiKeyRepository, UserRepository
 
 __all__ = [
@@ -28,5 +27,4 @@ __all__ = [
     "ClerkUser",
     "UserRepository",
     "ApiKeyRepository",
-    "UserDBModel",
 ]
