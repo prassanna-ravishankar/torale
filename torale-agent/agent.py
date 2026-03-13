@@ -9,7 +9,7 @@ from uuid import uuid4
 import logfire
 from a2a.server.agent_execution import AgentExecutor
 from a2a.server.agent_execution.context import RequestContext
-from a2a.server.apps import A2AStarletteApplication
+from a2a.server.apps import A2AFastAPIApplication
 from a2a.server.events.event_queue import EventQueue
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
@@ -30,9 +30,6 @@ from dotenv import load_dotenv
 from pydantic_ai import Agent
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.models.google import GoogleModelSettings
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.routing import Route
 
 from models import MonitoringDeps, MonitoringResponse
 from tools import extract_activity, register_tools
@@ -369,15 +366,6 @@ class ToraleAgentExecutor(AgentExecutor):
 
 agent = create_monitoring_agent()
 
-
-async def health(request: Request) -> JSONResponse:
-    return JSONResponse({"status": "ok"})
-
-
-async def ready(request: Request) -> JSONResponse:
-    return JSONResponse({"status": "ok"})
-
-
 executor = ToraleAgentExecutor(agent)
 task_store = InMemoryTaskStore()
 request_handler = DefaultRequestHandler(
@@ -396,11 +384,19 @@ agent_card = AgentCard(
     skills=[],
 )
 
-a2a_app = A2AStarletteApplication(
+a2a_app = A2AFastAPIApplication(
     agent_card=agent_card,
     http_handler=request_handler,
 )
 
-app = a2a_app.build(
-    routes=[Route("/health", health), Route("/ready", ready)],
-)
+app = a2a_app.build()
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
+@app.get("/ready")
+async def ready():
+    return {"status": "ok"}
