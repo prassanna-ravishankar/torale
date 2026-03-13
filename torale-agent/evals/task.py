@@ -2,11 +2,7 @@
 
 import re
 
-from mem0 import AsyncMemoryClient
-from parallel import AsyncParallel
-from perplexity import AsyncPerplexity
-
-from models import Clients, MonitoringDeps, MonitoringResponse
+from models import MonitoringDeps, MonitoringResponse, create_clients
 
 from evals.models import MonitoringCaseInput
 
@@ -69,10 +65,7 @@ async def run_monitoring_task(case_input: MonitoringCaseInput) -> MonitoringResp
 
     task_id = f"eval-{_slugify(case_input.search_query[:50])}"
 
-    async with AsyncParallel() as parallel, AsyncPerplexity() as perplexity:
-        clients = Clients(
-            parallel=parallel, perplexity=perplexity, mem0=AsyncMemoryClient()
-        )
+    async with create_clients() as clients:
         deps = MonitoringDeps(user_id="eval-user", task_id=task_id, clients=clients)
 
         agent = create_monitoring_agent(_eval_model)

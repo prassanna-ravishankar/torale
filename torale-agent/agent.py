@@ -29,14 +29,11 @@ from a2a.types import (
 )
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from mem0 import AsyncMemoryClient
-from parallel import AsyncParallel
-from perplexity import AsyncPerplexity
 from pydantic_ai import Agent
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.models.google import GoogleModelSettings
 
-from models import Clients, MonitoringDeps, MonitoringResponse
+from models import Clients, MonitoringDeps, MonitoringResponse, create_clients
 from tools import extract_activity, register_tools
 
 load_dotenv()
@@ -390,10 +387,8 @@ request_handler = DefaultRequestHandler(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    async with AsyncParallel() as parallel, AsyncPerplexity() as perplexity:
-        executor.clients = Clients(
-            parallel=parallel, perplexity=perplexity, mem0=AsyncMemoryClient()
-        )
+    async with create_clients() as clients:
+        executor.clients = clients
         yield
         executor.clients = None
 

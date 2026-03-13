@@ -1,8 +1,12 @@
 """Shared data models for the monitoring agent."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any
 
+from mem0 import AsyncMemoryClient
+from parallel import AsyncParallel
+from perplexity import AsyncPerplexity
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -46,9 +50,18 @@ class MonitoringResponse(BaseModel):
 class Clients:
     """Async HTTP clients for external services."""
 
-    parallel: Any
-    perplexity: Any
-    mem0: Any
+    parallel: AsyncParallel
+    perplexity: AsyncPerplexity
+    mem0: AsyncMemoryClient
+
+
+@asynccontextmanager
+async def create_clients() -> AsyncIterator[Clients]:
+    """Create and manage async HTTP client lifecycles."""
+    async with AsyncParallel() as parallel, AsyncPerplexity() as perplexity:
+        yield Clients(
+            parallel=parallel, perplexity=perplexity, mem0=AsyncMemoryClient()
+        )
 
 
 class MonitoringDeps(BaseModel):
