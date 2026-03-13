@@ -40,6 +40,8 @@ class NovuService:
         grounding_sources: list[dict],
         task_id: str,
         execution_id: str,
+        next_run: str | None = None,
+        confidence: float | None = None,
     ) -> dict:
         """
         Send notification when monitoring condition is met.
@@ -84,10 +86,12 @@ class NovuService:
                     payload={
                         "task_name": task_name,
                         "search_query": search_query,
-                        "answer": answer_html,  # Send HTML-formatted answer
+                        "answer": answer_html,
                         "grounding_sources": formatted_sources,
                         "task_id": task_id,
                         "execution_id": execution_id,
+                        "next_run": next_run,
+                        "confidence": confidence,
                     },
                 )
             )

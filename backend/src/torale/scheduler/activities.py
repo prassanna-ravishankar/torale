@@ -194,6 +194,8 @@ async def send_email_notification(
         grounding_sources=sources,
         task_id=str(task_id),
         execution_id=execution_id,
+        next_run=result.get("next_run"),
+        confidence=result.get("confidence"),
     )
 
     email_status = "success"
