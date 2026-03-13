@@ -129,6 +129,7 @@ def job_mocks():
     ):
         mock_db.execute = AsyncMock()
         mock_db.fetch_one = AsyncMock()
+        mock_db.fetch_val = AsyncMock(return_value=0)
         mock_recent_execs.return_value = []
 
         mocks = MagicMock()

@@ -224,12 +224,18 @@ async def _execute(
 
                 channels = notification_context.get("notification_channels", ["email"])
 
+                execution_count = await db.fetch_val(
+                    "SELECT COUNT(*) FROM task_executions WHERE task_id = $1 AND status = $2",
+                    uuid.UUID(task_id),
+                    TaskStatus.SUCCESS.value,
+                )
+
                 enriched_result = {
                     "execution_id": execution_id,
                     "summary": notification or evidence,
                     "sources": grounding_sources,
                     "notification": notification,
-                    "is_first_execution": False,
+                    "is_first_execution": execution_count == 1,
                 }
 
                 if "email" in channels:
