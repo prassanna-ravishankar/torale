@@ -1,6 +1,7 @@
 import logging
 
 import redis.asyncio as redis
+from redis.exceptions import RedisError
 
 from torale.core.config import settings
 
@@ -15,9 +16,10 @@ class RedisClient:
 
     async def connect(self):
         """Create Redis connection. No-op if Redis is not configured."""
-        if self.client is not None or not settings.redis_host:
-            if not settings.redis_host:
-                logger.info("Redis not configured, view counting disabled")
+        if not settings.redis_host:
+            logger.info("Redis not configured, view counting disabled")
+            return
+        if self.client is not None:
             return
         try:
             self.client = redis.Redis(
@@ -31,7 +33,7 @@ class RedisClient:
             )
             await self.client.ping()
             logger.info("Redis connection established")
-        except Exception:
+        except RedisError:
             logger.warning("Redis connection failed, view counting disabled", exc_info=True)
             self.client = None
 
