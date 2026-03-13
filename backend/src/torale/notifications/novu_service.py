@@ -166,19 +166,13 @@ class NovuService:
         search_query: str,
         first_execution_result: dict | None,
         task_id: str,
+        next_run: str | None = None,
     ) -> dict:
         """
         Send welcome email after task creation with first execution results.
 
         This email is ONLY sent after the first execution completes, so it always
         includes execution results.
-
-        Email explains:
-        - What's being monitored
-        - When next check runs
-        - How user will be notified
-        - First execution results with sources
-        - Next steps (conditional based on condition_met)
 
         Returns: {"success": bool, "transaction_id": str, "error": str}
         """
@@ -228,6 +222,7 @@ class NovuService:
                         ),
                         "grounding_sources": formatted_sources,
                         "task_id": task_id,
+                        "next_run": next_run,
                     },
                 )
             )

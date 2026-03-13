@@ -158,6 +158,7 @@ async def send_email_notification(
                 "grounding_sources": result.get("sources", []),
             },
             task_id=str(task_id),
+            next_run=result.get("next_run"),
         )
         logger.info(f"Welcome email sent for task {task_id}")
         return True
