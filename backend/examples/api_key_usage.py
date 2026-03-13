@@ -215,7 +215,7 @@ def example_7_task_operations():
     result = client.tasks.execute(task_id)
     print(f"  Status: {result.status}")
     if result.notification:
-        print("  ✅ Condition MET!")
+        print("  ✅ Notification sent!")
     else:
         print("  ⏳ Condition not met yet")
 
@@ -292,11 +292,11 @@ async def example_9_async_usage():
 
             print("✓ All executions completed\n")
             for i, result in enumerate(results):
-                condition_icon = "✅" if result.notification else "⏳"
+                notification_icon = "✅" if result.notification else "⏳"
                 print(f"  Task {i + 1}:")
                 print(f"    Status: {result.status}")
                 print(
-                    f"    Condition: {condition_icon} {'MET' if result.notification else 'Not met yet'}"
+                    f"    Notification: {notification_icon} {'Sent' if result.notification else 'Not yet'}"
                 )
         else:
             print("⚠️  Need at least 2 tasks to demonstrate concurrent execution")

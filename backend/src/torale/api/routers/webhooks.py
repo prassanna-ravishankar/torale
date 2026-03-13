@@ -109,7 +109,7 @@ async def test_webhook(test_req: WebhookTestRequest, user: CurrentUser):
             },
             "execution": {
                 "id": "test_execution_id",
-                "condition_met": True,
+                "notification": "Test notification text",
                 "completed_at": datetime.utcnow().isoformat(),
             },
             "result": {"answer": "Test answer", "grounding_sources": []},

@@ -222,7 +222,7 @@ class TestTestWebhook:
             assert payload.event_type == "task.condition_met"
             assert "task" in payload.data
             assert "execution" in payload.data
-            assert payload.data["execution"]["condition_met"] is True
+            assert payload.data["execution"]["notification"] == "Test notification text"
             return (True, 200, None, None)
 
         mock_service.deliver = AsyncMock(side_effect=capture_deliver)
