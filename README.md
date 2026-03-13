@@ -146,31 +146,6 @@ execution = client.tasks.execute(task_id="550e8400-...")
 print(execution.status)  # "pending", "running", "success", "failed"
 ```
 
-**Preview Queries**
-
-Test search queries before creating tasks:
-
-```python
-# Preview with explicit condition
-result = client.tasks.preview(
-    search_query="When is iPhone 16 being released?",
-    condition_description="A specific release date is announced"
-)
-
-# Preview without condition (LLM will infer)
-result = client.tasks.preview(
-    search_query="What's the latest news on GPT-5?"
-)
-
-print(result["answer"])
-print(f"Notification: {result.get('notification', 'None')}")
-if "inferred_condition" in result:
-    print(f"Inferred: {result['inferred_condition']}")
-
-for source in result["grounding_sources"]:
-    print(f"- {source['title']}: {source['url']}")
-```
-
 **Execution History & Notifications**
 
 ```python
@@ -410,7 +385,6 @@ Access the frontend at http://localhost:3000 after starting the dev server.
 - API key authentication for SDK
 - Frontend dashboard with task management
 - GKE deployment with cost optimization
-- **Live Search Preview** - Test queries before creating tasks
 - **Immediate Task Execution** - Run monitoring tasks instantly after creation
 - **AI-Powered Task Creation** - "Magic Input" uses LLM to generate task configuration from natural language
 - **Context-Aware Task Refinement** - "Magic Refine" updates existing tasks while preserving context
@@ -548,8 +522,6 @@ DELETE /auth/api-keys/{id}                 # Revoke API key
 
 ### Tasks
 ```
-POST   /api/v1/tasks/suggest               # AI-powered task suggestion from natural language (context-aware)
-POST   /api/v1/tasks/preview               # Preview search query (test without creating task)
 POST   /api/v1/tasks                       # Create monitoring task
 GET    /api/v1/tasks                       # List tasks
 GET    /api/v1/tasks/{id}                  # Get task details

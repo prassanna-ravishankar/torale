@@ -35,26 +35,6 @@ task = client.tasks.create(
 print(f"Created task: {task.id}")
 ```
 
-## Preview Before Creating
-
-```python
-# Test your query first
-preview = client.tasks.preview(
-    search_query="When is the iPhone 17 being released?",
-    condition_description="Apple has announced a specific release date"
-)
-
-print(f"Answer: {preview.answer}")
-print(f"Notification: {preview.notification}")
-
-# Create if results look good
-if preview.notification:
-    task = client.tasks.create(
-        search_query="When is the iPhone 17 being released?",
-        condition_description="Apple has announced a specific release date",
-        schedule="0 9 * * *"
-    )
-```
 
 ## Check Results
 
