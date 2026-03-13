@@ -6,9 +6,6 @@ import socket
 from ipaddress import ip_address
 from urllib.parse import urlparse
 
-from mem0 import AsyncMemoryClient
-from parallel import AsyncParallel
-from perplexity import AsyncPerplexity
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 
@@ -29,10 +26,6 @@ _TOOL_INPUT_KEYS: dict[str, str] = {
     "search_memories": "query",
     "add_memory": "text",
 }
-
-mem0_client = AsyncMemoryClient()
-perplexity_client = AsyncPerplexity()
-parallel_client = AsyncParallel()
 
 
 async def _is_safe_url(url: str) -> bool:
@@ -103,9 +96,9 @@ def register_tools(agent: Agent[MonitoringDeps, MonitoringResponse]) -> None:
     @agent.tool
     async def search_memories(ctx: RunContext[MonitoringDeps], query: str) -> str:
         """Search previous monitoring memories for this task. Use to recall what was found in earlier runs."""
-        if ctx.deps is None:
+        if ctx.deps is None or ctx.deps.clients is None:
             return json.dumps({"error": "No context available"})
-        results = await mem0_client.search(
+        results = await ctx.deps.clients.mem0.search(
             query,
             filters={
                 "AND": [{"user_id": ctx.deps.user_id}, {"app_id": ctx.deps.task_id}]
@@ -117,19 +110,21 @@ def register_tools(agent: Agent[MonitoringDeps, MonitoringResponse]) -> None:
     @agent.tool
     async def add_memory(ctx: RunContext[MonitoringDeps], text: str) -> str:
         """Store a new meta-knowledge memory for this task. Only store patterns and source insights, not individual check results."""
-        if ctx.deps is None:
+        if ctx.deps is None or ctx.deps.clients is None:
             return json.dumps({"error": "No context available"})
-        result = await mem0_client.add(
+        result = await ctx.deps.clients.mem0.add(
             [{"role": "user", "content": text}],
             user_id=ctx.deps.user_id,
             app_id=ctx.deps.task_id,
         )
         return json.dumps(result, default=str)
 
-    @agent.tool_plain
-    async def perplexity_search(query: str) -> str:
+    @agent.tool
+    async def perplexity_search(ctx: RunContext[MonitoringDeps], query: str) -> str:
         """Search the web using Perplexity for current information. Include the current year in queries for time-sensitive topics."""
-        response = await perplexity_client.search.create(query=query)
+        if ctx.deps is None or ctx.deps.clients is None:
+            return json.dumps({"error": "No context available"})
+        response = await ctx.deps.clients.perplexity.search.create(query=query)
         results = [
             {
                 "title": r.title,
@@ -142,10 +137,12 @@ def register_tools(agent: Agent[MonitoringDeps, MonitoringResponse]) -> None:
         ]
         return json.dumps(results)
 
-    @agent.tool_plain
-    async def parallel_search(query: str) -> str:
+    @agent.tool
+    async def parallel_search(ctx: RunContext[MonitoringDeps], query: str) -> str:
         """Search the web using Parallel for current information. Returns structured results with URLs, titles, and content excerpts. Often finds different authoritative sources than Perplexity."""
-        result = await parallel_client.beta.search(
+        if ctx.deps is None or ctx.deps.clients is None:
+            return json.dumps({"error": "No context available"})
+        result = await ctx.deps.clients.parallel.beta.search(
             objective=query,
             search_queries=[query],
             max_results=PARALLEL_SEARCH_MAX_RESULTS,

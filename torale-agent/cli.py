@@ -6,10 +6,14 @@ import time
 from pathlib import Path
 
 import typer
+from mem0 import AsyncMemoryClient
+from parallel import AsyncParallel
+from perplexity import AsyncPerplexity
 from rich.console import Console
 from rich.table import Table
 
-from agent import MonitoringDeps, create_monitoring_agent
+from agent import create_monitoring_agent
+from models import Clients, MonitoringDeps
 
 app = typer.Typer(help="Torale Agent Evaluation CLI")
 eval_app = typer.Typer(help="Run and manage evaluations")
@@ -42,18 +46,24 @@ async def _query_async(prompt: str, model: str, raw: bool):
     start_time = time.perf_counter()
 
     try:
-        agent = create_monitoring_agent(model)
-        deps = MonitoringDeps(user_id="cli-user", task_id="cli-query")
-        result = await agent.run(prompt, deps=deps)
-        latency_ms = (time.perf_counter() - start_time) * 1000
+        async with AsyncParallel() as parallel, AsyncPerplexity() as perplexity:
+            clients = Clients(
+                parallel=parallel, perplexity=perplexity, mem0=AsyncMemoryClient()
+            )
+            agent = create_monitoring_agent(model)
+            deps = MonitoringDeps(
+                user_id="cli-user", task_id="cli-query", clients=clients
+            )
+            result = await agent.run(prompt, deps=deps)
+            latency_ms = (time.perf_counter() - start_time) * 1000
 
-        output_json = result.output.model_dump_json(indent=2)
+            output_json = result.output.model_dump_json(indent=2)
 
-        if raw:
-            print(output_json)
-        else:
-            console.print(f"[green]Success![/green] ({latency_ms:.0f}ms)\n")
-            console.print(output_json)
+            if raw:
+                print(output_json)
+            else:
+                console.print(f"[green]Success![/green] ({latency_ms:.0f}ms)\n")
+                console.print(output_json)
 
     # Only catch expected agent/model errors
     except (ValueError, RuntimeError, KeyError, AttributeError) as e:

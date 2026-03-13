@@ -2,7 +2,11 @@
 
 import re
 
-from models import MonitoringDeps, MonitoringResponse
+from mem0 import AsyncMemoryClient
+from parallel import AsyncParallel
+from perplexity import AsyncPerplexity
+
+from models import Clients, MonitoringDeps, MonitoringResponse
 
 from evals.models import MonitoringCaseInput
 
@@ -64,20 +68,25 @@ async def run_monitoring_task(case_input: MonitoringCaseInput) -> MonitoringResp
     from agent import create_monitoring_agent
 
     task_id = f"eval-{_slugify(case_input.search_query[:50])}"
-    deps = MonitoringDeps(user_id="eval-user", task_id=task_id)
 
-    agent = create_monitoring_agent(_eval_model)
-    history_block = ""
-    response: MonitoringResponse | None = None
+    async with AsyncParallel() as parallel, AsyncPerplexity() as perplexity:
+        clients = Clients(
+            parallel=parallel, perplexity=perplexity, mem0=AsyncMemoryClient()
+        )
+        deps = MonitoringDeps(user_id="eval-user", task_id=task_id, clients=clients)
 
-    for pass_num in range(1, case_input.passes + 1):
-        prompt = _build_prompt(case_input, history_block)
-        result = await agent.run(prompt, deps=deps)
-        response = result.output
+        agent = create_monitoring_agent(_eval_model)
+        history_block = ""
+        response: MonitoringResponse | None = None
 
-        # Build history for next pass
-        if pass_num < case_input.passes:
-            history_block = _format_execution_history(response, pass_num)
+        for pass_num in range(1, case_input.passes + 1):
+            prompt = _build_prompt(case_input, history_block)
+            result = await agent.run(prompt, deps=deps)
+            response = result.output
+
+            # Build history for next pass
+            if pass_num < case_input.passes:
+                history_block = _format_execution_history(response, pass_num)
 
     assert response is not None
     return response

@@ -2,7 +2,8 @@
 
 import json
 import logging
-import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -27,11 +28,15 @@ from a2a.types import (
     TextPart,
 )
 from dotenv import load_dotenv
+from fastapi import FastAPI
+from mem0 import AsyncMemoryClient
+from parallel import AsyncParallel
+from perplexity import AsyncPerplexity
 from pydantic_ai import Agent
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.models.google import GoogleModelSettings
 
-from models import MonitoringDeps, MonitoringResponse
+from models import Clients, MonitoringDeps, MonitoringResponse
 from tools import extract_activity, register_tools
 
 load_dotenv()
@@ -44,11 +49,6 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-
-for key in ("GEMINI_API_KEY", "PERPLEXITY_API_KEY", "MEM0_API_KEY", "PARALLEL_API_KEY"):
-    if not os.getenv(key):
-        logger.warning(f"⚠️  {key} is not set! Agent will likely fail.")
 
 SYSTEM_PROMPT = """\
 You are a search monitoring agent for Torale. You run as a scheduled API service — called periodically to check if a monitoring condition is met.
@@ -186,6 +186,7 @@ class ToraleAgentExecutor(AgentExecutor):
 
     def __init__(self, agent: Agent[MonitoringDeps, MonitoringResponse]) -> None:
         self.agent = agent
+        self.clients: Clients | None = None
 
     async def _emit_failure(
         self, event_queue: EventQueue, task_id: str, context_id: str, error_data: dict
@@ -268,7 +269,9 @@ class ToraleAgentExecutor(AgentExecutor):
             )
             return
 
-        deps = MonitoringDeps(user_id=user_id, task_id=monitoring_task_id)
+        deps = MonitoringDeps(
+            user_id=user_id, task_id=monitoring_task_id, clients=self.clients
+        )
 
         # Signal working state
         await event_queue.enqueue_event(
@@ -364,15 +367,6 @@ class ToraleAgentExecutor(AgentExecutor):
         )
 
 
-agent = create_monitoring_agent()
-
-executor = ToraleAgentExecutor(agent)
-task_store = InMemoryTaskStore()
-request_handler = DefaultRequestHandler(
-    agent_executor=executor,
-    task_store=task_store,
-)
-
 agent_card = AgentCard(
     name="torale-agent",
     description="Torale search monitoring agent",
@@ -384,12 +378,32 @@ agent_card = AgentCard(
     skills=[],
 )
 
+
+monitoring_agent = create_monitoring_agent()
+executor = ToraleAgentExecutor(monitoring_agent)
+task_store = InMemoryTaskStore()
+request_handler = DefaultRequestHandler(
+    agent_executor=executor,
+    task_store=task_store,
+)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    async with AsyncParallel() as parallel, AsyncPerplexity() as perplexity:
+        executor.clients = Clients(
+            parallel=parallel, perplexity=perplexity, mem0=AsyncMemoryClient()
+        )
+        yield
+        executor.clients = None
+
+
 a2a_app = A2AFastAPIApplication(
     agent_card=agent_card,
     http_handler=request_handler,
 )
 
-app = a2a_app.build()
+app = a2a_app.build(lifespan=lifespan)
 
 
 @app.get("/health")

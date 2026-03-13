@@ -1,6 +1,9 @@
 """Shared data models for the monitoring agent."""
 
-from pydantic import BaseModel, Field
+from dataclasses import dataclass
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ActivityStep(BaseModel):
@@ -39,8 +42,20 @@ class MonitoringResponse(BaseModel):
     )
 
 
+@dataclass
+class Clients:
+    """Async HTTP clients for external services."""
+
+    parallel: Any
+    perplexity: Any
+    mem0: Any
+
+
 class MonitoringDeps(BaseModel):
     """Dependencies for monitoring agent containing user and task identifiers."""
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     user_id: str
     task_id: str
+    clients: Clients | None = None
