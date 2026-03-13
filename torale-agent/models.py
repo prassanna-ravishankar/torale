@@ -58,10 +58,12 @@ class Clients:
 @asynccontextmanager
 async def create_clients() -> AsyncIterator[Clients]:
     """Create and manage async HTTP client lifecycles."""
-    async with AsyncParallel() as parallel, AsyncPerplexity() as perplexity:
-        yield Clients(
-            parallel=parallel, perplexity=perplexity, mem0=AsyncMemoryClient()
-        )
+    async with (
+        AsyncParallel() as parallel,
+        AsyncPerplexity() as perplexity,
+        AsyncMemoryClient() as mem0,
+    ):
+        yield Clients(parallel=parallel, perplexity=perplexity, mem0=mem0)
 
 
 class MonitoringDeps(BaseModel):
