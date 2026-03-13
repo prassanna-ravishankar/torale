@@ -27,42 +27,54 @@ def increment_view(task_id: UUID) -> None:
     asyncio.create_task(_increment_view(task_id))
 
 
+async def _flush_key(key: str) -> int:
+    """Flush a single Redis hash of view counts to Postgres. Returns count flushed."""
+    counts = await redis_client.client.hgetall(key)
+    if not counts:
+        await redis_client.client.delete(key)
+        return 0
+
+    updates = []
+    for task_id, count_str in counts.items():
+        n = int(count_str)
+        if n > 0:
+            updates.append((n, task_id))
+
+    if not updates:
+        await redis_client.client.delete(key)
+        return 0
+
+    await db.executemany(
+        "UPDATE tasks SET view_count = view_count + $1 WHERE id = $2::uuid",
+        updates,
+    )
+    await redis_client.client.delete(key)
+    return len(updates)
+
+
 async def flush_views_to_postgres() -> None:
     """Sync accumulated Redis view counts to Postgres, then clear."""
     if redis_client.client is None:
         return
 
-    # Atomically swap the key so no increments are lost during flush
     try:
-        await redis_client.client.rename(TASK_VIEWS_KEY, _PROCESSING_KEY)
-    except ResponseError as e:
-        if "no such key" in str(e).lower():
-            return  # Nothing to flush
-        logger.warning("Failed to rename task_views key", exc_info=True)
-        return
+        # Recover stale processing key from a previously failed flush
+        if await redis_client.client.exists(_PROCESSING_KEY):
+            recovered = await _flush_key(_PROCESSING_KEY)
+            if recovered:
+                logger.info("Recovered %d stale view counts from previous flush", recovered)
 
-    try:
-        counts = await redis_client.client.hgetall(_PROCESSING_KEY)
-        if not counts:
-            await redis_client.client.delete(_PROCESSING_KEY)
-            return
+        # Atomically swap the live key so no increments are lost during flush
+        try:
+            await redis_client.client.rename(TASK_VIEWS_KEY, _PROCESSING_KEY)
+        except ResponseError as e:
+            if "no such key" in str(e).lower():
+                return  # Nothing to flush
+            raise
 
-        updates = []
-        for task_id, count_str in counts.items():
-            n = int(count_str)
-            if n > 0:
-                updates.append((n, task_id))
-
-        if not updates:
-            await redis_client.client.delete(_PROCESSING_KEY)
-            return
-
-        await db.executemany(
-            "UPDATE tasks SET view_count = view_count + $1 WHERE id = $2::uuid",
-            updates,
-        )
-        await redis_client.client.delete(_PROCESSING_KEY)
-        logger.info("Flushed view counts for %d tasks", len(updates))
+        flushed = await _flush_key(_PROCESSING_KEY)
+        if flushed:
+            logger.info("Flushed view counts for %d tasks", flushed)
     except Exception:
         logger.error(
             "Failed to flush view counts. Counts remain in '%s' for recovery.",
