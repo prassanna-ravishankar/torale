@@ -31,6 +31,8 @@ from torale.api.routers import (
 )
 from torale.core.config import PROJECT_ROOT, settings
 from torale.core.database import Database, db, get_db
+from torale.core.redis import redis_client
+from torale.core.views import flush_views_to_postgres
 from torale.lib.posthog import shutdown as shutdown_posthog
 from torale.scheduler import get_scheduler
 from torale.scheduler.migrate import reap_stale_executions, sync_jobs_from_database
@@ -73,6 +75,8 @@ async def lifespan(app: FastAPI):
     await db.connect()
     logger.info("Database connection pool established")
 
+    await redis_client.connect()
+
     # Initialize Auth Provider
     if settings.torale_noauth:
         logger.info("⚠️  TORALE_NOAUTH mode enabled - using NoAuthProvider")
@@ -105,10 +109,21 @@ async def lifespan(app: FastAPI):
         replace_existing=True,
     )
 
+    if redis_client.client is not None:
+        scheduler.add_job(
+            flush_views_to_postgres,
+            trigger="interval",
+            minutes=5,
+            id="flush-view-counts",
+            replace_existing=True,
+        )
+
     yield
 
     scheduler.shutdown(wait=False)
     logger.info("APScheduler shut down")
+    await flush_views_to_postgres()
+    await redis_client.disconnect()
     shutdown_posthog()
     logger.info("PostHog shut down")
     await db.disconnect()

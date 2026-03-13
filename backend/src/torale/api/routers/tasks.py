@@ -17,6 +17,7 @@ from torale.api.utils.task_parsers import (
     parse_task_with_execution,
 )
 from torale.core.database import Database, get_db
+from torale.core.views import increment_view
 from torale.notifications import NotificationValidationError, validate_notification
 from torale.scheduler.job import execute_task_job_manual
 from torale.scheduler.scheduler import get_scheduler
@@ -374,13 +375,8 @@ async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get
 
     task = parse_task_with_execution(row)
 
-    # TODO: Implement async view counting (see public_tasks.py)
     if is_public and not is_owner:
-        # await db.execute(
-        #     "UPDATE tasks SET view_count = view_count + 1 WHERE id = $1",
-        #     task_id,
-        # )
-        # Scrub sensitive fields for public viewers
+        increment_view(task_id)
         task = task.model_copy(
             update={"notification_email": None, "webhook_url": None, "notifications": []}
         )
