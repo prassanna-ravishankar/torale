@@ -8,8 +8,6 @@ from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from torale.access import (
@@ -32,8 +30,7 @@ from torale.api.routers import (
     webhooks,
 )
 from torale.core.config import PROJECT_ROOT, settings
-from torale.core.database import db
-from torale.core.database_alchemy import get_async_session
+from torale.core.database import Database, db, get_db
 from torale.lib.posthog import shutdown as shutdown_posthog
 from torale.scheduler import get_scheduler
 from torale.scheduler.migrate import reap_stale_executions, sync_jobs_from_database
@@ -202,23 +199,13 @@ async def health_check():
 
 
 @app.get("/public/stats")
-async def get_public_stats(session: AsyncSession = Depends(get_async_session)):
+async def get_public_stats(db: Database = Depends(get_db)):
     """
     Public endpoint for landing page stats.
     Returns available user capacity for beta signup messaging.
     """
-    # Count active users
-    user_result = await session.execute(
-        text("""
-        SELECT COUNT(*) as total_users
-        FROM users
-        WHERE is_active = true
-        """)
-    )
-    user_row = user_result.first()
-    total_users = user_row[0] if user_row else 0
+    total_users = await db.fetch_val("SELECT COUNT(*) FROM users WHERE is_active = true")
 
-    # Get max users from settings
     max_users = settings.max_users
     available_slots = max(0, max_users - total_users)
 

@@ -5,28 +5,25 @@ import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
+import asyncpg
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select, text, update
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.access import (
     TEST_USER_NOAUTH_ID,
+    ApiKeyRepository,
     CurrentUser,
     ProductionAuthProvider,
+    UserRepository,
     get_auth_provider,
     require_developer,
 )
 from torale.access import (
     User as AuthUser,
 )
-from torale.access import (
-    UserDBModel as User,
-)
 from torale.access.models import UserRead
-from torale.core.database_alchemy import get_async_session
+from torale.core.database import Database, get_db
 
 router = APIRouter()
 
@@ -41,7 +38,7 @@ class SyncUserResponse(BaseModel):
 @router.post("/sync-user", response_model=SyncUserResponse)
 async def sync_user(
     clerk_user: CurrentUser,
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """
     Sync Clerk user to local database.
@@ -49,7 +46,6 @@ async def sync_user(
     Called automatically on first login from frontend.
     Creates user if doesn't exist, updates email and first_name if changed.
     """
-    # Fetch full user data from Clerk to get first_name
     first_name = None
     provider = get_auth_provider()
     if isinstance(provider, ProductionAuthProvider) and provider.clerk_client:
@@ -57,108 +53,81 @@ async def sync_user(
             clerk_user_data = provider.clerk_client.users.get(user_id=clerk_user.clerk_user_id)
             first_name = clerk_user_data.first_name if clerk_user_data else None
         except Exception:
-            # Continue without first_name if Clerk API fails
             pass
 
-    # Check if user exists by clerk_user_id
-    result = await session.execute(
-        select(User).where(User.clerk_user_id == clerk_user.clerk_user_id)
-    )
-    existing_user = result.scalar_one_or_none()
+    user_repo = UserRepository(db)
+    existing = await user_repo.find_by_clerk_id(clerk_user.clerk_user_id)
 
-    if existing_user:
-        # Update email and first_name if changed
-        needs_update = existing_user.email != clerk_user.email or (
-            first_name and existing_user.first_name != first_name
+    if existing:
+        needs_update = existing["email"] != clerk_user.email or (
+            first_name and existing["first_name"] != first_name
         )
 
         if needs_update:
-            old_email = existing_user.email
+            old_email = existing["email"]
             new_email = clerk_user.email
 
-            # Update email, first_name and verified_notification_emails array
-            await session.execute(
-                text("""
-                    UPDATE users
-                    SET email = :new_email,
-                        first_name = :first_name,
-                        updated_at = :now,
-                        verified_notification_emails = (
-                            -- Remove old email from array
-                            array_remove(
-                                COALESCE(verified_notification_emails, ARRAY[]::TEXT[]),
-                                :old_email
-                            )
-                            ||
-                            -- Add new email if not already present
-                            CASE
-                                WHEN :new_email = ANY(COALESCE(verified_notification_emails, ARRAY[]::TEXT[]))
-                                THEN ARRAY[]::TEXT[]
-                                ELSE ARRAY[:new_email]::TEXT[]
-                            END
+            existing = await db.fetch_one(
+                """
+                UPDATE users
+                SET email = $1,
+                    first_name = $2,
+                    updated_at = $3,
+                    verified_notification_emails = (
+                        array_remove(
+                            COALESCE(verified_notification_emails, ARRAY[]::TEXT[]),
+                            $4
                         )
-                    WHERE id = :user_id
-                """),
-                {
-                    "user_id": existing_user.id,
-                    "old_email": old_email,
-                    "new_email": new_email,
-                    "first_name": first_name,
-                    "now": datetime.now(UTC),
-                },
+                        ||
+                        CASE
+                            WHEN $1 = ANY(COALESCE(verified_notification_emails, ARRAY[]::TEXT[]))
+                            THEN ARRAY[]::TEXT[]
+                            ELSE ARRAY[$1]::TEXT[]
+                        END
+                    )
+                WHERE id = $5
+                RETURNING *
+                """,
+                new_email,
+                first_name,
+                datetime.now(UTC),
+                old_email,
+                existing["id"],
             )
-            await session.commit()
-            await session.refresh(existing_user)
 
         return SyncUserResponse(
-            user=UserRead.model_validate(existing_user),
+            user=UserRead(**existing),
             created=False,
         )
 
     # Create new user with Clerk email auto-verified
-    # Handle race condition where user might be created between check and insert
     try:
-        new_user_id = uuid.uuid4()
-        await session.execute(
-            text("""
-                INSERT INTO users (
-                    id, clerk_user_id, email, first_name, is_active,
-                    verified_notification_emails, created_at, updated_at
-                )
-                VALUES (
-                    :id, :clerk_user_id, :email, :first_name, :is_active,
-                    ARRAY[:email]::TEXT[], :now, :now
-                )
-            """),
-            {
-                "id": new_user_id,
-                "clerk_user_id": clerk_user.clerk_user_id,
-                "email": clerk_user.email,
-                "first_name": first_name,
-                "is_active": True,
-                "now": datetime.now(UTC),
-            },
+        new_user = await db.fetch_one(
+            """
+            INSERT INTO users (
+                id, clerk_user_id, email, first_name, is_active,
+                verified_notification_emails, created_at, updated_at
+            )
+            VALUES ($1, $2, $3, $4, $5, ARRAY[$3]::TEXT[], $6, $6)
+            RETURNING *
+            """,
+            uuid.uuid4(),
+            clerk_user.clerk_user_id,
+            clerk_user.email,
+            first_name,
+            True,
+            datetime.now(UTC),
         )
-        await session.commit()
-
-        # Fetch created user
-        result = await session.execute(select(User).where(User.id == new_user_id))
-        new_user = result.scalar_one()
 
         return SyncUserResponse(
-            user=UserRead.model_validate(new_user),
+            user=UserRead(**new_user),
             created=True,
         )
-    except IntegrityError:
+    except asyncpg.UniqueViolationError:
         # Race condition: user was created by another request
-        # Rollback and fetch the existing user
-        await session.rollback()
-        result = await session.execute(
-            select(User).where(User.clerk_user_id == clerk_user.clerk_user_id)
-        )
-        existing_user = result.scalar_one()
+        existing = await user_repo.find_by_clerk_id(clerk_user.clerk_user_id)
         return SyncUserResponse(
-            user=UserRead.model_validate(existing_user),
+            user=UserRead(**existing),
             created=False,
         )
 
@@ -196,7 +165,7 @@ class CreateAPIKeyResponse(BaseModel):
 async def create_api_key(
     request: CreateAPIKeyRequest,
     clerk_user: Annotated[AuthUser, Depends(require_developer)],
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """
     Generate a new API key for SDK authentication.
@@ -204,18 +173,16 @@ async def create_api_key(
     Requires developer role in Clerk publicMetadata.
     Returns the full key once - store it securely!
     """
-    # Get user and check for existing active key in a single query
-    result = await session.execute(
-        text("""
+    user_row = await db.fetch_one(
+        """
         SELECT u.id, u.clerk_user_id, u.email, COUNT(ak.id) as active_key_count
         FROM users u
         LEFT JOIN api_keys ak ON u.id = ak.user_id AND ak.is_active = true
-        WHERE u.clerk_user_id = :clerk_user_id
+        WHERE u.clerk_user_id = $1
         GROUP BY u.id, u.clerk_user_id, u.email
-        """),
-        {"clerk_user_id": clerk_user.clerk_user_id},
+        """,
+        clerk_user.clerk_user_id,
     )
-    user_row = result.first()
 
     if not user_row:
         raise HTTPException(
@@ -223,102 +190,76 @@ async def create_api_key(
             detail="User not found. Please sync user first.",
         )
 
-    user_id, user_clerk_id, user_email, active_key_count = user_row
-
-    if active_key_count > 0:
+    if user_row["active_key_count"] > 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You already have an active API key. Please revoke it before creating a new one.",
         )
 
-    # Generate random API key
     key = f"sk_{secrets.token_urlsafe(32)}"
-    # Use bcrypt for secure hashing (computationally expensive, resistant to brute force)
     key_hash = bcrypt.hashpw(key.encode(), bcrypt.gensalt()).decode()
     key_prefix = key[:15] + "..."
 
-    # Store in database
-    api_key_data = {
-        "id": uuid.uuid4(),
-        "user_id": user_id,
-        "key_prefix": key_prefix,
-        "key_hash": key_hash,
-        "name": request.name,
-        "created_at": datetime.now(UTC),
-        "is_active": True,
-    }
-
-    await session.execute(
-        text("""
-        INSERT INTO api_keys (id, user_id, key_prefix, key_hash, name, created_at, is_active)
-        VALUES (:id, :user_id, :key_prefix, :key_hash, :name, :created_at, :is_active)
-        """),
-        api_key_data,
+    api_key_repo = ApiKeyRepository(db)
+    created = await api_key_repo.create_key(
+        user_id=user_row["id"],
+        key_prefix=key_prefix,
+        key_hash=key_hash,
+        name=request.name,
     )
-    await session.commit()
 
-    # Return full key (only time it's shown)
     return CreateAPIKeyResponse(
         key=key,
-        key_info=APIKey(**api_key_data, last_used_at=None),
+        key_info=APIKey(
+            id=created["id"],
+            user_id=created["user_id"],
+            key_prefix=created["key_prefix"],
+            name=created["name"],
+            created_at=created["created_at"],
+            last_used_at=created.get("last_used_at"),
+            is_active=created["is_active"],
+        ),
     )
 
 
 @router.get("/api-keys", response_model=list[APIKey])
 async def list_api_keys(
     clerk_user: CurrentUser,
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """List all API keys for current user."""
-    # Get user from database
-    result = await session.execute(
-        select(User).where(User.clerk_user_id == clerk_user.clerk_user_id)
-    )
-    user = result.scalar_one_or_none()
+    user_repo = UserRepository(db)
+    user = await user_repo.find_by_clerk_id(clerk_user.clerk_user_id)
 
     if not user:
         return []
 
-    # Get API keys
-    result = await session.execute(
-        text("""
-        SELECT id, user_id, key_prefix, name, created_at, last_used_at, is_active
-        FROM api_keys
-        WHERE user_id = :user_id
-        ORDER BY created_at DESC
-        """),
-        {"user_id": user.id},
-    )
+    api_key_repo = ApiKeyRepository(db)
+    rows = await api_key_repo.find_by_user(user["id"], include_inactive=True)
 
-    keys = []
-    for row in result:
-        keys.append(
-            APIKey(
-                id=row[0],
-                user_id=row[1],
-                key_prefix=row[2],
-                name=row[3],
-                created_at=row[4],
-                last_used_at=row[5],
-                is_active=row[6],
-            )
+    return [
+        APIKey(
+            id=row["id"],
+            user_id=row["user_id"],
+            key_prefix=row["key_prefix"],
+            name=row["name"],
+            created_at=row["created_at"],
+            last_used_at=row.get("last_used_at"),
+            is_active=row["is_active"],
         )
-
-    return keys
+        for row in rows
+    ]
 
 
 @router.delete("/api-keys/{key_id}")
 async def revoke_api_key(
     key_id: uuid.UUID,
     clerk_user: CurrentUser,
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """Revoke (deactivate) an API key."""
-    # Get user from database
-    result = await session.execute(
-        select(User).where(User.clerk_user_id == clerk_user.clerk_user_id)
-    )
-    user = result.scalar_one_or_none()
+    user_repo = UserRepository(db)
+    user = await user_repo.find_by_clerk_id(clerk_user.clerk_user_id)
 
     if not user:
         raise HTTPException(
@@ -326,18 +267,19 @@ async def revoke_api_key(
             detail="User not found",
         )
 
-    # Deactivate key
-    result = await session.execute(
-        text("""
+    # Verify key belongs to user and revoke
+    row = await db.fetch_one(
+        """
         UPDATE api_keys
-        SET is_active = false
-        WHERE id = :key_id AND user_id = :user_id
-        """),
-        {"key_id": key_id, "user_id": user.id},
+        SET is_active = false, updated_at = NOW()
+        WHERE id = $1 AND user_id = $2
+        RETURNING id
+        """,
+        key_id,
+        user["id"],
     )
-    await session.commit()
 
-    if result.rowcount == 0:
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="API key not found",
@@ -349,13 +291,11 @@ async def revoke_api_key(
 @router.get("/me", response_model=UserRead)
 async def get_current_user_info(
     clerk_user: CurrentUser,
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """Get current user information (supports noauth mode for testing)."""
-    result = await session.execute(
-        select(User).where(User.clerk_user_id == clerk_user.clerk_user_id)
-    )
-    user = result.scalar_one_or_none()
+    user_repo = UserRepository(db)
+    user = await user_repo.find_by_clerk_id(clerk_user.clerk_user_id)
 
     if not user:
         raise HTTPException(
@@ -363,31 +303,31 @@ async def get_current_user_info(
             detail="User not found. Please sync user first.",
         )
 
-    return UserRead.model_validate(user)
+    return UserRead(**user)
 
 
 @router.post("/mark-welcome-seen")
 async def mark_welcome_seen(
     clerk_user: CurrentUser,
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """Mark that the user has seen the welcome flow."""
-    # Handle NoAuth mode
     if clerk_user.clerk_user_id == TEST_USER_NOAUTH_ID:
         return {"status": "success", "note": "NoAuth mode - not persisted"}
 
-    result = await session.execute(
-        update(User)
-        .where(User.clerk_user_id == clerk_user.clerk_user_id)
-        .values(has_seen_welcome=True)
+    row = await db.fetch_one(
+        """
+        UPDATE users SET has_seen_welcome = true
+        WHERE clerk_user_id = $1
+        RETURNING id
+        """,
+        clerk_user.clerk_user_id,
     )
 
-    if result.rowcount == 0:
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found. Please sync user first.",
         )
-
-    await session.commit()
 
     return {"status": "success"}

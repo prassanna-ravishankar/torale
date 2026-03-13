@@ -2,13 +2,12 @@
 
 from datetime import UTC, datetime
 
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.api.rate_limiter import limiter
-from torale.core.database_alchemy import get_async_session
+from torale.core.database import Database, get_db
 
 router = APIRouter()
 
@@ -31,7 +30,7 @@ class JoinWaitlistResponse(BaseModel):
 async def join_waitlist(
     request_data: JoinWaitlistRequest,
     request: Request,
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """
     Join the waitlist (public endpoint, no auth required).
@@ -39,43 +38,33 @@ async def join_waitlist(
     Users provide their email and are added to the waitlist queue.
     """
     try:
-        # Insert into waitlist
-        await session.execute(
-            text("""
+        await db.execute(
+            """
             INSERT INTO waitlist (email, created_at, status)
-            VALUES (:email, :created_at, 'pending')
-            RETURNING id
-            """),
-            {
-                "email": request_data.email.lower(),
-                "created_at": datetime.now(UTC),
-            },
+            VALUES ($1, $2, 'pending')
+            """,
+            request_data.email.lower(),
+            datetime.now(UTC),
         )
-        await session.commit()
 
-        # Get position in queue
-        position_result = await session.execute(
-            text("""
-            SELECT COUNT(*) + 1 as position
+        position = await db.fetch_val(
+            """
+            SELECT COUNT(*) + 1
             FROM waitlist
             WHERE status = 'pending' AND created_at < (
-                SELECT created_at FROM waitlist WHERE email = :email
+                SELECT created_at FROM waitlist WHERE email = $1
             )
-            """),
-            {"email": request_data.email.lower()},
+            """,
+            request_data.email.lower(),
         )
-        position = position_result.scalar()
 
         return JoinWaitlistResponse(
             message="You've been added to the waitlist! We'll notify you when a spot opens up.",
             position=position,
         )
 
-    except Exception as e:
-        if "unique constraint" in str(e).lower():
-            # Email already on waitlist
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="This email is already on the waitlist.",
-            ) from e
-        raise
+    except asyncpg.UniqueViolationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This email is already on the waitlist.",
+        ) from e

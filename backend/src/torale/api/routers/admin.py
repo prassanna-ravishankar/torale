@@ -9,14 +9,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from torale.access import ClerkUser, clerk_client, require_admin
 from torale.api.routers.tasks import start_task_execution
 from torale.core.config import settings
 from torale.core.database import Database, get_db
-from torale.core.database_alchemy import get_async_session
 from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import TaskState
 from torale.tasks.service import InvalidTransitionError, TaskService
@@ -62,10 +59,21 @@ def parse_json_field(value: Any) -> Any:
     return value
 
 
+def _serialize_waitlist_row(row) -> dict:
+    return {
+        "id": str(row["id"]),
+        "email": row["email"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        "status": row["status"],
+        "invited_at": row["invited_at"].isoformat() if row["invited_at"] else None,
+        "notes": row["notes"],
+    }
+
+
 @router.get("/stats")
 async def get_platform_stats(
     admin: ClerkUser = Depends(require_admin),
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """
     Get platform-wide statistics for admin dashboard.
@@ -76,59 +84,56 @@ async def get_platform_stats(
     - 24-hour execution metrics (total/failed/success_rate)
     - Popular queries (top 10 most common search queries)
     """
-    # Get max users from settings (default 100)
     max_users = getattr(settings, "max_users", 100)
-
     twenty_four_hours_ago = datetime.now(UTC) - timedelta(hours=24)
 
-    # AsyncSession wraps a single connection — cannot run concurrent queries on it
-    user_result = await session.execute(text("SELECT COUNT(*) FROM users WHERE is_active = true"))
-    task_result = await session.execute(
-        text("""
+    # Each db.fetch_* acquires its own pool connection — run concurrently
+    user_count_coro = db.fetch_val("SELECT COUNT(*) FROM users WHERE is_active = true")
+    task_coro = db.fetch_one(
+        """
         SELECT
             COUNT(*) as total_tasks,
-            SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END) as triggered_tasks
+            COALESCE(SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END), 0) as triggered_tasks
         FROM tasks t
         LEFT JOIN task_executions e ON t.last_execution_id = e.id
         WHERE t.state = 'active'
-        """)
+        """
     )
-    exec_result = await session.execute(
-        text("""
+    exec_coro = db.fetch_one(
+        """
         SELECT
             COUNT(*) as total_executions,
-            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_executions
+            COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) as failed_executions
         FROM task_executions
-        WHERE created_at >= :since
-        """),
-        {"since": twenty_four_hours_ago},
+        WHERE created_at >= $1
+        """,
+        twenty_four_hours_ago,
     )
-    popular_result = await session.execute(
-        text("""
+    popular_coro = db.fetch_all(
+        """
         SELECT
             t.search_query,
             COUNT(*) as task_count,
-            SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END) as triggered_count
+            COALESCE(SUM(CASE WHEN e.notification IS NOT NULL THEN 1 ELSE 0 END), 0) as triggered_count
         FROM tasks t
         LEFT JOIN task_executions e ON t.last_execution_id = e.id
         WHERE t.search_query IS NOT NULL
         GROUP BY t.search_query
         ORDER BY task_count DESC
         LIMIT 10
-        """)
+        """
     )
 
-    user_row = user_result.first()
-    total_users = user_row[0] if user_row else 0
+    total_users, task_row, exec_row, popular_rows = await asyncio.gather(
+        user_count_coro, task_coro, exec_coro, popular_coro
+    )
 
-    task_row = task_result.first()
-    total_tasks = task_row[0] if task_row else 0
-    triggered_tasks = task_row[1] if task_row and task_row[1] else 0
+    total_tasks = task_row["total_tasks"] if task_row else 0
+    triggered_tasks = task_row["triggered_tasks"] if task_row else 0
     trigger_rate = (triggered_tasks / total_tasks * 100) if total_tasks > 0 else 0
 
-    exec_row = exec_result.first()
-    total_executions = exec_row[0] if exec_row else 0
-    failed_executions = exec_row[1] if exec_row and exec_row[1] else 0
+    total_executions = exec_row["total_executions"] if exec_row else 0
+    failed_executions = exec_row["failed_executions"] if exec_row else 0
     success_rate = (
         (total_executions - failed_executions) / total_executions * 100
         if total_executions > 0
@@ -137,11 +142,11 @@ async def get_platform_stats(
 
     popular_queries = [
         {
-            "search_query": row[0],
-            "count": row[1],
-            "triggered_count": row[2] if row[2] else 0,
+            "search_query": row["search_query"],
+            "count": row["task_count"],
+            "triggered_count": row["triggered_count"],
         }
-        for row in popular_result
+        for row in popular_rows
     ]
 
     return {
@@ -167,7 +172,7 @@ async def get_platform_stats(
 @router.get("/queries")
 async def list_all_queries(
     admin: ClerkUser = Depends(require_admin),
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
     limit: int = Query(default=100, le=500),
     active_only: bool = Query(default=False),
 ):
@@ -185,8 +190,8 @@ async def list_all_queries(
     """
     active_filter = "AND t.state = 'active'" if active_only else ""
 
-    result = await session.execute(
-        text(f"""
+    rows = await db.fetch_all(
+        f"""
         SELECT
             t.id,
             t.name,
@@ -208,28 +213,30 @@ async def list_all_queries(
         WHERE 1=1 {active_filter}
         GROUP BY t.id, u.email, le.notification, t.last_known_state, t.state_changed_at
         ORDER BY t.created_at DESC
-        LIMIT :limit
-        """),
-        {"limit": limit},
+        LIMIT $1
+        """,
+        limit,
     )
 
     queries = [
         {
-            "id": str(row[0]),
-            "name": row[1],
-            "search_query": row[2],
-            "condition_description": row[3],
-            "next_run": row[4].isoformat() if row[4] else None,
-            "state": row[5],
-            "has_notification": row[6] is not None,
-            "created_at": row[7].isoformat() if row[7] else None,
-            "user_email": row[8],
-            "execution_count": row[9] if row[9] else 0,
-            "trigger_count": row[10] if row[10] else 0,
-            "last_known_state": row[11],
-            "state_changed_at": row[12].isoformat() if row[12] else None,
+            "id": str(row["id"]),
+            "name": row["name"],
+            "search_query": row["search_query"],
+            "condition_description": row["condition_description"],
+            "next_run": row["next_run"].isoformat() if row["next_run"] else None,
+            "state": row["state"],
+            "has_notification": row["last_notification"] is not None,
+            "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+            "user_email": row["user_email"],
+            "execution_count": row["execution_count"] or 0,
+            "trigger_count": row["trigger_count"] or 0,
+            "last_known_state": row["last_known_state"],
+            "state_changed_at": row["state_changed_at"].isoformat()
+            if row["state_changed_at"]
+            else None,
         }
-        for row in result
+        for row in rows
     ]
 
     return {"queries": queries, "total": len(queries)}
@@ -238,7 +245,7 @@ async def list_all_queries(
 @router.get("/executions")
 async def list_recent_executions(
     admin: ClerkUser = Depends(require_admin),
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
     limit: int = Query(default=50, le=200),
     status_filter: str | None = Query(default=None, alias="status"),
     task_id: UUID | None = Query(default=None),
@@ -259,17 +266,25 @@ async def list_recent_executions(
     - Condition evaluation
     - Change summaries
     """
-    status_clause = "AND te.status = :status_filter" if status_filter else ""
-    task_clause = "AND te.task_id = :task_id" if task_id else ""
+    # Build query with positional params
+    conditions = ["1=1"]
+    params: list[Any] = []
+    param_idx = 0
 
-    params: dict[str, Any] = {"limit": limit}
     if status_filter:
-        params["status_filter"] = status_filter
+        param_idx += 1
+        conditions.append(f"te.status = ${param_idx}")
+        params.append(status_filter)
     if task_id:
-        params["task_id"] = task_id
+        param_idx += 1
+        conditions.append(f"te.task_id = ${param_idx}")
+        params.append(task_id)
 
-    result = await session.execute(
-        text(f"""
+    param_idx += 1
+    where_clause = " AND ".join(conditions)
+
+    rows = await db.fetch_all(
+        f"""
         SELECT
             te.id,
             te.task_id,
@@ -285,28 +300,29 @@ async def list_recent_executions(
         FROM task_executions te
         JOIN tasks t ON t.id = te.task_id
         JOIN users u ON u.id = t.user_id
-        WHERE 1=1 {status_clause} {task_clause}
+        WHERE {where_clause}
         ORDER BY te.started_at DESC
-        LIMIT :limit
-        """),
-        params,
+        LIMIT ${param_idx}
+        """,
+        *params,
+        limit,
     )
 
     executions = [
         {
-            "id": str(row[0]),
-            "task_id": str(row[1]),
-            "status": row[2],
-            "started_at": row[3].isoformat() if row[3] else None,
-            "completed_at": row[4].isoformat() if row[4] else None,
-            "result": parse_json_field(row[5]),
-            "error_message": row[6],
-            "notification": row[7],
-            "grounding_sources": parse_json_field(row[8]),
-            "search_query": row[9],
-            "user_email": row[10],
+            "id": str(row["id"]),
+            "task_id": str(row["task_id"]),
+            "status": row["status"],
+            "started_at": row["started_at"].isoformat() if row["started_at"] else None,
+            "completed_at": row["completed_at"].isoformat() if row["completed_at"] else None,
+            "result": parse_json_field(row["result"]),
+            "error_message": row["error_message"],
+            "notification": row["notification"],
+            "grounding_sources": parse_json_field(row["grounding_sources"]),
+            "search_query": row["search_query"],
+            "user_email": row["user_email"],
         }
-        for row in result
+        for row in rows
     ]
 
     return {"executions": executions, "total": len(executions)}
@@ -337,7 +353,7 @@ async def list_scheduler_jobs(
 @router.get("/errors")
 async def list_recent_errors(
     admin: ClerkUser = Depends(require_admin),
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
     limit: int = Query(default=50, le=200),
 ):
     """
@@ -352,8 +368,8 @@ async def list_recent_errors(
     - Associated user and task info
     - Timestamp of failure
     """
-    result = await session.execute(
-        text("""
+    rows = await db.fetch_all(
+        """
         SELECT
             te.id,
             te.task_id,
@@ -368,23 +384,23 @@ async def list_recent_errors(
         JOIN users u ON u.id = t.user_id
         WHERE te.status = 'failed'
         ORDER BY te.started_at DESC
-        LIMIT :limit
-        """),
-        {"limit": limit},
+        LIMIT $1
+        """,
+        limit,
     )
 
     errors = [
         {
-            "id": str(row[0]),
-            "task_id": str(row[1]),
-            "started_at": row[2].isoformat() if row[2] else None,
-            "completed_at": row[3].isoformat() if row[3] else None,
-            "error_message": row[4],
-            "search_query": row[5],
-            "task_name": row[6],
-            "user_email": row[7],
+            "id": str(row["id"]),
+            "task_id": str(row["task_id"]),
+            "started_at": row["started_at"].isoformat() if row["started_at"] else None,
+            "completed_at": row["completed_at"].isoformat() if row["completed_at"] else None,
+            "error_message": row["error_message"],
+            "search_query": row["search_query"],
+            "task_name": row["task_name"],
+            "user_email": row["user_email"],
         }
-        for row in result
+        for row in rows
     ]
 
     return {"errors": errors, "total": len(errors)}
@@ -393,7 +409,7 @@ async def list_recent_errors(
 @router.get("/users")
 async def list_users(
     admin: ClerkUser = Depends(require_admin),
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """
     List all platform users with statistics and roles.
@@ -408,8 +424,8 @@ async def list_users(
     - Active/inactive status
     - Platform capacity info
     """
-    result = await session.execute(
-        text("""
+    rows = await db.fetch_all(
+        """
         SELECT
             u.id,
             u.email,
@@ -424,16 +440,14 @@ async def list_users(
         LEFT JOIN task_executions te ON te.task_id = t.id
         GROUP BY u.id
         ORDER BY u.created_at DESC
-        """)
+        """
     )
 
     # Batch-fetch roles from Clerk to avoid N+1 query problem
-    # Handle pagination to ensure we fetch all users
     role_map = {}
     clerk_warnings: list[str] = []
     if clerk_client:
         try:
-            # Clerk's default limit is 10, max is 500. Use higher limit for efficiency.
             limit = 500
             offset = 0
 
@@ -445,11 +459,9 @@ async def list_users(
                 if not clerk_users_response or not clerk_users_response.data:
                     break
 
-                # Add users from this page to role_map
                 for user in clerk_users_response.data:
                     role_map[user.id] = (user.public_metadata or {}).get("role")
 
-                # Check if we've fetched all users (last page)
                 if len(clerk_users_response.data) < limit:
                     break
 
@@ -460,22 +472,20 @@ async def list_users(
             clerk_warnings.append(f"Clerk role fetch failed: {e}. Roles may be incomplete.")
 
     users = []
-    for row in result:
+    for row in rows:
         user_data = {
-            "id": str(row[0]),
-            "email": row[1],
-            "clerk_user_id": row[2],
-            "is_active": row[3],
-            "created_at": row[4].isoformat() if row[4] else None,
-            "task_count": row[5] if row[5] else 0,
-            "total_executions": row[6] if row[6] else 0,
-            "notifications_count": row[7] if row[7] else 0,
-            "role": role_map.get(row[2]),  # Get role from pre-fetched map
+            "id": str(row["id"]),
+            "email": row["email"],
+            "clerk_user_id": row["clerk_user_id"],
+            "is_active": row["is_active"],
+            "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+            "task_count": row["task_count"] or 0,
+            "total_executions": row["total_executions"] or 0,
+            "notifications_count": row["notifications_count"] or 0,
+            "role": role_map.get(row["clerk_user_id"]),
         }
-
         users.append(user_data)
 
-    # Get capacity info
     active_users = sum(1 for u in users if u["is_active"])
     max_users = getattr(settings, "max_users", 100)
 
@@ -496,7 +506,6 @@ async def list_users(
 async def deactivate_user(
     user_id: UUID,
     admin: ClerkUser = Depends(require_admin),
-    session: AsyncSession = Depends(get_async_session),
     db: Database = Depends(get_db),
 ):
     """
@@ -511,49 +520,34 @@ async def deactivate_user(
     Returns:
     - Status confirmation with count of tasks paused
     """
-    # Check if user exists
-    check_result = await session.execute(
-        text("SELECT id FROM users WHERE id = :user_id"), {"user_id": user_id}
-    )
-    if not check_result.first():
+    check_row = await db.fetch_one("SELECT id FROM users WHERE id = $1", user_id)
+    if not check_row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
 
-    # Fetch all active tasks for this user
-    tasks_result = await session.execute(
-        text("SELECT id, state FROM tasks WHERE user_id = :user_id AND state = 'active'"),
-        {"user_id": user_id},
+    active_tasks = await db.fetch_all(
+        "SELECT id, state FROM tasks WHERE user_id = $1 AND state = 'active'",
+        user_id,
     )
-    active_tasks = [(row[0], row[1]) for row in tasks_result]
 
-    # Pause each active task via TaskService
     task_service = TaskService(db=db)
     paused_count = 0
     failed_tasks = []
 
-    for task_id, state in active_tasks:
+    for task_row in active_tasks:
         try:
-            current_state = TaskState(state)
-            await task_service.pause(task_id=task_id, current_state=current_state)
+            current_state = TaskState(task_row["state"])
+            await task_service.pause(task_id=task_row["id"], current_state=current_state)
             paused_count += 1
         except Exception as e:
-            failed_tasks.append({"task_id": str(task_id), "error": str(e)})
+            failed_tasks.append({"task_id": str(task_row["id"]), "error": str(e)})
 
-    # Deactivate user
-    try:
-        await session.execute(
-            text("UPDATE users SET is_active = false, updated_at = NOW() WHERE id = :user_id"),
-            {"user_id": user_id},
-        )
-        await session.commit()
-    except Exception as e:
-        await session.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to deactivate user: {str(e)}",
-        ) from e
+    await db.execute(
+        "UPDATE users SET is_active = false, updated_at = NOW() WHERE id = $1",
+        user_id,
+    )
 
     return {
         "status": "deactivated",
@@ -568,7 +562,7 @@ async def update_user_role(
     user_id: UUID,
     request: UpdateUserRoleRequest,
     admin: ClerkUser = Depends(require_admin),
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """
     Update a user's role in Clerk publicMetadata.
@@ -588,31 +582,23 @@ async def update_user_role(
     Returns:
     - Updated user information
     """
-    # Get role from request (Pydantic validates automatically)
     role = request.role
 
-    # Check if user exists and get their clerk_user_id
-    check_result = await session.execute(
-        text("SELECT clerk_user_id FROM users WHERE id = :user_id"),
-        {"user_id": user_id},
-    )
-    user_row = check_result.first()
+    user_row = await db.fetch_one("SELECT clerk_user_id FROM users WHERE id = $1", user_id)
     if not user_row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
 
-    target_clerk_user_id = user_row[0]
+    target_clerk_user_id = user_row["clerk_user_id"]
 
-    # Prevent admins from changing their own role
     if admin.clerk_user_id == target_clerk_user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You cannot change your own role",
         )
 
-    # Skip Clerk update for test users (from NoAuth mode)
     if target_clerk_user_id == "test_user_noauth":
         return {
             "status": "updated",
@@ -621,7 +607,6 @@ async def update_user_role(
             "note": "Test user - role not persisted to Clerk",
         }
 
-    # In NoAuth mode, skip Clerk update (role is not persisted)
     if settings.torale_noauth:
         return {
             "status": "updated",
@@ -630,7 +615,6 @@ async def update_user_role(
             "note": "NoAuth mode - role not persisted to Clerk",
         }
 
-    # Update role in Clerk publicMetadata
     if not clerk_client:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -638,8 +622,6 @@ async def update_user_role(
         )
 
     try:
-        # Use update_metadata (not update) — it shallow-merges, preserving existing keys.
-        # Passing None for a key removes it.
         await clerk_client.users.update_metadata_async(
             user_id=target_clerk_user_id,
             public_metadata={"role": role},
@@ -662,7 +644,7 @@ async def update_user_role(
 async def bulk_update_user_roles(
     request: BulkUpdateUserRolesRequest,
     admin: ClerkUser = Depends(require_admin),
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """
     Bulk update roles for multiple users.
@@ -680,7 +662,6 @@ async def bulk_update_user_roles(
         "errors": []
     }
     """
-    # Get validated data from Pydantic model
     user_ids = request.user_ids
     role = request.role
 
@@ -694,23 +675,19 @@ async def bulk_update_user_roles(
     failed_count = 0
     errors = []
 
-    # Batch fetch all clerk_user_ids in single query to avoid N+1 problem
-    result = await session.execute(
-        text("SELECT id, clerk_user_id FROM users WHERE id = ANY(:user_ids)"),
-        {"user_ids": user_ids},
+    rows = await db.fetch_all(
+        "SELECT id, clerk_user_id FROM users WHERE id = ANY($1::uuid[])",
+        user_ids,
     )
-    user_map = {str(row[0]): row[1] for row in result}  # db_id -> clerk_id
+    user_map = {str(row["id"]): row["clerk_user_id"] for row in rows}
 
-    # Batch-fetch all target users from Clerk to avoid N+1 API calls
     clerk_users_map = {}
     if user_map:
         clerk_ids = list(user_map.values())
-        # Filter out test users before Clerk call
         clerk_ids_to_fetch = [cid for cid in clerk_ids if cid != "test_user_noauth"]
 
         if clerk_ids_to_fetch and not settings.torale_noauth:
             try:
-                # Single batch API call for all users (max 100)
                 clerk_users_response = await clerk_client.users.list_async(
                     user_id=clerk_ids_to_fetch, limit=100
                 )
@@ -722,13 +699,11 @@ async def bulk_update_user_roles(
                     detail=f"Failed to fetch users from Clerk: {e}",
                 ) from e
 
-    # Prepare all update tasks for parallel execution
     update_tasks = []
     task_metadata = []
 
     for user_id in user_ids:
         try:
-            # Look up clerk_user_id from pre-fetched map
             if user_id not in user_map:
                 failed_count += 1
                 errors.append({"user_id": user_id, "error": "User not found"})
@@ -736,25 +711,21 @@ async def bulk_update_user_roles(
 
             target_clerk_user_id = user_map[user_id]
 
-            # Prevent admins from changing their own role
             if admin.clerk_user_id == target_clerk_user_id:
                 failed_count += 1
                 errors.append({"user_id": user_id, "error": "Cannot change own role"})
                 continue
 
-            # Skip test users and NoAuth mode
             if target_clerk_user_id == "test_user_noauth" or settings.torale_noauth:
-                updated_count += 1  # Count as success but skip Clerk update
+                updated_count += 1
                 continue
 
-            # Get user from pre-fetched map instead of individual API call
             clerk_user = clerk_users_map.get(target_clerk_user_id)
             if not clerk_user:
                 failed_count += 1
                 errors.append({"user_id": user_id, "error": "User not found in Clerk"})
                 continue
 
-            # Use update_metadata (not update) — it shallow-merges, preserving existing keys.
             update_coro = clerk_client.users.update_metadata_async(
                 user_id=target_clerk_user_id,
                 public_metadata={"role": role},
@@ -763,15 +734,12 @@ async def bulk_update_user_roles(
             task_metadata.append({"user_id": user_id})
 
         except Exception as e:
-            # Validation errors tracked immediately
             failed_count += 1
             errors.append({"user_id": user_id, "error": str(e)})
 
-    # Execute all Clerk updates in parallel for massive performance improvement
     if update_tasks:
         results = await asyncio.gather(*update_tasks, return_exceptions=True)
 
-        # Process results - track successes and failures
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 failed_count += 1
@@ -790,7 +758,7 @@ async def bulk_update_user_roles(
 @router.get("/waitlist")
 async def list_waitlist(
     admin: ClerkUser = Depends(require_admin),
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
     status_filter: str | None = None,
 ):
     """
@@ -798,64 +766,54 @@ async def list_waitlist(
 
     Optionally filter by status: pending, invited, or converted.
     """
-    # Build query with optional status filter
-    query = """
-        SELECT id, email, created_at, status, invited_at, notes
-        FROM waitlist
-    """
-    params = {}
-
     if status_filter:
-        query += " WHERE status = :status"
-        params["status"] = status_filter
+        rows = await db.fetch_all(
+            """
+            SELECT id, email, created_at, status, invited_at, notes
+            FROM waitlist
+            WHERE status = $1
+            ORDER BY created_at ASC
+            """,
+            status_filter,
+        )
+    else:
+        rows = await db.fetch_all(
+            """
+            SELECT id, email, created_at, status, invited_at, notes
+            FROM waitlist
+            ORDER BY created_at ASC
+            """
+        )
 
-    query += " ORDER BY created_at ASC"
-
-    result = await session.execute(text(query), params)
-
-    entries = [
-        {
-            "id": str(row[0]),
-            "email": row[1],
-            "created_at": row[2].isoformat() if row[2] else None,
-            "status": row[3],
-            "invited_at": row[4].isoformat() if row[4] else None,
-            "notes": row[5],
-        }
-        for row in result
-    ]
-
-    return entries
+    return [_serialize_waitlist_row(row) for row in rows]
 
 
 @router.get("/waitlist/stats")
 async def get_waitlist_stats(
     admin: ClerkUser = Depends(require_admin),
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """
     Get waitlist statistics (admin only).
 
     Returns counts by status and recent growth.
     """
-    result = await session.execute(
-        text("""
+    row = await db.fetch_one(
+        """
         SELECT
             COUNT(*) FILTER (WHERE status = 'pending') as pending,
             COUNT(*) FILTER (WHERE status = 'invited') as invited,
             COUNT(*) FILTER (WHERE status = 'converted') as converted,
             COUNT(*) as total
         FROM waitlist
-        """)
+        """
     )
 
-    row = result.first()
-
     return {
-        "pending": row[0] or 0,
-        "invited": row[1] or 0,
-        "converted": row[2] or 0,
-        "total": row[3] or 0,
+        "pending": row["pending"] or 0,
+        "invited": row["invited"] or 0,
+        "converted": row["converted"] or 0,
+        "total": row["total"] or 0,
     }
 
 
@@ -871,27 +829,30 @@ async def update_waitlist_entry(
     entry_id: UUID,
     data: UpdateWaitlistEntryRequest,
     admin: ClerkUser = Depends(require_admin),
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """
     Update waitlist entry (admin only).
 
     Used to mark entries as invited or add notes.
     """
-    # Build update query
     updates = []
-    params = {"entry_id": entry_id}
+    params: list[Any] = [entry_id]  # $1 = entry_id
+    param_idx = 1
 
     if data.status is not None:
-        updates.append("status = :status")
-        params["status"] = data.status
+        param_idx += 1
+        updates.append(f"status = ${param_idx}")
+        params.append(data.status)
         if data.status == "invited":
-            updates.append("invited_at = :invited_at")
-            params["invited_at"] = datetime.now(UTC)
+            param_idx += 1
+            updates.append(f"invited_at = ${param_idx}")
+            params.append(datetime.now(UTC))
 
     if data.notes is not None:
-        updates.append("notes = :notes")
-        params["notes"] = data.notes
+        param_idx += 1
+        updates.append(f"notes = ${param_idx}")
+        params.append(data.notes)
 
     if not updates:
         raise HTTPException(
@@ -899,51 +860,42 @@ async def update_waitlist_entry(
             detail="No updates provided",
         )
 
-    query = f"""
+    row = await db.fetch_one(
+        f"""
         UPDATE waitlist
         SET {", ".join(updates)}
-        WHERE id = :entry_id
+        WHERE id = $1
         RETURNING id, email, created_at, status, invited_at, notes
-    """
+        """,
+        *params,
+    )
 
-    result = await session.execute(text(query), params)
-    await session.commit()
-
-    row = result.first()
     if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Waitlist entry not found",
         )
 
-    return {
-        "id": str(row[0]),
-        "email": row[1],
-        "created_at": row[2].isoformat() if row[2] else None,
-        "status": row[3],
-        "invited_at": row[4].isoformat() if row[4] else None,
-        "notes": row[5],
-    }
+    return _serialize_waitlist_row(row)
 
 
 @router.delete("/waitlist/{entry_id}")
 async def delete_waitlist_entry(
     entry_id: UUID,
     admin: ClerkUser = Depends(require_admin),
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """
     Delete waitlist entry (admin only).
 
     Use when removing spam or invalid entries.
     """
-    result = await session.execute(
-        text("DELETE FROM waitlist WHERE id = :entry_id"),
-        {"entry_id": entry_id},
+    row = await db.fetch_one(
+        "DELETE FROM waitlist WHERE id = $1 RETURNING id",
+        entry_id,
     )
-    await session.commit()
 
-    if result.rowcount == 0:
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Waitlist entry not found",
@@ -974,13 +926,10 @@ async def admin_execute_task(
     Returns:
     - Execution ID and status
     """
-    # Fetch task (no user_id filter - admin can access any task)
-    task_query = """
-        SELECT t.id, t.name, t.user_id
-        FROM tasks t
-        WHERE t.id = $1
-    """
-    task_row = await db.fetch_one(task_query, task_id)
+    task_row = await db.fetch_one(
+        "SELECT t.id, t.name, t.user_id FROM tasks t WHERE t.id = $1",
+        task_id,
+    )
 
     if not task_row:
         raise HTTPException(
@@ -988,7 +937,6 @@ async def admin_execute_task(
             detail="Task not found",
         )
 
-    # Reuse existing helper for execution creation + background task scheduling
     execution_row = await start_task_execution(
         task_id=str(task_id),
         task_name=task_row["name"],
@@ -996,7 +944,7 @@ async def admin_execute_task(
         db=db,
         background_tasks=background_tasks,
         suppress_notifications=suppress_notifications,
-        force=True,  # Admin executions always override stuck executions
+        force=True,
     )
 
     logger.info(f"Admin {admin.email} started execution {execution_row['id']} for task {task_id}")
@@ -1062,7 +1010,6 @@ async def admin_update_task_state(
     previous_state = TaskState(task_row["state"])
     target_state = request.state
 
-    # Reuse existing next_run or default to 1 minute from now
     next_run = None
     if target_state == TaskState.ACTIVE:
         next_run = task_row["next_run"] or datetime.now(UTC) + timedelta(minutes=1)
@@ -1127,7 +1074,7 @@ async def reset_task_history(
     task_id: UUID,
     days: int = Query(default=1, ge=1, le=30, description="Delete executions from last N days"),
     admin: ClerkUser = Depends(require_admin),
-    session: AsyncSession = Depends(get_async_session),
+    db: Database = Depends(get_db),
 ):
     """
     Reset task execution history (admin only).
@@ -1144,73 +1091,53 @@ async def reset_task_history(
     Returns:
     - Status confirmation with count of deleted executions
     """
-    try:
-        # Check task exists (no user_id filter - admin can access any task)
-        check_result = await session.execute(
-            text("SELECT id FROM tasks WHERE id = :task_id"),
-            {"task_id": task_id},
+    check_row = await db.fetch_one("SELECT id FROM tasks WHERE id = $1", task_id)
+    if not check_row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
         )
-        if not check_result.first():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Task not found",
-            )
 
-        # Delete executions from last N days
-        cutoff = datetime.now(UTC) - timedelta(days=days)
-        delete_result = await session.execute(
-            text("""
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+
+    # Multi-statement operation needs a transaction
+    async with db.acquire() as conn:
+        async with conn.transaction():
+            deleted_rows = await conn.fetch(
+                """
                 DELETE FROM task_executions
-                WHERE task_id = :task_id
-                AND created_at >= :cutoff
+                WHERE task_id = $1 AND created_at >= $2
                 RETURNING id
-            """),
-            {"task_id": task_id, "cutoff": cutoff},
-        )
-        deleted_count = len(delete_result.fetchall())
-
-        # Log warning if no executions found
-        if deleted_count == 0:
-            logger.warning(
-                f"Admin {admin.clerk_user_id} reset task {task_id} but found no executions in last {days} day(s)"
+                """,
+                task_id,
+                cutoff,
             )
+            deleted_count = len(deleted_rows)
 
-        # Reset task state so the agent re-evaluates from scratch
-        await session.execute(
-            text("""
+            if deleted_count == 0:
+                logger.warning(
+                    f"Admin {admin.clerk_user_id} reset task {task_id} but found no executions in last {days} day(s)"
+                )
+
+            await conn.execute(
+                """
                 UPDATE tasks
                 SET last_execution_id = NULL,
                     last_known_state = NULL,
                     state_changed_at = NOW(),
                     updated_at = NOW()
-                WHERE id = :task_id
-            """),
-            {"task_id": task_id},
-        )
+                WHERE id = $1
+                """,
+                task_id,
+            )
 
-        await session.commit()
+    logger.info(
+        f"Admin {admin.clerk_user_id} reset task {task_id}: deleted {deleted_count} executions from last {days} day(s)"
+    )
 
-        logger.info(
-            f"Admin {admin.clerk_user_id} reset task {task_id}: deleted {deleted_count} executions from last {days} day(s)"
-        )
-
-        return {
-            "status": "reset",
-            "task_id": str(task_id),
-            "executions_deleted": deleted_count,
-            "days": days,
-        }
-
-    except HTTPException:
-        await session.rollback()
-        raise
-    except Exception as e:
-        await session.rollback()
-        logger.error(
-            f"Failed to reset task {task_id} (admin: {admin.clerk_user_id}, days: {days}): {e}",
-            exc_info=True,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to reset task history. Please try again or contact support if the issue persists.",
-        ) from e
+    return {
+        "status": "reset",
+        "task_id": str(task_id),
+        "executions_deleted": deleted_count,
+        "days": days,
+    }
