@@ -164,7 +164,6 @@ class NovuService:
         subscriber_id: str,
         task_name: str,
         search_query: str,
-        condition_description: str,
         first_execution_result: dict | None,
         task_id: str,
     ) -> dict:
@@ -210,8 +209,6 @@ class NovuService:
                     for s in first_execution_result["grounding_sources"][:5]
                 ]
 
-            schedule_description = "Frequency determined by AI based on topic"
-
             # Trigger welcome workflow
             response = await self._client.trigger_async(
                 trigger_event_request_dto=novu_py.TriggerEventRequestDto(
@@ -223,8 +220,6 @@ class NovuService:
                     payload={
                         "task_name": task_name,
                         "search_query": search_query,
-                        "condition_description": condition_description,
-                        "schedule_description": schedule_description,
                         "answer": answer_html,
                         "condition_met": (
                             first_execution_result.get("condition_met")
