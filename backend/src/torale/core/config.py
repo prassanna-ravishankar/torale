@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     # Platform capacity limit for beta
     max_users: int = 100
 
+    # Redis (optional — for async view counting)
+    redis_host: str | None = None
+    redis_port: int = 6379
+    redis_password: str | None = None
+
     # PostHog analytics
     posthog_api_key: str | None = None
     posthog_host: str = "https://app.posthog.com"
