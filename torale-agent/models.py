@@ -1,6 +1,15 @@
 """Shared data models for the monitoring agent."""
 
-from pydantic import BaseModel, Field
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+
+from mem0 import AsyncMemoryClient
+from parallel import AsyncParallel
+from perplexity import AsyncPerplexity
+from pydantic import BaseModel, ConfigDict, Field
+
+DEFAULT_MODEL = "google-gla:gemini-3.1-flash-lite-preview"
 
 
 class ActivityStep(BaseModel):
@@ -39,8 +48,31 @@ class MonitoringResponse(BaseModel):
     )
 
 
+@dataclass
+class Clients:
+    """Async HTTP clients for external services."""
+
+    parallel: AsyncParallel
+    perplexity: AsyncPerplexity
+    mem0: AsyncMemoryClient
+
+
+@asynccontextmanager
+async def create_clients() -> AsyncIterator[Clients]:
+    """Create and manage async HTTP client lifecycles."""
+    async with (
+        AsyncParallel() as parallel,
+        AsyncPerplexity() as perplexity,
+        AsyncMemoryClient() as mem0,
+    ):
+        yield Clients(parallel=parallel, perplexity=perplexity, mem0=mem0)
+
+
 class MonitoringDeps(BaseModel):
     """Dependencies for monitoring agent containing user and task identifiers."""
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     user_id: str
     task_id: str
+    clients: Clients | None = None
