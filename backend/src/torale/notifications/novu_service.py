@@ -1,22 +1,26 @@
 """Novu Cloud notification service."""
 
 import logging
-from datetime import datetime
 
 from torale.core.config import settings
+from torale.scheduler.job import _parse_next_run
 
 logger = logging.getLogger(__name__)
 
 
 def _format_next_run(next_run: str | None) -> str | None:
     """Format ISO 8601 next_run as human-readable string for Novu templates."""
-    if not next_run:
+    dt = _parse_next_run(next_run)
+    if dt is None:
         return None
-    try:
-        dt = datetime.fromisoformat(next_run)
-        return dt.strftime("%B %d, %Y at %I:%M %p")
-    except (ValueError, TypeError):
-        return next_run
+    return dt.strftime("%B %d, %Y at %I:%M %p")
+
+
+def _format_confidence(confidence: float | None) -> str | None:
+    """Format confidence as percentage string for Novu templates."""
+    if confidence is None:
+        return None
+    return f"{round(confidence * 100)}%"
 
 
 class NovuService:
@@ -87,9 +91,6 @@ class NovuService:
                 for s in grounding_sources[:5]  # Limit to 5 sources
             ]
 
-            # Format confidence as percentage string for Novu template
-            confidence_str = f"{round(confidence * 100)}%" if confidence is not None else None
-
             # Trigger Novu workflow
             response = await self._client.trigger_async(
                 trigger_event_request_dto=novu_py.TriggerEventRequestDto(
@@ -106,7 +107,7 @@ class NovuService:
                         "task_id": task_id,
                         "execution_id": execution_id,
                         "next_run": _format_next_run(next_run),
-                        "confidence": confidence_str,
+                        "confidence": _format_confidence(confidence),
                     },
                 )
             )
