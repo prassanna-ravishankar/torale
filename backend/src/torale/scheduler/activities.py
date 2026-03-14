@@ -15,6 +15,7 @@ from torale.notifications import (
     build_webhook_payload,
     novu_service,
 )
+from torale.notifications.novu_service import NotificationPayload
 from torale.scheduler.history import ExecutionRecord
 from torale.tasks import TaskStatus
 
@@ -148,17 +149,22 @@ async def send_email_notification(
     if is_first_execution:
         logger.info(f"Sending welcome email for task {task_id}")
 
-        await novu_service.send_welcome_email(
+        notification_payload = NotificationPayload(
             subscriber_id=clerk_email,
             task_name=task["name"],
             search_query=task["search_query"],
+            answer="",
+            grounding_sources=[],
+            task_id=str(task_id),
+            next_run=result.get("next_run"),
+        )
+        await novu_service.send_welcome_email(
+            payload=notification_payload,
             first_execution_result={
                 "answer": result.get("summary", ""),
                 "condition_met": result.get("notification") is not None,
                 "grounding_sources": result.get("sources", []),
             },
-            task_id=str(task_id),
-            next_run=result.get("next_run"),
         )
         logger.info(f"Welcome email sent for task {task_id}")
         return True
@@ -186,15 +192,18 @@ async def send_email_notification(
     answer = result.get("summary", "")
     sources = result.get("sources", [])
 
-    novu_result = await novu_service.send_condition_met_notification(
+    notification_payload = NotificationPayload(
         subscriber_id=recipient_email,
         task_name=task_name,
         search_query=task.get("search_query", ""),
         answer=answer,
         grounding_sources=sources,
         task_id=str(task_id),
-        execution_id=execution_id,
         next_run=result.get("next_run"),
+    )
+    novu_result = await novu_service.send_condition_met_notification(
+        payload=notification_payload,
+        execution_id=execution_id,
         confidence=result.get("confidence"),
     )
 

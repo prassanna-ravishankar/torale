@@ -1,6 +1,7 @@
 """Novu Cloud notification service."""
 
 import logging
+from dataclasses import dataclass
 
 from torale.core.config import settings
 from torale.scheduler.job import _parse_next_run
@@ -23,18 +24,45 @@ def _format_confidence(confidence: float | None) -> str | None:
     return f"{round(confidence * 100)}%"
 
 
+def _md_to_html(text: str, extensions: list[str] | None = None) -> str:
+    """Convert markdown to HTML, falling back to simple newline replacement."""
+    try:
+        import markdown
+
+        return markdown.markdown(text, extensions=extensions or ["nl2br"])
+    except ImportError:
+        logger.warning("markdown library not installed - using plain text")
+        return text.replace("\n", "<br>")
+
+
+def _format_sources(sources: list[dict], limit: int = 5) -> list[dict]:
+    """Transform grounding sources: url → uri for Novu template compatibility."""
+    return [{"uri": s.get("url", ""), "title": s.get("title", "Unknown")} for s in sources[:limit]]
+
+
+@dataclass
+class NotificationPayload:
+    """Shared context for task notification emails."""
+
+    subscriber_id: str
+    task_name: str
+    search_query: str
+    answer: str
+    grounding_sources: list[dict]
+    task_id: str
+    next_run: str | None = None
+
+
 class NovuService:
     """Novu Cloud notification service."""
 
     def __init__(self):
         if not settings.novu_secret_key:
-            # Don't fail - just log warning and disable notifications
             logger.warning("Novu secret key not configured - notifications disabled")
             self._enabled = False
             self._client = None
         else:
             self._enabled = True
-            # Import here to avoid errors if novu not installed
             try:
                 from novu_py import Novu
 
@@ -47,203 +75,19 @@ class NovuService:
                 self._enabled = False
                 self._client = None
 
-    async def send_condition_met_notification(
-        self,
-        subscriber_id: str,  # user email
-        task_name: str,
-        search_query: str,
-        answer: str,
-        grounding_sources: list[dict],
-        task_id: str,
-        execution_id: str,
-        next_run: str | None = None,
-        confidence: float | None = None,
-    ) -> dict:
-        """
-        Send notification when monitoring condition is met.
-
-        Returns: {"success": bool, "transaction_id": str, "error": str}
-        """
+    async def _trigger(self, workflow_id: str, subscriber_id: str, payload: dict) -> dict:
+        """Trigger a Novu workflow and return result dict."""
         if not self._enabled or not self._client:
-            return {
-                "success": False,
-                "error": "Novu not configured",
-                "skipped": True,
-            }
-
-        try:
-            import novu_py
-
-            # Convert markdown answer to HTML for email rendering
-            try:
-                import markdown
-
-                answer_html = markdown.markdown(
-                    answer, extensions=["nl2br", "fenced_code", "tables"]
-                )
-            except ImportError:
-                logger.warning("markdown library not installed - using plain text")
-                answer_html = answer.replace("\n", "<br>")
-
-            # Transform grounding sources: url → uri for Novu template compatibility
-            formatted_sources = [
-                {"uri": s.get("url", ""), "title": s.get("title", "Unknown")}
-                for s in grounding_sources[:5]  # Limit to 5 sources
-            ]
-
-            # Trigger Novu workflow
-            response = await self._client.trigger_async(
-                trigger_event_request_dto=novu_py.TriggerEventRequestDto(
-                    workflow_id=settings.novu_workflow_id,
-                    to={
-                        "subscriber_id": subscriber_id,
-                        "email": subscriber_id,  # Explicitly provide email address
-                    },
-                    payload={
-                        "task_name": task_name,
-                        "search_query": search_query,
-                        "answer": answer_html,
-                        "grounding_sources": formatted_sources,
-                        "task_id": task_id,
-                        "execution_id": execution_id,
-                        "next_run": _format_next_run(next_run),
-                        "confidence": _format_confidence(confidence),
-                    },
-                )
-            )
-
-            # Extract transaction ID from response
-            transaction_id = None
-            if hasattr(response, "result") and hasattr(response.result, "transaction_id"):
-                transaction_id = response.result.transaction_id
-
-            logger.info(f"Notification sent to {subscriber_id}: {transaction_id}")
-
-            return {
-                "success": True,
-                "transaction_id": transaction_id,
-            }
-
-        except Exception as e:
-            # Don't raise - log error and return failure
-            logger.error(f"Novu API error: {str(e)}")
-            return {"success": False, "error": str(e)}
-
-    async def send_verification_email(self, email: str, code: str, user_name: str) -> dict:
-        """
-        Send email verification code.
-
-        Returns: {"success": bool, "transaction_id": str, "error": str}
-        """
-        if not self._enabled or not self._client:
-            # For development - just log the code
-            logger.warning(f"Novu not configured - verification code for {email}: {code}")
-            return {
-                "success": False,
-                "error": "Novu not configured",
-                "skipped": True,
-            }
-
-        try:
-            import novu_py
-
-            # Trigger verification workflow
-            response = await self._client.trigger_async(
-                trigger_event_request_dto=novu_py.TriggerEventRequestDto(
-                    workflow_id=settings.novu_verification_workflow_id,
-                    to={
-                        "subscriber_id": email,
-                        "email": email,  # Explicitly provide email address
-                    },
-                    payload={
-                        "code": code,
-                        "user_name": user_name,
-                        "expires_in_minutes": 15,
-                    },
-                )
-            )
-
-            # Extract transaction ID from response
-            transaction_id = None
-            if hasattr(response, "result") and hasattr(response.result, "transaction_id"):
-                transaction_id = response.result.transaction_id
-
-            logger.info(f"Verification email sent to {email}: {transaction_id}")
-
-            return {
-                "success": True,
-                "transaction_id": transaction_id,
-            }
-
-        except Exception as e:
-            logger.error(f"Novu verification email error: {str(e)}")
-            return {"success": False, "error": str(e)}
-
-    async def send_welcome_email(
-        self,
-        subscriber_id: str,
-        task_name: str,
-        search_query: str,
-        first_execution_result: dict | None,
-        task_id: str,
-        next_run: str | None = None,
-    ) -> dict:
-        """
-        Send welcome email after task creation with first execution results.
-
-        This email is ONLY sent after the first execution completes, so it always
-        includes execution results.
-
-        Returns: {"success": bool, "transaction_id": str, "error": str}
-        """
-        if not self._enabled or not self._client:
-            logger.warning(f"Novu not configured - welcome email for {subscriber_id}")
             return {"success": False, "error": "Novu not configured", "skipped": True}
 
         try:
             import novu_py
 
-            # Convert markdown to HTML if first execution completed
-            answer_html = None
-            if first_execution_result:
-                answer = first_execution_result.get("answer", "")
-                try:
-                    import markdown
-
-                    answer_html = markdown.markdown(answer, extensions=["nl2br"])
-                except ImportError:
-                    logger.warning("markdown library not installed - using plain text")
-                    answer_html = answer.replace("\n", "<br>")
-
-            # Format grounding sources
-            formatted_sources = []
-            if first_execution_result and first_execution_result.get("grounding_sources"):
-                formatted_sources = [
-                    {"uri": s.get("url", ""), "title": s.get("title", "Unknown")}
-                    for s in first_execution_result["grounding_sources"][:5]
-                ]
-
-            # Trigger welcome workflow
             response = await self._client.trigger_async(
                 trigger_event_request_dto=novu_py.TriggerEventRequestDto(
-                    workflow_id=settings.novu_welcome_workflow_id,
-                    to={
-                        "subscriber_id": subscriber_id,
-                        "email": subscriber_id,
-                    },
-                    payload={
-                        "task_name": task_name,
-                        "search_query": search_query,
-                        "answer": answer_html,
-                        "condition_met": (
-                            first_execution_result.get("condition_met")
-                            if first_execution_result
-                            else False
-                        ),
-                        "grounding_sources": formatted_sources,
-                        "task_id": task_id,
-                        "next_run": _format_next_run(next_run),
-                    },
+                    workflow_id=workflow_id,
+                    to={"subscriber_id": subscriber_id, "email": subscriber_id},
+                    payload=payload,
                 )
             )
 
@@ -251,12 +95,80 @@ class NovuService:
             if hasattr(response, "result") and hasattr(response.result, "transaction_id"):
                 transaction_id = response.result.transaction_id
 
-            logger.info(f"Welcome email sent to {subscriber_id}: {transaction_id}")
+            logger.info(f"Novu workflow '{workflow_id}' sent to {subscriber_id}: {transaction_id}")
             return {"success": True, "transaction_id": transaction_id}
 
         except Exception as e:
-            logger.error(f"Welcome email error: {str(e)}")
+            logger.error(f"Novu workflow '{workflow_id}' error: {e}")
             return {"success": False, "error": str(e)}
+
+    async def send_condition_met_notification(
+        self,
+        payload: NotificationPayload,
+        execution_id: str,
+        confidence: float | None = None,
+    ) -> dict:
+        """Send notification when monitoring condition is met."""
+        return await self._trigger(
+            workflow_id=settings.novu_workflow_id,
+            subscriber_id=payload.subscriber_id,
+            payload={
+                "task_name": payload.task_name,
+                "search_query": payload.search_query,
+                "answer": _md_to_html(
+                    payload.answer, extensions=["nl2br", "fenced_code", "tables"]
+                ),
+                "grounding_sources": _format_sources(payload.grounding_sources),
+                "task_id": payload.task_id,
+                "execution_id": execution_id,
+                "next_run": _format_next_run(payload.next_run),
+                "confidence": _format_confidence(confidence),
+            },
+        )
+
+    async def send_verification_email(self, email: str, code: str, user_name: str) -> dict:
+        """Send email verification code."""
+        if not self._enabled or not self._client:
+            logger.warning(f"Novu not configured - verification code for {email}: {code}")
+        return await self._trigger(
+            workflow_id=settings.novu_verification_workflow_id,
+            subscriber_id=email,
+            payload={
+                "code": code,
+                "user_name": user_name,
+                "expires_in_minutes": 15,
+            },
+        )
+
+    async def send_welcome_email(
+        self,
+        payload: NotificationPayload,
+        first_execution_result: dict | None,
+    ) -> dict:
+        """Send welcome email after task creation with first execution results."""
+        answer_html = None
+        if first_execution_result:
+            answer_html = _md_to_html(first_execution_result.get("answer", ""))
+
+        formatted_sources = []
+        if first_execution_result and first_execution_result.get("grounding_sources"):
+            formatted_sources = _format_sources(first_execution_result["grounding_sources"])
+
+        return await self._trigger(
+            workflow_id=settings.novu_welcome_workflow_id,
+            subscriber_id=payload.subscriber_id,
+            payload={
+                "task_name": payload.task_name,
+                "search_query": payload.search_query,
+                "answer": answer_html,
+                "condition_met": (
+                    first_execution_result.get("condition_met") if first_execution_result else False
+                ),
+                "grounding_sources": formatted_sources,
+                "task_id": payload.task_id,
+                "next_run": _format_next_run(payload.next_run),
+            },
+        )
 
 
 # Singleton instance
