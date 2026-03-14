@@ -298,6 +298,7 @@ export function Explore() {
         open={!!selectedTaskId}
         onOpenChange={(open) => !open && setSelectedTaskId(null)}
         currentUserId={user?.id}
+        onDeleted={loadTasks}
       />
     </div>
     </>

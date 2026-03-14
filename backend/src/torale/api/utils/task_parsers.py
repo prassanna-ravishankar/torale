@@ -55,19 +55,7 @@ def parse_execution_row(row) -> dict:
 def parse_feed_execution_row(row) -> FeedExecution:
     """Parse a task_execution row with joined task metadata."""
     exec_dict = parse_execution_row(row)
-
-    # Remove task-prefixed fields from exec_dict if present to avoid duplicate keyword arguments
-    # when unpacking into FeedExecution
-    for key in ["task_name", "task_search_query", "task_is_public", "task_user_id"]:
-        exec_dict.pop(key, None)
-
-    return FeedExecution(
-        **exec_dict,
-        task_name=row["task_name"],
-        task_search_query=row.get("task_search_query"),
-        task_is_public=row.get("task_is_public", False),
-        task_user_id=row["task_user_id"],
-    )
+    return FeedExecution(**exec_dict)
 
 
 async def fetch_feed_executions(
