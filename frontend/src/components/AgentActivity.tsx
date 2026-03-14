@@ -6,6 +6,7 @@ import {
   Globe,
   Brain,
   BookOpen,
+  Twitter,
   LucideIcon,
 } from "lucide-react";
 
@@ -16,6 +17,7 @@ interface AgentActivityProps {
 const TOOL_CONFIG: Record<string, { icon: LucideIcon; color: string; label: string }> = {
   perplexity_search: { icon: Search, color: "text-blue-500", label: "Searched" },
   parallel_search: { icon: Search, color: "text-indigo-500", label: "Searched" },
+  twitter_search: { icon: Twitter, color: "text-sky-500", label: "Searched X" },
   fetch_url: { icon: Globe, color: "text-emerald-500", label: "Fetched" },
   search_memories: { icon: BookOpen, color: "text-amber-500", label: "Recalled" },
   add_memory: { icon: Brain, color: "text-purple-500", label: "Remembered" },
