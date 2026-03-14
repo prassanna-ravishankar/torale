@@ -101,6 +101,15 @@ class TaskExecution(TaskExecutionBase):
     created_at: datetime | None = None
 
 
+class FeedExecution(TaskExecution):
+    """Execution result with embedded task metadata for the feed view."""
+
+    task_name: str
+    task_search_query: str | None = None
+    task_is_public: bool = False
+    task_user_id: UUID
+
+
 class Task(TaskBase):
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,5 +1,6 @@
 from .repository import TaskExecutionRepository, TaskRepository
 from .tasks import (
+    FeedExecution,
     NotificationConfig,
     Task,
     TaskCreate,
@@ -20,6 +21,7 @@ __all__ = [
     "TaskData",
     "TaskUpdate",
     "TaskExecution",
+    "FeedExecution",
     "TaskState",
     "TaskStatus",
     "NotificationConfig",

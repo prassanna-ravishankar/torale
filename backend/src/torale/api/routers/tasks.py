@@ -7,11 +7,12 @@ from uuid import UUID
 
 from apscheduler.jobstores.base import JobLookupError
 from asyncpg.exceptions import UniqueViolationError
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from torale.access import CurrentUser, OptionalUser
 from torale.api.utils.task_parsers import (
+    fetch_feed_executions,
     parse_execution_row,
     parse_task_row,
     parse_task_with_execution,
@@ -22,6 +23,7 @@ from torale.notifications import NotificationValidationError, validate_notificat
 from torale.scheduler.job import execute_task_job_manual
 from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import (
+    FeedExecution,
     Task,
     TaskCreate,
     TaskExecution,
@@ -219,6 +221,19 @@ async def list_tasks(
     repo = TaskRepository(db)
     rows = await repo.find_by_user(user.id, state=state)
     return [parse_task_with_execution(row) for row in rows]
+
+
+@router.get("/feed", response_model=list[FeedExecution])
+async def get_user_feed(
+    user: CurrentUser, limit: int = Query(50, ge=1, le=100), db: Database = Depends(get_db)
+):
+    """
+    Get a feed of recent successful executions across all user's tasks.
+    Only returns executions that produced a notification (condition met).
+    """
+    return await fetch_feed_executions(
+        db, where_clause="t.user_id = $1", params=[user.id], limit=limit
+    )
 
 
 async def _safe_execute_task_job_manual(

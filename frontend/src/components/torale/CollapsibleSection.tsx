@@ -7,6 +7,7 @@ import {
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SectionLabel } from './SectionLabel';
+import { motion, AnimatePresence } from 'framer-motion';
 
 /**
  * CollapsibleSection - Unified collapsible section with consistent trigger styling
@@ -77,9 +78,21 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
           <ChevronDown className="w-4 h-4 text-zinc-500" />
         )}
       </CollapsibleTrigger>
-      <CollapsibleContent className={contentClassName}>
-        {children}
-      </CollapsibleContent>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <CollapsibleContent forceMount asChild>
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className={cn("overflow-hidden", contentClassName)}
+            >
+              {children}
+            </motion.div>
+          </CollapsibleContent>
+        )}
+      </AnimatePresence>
     </Collapsible>
   );
 };

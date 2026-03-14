@@ -2,7 +2,7 @@
 
 import json
 
-from torale.tasks import Task
+from torale.tasks import FeedExecution, Task, TaskStatus
 
 
 def parse_task_row(row) -> dict:
@@ -50,6 +50,47 @@ def parse_execution_row(row) -> dict:
     if isinstance(exec_dict.get("result"), dict):
         _enrich_result_for_frontend(exec_dict["result"])
     return exec_dict
+
+
+def parse_feed_execution_row(row) -> FeedExecution:
+    """Parse a task_execution row with joined task metadata."""
+    exec_dict = parse_execution_row(row)
+    return FeedExecution(**exec_dict)
+
+
+async def fetch_feed_executions(
+    db, *, where_clause: str, params: list, limit: int
+) -> list[FeedExecution]:
+    """Shared feed query: fetch recent successful executions with task metadata.
+
+    SAFETY: where_clause is interpolated into SQL. Only pass hardcoded strings
+    with parameterized placeholders — never user input.
+
+    Args:
+        db: Database connection.
+        where_clause: SQL WHERE fragment for task filtering (e.g. "t.is_public = true").
+        params: Bind parameters for the where_clause.
+        limit: Max rows to return.
+    """
+    param_offset = len(params)
+    query = f"""
+        SELECT e.id, e.task_id, e.status, e.result, e.notification,
+               e.grounding_sources, e.error_message,
+               e.started_at, e.completed_at, e.created_at,
+               t.name as task_name,
+               t.search_query as task_search_query,
+               t.is_public as task_is_public,
+               t.user_id as task_user_id
+        FROM task_executions e
+        JOIN tasks t ON e.task_id = t.id
+        WHERE {where_clause}
+          AND e.status = ${param_offset + 1}
+          AND e.notification IS NOT NULL
+        ORDER BY e.started_at DESC
+        LIMIT ${param_offset + 2}
+    """
+    rows = await db.fetch_all(query, *params, TaskStatus.SUCCESS.value, limit)
+    return [parse_feed_execution_row(row) for row in rows]
 
 
 def parse_task_with_execution(row) -> Task:

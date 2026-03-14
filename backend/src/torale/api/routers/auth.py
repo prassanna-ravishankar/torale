@@ -313,7 +313,11 @@ async def mark_welcome_seen(
 ):
     """Mark that the user has seen the welcome flow."""
     if clerk_user.clerk_user_id == TEST_USER_NOAUTH_ID:
-        return {"status": "success", "note": "NoAuth mode - not persisted"}
+        await db.execute(
+            "UPDATE users SET has_seen_welcome = true WHERE clerk_user_id = $1",
+            clerk_user.clerk_user_id,
+        )
+        return {"status": "success"}
 
     row = await db.fetch_one(
         """
