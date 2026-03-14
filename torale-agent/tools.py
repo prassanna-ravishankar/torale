@@ -6,6 +6,7 @@ import socket
 from ipaddress import ip_address
 from urllib.parse import urlparse
 
+import httpx
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 
@@ -27,9 +28,12 @@ PARALLEL_SEARCH_MAX_EXCERPTS = 2
 FETCH_MAX_CHARS = 5000
 FETCH_TIMEOUT = 15.0
 
+TWITTER_SEARCH_MAX_RESULTS = 10
+
 _TOOL_INPUT_KEYS: dict[str, str] = {
     "perplexity_search": "query",
     "parallel_search": "query",
+    "twitter_search": "query",
     "fetch_url": "url",
     "search_memories": "query",
     "add_memory": "text",
@@ -166,6 +170,33 @@ def register_tools(agent: Agent[MonitoringDeps, MonitoringResponse]) -> None:
                 else [],
             }
             for r in (result.results or [])
+        ]
+        return json.dumps(results)
+
+    @agent.tool
+    async def twitter_search(ctx: RunContext[MonitoringDeps], query: str) -> str:
+        """Search Twitter/X for recent tweets. Best for real-time public reactions, social sentiment, and announcements posted on Twitter. Uses Twitter's advanced search syntax (e.g. 'from:user', 'min_faves:10')."""
+        if (clients := _get_clients(ctx)) is None:
+            return _NO_CLIENTS
+        try:
+            resp = await clients.twitter.get(
+                "/twitter/tweet/advanced_search",
+                params={"query": query, "queryType": "Latest"},
+            )
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            return json.dumps({"error": f"Twitter API error: {e.response.status_code}"})
+        tweets = resp.json().get("tweets", [])
+        results = [
+            {
+                "text": t.get("text", ""),
+                "author": t.get("author", {}).get("userName", ""),
+                "url": t.get("url", ""),
+                "likes": t.get("likeCount", 0),
+                "retweets": t.get("retweetCount", 0),
+                "created_at": t.get("createdAt", ""),
+            }
+            for t in tweets[:TWITTER_SEARCH_MAX_RESULTS]
         ]
         return json.dumps(results)
 

@@ -1,9 +1,11 @@
 """Shared data models for the monitoring agent."""
 
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
+import httpx
 from mem0 import AsyncMemoryClient
 from parallel import AsyncParallel
 from perplexity import AsyncPerplexity
@@ -55,6 +57,7 @@ class Clients:
     parallel: AsyncParallel
     perplexity: AsyncPerplexity
     mem0: AsyncMemoryClient
+    twitter: httpx.AsyncClient
 
 
 @asynccontextmanager
@@ -64,8 +67,15 @@ async def create_clients() -> AsyncIterator[Clients]:
         AsyncParallel() as parallel,
         AsyncPerplexity() as perplexity,
         AsyncMemoryClient() as mem0,
+        httpx.AsyncClient(
+            base_url="https://api.twitterapi.io",
+            headers={"X-API-Key": os.environ["TWITTERIO_API_KEY"]},
+            timeout=15,
+        ) as twitter,
     ):
-        yield Clients(parallel=parallel, perplexity=perplexity, mem0=mem0)
+        yield Clients(
+            parallel=parallel, perplexity=perplexity, mem0=mem0, twitter=twitter
+        )
 
 
 class MonitoringDeps(BaseModel):
