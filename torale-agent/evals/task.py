@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from pydantic_ai import Agent
 
+from agent import create_monitoring_agent
 from models import (
     DEFAULT_MODEL,
     Clients,
@@ -25,8 +26,6 @@ _eval_agent: Agent[MonitoringDeps, MonitoringResponse] | None = None
 @asynccontextmanager
 async def configure_eval(model: str) -> AsyncIterator[None]:
     """Set up shared agent and clients for an eval run, tear down after."""
-    from agent import create_monitoring_agent
-
     global _eval_model, _eval_clients, _eval_agent
     _eval_model = model
     _eval_agent = create_monitoring_agent(model)
