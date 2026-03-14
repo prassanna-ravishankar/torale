@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.table import Table
 
 from agent import create_monitoring_agent
-from models import MonitoringDeps, create_clients
+from models import DEFAULT_MODEL, MonitoringDeps, create_clients
 
 app = typer.Typer(help="Torale Agent Evaluation CLI")
 eval_app = typer.Typer(help="Run and manage evaluations")
@@ -25,9 +25,7 @@ GENERATED_DIR = Path(__file__).parent / "evals" / "generated"
 @app.command()
 def query(
     prompt: str = typer.Argument(..., help="Prompt to send to the agent"),
-    model: str = typer.Option(
-        "google-gla:gemini-3.1-flash-lite-preview", help="Model to use"
-    ),
+    model: str = typer.Option(DEFAULT_MODEL, help="Model to use"),
     raw: bool = typer.Option(
         False, "--raw", help="Show only raw output (no formatting)"
     ),
@@ -74,7 +72,7 @@ async def _query_async(prompt: str, model: str, raw: bool):
 @eval_app.command()
 def run(
     model: str = typer.Option(
-        "google-gla:gemini-3.1-flash-lite-preview",
+        DEFAULT_MODEL,
         help="Model to evaluate",
     ),
     case: str | None = typer.Option(None, help="Specific case name to run"),

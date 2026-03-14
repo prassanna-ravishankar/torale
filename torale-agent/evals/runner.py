@@ -13,7 +13,7 @@ from evals.models import (
     MonitoringDataset,
     MonitoringReport,
 )
-from evals.task import run_monitoring_task, set_eval_model
+from evals.task import configure_eval, run_monitoring_task
 from models import MonitoringResponse
 
 logger = logging.getLogger(__name__)
@@ -49,11 +49,11 @@ async def run_eval(
     name: str | None = None,
 ) -> MonitoringReport:
     """Configure model, run evaluation, return report."""
-    set_eval_model(model)
     logfire.configure(send_to_logfire="if-token-present")
 
-    return await dataset.evaluate(
-        run_monitoring_task,
-        name=name or f"monitoring-{model}",
-        max_concurrency=max_concurrency,
-    )
+    async with configure_eval(model):
+        return await dataset.evaluate(
+            run_monitoring_task,
+            name=name or f"monitoring-{model}",
+            max_concurrency=max_concurrency,
+        )

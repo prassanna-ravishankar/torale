@@ -21,7 +21,7 @@ def _get_clients(ctx: RunContext[MonitoringDeps]) -> Clients | None:
 
 PARALLEL_SEARCH_MAX_RESULTS = 10
 PARALLEL_SEARCH_MAX_CHARS = 5000
-PARALLEL_SEARCH_BETAS = ["search-extract-2025-10-10"]
+PARALLEL_SEARCH_BETAS = ("search-extract-2025-10-10",)
 PARALLEL_SEARCH_MAX_EXCERPTS = 2
 
 FETCH_MAX_CHARS = 5000

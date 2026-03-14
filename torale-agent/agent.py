@@ -3,13 +3,13 @@
 from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModelSettings
 
-from models import MonitoringDeps, MonitoringResponse
+from models import DEFAULT_MODEL, MonitoringDeps, MonitoringResponse
 from prompts import instructions
 from tools import register_tools
 
 
 def create_monitoring_agent(
-    model_id: str = "google-gla:gemini-3.1-flash-lite-preview",
+    model_id: str = DEFAULT_MODEL,
 ) -> Agent[MonitoringDeps, MonitoringResponse]:
     """Create a monitoring agent with the specified model and all tools registered."""
     # Enable thinking for supported Gemini models (gemini-3-*, gemini-2.5-pro).

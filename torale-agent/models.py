@@ -9,6 +9,8 @@ from parallel import AsyncParallel
 from perplexity import AsyncPerplexity
 from pydantic import BaseModel, ConfigDict, Field
 
+DEFAULT_MODEL = "google-gla:gemini-3.1-flash-lite-preview"
+
 
 class ActivityStep(BaseModel):
     """A single step the agent took during monitoring."""

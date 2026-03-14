@@ -1,18 +1,40 @@
 """Task function for pydantic-evals: runs the monitoring agent against a case."""
 
 import re
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
-from models import MonitoringDeps, MonitoringResponse, create_clients
+from pydantic_ai import Agent
+
+from models import (
+    DEFAULT_MODEL,
+    Clients,
+    MonitoringDeps,
+    MonitoringResponse,
+    create_clients,
+)
 
 from evals.models import MonitoringCaseInput
 
-# Module-level model config — set by runner before evaluation
-_eval_model: str = "google-gla:gemini-3.1-flash-lite-preview"
+# Module-level eval context — set by runner before evaluation via configure_eval()
+_eval_model: str = DEFAULT_MODEL
+_eval_clients: Clients | None = None
+_eval_agent: Agent[MonitoringDeps, MonitoringResponse] | None = None
 
 
-def set_eval_model(model: str) -> None:
-    global _eval_model
+@asynccontextmanager
+async def configure_eval(model: str) -> AsyncIterator[None]:
+    """Set up shared agent and clients for an eval run, tear down after."""
+    from agent import create_monitoring_agent
+
+    global _eval_model, _eval_clients, _eval_agent
     _eval_model = model
+    _eval_agent = create_monitoring_agent(model)
+    async with create_clients() as clients:
+        _eval_clients = clients
+        yield
+        _eval_clients = None
+        _eval_agent = None
 
 
 def _build_prompt(case: MonitoringCaseInput, history_block: str = "") -> str:
@@ -60,26 +82,25 @@ async def run_monitoring_task(case_input: MonitoringCaseInput) -> MonitoringResp
 
     For multi-pass (passes > 1), runs the agent sequentially, injecting
     execution history between passes and letting Mem0 memories persist.
+
+    Requires configure_eval() context to be active (sets shared agent/clients).
     """
-    from agent import create_monitoring_agent
+    assert _eval_agent is not None, "call configure_eval() before running tasks"
+    assert _eval_clients is not None, "call configure_eval() before running tasks"
 
     task_id = f"eval-{_slugify(case_input.search_query[:50])}"
+    deps = MonitoringDeps(user_id="eval-user", task_id=task_id, clients=_eval_clients)
 
-    async with create_clients() as clients:
-        deps = MonitoringDeps(user_id="eval-user", task_id=task_id, clients=clients)
+    history_block = ""
+    response: MonitoringResponse | None = None
 
-        agent = create_monitoring_agent(_eval_model)
-        history_block = ""
-        response: MonitoringResponse | None = None
+    for pass_num in range(1, case_input.passes + 1):
+        prompt = _build_prompt(case_input, history_block)
+        result = await _eval_agent.run(prompt, deps=deps)
+        response = result.output
 
-        for pass_num in range(1, case_input.passes + 1):
-            prompt = _build_prompt(case_input, history_block)
-            result = await agent.run(prompt, deps=deps)
-            response = result.output
-
-            # Build history for next pass
-            if pass_num < case_input.passes:
-                history_block = _format_execution_history(response, pass_num)
+        if pass_num < case_input.passes:
+            history_block = _format_execution_history(response, pass_num)
 
     assert response is not None
     return response
