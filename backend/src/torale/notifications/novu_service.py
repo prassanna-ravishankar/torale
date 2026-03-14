@@ -2,16 +2,32 @@
 
 import logging
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from torale.core.config import settings
-from torale.scheduler.job import _parse_next_run
 
 logger = logging.getLogger(__name__)
 
 
+def _parse_iso(value: str | None) -> datetime | None:
+    """Parse ISO 8601 string to datetime, handling Z suffix."""
+    if not value or not value.strip():
+        return None
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt
+
+
 def _format_next_run(next_run: str | None) -> str | None:
     """Format ISO 8601 next_run as human-readable string for Novu templates."""
-    dt = _parse_next_run(next_run)
+    dt = _parse_iso(next_run)
     if dt is None:
         return None
     return dt.strftime("%B %d, %Y at %I:%M %p")
