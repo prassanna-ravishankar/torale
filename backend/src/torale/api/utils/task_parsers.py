@@ -75,6 +75,9 @@ async def fetch_feed_executions(
 ) -> list[FeedExecution]:
     """Shared feed query: fetch recent successful executions with task metadata.
 
+    SAFETY: where_clause is interpolated into SQL. Only pass hardcoded strings
+    with parameterized placeholders — never user input.
+
     Args:
         db: Database connection.
         where_clause: SQL WHERE fragment for task filtering (e.g. "t.is_public = true").

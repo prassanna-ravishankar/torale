@@ -23,7 +23,7 @@ interface ExecutionCardProps {
 }
 
 const ExecutionCard: React.FC<ExecutionCardProps> = ({ execution }) => {
-  const content = execution.result?.notification || execution.result?.evidence;
+  const content = execution.notification || execution.result?.evidence;
   const sources = execution.result?.sources || execution.grounding_sources;
 
   return (

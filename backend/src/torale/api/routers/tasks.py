@@ -7,7 +7,7 @@ from uuid import UUID
 
 from apscheduler.jobstores.base import JobLookupError
 from asyncpg.exceptions import UniqueViolationError
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from torale.access import CurrentUser, OptionalUser
@@ -224,7 +224,9 @@ async def list_tasks(
 
 
 @router.get("/feed", response_model=list[FeedExecution])
-async def get_user_feed(user: CurrentUser, limit: int = 50, db: Database = Depends(get_db)):
+async def get_user_feed(
+    user: CurrentUser, limit: int = Query(50, ge=1, le=100), db: Database = Depends(get_db)
+):
     """
     Get a feed of recent successful executions across all user's tasks.
     Only returns executions that produced a notification (condition met).
