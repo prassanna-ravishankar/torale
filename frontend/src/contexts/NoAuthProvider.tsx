@@ -45,6 +45,11 @@ export const NoAuthProvider: React.FC<NoAuthProviderProps> = ({ children }) => {
     }
   }, [])
 
+  // Hydrate user from backend on mount (gets has_seen_welcome, etc.)
+  useEffect(() => {
+    refreshUser()
+  }, [refreshUser])
+
   const authValue: AuthContextType = useMemo(
     () => ({
       isLoaded: true,

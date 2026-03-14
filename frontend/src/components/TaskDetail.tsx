@@ -6,7 +6,7 @@ import { Helmet } from 'react-helmet-async'
 import type { Task, TaskExecution } from '@/types'
 import { getResultDisplayText } from '@/types'
 import api from '@/lib/api'
-import { markdownCompact, markdownFull } from '@/lib/markdown'
+import { markdownFull } from '@/lib/markdown'
 import { toast } from 'sonner'
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

@@ -5,15 +5,12 @@ import type { Task, FeedExecution } from '@/types';
 import { TaskCard } from '@/components/TaskCard';
 import { TaskListRow } from '@/components/TaskListRow';
 import { TaskCreationDialog } from '@/components/TaskCreationDialog';
-import { TaskPreviewModal } from '@/components/TaskPreviewModal';
 import { TaskEditDialog } from '@/components/TaskEditDialog';
 import { TaskDetailOverlay } from '@/components/TaskDetailOverlay';
 import { ResultCard } from '@/components/ResultCard';
-import { StatCard } from '@/components/ui/StatCard';
 import {
   FilterGroup,
   EmptyState,
-  SectionLabel,
 } from '@/components/torale';
 import { Plus, Search, Loader2, Filter, LayoutGrid, List as ListIcon, Inbox } from 'lucide-react';
 import { toast } from 'sonner';
@@ -42,7 +39,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   const [isFeedLoading, setIsFeedLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('feed');
   const [isCreating, setIsCreating] = useState(false);
-  const [previewTask, setPreviewTask] = useState<Task | null>(null);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'completed' | 'paused'>('all');
@@ -89,9 +85,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   }, []); // Only load on mount
 
   useEffect(() => {
-    if (isLoaded && user && !user.has_seen_welcome) {
+    if (isLoaded && user && user.has_seen_welcome === false) {
       setShowWelcome(true);
+    } else if (isLoaded && user && user.has_seen_welcome === true) {
+      setShowWelcome(false);
     }
+    // When has_seen_welcome is undefined (not yet hydrated), do nothing — wait for backend
   }, [user, isLoaded]);
 
   const onWelcomeComplete = async () => {
@@ -130,10 +129,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   };
 
   const handleExecuteTask = (id: string) => {
-    const task = tasks.find((t) => t.id === id);
-    if (task) {
-      setPreviewTask(task);
-    }
+    setSelectedTaskId(id);
   };
 
   const handleEditTask = (id: string) => {
@@ -343,7 +339,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
                           onDelete={handleDeleteTask}
                           onExecute={handleExecuteTask}
                           onEdit={handleEditTask}
-                          onClick={setSelectedTaskId}
+                          onClick={onTaskClick}
                         />
                       ))}
                     </AnimatePresence>
@@ -361,7 +357,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
                       onDelete={handleDeleteTask}
                       onExecute={handleExecuteTask}
                       onEdit={handleEditTask}
-                      onClick={setSelectedTaskId}
+                      onClick={onTaskClick}
                     />
                   ))}
                 </AnimatePresence>

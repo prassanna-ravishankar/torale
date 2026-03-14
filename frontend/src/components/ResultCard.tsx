@@ -2,10 +2,12 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import { FeedExecution } from '@/types';
-import { BrutalistCard, SectionLabel } from '@/components/torale';
+import { BrutalistCard } from '@/components/torale';
 import { markdownCompact } from '@/lib/markdown';
 import { formatTimeAgo, formatShortDateTime } from '@/lib/utils';
 import { Search, Clock, ArrowUpRight } from 'lucide-react';
+
+const rehypePlugins = [rehypeSanitize];
 
 interface ResultCardProps {
   execution: FeedExecution;
@@ -47,7 +49,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({ execution, onClick }) =>
         <div className="max-h-[300px] overflow-hidden relative">
           <div className="prose prose-sm max-w-none text-zinc-800 leading-relaxed font-serif">
             <ReactMarkdown
-              rehypePlugins={[rehypeSanitize]}
+              rehypePlugins={rehypePlugins}
               components={markdownCompact}
             >
               {content || 'No content found.'}

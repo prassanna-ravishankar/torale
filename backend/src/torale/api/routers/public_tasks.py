@@ -11,12 +11,12 @@ from torale.access import OptionalUser
 from torale.api.rate_limiter import limiter
 from torale.api.routers.tasks import get_task
 from torale.api.utils.task_parsers import (
+    fetch_feed_executions,
     parse_task_with_execution,
-    parse_feed_execution_row,
 )
 from torale.core.config import settings
 from torale.core.database import Database, get_db
-from torale.tasks import Task, FeedExecution, TaskStatus
+from torale.tasks import FeedExecution, Task
 from torale.utils.jsonb import parse_jsonb
 
 # Register atom namespace once at module level (avoids per-request global mutation)
@@ -116,23 +116,9 @@ async def get_public_feed(
     Get a global feed of recent successful executions across all public tasks.
     Only returns executions that produced a notification (condition met).
     """
-    query = """
-        SELECT e.*,
-               t.name as task_name,
-               t.search_query as task_search_query,
-               t.is_public as task_is_public,
-               t.user_id as task_user_id
-        FROM task_executions e
-        JOIN tasks t ON e.task_id = t.id
-        WHERE t.is_public = true
-          AND e.status = $1
-          AND e.notification IS NOT NULL
-        ORDER BY e.started_at DESC
-        LIMIT $2
-    """
-
-    rows = await db.fetch_all(query, TaskStatus.SUCCESS.value, limit)
-    return [parse_feed_execution_row(row) for row in rows]
+    return await fetch_feed_executions(
+        db, where_clause="t.is_public = true", params=[], limit=limit
+    )
 
 
 @router.get("/tasks/id/{task_id}", response_model=Task)

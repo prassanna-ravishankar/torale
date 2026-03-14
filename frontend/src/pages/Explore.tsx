@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import type { Task, FeedExecution } from '@/types';
 import { BrutalistCard, SectionLabel } from '@/components/torale';
@@ -14,7 +13,6 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export function Explore() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [feed, setFeed] = useState<FeedExecution[]>([]);
   const [isLoading, setIsLoading] = useState(true);

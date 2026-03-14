@@ -1,11 +1,11 @@
 from .repository import TaskExecutionRepository, TaskRepository
 from .tasks import (
+    FeedExecution,
     NotificationConfig,
     Task,
     TaskCreate,
     TaskData,
     TaskExecution,
-    FeedExecution,
     TaskState,
     TaskStatus,
     TaskTemplate,
