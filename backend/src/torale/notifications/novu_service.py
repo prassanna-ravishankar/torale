@@ -1,10 +1,22 @@
 """Novu Cloud notification service."""
 
 import logging
+from datetime import datetime
 
 from torale.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _format_next_run(next_run: str | None) -> str | None:
+    """Format ISO 8601 next_run as human-readable string for Novu templates."""
+    if not next_run:
+        return None
+    try:
+        dt = datetime.fromisoformat(next_run)
+        return dt.strftime("%B %d, %Y at %I:%M %p")
+    except (ValueError, TypeError):
+        return next_run
 
 
 class NovuService:
@@ -93,7 +105,7 @@ class NovuService:
                         "grounding_sources": formatted_sources,
                         "task_id": task_id,
                         "execution_id": execution_id,
-                        "next_run": next_run,
+                        "next_run": _format_next_run(next_run),
                         "confidence": confidence_str,
                     },
                 )
@@ -229,7 +241,7 @@ class NovuService:
                         ),
                         "grounding_sources": formatted_sources,
                         "task_id": task_id,
-                        "next_run": next_run,
+                        "next_run": _format_next_run(next_run),
                     },
                 )
             )
