@@ -184,9 +184,11 @@ def register_tools(agent: Agent[MonitoringDeps, MonitoringResponse]) -> None:
                 params={"query": query, "queryType": "Latest"},
             )
             resp.raise_for_status()
+            tweets = resp.json().get("tweets", [])
         except httpx.HTTPStatusError as e:
             return json.dumps({"error": f"Twitter API error: {e.response.status_code}"})
-        tweets = resp.json().get("tweets", [])
+        except json.JSONDecodeError:
+            return json.dumps({"error": "Failed to decode response from Twitter API"})
         results = [
             {
                 "text": t.get("text", ""),
