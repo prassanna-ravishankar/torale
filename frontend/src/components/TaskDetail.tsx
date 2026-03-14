@@ -6,12 +6,13 @@ import { Helmet } from 'react-helmet-async'
 import type { Task, TaskExecution } from '@/types'
 import { getResultDisplayText } from '@/types'
 import api from '@/lib/api'
-import { markdownCompact } from '@/lib/markdown'
+import { markdownCompact, markdownFull } from '@/lib/markdown'
 import { toast } from 'sonner'
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StatusBadge } from "@/components/torale";
+import { StatusBadge, SectionLabel } from "@/components/torale";
 import { ExecutionTimeline } from "@/components/ExecutionTimeline";
+import { GroundingSourceList } from "@/components/ui/GroundingSourceList";
 import { TaskConfiguration } from "@/components/task/TaskConfiguration";
 import { getTaskStatus } from '@/lib/taskStatus';
 import { formatTimeUntil, formatShortDateTime } from '@/lib/utils';
