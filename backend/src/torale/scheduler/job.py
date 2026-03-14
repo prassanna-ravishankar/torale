@@ -236,6 +236,8 @@ async def _execute(
                     "sources": grounding_sources,
                     "notification": notification,
                     "is_first_execution": execution_count == 1,
+                    "next_run": next_run,
+                    "confidence": confidence,
                 }
 
                 if "email" in channels:
