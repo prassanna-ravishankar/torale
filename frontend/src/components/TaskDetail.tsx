@@ -36,6 +36,7 @@ interface TaskDetailProps {
   onBack: () => void;
   onDeleted: () => void;
   currentUserId?: string; // Current user's ID (if authenticated)
+  compact?: boolean; // Whether to show a condensed view for drawers/feeds
 }
 
 export const TaskDetail: React.FC<TaskDetailProps> = ({
@@ -43,6 +44,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   onBack,
   onDeleted,
   currentUserId,
+  compact = false,
 }) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -207,7 +209,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   const rssUrl = api.getTaskRssUrl(taskId);
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto p-8">
+    <div className={`mx-auto ${compact ? 'px-4 pb-8' : 'p-8 max-w-6xl space-y-6'}`}>
       {task.is_public && (
         <Helmet>
           <link
@@ -218,16 +220,20 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
           />
         </Helmet>
       )}
-      {/* Breadcrumb */}
-      <div className="font-mono text-xs text-zinc-400 mb-4">
-        <a href="/dashboard" className="hover:text-zinc-900 transition-colors">Monitors</a>
-        {' / '}
-        <span className="text-zinc-900">{task.name}</span>
-      </div>
+      {/* Breadcrumb - Hidden in compact mode */}
+      {!compact && (
+        <div className="font-mono text-xs text-zinc-400 mb-4">
+          <a href={task.is_public ? "/explore" : "/dashboard"} className="hover:text-zinc-900 transition-colors">
+            {task.is_public ? "Explore" : "Monitors"}
+          </a>
+          {' / '}
+          <span className="text-zinc-900">{task.name}</span>
+        </div>
+      )}
 
-      {/* Just Created Banner */}
-      {isJustCreated && (
-        <div className="bg-emerald-50 p-6 border-2 border-emerald-200 animate-in fade-in slide-in-from-top-4 duration-500">
+      {/* Just Created Banner - Hidden in compact mode */}
+      {isJustCreated && !compact && (
+        <div className="bg-emerald-50 p-6 border-2 border-emerald-200 animate-in fade-in slide-in-from-top-4 duration-500 mb-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-start gap-3 flex-1">
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -305,143 +311,179 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         </div>
       )}
 
-      {/* Header Section */}
-      <div className="flex flex-col gap-4">
+      {/* Header Section - Condensed in compact mode */}
+      <div className={`flex flex-col ${compact ? 'gap-2 mb-4' : 'gap-4 mb-6'}`}>
         <div className="flex items-center gap-4">
-          <Link to="/dashboard">
-            <Button variant="ghost" size="icon" className="shrink-0">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
+          {!compact && (
+            <Link to={task.is_public ? "/explore" : "/dashboard"}>
+              <Button variant="ghost" size="icon" className="shrink-0">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </Link>
+          )}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <h1 className="font-grotesk text-2xl md:text-4xl font-bold truncate">{task.name}</h1>
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <h1 className={`font-grotesk font-bold truncate ${compact ? 'text-xl' : 'text-2xl md:text-4xl'}`}>
+                {task.name}
+              </h1>
               <StatusBadge variant={status.activityState} />
             </div>
-            <div className="flex items-center gap-3 text-zinc-500 text-sm">
-              <span className="truncate">{task.search_query}</span>
-              {task.next_run ? (
-                <span className="flex items-center gap-1 text-xs font-mono text-zinc-400 whitespace-nowrap">
+            <div className="flex items-center gap-3 text-zinc-500 text-xs">
+              <span className="truncate max-w-[200px]">{task.search_query}</span>
+              {task.next_run && (
+                <span className="flex items-center gap-1 text-[10px] font-mono text-zinc-400 whitespace-nowrap">
                   <Clock className="w-3 h-3" />
                   Next check {formatTimeUntil(task.next_run)}
                 </span>
-              ) : task.state === 'completed' ? (
-                <span className="flex items-center gap-1 text-xs font-mono text-zinc-400 whitespace-nowrap">
-                  <Clock className="w-3 h-3" />
-                  Monitoring complete
-                </span>
-              ) : null}
+              )}
             </div>
           </div>
+          
+          {/* Compact actions */}
+          {compact && (
+            <div className="flex items-center gap-1">
+               {!isOwner && (
+                  <Button
+                    onClick={handleFork}
+                    disabled={isForking}
+                    size="icon"
+                    variant="ghost"
+                    title="Copy to dashboard"
+                  >
+                    {isForking ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+               )}
+               {isOwner && (
+                 <Button variant="ghost" size="icon" onClick={() => setShowDeleteDialog(true)}>
+                   <Trash2 className="h-4 w-4" />
+                 </Button>
+               )}
+            </div>
+          )}
         </div>
-
       </div>
 
-      {/* Latest Execution - Prominent on Mobile */}
+      {/* Main Content Area: Latest Execution always first */}
       {firstExecution && (
-        <div
-          className="bg-white border-2 border-zinc-200 p-4 hover:border-zinc-400 transition-colors cursor-pointer"
-          onClick={() => setActiveTab('executions')}
-        >
-          <div className="flex items-start justify-between gap-3 mb-3">
+        <div className={`bg-white border-2 border-zinc-200 mb-6`}>
+          <div className="p-4 border-b border-zinc-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <StatusBadge variant={firstExecution.status} />
-              <span className="text-sm font-mono text-zinc-500">
-                Latest result
-              </span>
+               <SectionLabel>Latest Result</SectionLabel>
+               <StatusBadge variant={firstExecution.status} />
             </div>
-            <span className="text-xs font-mono text-zinc-400">
+            <span className="text-[10px] font-mono text-zinc-400">
               {formatShortDateTime(firstExecution.started_at)}
             </span>
           </div>
-          {(() => {
-            const displayText = getResultDisplayText(firstExecution.result);
-            return displayText && (
-              <div className="text-sm text-zinc-700 leading-relaxed line-clamp-3 prose prose-sm max-w-none">
-                <ReactMarkdown
-                  rehypePlugins={[rehypeSanitize]}
-                  components={markdownCompact}
-                >
-                  {displayText}
-                </ReactMarkdown>
-              </div>
-            );
-          })()}
+          <div className="p-6 overflow-hidden">
+            {(() => {
+              const displayText = getResultDisplayText(firstExecution.result);
+              return displayText ? (
+                <div className="prose prose-sm md:prose-base max-w-none text-zinc-800 leading-relaxed font-serif">
+                  <ReactMarkdown
+                    rehypePlugins={[rehypeSanitize]}
+                    components={markdownFull}
+                  >
+                    {displayText}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <p className="text-sm text-zinc-400 font-mono italic">No results yet.</p>
+              );
+            })()}
+          </div>
+          
+          {/* Sources section embedded in the result card */}
+          {(firstExecution.result?.sources || firstExecution.grounding_sources)?.length > 0 && (
+            <div className="px-6 pb-6 pt-4 border-t border-zinc-50 bg-zinc-50/50">
+               <SectionLabel className="mb-3">Sources</SectionLabel>
+               <GroundingSourceList
+                  sources={firstExecution.result?.sources || firstExecution.grounding_sources}
+                  title=""
+                />
+            </div>
+          )}
         </div>
       )}
 
-      {/* Action Buttons - Different for owner vs public viewer */}
-      <div className="flex items-center gap-2">
-        {!isOwner ? (
-          // Public viewer: Show fork button and stats
-          <>
-            <Button
-              onClick={handleFork}
-              disabled={isForking}
-              size="sm"
-              className="gap-2"
-            >
-              {isForking ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-              {isForking ? 'Copying...' : 'Make a Copy'}
-            </Button>
-            {task.is_public && (
-              <div className="flex items-center gap-4 text-sm text-muted-foreground ml-4">
-                <div className="flex items-center gap-1">
-                  <Eye className="h-4 w-4" />
-                  {task.view_count}
+      {/* Action Buttons - Different for owner vs public viewer. Hidden in compact mode header. */}
+      {!compact && (
+        <div className="flex items-center gap-2 mb-6">
+          {!isOwner ? (
+            // Public viewer: Show fork button and stats
+            <>
+              <Button
+                onClick={handleFork}
+                disabled={isForking}
+                size="sm"
+                className="gap-2"
+              >
+                {isForking ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+                {isForking ? 'Copying...' : 'Make a Copy'}
+              </Button>
+              {task.is_public && (
+                <div className="flex items-center gap-4 text-sm text-muted-foreground ml-4">
+                  <div className="flex items-center gap-1">
+                    <Eye className="h-4 w-4" />
+                    {task.view_count}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Users className="h-4 w-4" />
+                    {task.subscriber_count}
+                  </div>
+                  <a
+                    href={rssUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    title="RSS feed"
+                  >
+                    <Rss className="h-4 w-4" />
+                    <span className="text-xs font-mono">RSS</span>
+                  </a>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Users className="h-4 w-4" />
-                  {task.subscriber_count}
-                </div>
-                <a
-                  href={rssUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 hover:text-foreground transition-colors"
-                  title="RSS feed"
-                >
-                  <Rss className="h-4 w-4" />
-                  <span className="text-xs font-mono">RSS</span>
-                </a>
-              </div>
-            )}
-          </>
-        ) : (
-          // Owner: Show run and delete buttons
-          <>
-            <Button
-              variant="outline"
-              onClick={handleExecute}
-              disabled={isExecuting}
-              size="sm"
-            >
-              {isExecuting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Play className="mr-2 h-4 w-4" />
               )}
-              Run Now
-            </Button>
+            </>
+          ) : (
+            // Owner: Show run and delete buttons
+            <>
+              <Button
+                variant="outline"
+                onClick={handleExecute}
+                disabled={isExecuting}
+                size="sm"
+              >
+                {isExecuting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Play className="mr-2 h-4 w-4" />
+                )}
+                Run Now
+              </Button>
 
-            <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
-            <DeleteMonitorDialog
-              taskName={task.name}
-              open={showDeleteDialog}
-              onOpenChange={setShowDeleteDialog}
-              onConfirm={handleDelete}
-              extraDescription="All execution history will be permanently deleted."
-            />
-          </>
-        )}
-      </div>
+              <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+              <DeleteMonitorDialog
+                taskName={task.name}
+                open={showDeleteDialog}
+                onOpenChange={setShowDeleteDialog}
+                onConfirm={handleDelete}
+                extraDescription="All execution history will be permanently deleted."
+              />
+            </>
+          )}
+        </div>
+      )}
 
       {/* Task Configuration - Collapsible on Mobile, Always Visible on Desktop */}
       <TaskConfiguration

@@ -2,7 +2,7 @@
 
 import json
 
-from torale.tasks import Task
+from torale.tasks import Task, FeedExecution
 
 
 def parse_task_row(row) -> dict:
@@ -50,6 +50,24 @@ def parse_execution_row(row) -> dict:
     if isinstance(exec_dict.get("result"), dict):
         _enrich_result_for_frontend(exec_dict["result"])
     return exec_dict
+
+
+def parse_feed_execution_row(row) -> FeedExecution:
+    """Parse a task_execution row with joined task metadata."""
+    exec_dict = parse_execution_row(row)
+
+    # Remove task-prefixed fields from exec_dict if present to avoid duplicate keyword arguments
+    # when unpacking into FeedExecution
+    for key in ["task_name", "task_search_query", "task_is_public", "task_user_id"]:
+        exec_dict.pop(key, None)
+
+    return FeedExecution(
+        **exec_dict,
+        task_name=row["task_name"],
+        task_search_query=row.get("task_search_query"),
+        task_is_public=row.get("task_is_public", False),
+        task_user_id=row["task_user_id"],
+    )
 
 
 def parse_task_with_execution(row) -> Task:

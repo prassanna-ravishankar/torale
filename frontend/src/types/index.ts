@@ -107,6 +107,13 @@ export interface TaskExecution {
   retry_count?: number;               // Retry attempt number
 }
 
+export interface FeedExecution extends TaskExecution {
+  task_name: string;
+  task_search_query: string | null;
+  task_is_public: boolean;
+  task_user_id: string;
+}
+
 export interface User {
   id: string;
   email: string;

@@ -10,6 +10,7 @@ import type {
   NotificationSend,
   ApiKey,
   CreateApiKeyResponse,
+  FeedExecution,
 } from '@/types'
 
 interface ApiError {
@@ -503,6 +504,21 @@ class ApiClient {
     const response = await fetch(`${this.baseUrl}/api/v1/public/tasks/id/${taskId}`, {
       headers: await this.getAuthHeaders(),
     })
+    return this.handleResponse(response)
+  }
+
+  // Feed endpoints
+  async getFeed(limit: number = 50): Promise<FeedExecution[]> {
+    const url = this.buildUrl('/api/v1/tasks/feed', { limit })
+    const response = await fetch(url, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async getPublicFeed(limit: number = 50): Promise<FeedExecution[]> {
+    const url = this.buildUrl('/api/v1/public/feed', { limit })
+    const response = await fetch(url)
     return this.handleResponse(response)
   }
 }

@@ -10,10 +10,13 @@ from pydantic import BaseModel
 from torale.access import OptionalUser
 from torale.api.rate_limiter import limiter
 from torale.api.routers.tasks import get_task
-from torale.api.utils.task_parsers import parse_task_with_execution
+from torale.api.utils.task_parsers import (
+    parse_task_with_execution,
+    parse_feed_execution_row,
+)
 from torale.core.config import settings
 from torale.core.database import Database, get_db
-from torale.tasks import Task
+from torale.tasks import Task, FeedExecution, TaskStatus
 from torale.utils.jsonb import parse_jsonb
 
 # Register atom namespace once at module level (avoids per-request global mutation)
@@ -100,6 +103,36 @@ async def list_public_tasks(
         offset=offset,
         limit=limit,
     )
+
+
+@router.get("/feed", response_model=list[FeedExecution])
+@limiter.limit("10/minute")
+async def get_public_feed(
+    request: Request,
+    limit: int = Query(50, ge=1, le=100),
+    db: Database = Depends(get_db),
+):
+    """
+    Get a global feed of recent successful executions across all public tasks.
+    Only returns executions that produced a notification (condition met).
+    """
+    query = """
+        SELECT e.*,
+               t.name as task_name,
+               t.search_query as task_search_query,
+               t.is_public as task_is_public,
+               t.user_id as task_user_id
+        FROM task_executions e
+        JOIN tasks t ON e.task_id = t.id
+        WHERE t.is_public = true
+          AND e.status = $1
+          AND e.notification IS NOT NULL
+        ORDER BY e.started_at DESC
+        LIMIT $2
+    """
+
+    rows = await db.fetch_all(query, TaskStatus.SUCCESS.value, limit)
+    return [parse_feed_execution_row(row) for row in rows]
 
 
 @router.get("/tasks/id/{task_id}", response_model=Task)

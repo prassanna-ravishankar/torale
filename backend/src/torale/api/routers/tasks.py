@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from torale.access import CurrentUser, OptionalUser
 from torale.api.utils.task_parsers import (
     parse_execution_row,
+    parse_feed_execution_row,
     parse_task_row,
     parse_task_with_execution,
 )
@@ -25,6 +26,7 @@ from torale.tasks import (
     Task,
     TaskCreate,
     TaskExecution,
+    FeedExecution,
     TaskState,
     TaskStatus,
     TaskUpdate,
@@ -219,6 +221,33 @@ async def list_tasks(
     repo = TaskRepository(db)
     rows = await repo.find_by_user(user.id, state=state)
     return [parse_task_with_execution(row) for row in rows]
+
+
+@router.get("/feed", response_model=list[FeedExecution])
+async def get_user_feed(
+    user: CurrentUser, limit: int = 50, db: Database = Depends(get_db)
+):
+    """
+    Get a feed of recent successful executions across all user's tasks.
+    Only returns executions that produced a notification (condition met).
+    """
+    query = """
+        SELECT e.*,
+               t.name as task_name,
+               t.search_query as task_search_query,
+               t.is_public as task_is_public,
+               t.user_id as task_user_id
+        FROM task_executions e
+        JOIN tasks t ON e.task_id = t.id
+        WHERE t.user_id = $1
+          AND e.status = $2
+          AND e.notification IS NOT NULL
+        ORDER BY e.started_at DESC
+        LIMIT $3
+    """
+
+    rows = await db.fetch_all(query, user.id, TaskStatus.SUCCESS.value, limit)
+    return [parse_feed_execution_row(row) for row in rows]
 
 
 async def _safe_execute_task_job_manual(
