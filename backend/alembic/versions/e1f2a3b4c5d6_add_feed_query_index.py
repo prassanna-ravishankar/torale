@@ -18,13 +18,15 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute(
-        """
-        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_executions_feed
-        ON task_executions (started_at DESC)
-        WHERE status = 'success' AND notification IS NOT NULL
-        """
-    )
+    # CREATE INDEX CONCURRENTLY cannot run inside a transaction block
+    with op.get_context().autocommit_block():
+        op.execute(
+            """
+            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_executions_feed
+            ON task_executions (started_at DESC)
+            WHERE status = 'success' AND notification IS NOT NULL
+            """
+        )
 
 
 def downgrade() -> None:
