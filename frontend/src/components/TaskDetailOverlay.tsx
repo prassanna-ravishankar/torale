@@ -2,10 +2,12 @@ import React from 'react';
 import {
   Sheet,
   SheetContent,
+  SheetTitle,
 } from '@/components/ui/sheet';
 import {
   Drawer,
   DrawerContent,
+  DrawerTitle,
 } from '@/components/ui/drawer';
 import { useIsMobile } from '@/components/ui/use-mobile';
 import { TaskDetail } from './TaskDetail';
@@ -48,6 +50,7 @@ export const TaskDetailOverlay: React.FC<TaskDetailOverlayProps> = ({
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="h-[90vh]">
+          <DrawerTitle className="sr-only">Task Details</DrawerTitle>
           {content}
         </DrawerContent>
       </Drawer>
@@ -57,6 +60,7 @@ export const TaskDetailOverlay: React.FC<TaskDetailOverlayProps> = ({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-xl w-full p-0 flex flex-col">
+        <SheetTitle className="sr-only">Task Details</SheetTitle>
         {content}
       </SheetContent>
     </Sheet>

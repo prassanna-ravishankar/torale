@@ -1,21 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import ReactMarkdown from 'react-markdown'
-import rehypeSanitize from 'rehype-sanitize'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import type { Task, TaskExecution } from '@/types'
-import { getResultDisplayText } from '@/types'
 import api from '@/lib/api'
-import { markdownFull } from '@/lib/markdown'
 import { toast } from 'sonner'
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StatusBadge, SectionLabel } from "@/components/torale";
+import { StatusBadge, DeleteMonitorDialog } from "@/components/torale";
 import { ExecutionTimeline } from "@/components/ExecutionTimeline";
-import { GroundingSourceList } from "@/components/ui/GroundingSourceList";
 import { TaskConfiguration } from "@/components/task/TaskConfiguration";
 import { getTaskStatus } from '@/lib/taskStatus';
-import { formatTimeUntil, formatShortDateTime } from '@/lib/utils';
+import { formatTimeUntil } from '@/lib/utils';
 import {
   ArrowLeft,
   Clock,
@@ -23,14 +18,11 @@ import {
   Loader2,
   Trash2,
   Mail,
-  Check,
-  X,
   Copy,
-  Eye,
-  Users,
-  Rss,
+  ExternalLink,
+  Settings,
+  Activity,
 } from "lucide-react";
-import { DeleteMonitorDialog } from "@/components/torale";
 
 interface TaskDetailProps {
   taskId: string;
@@ -198,15 +190,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   // Determine if current user is the owner
   const isOwner = task.user_id === currentUserId;
 
-  const firstExecution = executions[0];
-  const isFirstExecutionComplete = firstExecution?.status === 'success';
-
-  const handleDismissBanner = () => {
-    const newParams = new URLSearchParams(searchParams);
-    newParams.delete('justCreated');
-    setSearchParams(newParams);
-  };
-
   const rssUrl = api.getTaskRssUrl(taskId);
 
   return (
@@ -232,87 +215,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         </div>
       )}
 
-      {/* Just Created Banner - Hidden in compact mode */}
-      {isJustCreated && !compact && (
-        <div className="bg-emerald-50 p-6 border-2 border-emerald-200 animate-in fade-in slide-in-from-top-4 duration-500 mb-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-start gap-3 flex-1">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <Check className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold tracking-tight">
-                  Task successfully created
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Monitoring: <span className="text-foreground font-medium">{task.search_query}</span>
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleDismissBanner}
-              className="shrink-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Progress indicators */}
-          <div className="space-y-3 mb-6">
-            <div className="flex items-center gap-3">
-              <Check className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-sm text-muted-foreground">Task initialized</span>
-            </div>
-            <div className="flex items-center gap-3">
-              {isFirstExecutionComplete ? (
-                <Check className="h-4 w-4 text-primary shrink-0" />
-              ) : (
-                <Loader2 className="h-4 w-4 text-muted-foreground animate-spin shrink-0" />
-              )}
-              <span className="text-sm text-muted-foreground">
-                First check {isFirstExecutionComplete ? 'complete' : 'running...'}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-sm text-muted-foreground">
-                Welcome email arriving shortly
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-sm text-muted-foreground">
-                Checks run automatically
-              </span>
-            </div>
-          </div>
-
-          {/* What to expect */}
-          <div className="pt-6 border-t border-border/50">
-            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
-              What to Expect
-            </h4>
-            <div className="space-y-2">
-              <div className="flex items-start gap-2">
-                <Mail className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <p className="text-sm text-muted-foreground">
-                  Welcome email with first check results and task details
-                </p>
-              </div>
-              <div className="flex items-start gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <p className="text-sm text-muted-foreground">
-                  Automated checks — frequency determined by AI
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Header Section - Condensed in compact mode */}
+      {/* Header Section */}
       <div className={`flex flex-col ${compact ? 'gap-2 mb-4' : 'gap-4 mb-6'}`}>
         <div className="flex items-center gap-4">
           {!compact && (
@@ -340,182 +243,125 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
             </div>
           </div>
           
-          {/* Compact actions */}
-          {compact && (
-            <div className="flex items-center gap-1">
-               {!isOwner && (
+          {/* Header Actions */}
+          <div className="flex items-center gap-1">
+             {compact && (
+                <Link to={`/tasks/${taskId}`}>
                   <Button
-                    onClick={handleFork}
-                    disabled={isForking}
                     size="icon"
                     variant="ghost"
-                    title="Copy to dashboard"
+                    title="Open full page"
                   >
-                    {isForking ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
+                    <ExternalLink className="h-4 w-4" />
                   </Button>
-               )}
-               {isOwner && (
-                 <Button variant="ghost" size="icon" onClick={() => setShowDeleteDialog(true)}>
-                   <Trash2 className="h-4 w-4" />
-                 </Button>
-               )}
-            </div>
-          )}
+                </Link>
+             )}
+             {!isOwner && (
+                <Button
+                  onClick={handleFork}
+                  disabled={isForking}
+                  size={compact ? "icon" : "sm"}
+                  variant={compact ? "ghost" : "default"}
+                  title="Copy to dashboard"
+                  className={!compact ? "gap-2" : ""}
+                >
+                  {isForking ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                  {!compact && (isForking ? 'Copying...' : 'Make a Copy')}
+                </Button>
+             )}
+             {isOwner && (
+               <Button variant="ghost" size="icon" onClick={() => setShowDeleteDialog(true)}>
+                 <Trash2 className="h-4 w-4" />
+               </Button>
+             )}
+          </div>
         </div>
       </div>
 
-      {/* Main Content Area: Latest Execution always first */}
-      {firstExecution && (
-        <div className={`bg-white border-2 border-zinc-200 mb-6`}>
-          <div className="p-4 border-b border-zinc-100 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-               <SectionLabel>Latest Result</SectionLabel>
-               <StatusBadge variant={firstExecution.status} />
-            </div>
-            <span className="text-[10px] font-mono text-zinc-400">
-              {formatShortDateTime(firstExecution.started_at)}
-            </span>
-          </div>
-          <div className="p-6 overflow-hidden">
-            {(() => {
-              const displayText = getResultDisplayText(firstExecution.result);
-              return displayText ? (
-                <div className="prose prose-sm md:prose-base max-w-none text-zinc-800 leading-relaxed font-serif">
-                  <ReactMarkdown
-                    rehypePlugins={[rehypeSanitize]}
-                    components={markdownFull}
-                  >
-                    {displayText}
-                  </ReactMarkdown>
-                </div>
-              ) : (
-                <p className="text-sm text-zinc-400 font-mono italic">No results yet.</p>
-              );
-            })()}
-          </div>
-          
-          {/* Sources section embedded in the result card */}
-          {(firstExecution.result?.sources || firstExecution.grounding_sources)?.length > 0 && (
-            <div className="px-6 pb-6 pt-4 border-t border-zinc-50 bg-zinc-50/50">
-               <SectionLabel className="mb-3">Sources</SectionLabel>
-               <GroundingSourceList
-                  sources={firstExecution.result?.sources || firstExecution.grounding_sources}
-                  title=""
-                />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Action Buttons - Different for owner vs public viewer. Hidden in compact mode header. */}
-      {!compact && (
-        <div className="flex items-center gap-2 mb-6">
-          {!isOwner ? (
-            // Public viewer: Show fork button and stats
-            <>
-              <Button
-                onClick={handleFork}
-                disabled={isForking}
-                size="sm"
-                className="gap-2"
-              >
-                {isForking ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-                {isForking ? 'Copying...' : 'Make a Copy'}
-              </Button>
-              {task.is_public && (
-                <div className="flex items-center gap-4 text-sm text-muted-foreground ml-4">
-                  <div className="flex items-center gap-1">
-                    <Eye className="h-4 w-4" />
-                    {task.view_count}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    {task.subscriber_count}
-                  </div>
-                  <a
-                    href={rssUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 hover:text-foreground transition-colors"
-                    title="RSS feed"
-                  >
-                    <Rss className="h-4 w-4" />
-                    <span className="text-xs font-mono">RSS</span>
-                  </a>
-                </div>
-              )}
-            </>
-          ) : (
-            // Owner: Show run and delete buttons
-            <>
-              <Button
-                variant="outline"
-                onClick={handleExecute}
-                disabled={isExecuting}
-                size="sm"
-              >
-                {isExecuting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Play className="mr-2 h-4 w-4" />
-                )}
-                Run Now
-              </Button>
-
-              <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </Button>
-              <DeleteMonitorDialog
-                taskName={task.name}
-                open={showDeleteDialog}
-                onOpenChange={setShowDeleteDialog}
-                onConfirm={handleDelete}
-                extraDescription="All execution history will be permanently deleted."
-              />
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Task Configuration - Collapsible on Mobile, Always Visible on Desktop */}
-      <TaskConfiguration
-        task={task}
-        onToggle={handleToggle}
-      />
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="sticky top-0 z-10 bg-zinc-50 pb-2 -mx-8 px-8">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="sticky top-0 z-10 bg-zinc-50 pb-2 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-zinc-200 mb-6">
           <div className="relative">
-            <TabsList className="w-full overflow-x-auto flex-nowrap scrollbar-hide">
-              <TabsTrigger value="executions">
-                All Executions <span className="text-xs text-zinc-500 ml-1.5">({executions.length})</span>
+            <TabsList className="bg-transparent p-0 gap-8 h-auto w-full justify-start rounded-none">
+              <TabsTrigger 
+                value="executions"
+                className="px-0 pb-3 rounded-none border-b-2 border-transparent data-[state=active]:border-zinc-900 data-[state=active]:bg-transparent shadow-none font-bold font-grotesk flex items-center gap-2"
+              >
+                <Activity className="h-4 w-4" />
+                Intelligence <span className="text-xs text-zinc-400 font-mono ml-1">({executions.length})</span>
               </TabsTrigger>
-              <TabsTrigger value="notifications">
-                Notifications <span className="text-xs text-zinc-500 ml-1.5">({notifications.length})</span>
+              <TabsTrigger 
+                value="notifications"
+                className="px-0 pb-3 rounded-none border-b-2 border-transparent data-[state=active]:border-zinc-900 data-[state=active]:bg-transparent shadow-none font-bold font-grotesk flex items-center gap-2"
+              >
+                <Mail className="h-4 w-4" />
+                Findings <span className="text-xs text-zinc-400 font-mono ml-1">({notifications.length})</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="settings"
+                className="px-0 pb-3 rounded-none border-b-2 border-transparent data-[state=active]:border-zinc-900 data-[state=active]:bg-transparent shadow-none font-bold font-grotesk flex items-center gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                Config
               </TabsTrigger>
             </TabsList>
-            {/* Scroll hint gradient */}
-            <div className="absolute top-0 right-0 h-full w-12 bg-gradient-to-l from-zinc-50 to-transparent pointer-events-none" />
           </div>
         </div>
 
-        <TabsContent value="executions" className="mt-6">
+        <TabsContent value="executions" className="mt-0 outline-none">
           <ExecutionTimeline executions={executions} isOwner={isOwner} />
         </TabsContent>
 
-        <TabsContent value="notifications" className="mt-6">
+        <TabsContent value="notifications" className="mt-0 outline-none">
           <ExecutionTimeline
             executions={notifications}
             isOwner={isOwner}
+          />
+        </TabsContent>
+
+        <TabsContent value="settings" className="mt-0 outline-none space-y-8">
+          {isOwner && (
+            <div className="flex flex-wrap items-center gap-3 p-6 bg-white border-2 border-zinc-200">
+              <div className="flex-1 min-w-[200px]">
+                <h4 className="font-bold text-sm mb-1">Quick Actions</h4>
+                <p className="text-xs text-zinc-500 font-mono">Trigger manual runs or manage task lifecycle.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleExecute}
+                  disabled={isExecuting}
+                  size="sm"
+                >
+                  {isExecuting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="mr-2 h-4 w-4" />
+                  )}
+                  Run Now
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)} className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-100">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Monitor
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <TaskConfiguration
+            task={task}
+            onToggle={handleToggle}
+          />
+          
+          <DeleteMonitorDialog
+            taskName={task.name}
+            open={showDeleteDialog}
+            onOpenChange={setShowDeleteDialog}
+            onConfirm={handleDelete}
+            extraDescription="All execution history will be permanently deleted."
           />
         </TabsContent>
       </Tabs>
