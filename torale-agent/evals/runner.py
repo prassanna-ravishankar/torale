@@ -50,12 +50,6 @@ async def run_eval(
 ) -> MonitoringReport:
     """Configure model, run evaluation, return report."""
     set_eval_model(model)
-
-    # Pre-import agent so its logfire.configure() runs BEFORE pydantic-evals
-    # sets up its in-memory span exporter. Without this, agent.py's module-level
-    # logfire.configure() would run inside evaluate() and reset the exporter.
-    import agent as _agent  # noqa: F401
-
     logfire.configure(send_to_logfire="if-token-present")
 
     return await dataset.evaluate(
