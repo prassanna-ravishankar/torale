@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 
 from torale.access import CurrentUser
-from torale.api.rate_limiter import limiter
+from torale.api.rate_limiter import get_user_or_ip, limiter
 from torale.core.database import Database, get_db
 from torale.notifications import EmailVerificationService
 from torale.notifications.novu_service import novu_service
@@ -26,7 +26,7 @@ class VerificationConfirm(BaseModel):
 
 
 @router.post("/send")
-@limiter.limit("5/minute")
+@limiter.limit("5/minute", key_func=get_user_or_ip)
 async def send_verification_email(
     body: VerificationRequest, request: Request, user: CurrentUser, db: Database = Depends(get_db)
 ):

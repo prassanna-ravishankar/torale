@@ -23,7 +23,7 @@ from torale.access import (
     User as AuthUser,
 )
 from torale.access.models import UserRead
-from torale.api.rate_limiter import limiter
+from torale.api.rate_limiter import get_user_or_ip, limiter
 from torale.core.database import Database, get_db
 
 router = APIRouter()
@@ -163,7 +163,7 @@ class CreateAPIKeyResponse(BaseModel):
 
 
 @router.post("/api-keys", response_model=CreateAPIKeyResponse)
-@limiter.limit("3/minute")
+@limiter.limit("3/minute", key_func=get_user_or_ip)
 async def create_api_key(
     body: CreateAPIKeyRequest,
     request: Request,
