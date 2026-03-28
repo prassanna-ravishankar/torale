@@ -199,7 +199,7 @@ export default function Landing() {
           <div className="container mx-auto max-w-6xl px-6">
             <SectionHeader
               title="How It Works"
-              subtitle="You set the condition. We handle the rest—automatically."
+              subtitle="You set the condition. We handle the rest, automatically."
               label="HOW_IT_WORKS"
             />
 

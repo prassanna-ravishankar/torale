@@ -20,7 +20,7 @@ const TerminalLog = ({ activeStep }: { activeStep: number }) => {
     { id: 2, cmd: "SEARCH", msg: "Querying: competitor.com/pricing" },
     { id: 2, cmd: "CONTEXT", msg: "Comparing with previous results" },
     { id: 3, cmd: "EVALUATE", msg: "Checking condition against results" },
-    { id: 3, cmd: "MATCH", msg: "Condition met — change detected" },
+    { id: 3, cmd: "MATCH", msg: "Condition met - change detected" },
     { id: 4, cmd: "RESULT", msg: "Saving evidence and sources" },
     { id: 4, cmd: "NOTIFY", msg: "Alert sent" }
   ];
@@ -69,7 +69,7 @@ export const SystemTrace = () => {
     {
       id: 1,
       title: "Runs on Schedule",
-      description: "Your monitor checks automatically — every hour, every day, whatever you set. No manual work required.",
+      description: "Your monitor checks automatically - every hour, every day, whatever you set. No manual work required.",
       icon: Clock,
       detail: "Runs: On your schedule"
     },
@@ -90,7 +90,7 @@ export const SystemTrace = () => {
     {
       id: 4,
       title: "Notifies You",
-      description: "When your condition is met, you get notified instantly. No spam — only meaningful changes trigger alerts.",
+      description: "When your condition is met, you get notified instantly. No spam - only meaningful changes trigger alerts.",
       icon: Brain,
       detail: "Action: Alert sent"
     }
