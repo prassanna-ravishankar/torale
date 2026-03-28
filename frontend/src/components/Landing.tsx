@@ -95,7 +95,7 @@ export default function Landing() {
               "price": "0",
               "priceCurrency": "USD"
             },
-            "description": "Create monitoring tasks with natural language. Get notified when conditions are met using Google Search + LLM analysis."
+            "description": "Describe what you're watching for. Torale searches the web on a schedule and notifies you when your condition is met."
           }).replace(/</g, '\\u003c')
         }}
       />
@@ -148,12 +148,12 @@ export default function Landing() {
               </motion.div>
 
               <h1 className="text-6xl md:text-7xl font-bold font-grotesk tracking-tight mb-8 mt-8 leading-[0.95] text-zinc-900">
-                Make the internet<br />
-                <span className="text-zinc-400">work for you.</span>
+                Get notified<br />
+                <span className="text-zinc-400">when it matters.</span>
               </h1>
 
               <p className="text-xl text-zinc-500 mb-10 max-w-lg font-medium leading-relaxed">
-                Don't just browse the web—subscribe to it. Torale turns any website change into a notification, webhook, or structured data stream.
+                Describe what you're watching for in plain English. Torale searches the web on a schedule and alerts you the moment your condition is met.
               </p>
 
               <motion.div
@@ -198,9 +198,9 @@ export default function Landing() {
         <section className="bg-zinc-50 border-b border-zinc-200 pt-24">
           <div className="container mx-auto max-w-6xl px-6">
             <SectionHeader
-              title="System Architecture"
-              subtitle="We re-engineered the monitoring stack to eliminate flakiness."
-              label="ARCHITECTURE"
+              title="How It Works"
+              subtitle="You set the condition. We handle the rest—automatically."
+              label="HOW_IT_WORKS"
             />
 
             <SystemTrace />
@@ -426,7 +426,7 @@ export default function Landing() {
               <div className="col-span-2">
                 <span className="font-bold text-xl tracking-tight block mb-6 text-white font-grotesk">τorale</span>
                 <p className="text-zinc-500 text-sm leading-relaxed">
-                  Reliable, intelligent monitoring for the modern stack.
+                  Reliable, intelligent web monitoring.
                 </p>
               </div>
 

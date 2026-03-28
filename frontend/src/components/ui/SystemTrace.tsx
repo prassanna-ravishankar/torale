@@ -15,14 +15,14 @@ interface LogEntry {
 
 const TerminalLog = ({ activeStep }: { activeStep: number }) => {
   const steps: LogEntry[] = [
-    { id: 1, cmd: "SCHED_WAKE", msg: "Triggering scheduled job 0x81" },
-    { id: 1, cmd: "AGENT_CALL", msg: "Invoking monitoring agent" },
+    { id: 1, cmd: "SCHEDULE", msg: "Running scheduled check" },
+    { id: 1, cmd: "INIT", msg: "Monitor active, starting search" },
     { id: 2, cmd: "SEARCH", msg: "Querying: competitor.com/pricing" },
-    { id: 2, cmd: "MEM_RECALL", msg: "Loading context from previous runs" },
-    { id: 3, cmd: "EVAL", msg: "Evaluating condition against evidence" },
-    { id: 3, cmd: "DECIDE", msg: "Analyzing diff... Match found." },
-    { id: 4, cmd: "STATE", msg: "Writing to persistent log" },
-    { id: 4, cmd: "NOTIFY", msg: "Webhook dispatched (200 OK)" }
+    { id: 2, cmd: "CONTEXT", msg: "Comparing with previous results" },
+    { id: 3, cmd: "EVALUATE", msg: "Checking condition against results" },
+    { id: 3, cmd: "MATCH", msg: "Condition met — change detected" },
+    { id: 4, cmd: "RESULT", msg: "Saving evidence and sources" },
+    { id: 4, cmd: "NOTIFY", msg: "Alert sent" }
   ];
 
   const visibleSteps = activeStep === 1 ? 2 : activeStep === 2 ? 4 : activeStep === 3 ? 6 : 8;
@@ -68,31 +68,31 @@ export const SystemTrace = () => {
   const steps = [
     {
       id: 1,
-      title: "Scheduled Trigger",
-      description: "APScheduler wakes your agent on time, every time. Your monitoring runs like clockwork without any manual intervention.",
+      title: "Runs on Schedule",
+      description: "Your monitor checks automatically — every hour, every day, whatever you set. No manual work required.",
       icon: Clock,
-      detail: "Trigger: Cron"
+      detail: "Runs: On your schedule"
     },
     {
       id: 2,
-      title: "Intelligent Search",
-      description: "Your agent searches the web via Perplexity with context from previous runs, finding exactly the information that matters.",
+      title: "Searches the Web",
+      description: "Each check searches the live web for the latest information about your topic, comparing against previous results.",
       icon: Search,
-      detail: "Source: Perplexity"
+      detail: "Source: Live web"
     },
     {
       id: 3,
-      title: "Condition Evaluation",
-      description: "The agent evaluates if your condition is met, returning evidence with sources so you know exactly why it triggered.",
+      title: "Checks Your Condition",
+      description: "AI reads the results and decides whether your condition is met, with evidence and sources so you know exactly why it triggered.",
       icon: Cpu,
-      detail: "Model: Claude"
+      detail: "Engine: AI analysis"
     },
     {
       id: 4,
-      title: "Memory & Action",
-      description: "The agent remembers past checks and only notifies when something meaningful changes, reducing notification fatigue.",
+      title: "Notifies You",
+      description: "When your condition is met, you get notified instantly. No spam — only meaningful changes trigger alerts.",
       icon: Brain,
-      detail: "Memory: Mem0"
+      detail: "Action: Alert sent"
     }
   ];
 
@@ -105,7 +105,7 @@ export const SystemTrace = () => {
           <div className="sticky top-32 h-[500px] w-full bg-zinc-950 border-2 border-zinc-900 rounded-lg overflow-hidden shadow-2xl z-20 flex flex-col">
             <div className="h-12 border-b border-zinc-800 bg-zinc-900 flex items-center px-4 justify-between">
               <span className="font-mono text-xs text-zinc-400 font-bold uppercase tracking-widest">
-                Kernel_Trace_v4
+                Monitor_Trace
               </span>
               <div className="flex gap-2">
                 <div className="w-3 h-3 bg-zinc-800 rounded-sm" />
