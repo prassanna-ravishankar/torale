@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, HttpUrl
 
 from torale.access import CurrentUser
+from torale.api.rate_limiter import limiter
 from torale.core.database import Database, get_db
 from torale.notifications import (
     WebhookDeliveryService,
@@ -89,7 +90,8 @@ async def update_user_webhook_config(
 
 
 @router.post("/test")
-async def test_webhook(test_req: WebhookTestRequest, user: CurrentUser):
+@limiter.limit("5/minute")
+async def test_webhook(request: Request, test_req: WebhookTestRequest, user: CurrentUser):
     """
     Test webhook delivery with sample payload.
 
