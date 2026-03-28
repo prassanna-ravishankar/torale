@@ -1,9 +1,10 @@
 """Email verification API endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 
 from torale.access import CurrentUser
+from torale.api.rate_limiter import get_user_or_ip, limiter
 from torale.core.database import Database, get_db
 from torale.notifications import EmailVerificationService
 from torale.notifications.novu_service import novu_service
@@ -25,8 +26,9 @@ class VerificationConfirm(BaseModel):
 
 
 @router.post("/send")
+@limiter.limit("5/minute", key_func=get_user_or_ip)
 async def send_verification_email(
-    request: VerificationRequest, user: CurrentUser, db: Database = Depends(get_db)
+    body: VerificationRequest, request: Request, user: CurrentUser, db: Database = Depends(get_db)
 ):
     """
     Send verification code to email address.
@@ -35,12 +37,12 @@ async def send_verification_email(
     """
     async with db.acquire() as conn:
         # Check if already verified
-        if await EmailVerificationService.is_email_verified(conn, str(user.id), request.email):
+        if await EmailVerificationService.is_email_verified(conn, str(user.id), body.email):
             return {"message": "Email already verified"}
 
         # Create verification
         success, code, error = await EmailVerificationService.create_verification(
-            conn, str(user.id), request.email
+            conn, str(user.id), body.email
         )
 
         if not success:
@@ -55,12 +57,10 @@ async def send_verification_email(
         )
 
         # Send verification email via Novu (or log code if not configured)
-        await novu_service.send_verification_email(
-            email=request.email, code=code, user_name=user_name
-        )
+        await novu_service.send_verification_email(email=body.email, code=code, user_name=user_name)
 
         return {
-            "message": f"Verification code sent to {request.email}",
+            "message": f"Verification code sent to {body.email}",
             "expires_in_minutes": EmailVerificationService.VERIFICATION_EXPIRY_MINUTES,
         }
 
