@@ -39,7 +39,7 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const noAuth = import.meta.env.VITE_TORALE_NOAUTH === '1'
+  const noAuth = import.meta.env.VITE_TORALE_NOAUTH === '1' || (window as any).__PRERENDER__
 
   if (noAuth) {
     return <NoAuthProvider>{children}</NoAuthProvider>
