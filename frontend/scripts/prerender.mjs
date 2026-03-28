@@ -9,6 +9,7 @@ const PORT = 4567;
 
 const ROUTES = [
   '/',
+  '/explore',
   '/changelog',
   '/terms',
   '/privacy',
