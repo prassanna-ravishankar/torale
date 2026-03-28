@@ -5,7 +5,7 @@ from email.utils import format_datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from torale.access import OptionalUser
 from torale.api.rate_limiter import limiter
@@ -28,8 +28,15 @@ router = APIRouter(prefix="/public", tags=["public"])
 class PublicTask(Task):
     """Task model with user_id stripped for public responses."""
 
-    model_config = ConfigDict(from_attributes=True)
-    user_id: None = Field(default=None, exclude=True)
+    model_config = ConfigDict(from_attributes=True, fields={"user_id": {"exclude": True}})
+
+
+class PublicFeedExecution(FeedExecution):
+    """Feed execution with task_user_id stripped for public responses."""
+
+    model_config = ConfigDict(
+        from_attributes=True, fields={"task_user_id": {"exclude": True}}
+    )
 
 
 class PublicTasksResponse(BaseModel):
@@ -112,7 +119,7 @@ async def list_public_tasks(
     )
 
 
-@router.get("/feed", response_model=list[FeedExecution])
+@router.get("/feed", response_model=list[PublicFeedExecution])
 @limiter.limit("10/minute")
 async def get_public_feed(
     request: Request,
@@ -123,9 +130,10 @@ async def get_public_feed(
     Get a global feed of recent successful executions across all public tasks.
     Only returns executions that produced a notification (condition met).
     """
-    return await fetch_feed_executions(
+    executions = await fetch_feed_executions(
         db, where_clause="t.is_public = true", params=[], limit=limit
     )
+    return [PublicFeedExecution.model_validate(e) for e in executions]
 
 
 @router.get("/tasks/id/{task_id}", response_model=PublicTask)
