@@ -5,7 +5,7 @@ from email.utils import format_datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from torale.access import OptionalUser
 from torale.api.rate_limiter import limiter
@@ -25,10 +25,17 @@ ET.register_namespace("atom", "http://www.w3.org/2005/Atom")
 router = APIRouter(prefix="/public", tags=["public"])
 
 
+class PublicTask(Task):
+    """Task model with user_id stripped for public responses."""
+
+    model_config = ConfigDict(from_attributes=True)
+    user_id: None = Field(default=None, exclude=True)
+
+
 class PublicTasksResponse(BaseModel):
     """Response for public tasks listing."""
 
-    tasks: list[Task]
+    tasks: list[PublicTask]
     total: int
     offset: int
     limit: int
@@ -95,7 +102,7 @@ async def list_public_tasks(
             task = task.model_copy(
                 update={"notification_email": None, "webhook_url": None, "notifications": []}
             )
-        scrubbed_tasks.append(task)
+        scrubbed_tasks.append(PublicTask.model_validate(task))
 
     return PublicTasksResponse(
         tasks=scrubbed_tasks,
@@ -121,7 +128,7 @@ async def get_public_feed(
     )
 
 
-@router.get("/tasks/id/{task_id}", response_model=Task)
+@router.get("/tasks/id/{task_id}", response_model=PublicTask)
 @limiter.limit("20/minute")
 async def get_public_task_by_id(
     request: Request,
@@ -133,7 +140,8 @@ async def get_public_task_by_id(
     Get a public task by UUID (NO AUTH REQUIRED).
     """
     # Delegates to the shared get_task logic (handles owner vs public access)
-    return await get_task(task_id, user, db)
+    task = await get_task(task_id, user, db)
+    return PublicTask.model_validate(task)
 
 
 # Separate router for root-level RSS feed (mounted without /api/v1 prefix)
