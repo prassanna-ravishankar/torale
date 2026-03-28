@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 
 from torale.api.routers.email_verification import (
     VerificationConfirm,
@@ -14,6 +14,19 @@ from torale.api.routers.email_verification import (
     send_verification_email,
     verify_email_code,
 )
+
+
+@pytest.fixture
+def mock_request():
+    """Create a real Request for rate-limited endpoints (slowapi requires it)."""
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/email-verification/send",
+        "headers": [],
+        "client": ("127.0.0.1", 1234),
+    }
+    return Request(scope=scope)
 
 
 @pytest.fixture
@@ -53,9 +66,9 @@ class TestSendVerificationEmail:
     """Tests for send_verification_email endpoint."""
 
     @pytest.mark.asyncio
-    async def test_send_to_new_email(self, mock_user, mock_db):
+    async def test_send_to_new_email(self, mock_user, mock_db, mock_request):
         """Test sending verification code to new email."""
-        request = VerificationRequest(email="new@example.com")
+        body = VerificationRequest(email="new@example.com")
 
         # Get the connection that will be returned by the context manager
         conn = await mock_db.acquire().__aenter__()
@@ -78,30 +91,30 @@ class TestSendVerificationEmail:
                     "torale.api.routers.email_verification.novu_service.send_verification_email",
                     new_callable=AsyncMock,
                 ) as mock_novu:
-                    result = await send_verification_email(request, mock_user, mock_db)
+                    result = await send_verification_email(body, mock_request, mock_user, mock_db)
 
                     assert "Verification code sent" in result["message"]
                     assert result["expires_in_minutes"] == 15
                     mock_novu.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_already_verified_email(self, mock_user, mock_db):
+    async def test_already_verified_email(self, mock_user, mock_db, mock_request):
         """Test sending verification code to already verified email."""
-        request = VerificationRequest(email="verified@example.com")
+        body = VerificationRequest(email="verified@example.com")
 
         # Mock: email already verified
         with patch(
             "torale.api.routers.email_verification.EmailVerificationService.is_email_verified",
             return_value=True,
         ):
-            result = await send_verification_email(request, mock_user, mock_db)
+            result = await send_verification_email(body, mock_request, mock_user, mock_db)
 
             assert result["message"] == "Email already verified"
 
     @pytest.mark.asyncio
-    async def test_rate_limit_exceeded(self, mock_user, mock_db):
+    async def test_rate_limit_exceeded(self, mock_user, mock_db, mock_request):
         """Test rate limit enforcement (3 verifications/hour)."""
-        request = VerificationRequest(email="new@example.com")
+        body = VerificationRequest(email="new@example.com")
 
         with patch(
             "torale.api.routers.email_verification.EmailVerificationService.is_email_verified",
@@ -113,15 +126,15 @@ class TestSendVerificationEmail:
                 return_value=(False, None, "Rate limit exceeded. Please try again later."),
             ):
                 with pytest.raises(HTTPException) as exc_info:
-                    await send_verification_email(request, mock_user, mock_db)
+                    await send_verification_email(body, mock_request, mock_user, mock_db)
 
                 assert exc_info.value.status_code == 429
                 assert "Rate limit" in exc_info.value.detail
 
     @pytest.mark.asyncio
-    async def test_user_name_fallback(self, mock_user, mock_db):
+    async def test_user_name_fallback(self, mock_user, mock_db, mock_request):
         """Test fallback to email prefix when user has no first name."""
-        request = VerificationRequest(email="new@example.com")
+        body = VerificationRequest(email="new@example.com")
         conn = await mock_db.acquire().__aenter__()
 
         with patch(
@@ -139,7 +152,7 @@ class TestSendVerificationEmail:
                     "torale.api.routers.email_verification.novu_service.send_verification_email",
                     new_callable=AsyncMock,
                 ) as mock_novu:
-                    await send_verification_email(request, mock_user, mock_db)
+                    await send_verification_email(body, mock_request, mock_user, mock_db)
 
                     # Should use email prefix as fallback
                     call_args = mock_novu.call_args[1]

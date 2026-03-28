@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 
 from torale.api.routers.webhooks import (
     WebhookConfig,
@@ -16,6 +16,19 @@ from torale.api.routers.webhooks import (
 from torale.api.routers.webhooks import (
     test_webhook as webhook_test_handler,
 )
+
+
+@pytest.fixture
+def mock_request():
+    """Create a real Request for rate-limited endpoints (slowapi requires it)."""
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/webhooks/test",
+        "headers": [],
+        "client": ("127.0.0.1", 1234),
+    }
+    return Request(scope=scope)
 
 
 @pytest.fixture
@@ -167,7 +180,7 @@ class TestTestWebhook:
     """Tests for test_webhook endpoint."""
 
     @pytest.mark.asyncio
-    async def test_successful_test_delivery(self, mock_user):
+    async def test_successful_test_delivery(self, mock_user, mock_request):
         """Test successful webhook test delivery."""
         test_req = WebhookTestRequest(
             webhook_url="https://example.com/webhook", webhook_secret="test_secret"
@@ -179,7 +192,7 @@ class TestTestWebhook:
         mock_service.close = AsyncMock()
 
         with patch("torale.api.routers.webhooks.WebhookDeliveryService", return_value=mock_service):
-            result = await webhook_test_handler(test_req, mock_user)
+            result = await webhook_test_handler(mock_request, test_req, mock_user)
 
             assert result["success"] is True
             assert "200" in result["message"]
@@ -187,7 +200,7 @@ class TestTestWebhook:
             mock_service.close.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_failed_test_delivery(self, mock_user):
+    async def test_failed_test_delivery(self, mock_user, mock_request):
         """Test failed webhook test delivery."""
         test_req = WebhookTestRequest(
             webhook_url="https://example.com/webhook", webhook_secret="test_secret"
@@ -200,14 +213,14 @@ class TestTestWebhook:
 
         with patch("torale.api.routers.webhooks.WebhookDeliveryService", return_value=mock_service):
             with pytest.raises(HTTPException) as exc_info:
-                await webhook_test_handler(test_req, mock_user)
+                await webhook_test_handler(mock_request, test_req, mock_user)
 
             assert exc_info.value.status_code == 400
             assert "Connection timeout" in exc_info.value.detail
             mock_service.close.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_test_webhook_payload_structure(self, mock_user):
+    async def test_test_webhook_payload_structure(self, mock_user, mock_request):
         """Test that test webhook sends correct payload structure."""
         test_req = WebhookTestRequest(
             webhook_url="https://example.com/webhook", webhook_secret="test_secret"
@@ -229,7 +242,7 @@ class TestTestWebhook:
         mock_service.close = AsyncMock()
 
         with patch("torale.api.routers.webhooks.WebhookDeliveryService", return_value=mock_service):
-            await webhook_test_handler(test_req, mock_user)
+            await webhook_test_handler(mock_request, test_req, mock_user)
 
 
 class TestListWebhookDeliveries:
