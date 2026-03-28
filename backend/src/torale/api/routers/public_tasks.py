@@ -34,9 +34,7 @@ class PublicTask(Task):
 class PublicFeedExecution(FeedExecution):
     """Feed execution with task_user_id stripped for public responses."""
 
-    model_config = ConfigDict(
-        from_attributes=True, fields={"task_user_id": {"exclude": True}}
-    )
+    model_config = ConfigDict(from_attributes=True, fields={"task_user_id": {"exclude": True}})
 
 
 class PublicTasksResponse(BaseModel):
