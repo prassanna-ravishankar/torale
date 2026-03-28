@@ -5,7 +5,7 @@ from email.utils import format_datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from torale.access import OptionalUser
 from torale.api.rate_limiter import limiter
@@ -25,10 +25,22 @@ ET.register_namespace("atom", "http://www.w3.org/2005/Atom")
 router = APIRouter(prefix="/public", tags=["public"])
 
 
+class PublicTask(Task):
+    """Task model with user_id stripped for public responses."""
+
+    model_config = ConfigDict(from_attributes=True, fields={"user_id": {"exclude": True}})
+
+
+class PublicFeedExecution(FeedExecution):
+    """Feed execution with task_user_id stripped for public responses."""
+
+    model_config = ConfigDict(from_attributes=True, fields={"task_user_id": {"exclude": True}})
+
+
 class PublicTasksResponse(BaseModel):
     """Response for public tasks listing."""
 
-    tasks: list[Task]
+    tasks: list[PublicTask]
     total: int
     offset: int
     limit: int
@@ -95,7 +107,7 @@ async def list_public_tasks(
             task = task.model_copy(
                 update={"notification_email": None, "webhook_url": None, "notifications": []}
             )
-        scrubbed_tasks.append(task)
+        scrubbed_tasks.append(PublicTask.model_validate(task))
 
     return PublicTasksResponse(
         tasks=scrubbed_tasks,
@@ -105,7 +117,7 @@ async def list_public_tasks(
     )
 
 
-@router.get("/feed", response_model=list[FeedExecution])
+@router.get("/feed", response_model=list[PublicFeedExecution])
 @limiter.limit("10/minute")
 async def get_public_feed(
     request: Request,
@@ -116,12 +128,13 @@ async def get_public_feed(
     Get a global feed of recent successful executions across all public tasks.
     Only returns executions that produced a notification (condition met).
     """
-    return await fetch_feed_executions(
+    executions = await fetch_feed_executions(
         db, where_clause="t.is_public = true", params=[], limit=limit
     )
+    return [PublicFeedExecution.model_validate(e) for e in executions]
 
 
-@router.get("/tasks/id/{task_id}", response_model=Task)
+@router.get("/tasks/id/{task_id}", response_model=PublicTask)
 @limiter.limit("20/minute")
 async def get_public_task_by_id(
     request: Request,
@@ -133,7 +146,8 @@ async def get_public_task_by_id(
     Get a public task by UUID (NO AUTH REQUIRED).
     """
     # Delegates to the shared get_task logic (handles owner vs public access)
-    return await get_task(task_id, user, db)
+    task = await get_task(task_id, user, db)
+    return PublicTask.model_validate(task)
 
 
 # Separate router for root-level RSS feed (mounted without /api/v1 prefix)

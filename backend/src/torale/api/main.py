@@ -135,6 +135,9 @@ app = FastAPI(
     description="Platform-agnostic background task manager for AI-powered automation",
     version="0.1.0",
     lifespan=lifespan,
+    docs_url="/docs" if settings.torale_noauth else None,
+    redoc_url="/redoc" if settings.torale_noauth else None,
+    openapi_url="/openapi.json" if settings.torale_noauth else None,
 )
 
 _CORS_ORIGINS = [
