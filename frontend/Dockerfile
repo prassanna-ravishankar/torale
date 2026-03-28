@@ -1,7 +1,8 @@
 # Multi-stage build for React frontend
 
 # Stage 1: Build the application
-FROM node:20.19.0-alpine AS builder
+# Using Playwright base image for Chromium (needed for prerendering public routes)
+FROM mcr.microsoft.com/playwright:v1.52.0-noble AS builder
 
 WORKDIR /app
 
@@ -17,7 +18,7 @@ RUN --mount=type=cache,target=/root/.npm \
 # Copy source code
 COPY . .
 
-# Build the application (no env vars - runtime config will be injected)
+# Build the application and prerender public routes
 RUN npm run build
 
 # Stage 2: Serve with nginx

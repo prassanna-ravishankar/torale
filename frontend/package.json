@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/prerender.mjs",
     "build:check": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives"
@@ -78,8 +78,10 @@
     "eslint": "^8.57.1",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.12",
+    "playwright": "^1.58.2",
     "postcss": "^8.4.45",
     "rollup-plugin-visualizer": "^6.0.5",
+    "serve-handler": "^6.1.7",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "vite": "^7.2.1"

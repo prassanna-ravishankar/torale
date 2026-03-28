@@ -6,7 +6,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import App from './App'
 import './index.css'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const app = (
   <React.StrictMode>
     <HelmetProvider>
       <AuthProvider>
@@ -15,5 +15,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </BrowserRouter>
       </AuthProvider>
     </HelmetProvider>
-  </React.StrictMode>,
+  </React.StrictMode>
 )
+
+const root = document.getElementById('root')!
+
+// Hydrate if prerendered HTML exists, otherwise render from scratch
+if (root.children.length > 0) {
+  ReactDOM.hydrateRoot(root, app)
+} else {
+  ReactDOM.createRoot(root).render(app)
+}
