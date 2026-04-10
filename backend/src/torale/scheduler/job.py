@@ -127,8 +127,21 @@ async def _execute(
     start_time = time.monotonic()
 
     try:
+        # Clear any terminal-state leftovers from a prior attempt on the same row.
+        # Within a single execution lifecycle, retries reuse execution_id, so the
+        # row may still hold error_message/internal_error/error_category from the
+        # failed prior attempt, or transient flags like notification_failed /
+        # auto_complete_failed merged into result. Clearing here keeps the
+        # invariant "a RUNNING row is clean" and is a no-op for fresh rows.
         await db.execute(
-            "UPDATE task_executions SET status = $2 WHERE id = $1",
+            """UPDATE task_executions
+               SET status = $2,
+                   error_message = NULL,
+                   internal_error = NULL,
+                   error_category = NULL,
+                   completed_at = NULL,
+                   result = '{}'::jsonb
+               WHERE id = $1""",
             uuid.UUID(execution_id),
             TaskStatus.RUNNING.value,
         )
