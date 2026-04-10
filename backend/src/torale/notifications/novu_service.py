@@ -33,11 +33,11 @@ def _format_next_run(next_run: str | None) -> str | None:
     return dt.strftime("%B %d, %Y at %I:%M %p")
 
 
-def _format_confidence(confidence: float | None) -> str | None:
-    """Format confidence as percentage string for Novu templates."""
+def _format_confidence(confidence: int | None) -> str | None:
+    """Format confidence (0-100) as percentage string for Novu templates."""
     if confidence is None:
         return None
-    return f"{round(confidence * 100)}%"
+    return f"{confidence}%"
 
 
 def _md_to_html(text: str, extensions: list[str] | None = None) -> str:
@@ -122,7 +122,7 @@ class NovuService:
         self,
         payload: NotificationPayload,
         execution_id: str,
-        confidence: float | None = None,
+        confidence: int | None = None,
     ) -> dict:
         """Send notification when monitoring condition is met."""
         return await self._trigger(
