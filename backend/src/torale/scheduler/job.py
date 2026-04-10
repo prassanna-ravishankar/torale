@@ -394,14 +394,18 @@ async def _execute(
                 logger.error(f"Auto-complete failed for task {task_id}: {e}", exc_info=True)
                 await _merge_execution_result(execution_id, {"auto_complete_failed": True})
         elif execution_succeeded:
-            # Agent returned a next_run date → schedule next check
+            # Agent returned a next_run date → schedule next check.
+            # Pass execution_id=None so the next scheduled run creates its own
+            # row. Reusing the current execution_id would cause subsequent runs
+            # to overwrite this row's completed_at, producing inflated durations
+            # and collapsing history.
             resolved_dt = _resolve_next_run(next_run_value)
             await _schedule_next_run(
                 task_id=task_id,
                 user_id=user_id,
                 task_name=task_name,
                 next_run_dt=resolved_dt,
-                execution_id=execution_id,
+                execution_id=None,
                 retry_count=0,  # Reset retry count on successful execution
             )
 
