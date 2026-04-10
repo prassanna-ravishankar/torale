@@ -165,6 +165,59 @@ class TestExecute:
         assert call_kwargs.kwargs["id"] == f"task-{TASK_ID}"
 
     @pytest.mark.asyncio
+    async def test_retry_path_preserves_execution_id(self, job_mocks):
+        """Failed-attempt retries must share a row by forwarding execution_id.
+
+        Locks in the intentional asymmetry with the success path: a retry is
+        the same logical attempt and should reuse the task_executions row, so
+        the user sees one row per lifecycle rather than one row per retry
+        delay. Only successful follow-ups get a fresh row (see
+        test_successful_scheduled_run_does_not_forward_execution_id).
+        """
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
+        job_mocks.agent.side_effect = RuntimeError("Transient agent failure")
+
+        mock_sched = MagicMock()
+        job_mocks.scheduler.return_value = mock_sched
+
+        await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME, retry_count=0)
+
+        # An UNKNOWN error at retry_count=0 is retried, so the scheduler must
+        # get called with a retry job whose APScheduler args still hold the
+        # current execution_id (unlike the success path).
+        mock_sched.add_job.assert_called_once()
+        args = mock_sched.add_job.call_args.kwargs["args"]
+        assert args[0] == TASK_ID
+        assert args[3] == 1  # retry_count incremented
+        assert args[4] == EXECUTION_ID  # execution_id IS forwarded on retries
+
+    @pytest.mark.asyncio
+    async def test_successful_scheduled_run_does_not_forward_execution_id(self, job_mocks):
+        """Successful scheduled runs must not reuse execution_id for the next run.
+
+        Regression: previously the success path passed the current execution_id
+        to _schedule_next_run, which persisted it into APScheduler args. The
+        next scheduled run would then overwrite the same task_executions row,
+        leaving started_at from the first run and clobbering completed_at on
+        every subsequent run -- producing multi-day "durations" and collapsing
+        execution history onto one row per task.
+        """
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
+        future_time = (datetime.now(UTC) + timedelta(hours=2)).isoformat()
+        job_mocks.agent.return_value = _make_agent_response(next_run=future_time)
+
+        mock_sched = MagicMock()
+        job_mocks.scheduler.return_value = mock_sched
+
+        await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
+
+        # APScheduler job args are [task_id, user_id, task_name, retry_count, execution_id]
+        args = mock_sched.add_job.call_args.kwargs["args"]
+        assert args[0] == TASK_ID
+        assert args[3] == 0  # retry_count reset
+        assert args[4] is None  # execution_id NOT forwarded
+
+    @pytest.mark.asyncio
     async def test_execute_task_job_delegates_to_execute(self, job_mocks):
         """execute_task_job delegates to _execute with execution_id=None."""
         job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
