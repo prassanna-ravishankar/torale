@@ -165,6 +165,31 @@ class TestExecute:
         assert call_kwargs.kwargs["id"] == f"task-{TASK_ID}"
 
     @pytest.mark.asyncio
+    async def test_running_transition_clears_prior_error_fields(self, job_mocks):
+        """On entry to _execute, the RUNNING-state UPDATE must clear error fields.
+
+        Regression: retries reuse execution_id, so the row still holds
+        error_message / internal_error / error_category from the failed prior
+        attempt. If a retry then succeeds, persist_execution_result updates
+        status but doesn't touch the error columns, leaving the success row
+        with a stale user-facing error message.
+        """
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
+        job_mocks.agent.return_value = _make_agent_response()
+
+        await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
+
+        # The first db.execute call should be the RUNNING state transition,
+        # and it must clear error fields, completed_at, and stale result flags.
+        first_sql = job_mocks.db.execute.call_args_list[0].args[0]
+        assert "status = $2" in first_sql
+        assert "error_message = NULL" in first_sql
+        assert "internal_error = NULL" in first_sql
+        assert "error_category = NULL" in first_sql
+        assert "completed_at = NULL" in first_sql
+        assert "result = '{}'::jsonb" in first_sql
+
+    @pytest.mark.asyncio
     async def test_retry_path_preserves_execution_id(self, job_mocks):
         """Failed-attempt retries must share a row by forwarding execution_id.
 
