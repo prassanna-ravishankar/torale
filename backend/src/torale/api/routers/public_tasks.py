@@ -184,7 +184,9 @@ async def get_task_rss_feed(
     executions = await db.fetch_all(executions_query, task_id)
 
     task_link = f"{settings.frontend_url}/tasks/{task_id}"
-    feed_url = str(request.url_for("get_task_rss_feed", task_id=task_id))
+    feed_url = str(request.url_for("get_task_rss_feed", task_id=task_id)).replace(
+        "http://", "https://", 1
+    )
 
     # Build RSS 2.0 feed
     rss = ET.Element("rss", version="2.0")
