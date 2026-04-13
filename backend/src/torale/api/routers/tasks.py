@@ -7,16 +7,18 @@ from uuid import UUID
 
 from apscheduler.jobstores.base import JobLookupError
 from asyncpg.exceptions import UniqueViolationError
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
 from torale.access import CurrentUser, OptionalUser
+from torale.api.rate_limiter import get_user_or_ip, limiter
 from torale.api.utils.task_parsers import (
     fetch_feed_executions,
     parse_execution_row,
     parse_task_row,
     parse_task_with_execution,
 )
+from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.core.views import increment_view
 from torale.notifications import NotificationValidationError, validate_notification
@@ -126,12 +128,25 @@ async def _validate_and_extract_notifications(
 
 
 @router.post("/", response_model=Task)
+@limiter.limit("10/minute", key_func=get_user_or_ip)
 async def create_task(
+    request: Request,
     task: TaskCreate,
     user: CurrentUser,
     background_tasks: BackgroundTasks,
     db: Database = Depends(get_db),
 ):
+    if task.state == TaskState.ACTIVE:
+        active_count = await db.fetch_val(
+            "SELECT COUNT(*) FROM tasks WHERE user_id = $1 AND state = 'active'",
+            user.id,
+        )
+        if active_count >= settings.max_active_tasks_per_user:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Maximum of {settings.max_active_tasks_per_user} active tasks reached. Complete or pause existing tasks first.",
+            )
+
     # Validate notifications and extract fields for database
     validated_notifications, extracted = await _validate_and_extract_notifications(
         task.notifications
@@ -145,9 +160,10 @@ async def create_task(
         INSERT INTO tasks (
             user_id, name, state, next_run,
             search_query, condition_description, notifications,
-            notification_channels, notification_email, webhook_url, webhook_secret
+            notification_channels, notification_email, webhook_url, webhook_secret,
+            context
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING *
     """
 
@@ -164,6 +180,7 @@ async def create_task(
         extracted["notification_email"],
         extracted["webhook_url"],
         extracted["webhook_secret"],
+        task.context,
     )
 
     if not row:

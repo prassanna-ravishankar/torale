@@ -52,6 +52,7 @@ class TaskData(TypedDict, total=False):
     notification_email: str | None
     webhook_url: str | None
     webhook_secret: str | None
+    context: dict | None
 
 
 class TaskBase(BaseModel):
@@ -71,6 +72,7 @@ class TaskCreate(TaskBase):
     search_query: str
     condition_description: str | None = None
     run_immediately: bool = False  # Execute task immediately after creation
+    context: dict | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -79,6 +81,7 @@ class TaskUpdate(BaseModel):
     search_query: str | None = None
     condition_description: str | None = None
     notifications: list[NotificationConfig] | None = None
+    context: dict | None = None
 
 
 class TaskExecutionBase(BaseModel):
@@ -131,6 +134,8 @@ class Task(TaskBase):
 
     # Immediate execution error (only set when run_immediately fails during creation)
     immediate_execution_error: str | None = None
+
+    context: dict | None = None
 
     # Shareable tasks fields
     is_public: bool = False

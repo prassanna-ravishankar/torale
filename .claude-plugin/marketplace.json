@@ -1,0 +1,24 @@
+{
+  "name": "torale",
+  "owner": {
+    "name": "Torale",
+    "email": "hello@torale.ai"
+  },
+  "metadata": {
+    "description": "AI-powered web monitoring plugins"
+  },
+  "plugins": [
+    {
+      "name": "torale",
+      "source": "..",
+      "description": "Monitor the web for conditions and get notified when they're met",
+      "version": "0.1.0",
+      "author": {
+        "name": "Torale"
+      },
+      "homepage": "https://torale.ai",
+      "keywords": ["monitoring", "web", "search", "alerts", "webhooks"],
+      "category": "automation"
+    }
+  ]
+}

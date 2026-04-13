@@ -17,7 +17,7 @@ from torale.notifications import (
 )
 from torale.notifications.novu_service import NotificationPayload
 from torale.scheduler.history import ExecutionRecord
-from torale.tasks import TaskStatus
+from torale.tasks import NotificationConfig, TaskStatus
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +118,17 @@ async def fetch_notification_context(task_id: str, execution_id: str, user_id: s
     if not execution:
         raise RuntimeError(f"Execution {execution_id} not found")
 
+    # Parse notification configs from JSONB
+    webhook_headers: dict[str, str] | None = None
+    raw_notifications = task.get("notifications") or []
+    if isinstance(raw_notifications, str):
+        raw_notifications = json.loads(raw_notifications)
+    notifications = [NotificationConfig(**n) for n in raw_notifications]
+    for notif in notifications:
+        if notif.type == "webhook" and notif.headers:
+            webhook_headers = notif.headers
+            break
+
     return {
         "task": dict(task),
         "execution": dict(execution),
@@ -126,6 +137,7 @@ async def fetch_notification_context(task_id: str, execution_id: str, user_id: s
         "notification_channels": task.get("notification_channels") or ["email"],
         "webhook_url": task.get("webhook_url") or task.get("user_webhook_url"),
         "webhook_secret": task.get("webhook_secret") or task.get("user_webhook_secret"),
+        "webhook_headers": webhook_headers,
     }
 
 
@@ -261,7 +273,11 @@ async def send_webhook_notification(notification_context: dict, result: dict) ->
     signature: str | None = None
     try:
         success, http_status, error, signature = await service.deliver(
-            webhook_url, payload, webhook_secret, attempt=1
+            webhook_url,
+            payload,
+            webhook_secret,
+            attempt=1,
+            custom_headers=notification_context["webhook_headers"],
         )
     finally:
         await service.close()

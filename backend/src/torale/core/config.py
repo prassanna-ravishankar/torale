@@ -52,8 +52,9 @@ class Settings(BaseSettings):
     torale_noauth: bool = False
     torale_noauth_email: str = "test@example.com"
 
-    # Platform capacity limit for beta
+    # Platform capacity limits
     max_users: int = 100
+    max_active_tasks_per_user: int = 50
 
     # Redis (optional — for async view counting)
     redis_host: str | None = None
