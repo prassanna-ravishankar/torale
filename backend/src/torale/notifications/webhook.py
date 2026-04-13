@@ -96,7 +96,12 @@ class WebhookDeliveryService:
         self.client = httpx.AsyncClient(timeout=self.TIMEOUT)
 
     async def deliver(
-        self, url: str, payload: WebhookPayload, secret: str, attempt: int = 1
+        self,
+        url: str,
+        payload: WebhookPayload,
+        secret: str,
+        attempt: int = 1,
+        custom_headers: dict[str, str] | None = None,
     ) -> tuple[bool, int | None, str | None, str]:
         """
         Deliver webhook with HMAC signature.
@@ -117,6 +122,12 @@ class WebhookDeliveryService:
             "X-Torale-Delivery": payload.id,
             "X-Torale-Timestamp": str(timestamp),
         }
+
+        if custom_headers:
+            reserved = {k.lower() for k in headers}
+            for k, v in custom_headers.items():
+                if k.lower() not in reserved:
+                    headers[k] = v
 
         try:
             response = await self.client.post(url, content=payload_json, headers=headers)
@@ -168,25 +179,31 @@ def build_webhook_payload(
     """
     notification_text = result.get("notification", "")
 
+    data = {
+        "task": {
+            "id": str(task["id"]),
+            "name": task["name"],
+            "search_query": task.get("search_query", ""),
+            "condition_description": task.get("condition_description", ""),
+        },
+        "execution": {
+            "id": execution_id,
+            "notification": notification_text,
+            "completed_at": str(execution.get("completed_at", "")),
+        },
+        "result": {
+            "answer": result.get("summary", ""),
+            "grounding_sources": result.get("sources", []),
+        },
+    }
+
+    task_context = task.get("context")
+    if task_context:
+        data["context"] = task_context
+
     return WebhookPayload(
         id=execution_id,
         event_type="task.condition_met",
         created_at=int(time.time()),
-        data={
-            "task": {
-                "id": str(task["id"]),
-                "name": task["name"],
-                "search_query": task.get("search_query", ""),
-                "condition_description": task.get("condition_description", ""),
-            },
-            "execution": {
-                "id": execution_id,
-                "notification": notification_text,
-                "completed_at": str(execution.get("completed_at", "")),
-            },
-            "result": {
-                "answer": result.get("summary", ""),
-                "grounding_sources": result.get("sources", []),
-            },
-        },
+        data=data,
     )
