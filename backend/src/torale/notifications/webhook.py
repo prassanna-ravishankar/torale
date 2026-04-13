@@ -10,6 +10,8 @@ from typing import Literal
 import httpx
 from pydantic import BaseModel
 
+from torale.utils.jsonb import parse_jsonb
+
 
 class WebhookPayload(BaseModel):
     """Standard webhook payload format (inspired by Stripe/GitHub)."""
@@ -197,7 +199,7 @@ def build_webhook_payload(
         },
     }
 
-    task_context = task.get("context")
+    task_context = parse_jsonb(task.get("context"), "context", dict, None)
     if task_context:
         data["context"] = task_context
 
