@@ -121,6 +121,8 @@ async def fetch_notification_context(task_id: str, execution_id: str, user_id: s
     # Parse notification configs from JSONB
     webhook_headers: dict[str, str] | None = None
     raw_notifications = task.get("notifications") or []
+    if isinstance(raw_notifications, str):
+        raw_notifications = json.loads(raw_notifications)
     notifications = [NotificationConfig(**n) for n in raw_notifications]
     for notif in notifications:
         if notif.type == "webhook" and notif.headers:
