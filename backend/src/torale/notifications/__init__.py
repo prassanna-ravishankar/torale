@@ -136,5 +136,3 @@ async def send_notifications(
             )
 
     return results
-
-

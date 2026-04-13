@@ -271,7 +271,10 @@ async def send_webhook_notification(notification_context: dict, result: dict) ->
     signature: str | None = None
     try:
         success, http_status, error, signature = await service.deliver(
-            webhook_url, payload, webhook_secret, attempt=1,
+            webhook_url,
+            payload,
+            webhook_secret,
+            attempt=1,
             custom_headers=notification_context["webhook_headers"],
         )
     finally:
