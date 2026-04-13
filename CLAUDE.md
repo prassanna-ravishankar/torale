@@ -8,6 +8,8 @@ Torale is a **grounded search monitoring platform**. Users create tasks that wat
 
 **Domain**: torale.ai (prod), staging.torale.ai (staging)
 
+**Memory**: `.claude/memory/` stores project context (design decisions, gotchas, legacy data notes) that doesn't belong in git commit history -- read it, keep it current, commit it with your changes.
+
 ## Codebase
 
 **Stack**: Python FastAPI + React/TypeScript + GKE + APScheduler + Clerk Auth + Gemini
