@@ -3,6 +3,49 @@
 from pydantic import BaseModel, Field
 
 
+class GroundingSource(BaseModel):
+    """A URL source backing agent evidence."""
+
+    url: str
+    title: str
+
+
+class NotificationContext(BaseModel):
+    """Typed context for notification delivery, built from task + user + execution data."""
+
+    task: dict
+    execution: dict
+    clerk_email: str
+    verified_emails: list[str] = []
+    notification_channels: list[str] = Field(default_factory=lambda: ["email"])
+    webhook_url: str | None = None
+    webhook_secret: str | None = None
+    webhook_headers: dict[str, str] | None = None
+
+
+class AgentExecutionResult(BaseModel):
+    """Agent output persisted to DB. Constructed in job.py, consumed by persist_execution_result."""
+
+    evidence: str
+    notification: str | None = None
+    confidence: int
+    next_run: str | None = None
+    grounding_sources: list[GroundingSource] = []
+    activity: list[dict] | None = None
+
+
+class EnrichedExecutionResult(BaseModel):
+    """Execution result enriched with notification metadata for delivery functions."""
+
+    execution_id: str
+    summary: str
+    sources: list[GroundingSource] = []
+    notification: str | None = None
+    is_first_execution: bool = False
+    next_run: str | None = None
+    confidence: int | None = None
+
+
 class ActivityStep(BaseModel):
     """A single step the agent took during monitoring."""
 

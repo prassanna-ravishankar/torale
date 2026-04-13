@@ -17,6 +17,11 @@ from torale.notifications import (
 )
 from torale.notifications.novu_service import NotificationPayload
 from torale.scheduler.history import ExecutionRecord
+from torale.scheduler.models import (
+    AgentExecutionResult,
+    EnrichedExecutionResult,
+    NotificationContext,
+)
 from torale.tasks import NotificationConfig, TaskStatus
 
 logger = logging.getLogger(__name__)
@@ -46,7 +51,9 @@ async def create_execution_record(task_id: str) -> str:
     return execution_id
 
 
-async def persist_execution_result(task_id: str, execution_id: str, agent_result: dict) -> None:
+async def persist_execution_result(
+    task_id: str, execution_id: str, agent_result: AgentExecutionResult
+) -> None:
     """Persist agent execution result to database.
 
     Maps agent response fields:
@@ -56,10 +63,9 @@ async def persist_execution_result(task_id: str, execution_id: str, agent_result
     """
     now_utc = datetime.now(UTC)
 
-    notification_text = agent_result.get("notification")
-    grounding_sources = agent_result.get("grounding_sources", [])
-    evidence = agent_result.get("evidence", "")
+    evidence = agent_result.evidence
     last_known_state = {"evidence": evidence} if evidence else None
+    grounding_sources_json = json.dumps([s.model_dump() for s in agent_result.grounding_sources])
 
     async with db.acquire() as conn:
         async with conn.transaction():
@@ -71,10 +77,10 @@ async def persist_execution_result(task_id: str, execution_id: str, agent_result
                 WHERE id = $6
                 """,
                 TaskStatus.SUCCESS.value,
-                json.dumps(agent_result),
+                agent_result.model_dump_json(),
                 now_utc,
-                notification_text,
-                json.dumps(grounding_sources),
+                agent_result.notification,
+                grounding_sources_json,
                 UUID(execution_id),
             )
 
@@ -93,7 +99,9 @@ async def persist_execution_result(task_id: str, execution_id: str, agent_result
             )
 
 
-async def fetch_notification_context(task_id: str, execution_id: str, user_id: str) -> dict:
+async def fetch_notification_context(
+    task_id: str, execution_id: str, user_id: str
+) -> NotificationContext:
     """Fetch notification context: task, user, execution details."""
     task = await db.fetch_one(
         """
@@ -129,36 +137,37 @@ async def fetch_notification_context(task_id: str, execution_id: str, user_id: s
             webhook_headers = notif.headers
             break
 
-    return {
-        "task": dict(task),
-        "execution": dict(execution),
-        "clerk_email": task["clerk_email"],
-        "verified_emails": task["verified_notification_emails"] or [],
-        "notification_channels": task.get("notification_channels") or ["email"],
-        "webhook_url": task.get("webhook_url") or task.get("user_webhook_url"),
-        "webhook_secret": task.get("webhook_secret") or task.get("user_webhook_secret"),
-        "webhook_headers": webhook_headers,
-    }
+    return NotificationContext(
+        task=dict(task),
+        execution=dict(execution),
+        clerk_email=task["clerk_email"],
+        verified_emails=task["verified_notification_emails"] or [],
+        notification_channels=task.get("notification_channels") or ["email"],
+        webhook_url=task.get("webhook_url") or task.get("user_webhook_url"),
+        webhook_secret=task.get("webhook_secret") or task.get("user_webhook_secret"),
+        webhook_headers=webhook_headers,
+    )
 
 
 async def send_email_notification(
-    user_id: str, task_name: str, notification_context: dict, result: dict
+    user_id: str,
+    task_name: str,
+    notification_context: NotificationContext,
+    result: EnrichedExecutionResult,
 ) -> bool:
     """Send email notification (welcome or condition met).
 
     Returns True if delivered, False if skipped (e.g. Novu not configured).
     Raises on failure.
     """
-    task = notification_context["task"]
+    task = notification_context.task
     task_id = str(task["id"])
-    execution_id = result.get("execution_id")
-    if not execution_id:
-        raise RuntimeError("execution_id required for email notifications")
-    clerk_email = notification_context["clerk_email"]
-    verified_emails = notification_context["verified_emails"]
-    is_first_execution = result.get("is_first_execution", False)
+    execution_id = result.execution_id
+    clerk_email = notification_context.clerk_email
+    verified_emails = notification_context.verified_emails
+    sources_as_dicts = [s.model_dump() for s in result.sources]
 
-    if is_first_execution:
+    if result.is_first_execution:
         logger.info(f"Sending welcome email for task {task_id}")
 
         notification_payload = NotificationPayload(
@@ -168,14 +177,14 @@ async def send_email_notification(
             answer="",
             grounding_sources=[],
             task_id=str(task_id),
-            next_run=result.get("next_run"),
+            next_run=result.next_run,
         )
         await novu_service.send_welcome_email(
             payload=notification_payload,
             first_execution_result={
-                "answer": result.get("summary", ""),
-                "condition_met": result.get("notification") is not None,
-                "grounding_sources": result.get("sources", []),
+                "answer": result.summary,
+                "condition_met": result.notification is not None,
+                "grounding_sources": sources_as_dicts,
             },
         )
         logger.info(f"Welcome email sent for task {task_id}")
@@ -201,36 +210,33 @@ async def send_email_notification(
         raise RuntimeError(f"Spam limit exceeded: {error}")
 
     # Send email via Novu
-    answer = result.get("summary", "")
-    sources = result.get("sources", [])
-
     notification_payload = NotificationPayload(
         subscriber_id=recipient_email,
         task_name=task_name,
         search_query=task.get("search_query", ""),
-        answer=answer,
-        grounding_sources=sources,
+        answer=result.summary,
+        grounding_sources=sources_as_dicts,
         task_id=str(task_id),
-        next_run=result.get("next_run"),
+        next_run=result.next_run,
     )
     novu_result = await novu_service.send_condition_met_notification(
         payload=notification_payload,
         execution_id=execution_id,
-        confidence=result.get("confidence"),
+        confidence=result.confidence,
     )
 
     email_status = "success"
     email_error = None
 
-    if novu_result["success"]:
+    if novu_result.success:
         logger.info(f"Email sent for task {task_id}")
-    elif novu_result.get("skipped"):
+    elif novu_result.skipped:
         logger.info("Email notification skipped (Novu not configured)")
         email_status = "skipped"
     else:
-        logger.error(f"Failed to send email for task {task_id}: {novu_result.get('error')}")
+        logger.error(f"Failed to send email for task {task_id}: {novu_result.error}")
         email_status = "failed"
-        email_error = str(novu_result.get("error"))
+        email_error = str(novu_result.error)
 
     await db.execute(
         """
@@ -252,17 +258,17 @@ async def send_email_notification(
     return email_status == "success"
 
 
-async def send_webhook_notification(notification_context: dict, result: dict) -> None:
+async def send_webhook_notification(
+    notification_context: NotificationContext, result: EnrichedExecutionResult
+) -> None:
     """Send webhook notification."""
-    task = notification_context["task"]
-    execution = notification_context["execution"]
+    task = notification_context.task
+    execution = notification_context.execution
     task_id = str(task["id"])
-    execution_id = result.get("execution_id")
-    if not execution_id:
-        raise RuntimeError("execution_id required for webhook notifications")
+    execution_id = result.execution_id
 
-    webhook_url = notification_context.get("webhook_url")
-    webhook_secret = notification_context.get("webhook_secret")
+    webhook_url = notification_context.webhook_url
+    webhook_secret = notification_context.webhook_secret
 
     if not webhook_url or not webhook_secret:
         raise RuntimeError("Webhook URL or secret not configured")
@@ -277,7 +283,7 @@ async def send_webhook_notification(notification_context: dict, result: dict) ->
             payload,
             webhook_secret,
             attempt=1,
-            custom_headers=notification_context["webhook_headers"],
+            custom_headers=notification_context.webhook_headers,
         )
     finally:
         await service.close()

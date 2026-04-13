@@ -4,6 +4,8 @@ import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from pydantic import BaseModel
+
 from torale.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -56,6 +58,15 @@ def _format_sources(sources: list[dict], limit: int = 5) -> list[dict]:
     return [{"uri": s.get("url", ""), "title": s.get("title", "Unknown")} for s in sources[:limit]]
 
 
+class NovuTriggerResult(BaseModel):
+    """Result from triggering a Novu workflow."""
+
+    success: bool
+    transaction_id: str | None = None
+    error: str | None = None
+    skipped: bool = False
+
+
 @dataclass
 class NotificationPayload:
     """Shared context for task notification emails."""
@@ -91,10 +102,12 @@ class NovuService:
                 self._enabled = False
                 self._client = None
 
-    async def _trigger(self, workflow_id: str, subscriber_id: str, payload: dict) -> dict:
-        """Trigger a Novu workflow and return result dict."""
+    async def _trigger(
+        self, workflow_id: str, subscriber_id: str, payload: dict
+    ) -> NovuTriggerResult:
+        """Trigger a Novu workflow and return result."""
         if not self._enabled or not self._client:
-            return {"success": False, "error": "Novu not configured", "skipped": True}
+            return NovuTriggerResult(success=False, error="Novu not configured", skipped=True)
 
         try:
             import novu_py
@@ -112,18 +125,18 @@ class NovuService:
                 transaction_id = response.result.transaction_id
 
             logger.info(f"Novu workflow '{workflow_id}' sent to {subscriber_id}: {transaction_id}")
-            return {"success": True, "transaction_id": transaction_id}
+            return NovuTriggerResult(success=True, transaction_id=transaction_id)
 
         except Exception as e:
             logger.error(f"Novu workflow '{workflow_id}' error: {e}")
-            return {"success": False, "error": str(e)}
+            return NovuTriggerResult(success=False, error=str(e))
 
     async def send_condition_met_notification(
         self,
         payload: NotificationPayload,
         execution_id: str,
         confidence: int | None = None,
-    ) -> dict:
+    ) -> NovuTriggerResult:
         """Send notification when monitoring condition is met."""
         return await self._trigger(
             workflow_id=settings.novu_workflow_id,
@@ -142,7 +155,9 @@ class NovuService:
             },
         )
 
-    async def send_verification_email(self, email: str, code: str, user_name: str) -> dict:
+    async def send_verification_email(
+        self, email: str, code: str, user_name: str
+    ) -> NovuTriggerResult:
         """Send email verification code."""
         if not self._enabled or not self._client:
             logger.warning(f"Novu not configured - verification code for {email}: {code}")
@@ -160,7 +175,7 @@ class NovuService:
         self,
         payload: NotificationPayload,
         first_execution_result: dict | None,
-    ) -> dict:
+    ) -> NovuTriggerResult:
         """Send welcome email after task creation with first execution results."""
         answer_html = None
         if first_execution_result:

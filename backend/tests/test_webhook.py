@@ -13,20 +13,17 @@ from torale.notifications import (
     WebhookSignature,
     build_webhook_payload,
 )
+from torale.scheduler.models import EnrichedExecutionResult, GroundingSource
 
 
 @pytest.fixture
 def sample_monitoring_result():
-    """Create MonitoringResult dict (new structure)."""
-    return {
-        "summary": "Test answer",
-        "sources": [{"uri": "https://example.com", "title": "Example"}],
-        "metadata": {
-            "changed": True,
-            "change_explanation": "Test change",
-            "current_state": {"test_field": "test_value"},
-        },
-    }
+    """Create EnrichedExecutionResult for webhook tests."""
+    return EnrichedExecutionResult(
+        execution_id="test-exec-id",
+        summary="Test answer",
+        sources=[GroundingSource(url="https://example.com", title="Example")],
+    )
 
 
 class TestWebhookSignature:
@@ -170,7 +167,7 @@ class TestBuildWebhookPayload:
 
         exec_data = payload.data["execution"]
         assert exec_data["id"] == str(sample_execution.id)
-        assert exec_data["notification"] == sample_monitoring_result.get("notification", "")
+        assert exec_data["notification"] == (sample_monitoring_result.notification or "")
 
 
 class TestWebhookDeliveryService:

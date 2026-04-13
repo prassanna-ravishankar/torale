@@ -12,7 +12,7 @@ import pytest
 
 from torale.scheduler.history import ExecutionRecord
 from torale.scheduler.job import _execute, execute_task_job
-from torale.scheduler.models import MonitoringResponse
+from torale.scheduler.models import MonitoringResponse, NotificationContext
 
 TASK_ID = str(uuid4())
 EXECUTION_ID = str(uuid4())
@@ -32,6 +32,15 @@ def _make_task_row():
         "notification_channels": ["email"],
         "state": "active",
     }
+
+
+def _make_notification_context(channels=None):
+    return NotificationContext(
+        task={"id": TASK_ID, "name": TASK_NAME},
+        execution={"id": EXECUTION_ID},
+        clerk_email="test@example.com",
+        notification_channels=channels or ["email"],
+    )
 
 
 def _make_agent_response(notification=None, evidence="no changes", next_run=FUTURE):
@@ -65,7 +74,7 @@ class TestExecute:
         job_mocks.agent.return_value = _make_agent_response(
             notification="Release date is Sept 9", next_run=None
         )
-        job_mocks.fetch_ctx.return_value = {"notification_channels": ["email"]}
+        job_mocks.fetch_ctx.return_value = _make_notification_context()
         job_mocks.email.return_value = True
 
         mock_service = MagicMock()
@@ -82,7 +91,7 @@ class TestExecute:
         """Agent returns next_run -> notification sent, NOT completed."""
         job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
         job_mocks.agent.return_value = _make_agent_response(notification="Price dropped")
-        job_mocks.fetch_ctx.return_value = {"notification_channels": ["email"]}
+        job_mocks.fetch_ctx.return_value = _make_notification_context()
         job_mocks.email.return_value = True
 
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
@@ -95,7 +104,7 @@ class TestExecute:
         """Notification raises -> execution still succeeds, next run still scheduled."""
         job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
         job_mocks.agent.return_value = _make_agent_response(notification="Condition met")
-        job_mocks.fetch_ctx.return_value = {"notification_channels": ["email"]}
+        job_mocks.fetch_ctx.return_value = _make_notification_context()
         job_mocks.email.side_effect = RuntimeError("SMTP error")
 
         mock_sched = MagicMock()
@@ -113,7 +122,7 @@ class TestExecute:
         job_mocks.agent.return_value = _make_agent_response(
             notification="Condition met", next_run=None
         )
-        job_mocks.fetch_ctx.return_value = {"notification_channels": ["email"]}
+        job_mocks.fetch_ctx.return_value = _make_notification_context()
         job_mocks.email.side_effect = RuntimeError("SMTP error")
 
         mock_service = MagicMock()
@@ -295,14 +304,14 @@ class TestExecute:
         """First successful execution -> is_first_execution=True in enriched_result."""
         job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
         job_mocks.agent.return_value = _make_agent_response(notification="Condition met")
-        job_mocks.fetch_ctx.return_value = {"notification_channels": ["email"]}
+        job_mocks.fetch_ctx.return_value = _make_notification_context()
         job_mocks.email.return_value = True
         job_mocks.db.fetch_val = AsyncMock(return_value=1)
 
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
         enriched_result = job_mocks.email.call_args[0][3]
-        assert enriched_result["is_first_execution"] is True
+        assert enriched_result.is_first_execution is True
 
     @pytest.mark.asyncio
     async def test_first_run_no_history(self, job_mocks):

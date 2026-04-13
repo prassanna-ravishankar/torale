@@ -8,6 +8,8 @@ from uuid import uuid4
 
 import pytest
 
+from torale.scheduler.models import AgentExecutionResult, GroundingSource
+
 MODULE = "torale.scheduler.activities"
 
 TASK_ID = str(uuid4())
@@ -15,13 +17,13 @@ EXECUTION_ID = str(uuid4())
 
 
 def _make_agent_result():
-    return {
-        "evidence": "No changes detected",
-        "notification": None,
-        "confidence": "high",
-        "next_run": None,
-        "grounding_sources": [{"url": "https://example.com"}],
-    }
+    return AgentExecutionResult(
+        evidence="No changes detected",
+        notification=None,
+        confidence=80,
+        next_run=None,
+        grounding_sources=[GroundingSource(url="https://example.com", title="example.com")],
+    )
 
 
 def _setup_db_mock(mock_db):
@@ -66,10 +68,12 @@ class TestPersistExecutionResult:
         """evidence -> last_known_state, notification/grounding_sources mapped."""
         mock_conn = _setup_db_mock(mock_db)
 
-        agent_result = _make_agent_result()
-        agent_result["evidence"] = "Price is $999"
-        agent_result["notification"] = "Price dropped!"
-        agent_result["grounding_sources"] = [{"url": "https://apple.com"}]
+        agent_result = AgentExecutionResult(
+            evidence="Price is $999",
+            notification="Price dropped!",
+            confidence=90,
+            grounding_sources=[GroundingSource(url="https://apple.com", title="Apple")],
+        )
 
         from torale.scheduler.activities import persist_execution_result
 
@@ -78,7 +82,7 @@ class TestPersistExecutionResult:
         exec_call = mock_conn.execute.call_args_list[0]
         exec_args = exec_call[0]
         assert exec_args[4] == "Price dropped!"  # notification
-        assert json.loads(exec_args[5]) == [{"url": "https://apple.com"}]
+        assert json.loads(exec_args[5]) == [{"url": "https://apple.com", "title": "Apple"}]
 
         task_call = mock_conn.execute.call_args_list[1]
         task_args = task_call[0]
