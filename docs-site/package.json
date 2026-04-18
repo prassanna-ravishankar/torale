@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "docs:dev": "vitepress dev",
-    "docs:build": "vitepress build",
+    "docs:build": "vitepress build && node scripts/build-nginx-redirects.mjs",
     "docs:preview": "vitepress preview"
   },
   "devDependencies": {
     "@iconify-json/carbon": "^1.2.14",
     "@iconify-json/logos": "^1.2.10",
     "@iconify-json/mdi": "^1.2.3",
+    "esbuild": "^0.27.7",
     "mermaid": "^11.14.0",
     "vitepress": "^1.5.0",
     "vitepress-plugin-mermaid": "^2.0.17",
