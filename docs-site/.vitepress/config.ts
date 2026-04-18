@@ -67,6 +67,7 @@ export default withMermaid(
 
     nav: [
       { text: 'Getting Started', link: '/getting-started/', activeMatch: '/getting-started/' },
+      { text: 'Architecture', link: '/architecture/grounded-search', activeMatch: '/architecture/' },
       { text: 'API', link: '/api/overview', activeMatch: '/api/' },
       { text: 'SDK', link: '/sdk/quickstart', activeMatch: '/sdk/' },
       { text: 'App', link: 'https://torale.ai' }
@@ -79,6 +80,16 @@ export default withMermaid(
           items: [
             { text: 'Overview', link: '/getting-started/' },
             { text: 'Python SDK', link: '/getting-started/sdk' }
+          ]
+        }
+      ],
+
+      '/architecture/': [
+        {
+          text: 'Architecture',
+          items: [
+            { text: 'Grounded Search', link: '/architecture/grounded-search' },
+            { text: 'Task State Machine', link: '/architecture/task-state-machine' }
           ]
         }
       ],
