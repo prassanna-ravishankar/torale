@@ -1,17 +1,18 @@
 import { useNavigate } from "react-router-dom"
 import { Logo } from "@/components/Logo"
 import { ArrowLeft } from "lucide-react"
-import { Helmet } from "react-helmet-async"
+import { DynamicMeta } from "@/components/DynamicMeta"
 
 export function TermsOfService() {
   const navigate = useNavigate()
 
   return (
     <>
-      <Helmet>
-        <title>Terms of Service - Torale</title>
-        <meta name="description" content="Terms of service for using Torale's AI-powered web monitoring platform." />
-      </Helmet>
+      <DynamicMeta
+        path="/terms"
+        title="Terms of Service - Torale"
+        description="Terms of service for using Torale's AI-powered web monitoring platform."
+      />
       <div className="min-h-screen bg-[#fafafa]">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full bg-[#fafafa]/90 backdrop-blur-md border-b border-zinc-200">

@@ -1,8 +1,8 @@
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { motion } from '@/lib/motion-compat';
 import { CheckCircle2, XCircle, ArrowRight, Zap } from 'lucide-react';
 import { COMPETITORS } from '@/data/competitors';
+import { DynamicMeta } from '@/components/DynamicMeta';
 
 /**
  * Comparison page for Torale vs competitors
@@ -21,13 +21,12 @@ export function ComparePage() {
 
   return (
     <>
-      <Helmet>
-        <title>{data.metaTitle}</title>
-        <meta name="description" content={data.metaDescription} />
-        <meta property="og:title" content={data.metaTitle} />
-        <meta property="og:description" content={data.metaDescription} />
-        <meta property="og:type" content="article" />
-      </Helmet>
+      <DynamicMeta
+        path={`/compare/${tool}`}
+        title={data.metaTitle}
+        description={data.metaDescription}
+        type="article"
+      />
 
       <div className="min-h-screen bg-[#fafafa]">
         {/* Hero Section */}

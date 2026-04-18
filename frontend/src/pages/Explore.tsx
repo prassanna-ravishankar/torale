@@ -80,9 +80,9 @@ export function Explore() {
   return (
     <>
       <DynamicMeta
+        path="/explore"
         title="Explore Intelligence - Torale"
         description="Discover community monitoring results and public tasks. Browse live findings and copy monitors to your dashboard."
-        url="https://torale.ai/explore"
       />
       <div className="min-h-screen bg-zinc-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
