@@ -1,16 +1,24 @@
-import { defineConfig } from 'vitepress'
+import { defineConfig, type PageData } from 'vitepress'
 import { withMermaid } from 'vitepress-plugin-mermaid'
+
+const SITE_ORIGIN = 'https://docs.torale.ai'
+const SITE_DESCRIPTION = 'Torale developer documentation — API reference and Python SDK'
 
 export default withMermaid(
   defineConfig({
   title: 'Torale Docs',
-  description: 'Torale developer documentation — API reference and Python SDK',
+  description: SITE_DESCRIPTION,
   base: '/',
   lang: 'en-US',
   lastUpdated: true,
+  cleanUrls: true,
 
   sitemap: {
-    hostname: 'https://docs.torale.ai'
+    hostname: SITE_ORIGIN,
+    transformItems: (items) => {
+      const filtered = items.filter((item) => item.url !== '404' && !item.url.endsWith('/404'))
+      return filtered
+    },
   },
 
   ignoreDeadLinks: [
@@ -24,12 +32,35 @@ export default withMermaid(
     ['link', { rel: 'icon', type: 'image/png', sizes: '64x64', href: '/logo-64.png' }],
     ['meta', { name: 'theme-color', content: '#18181b' }],
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:title', content: 'Torale Documentation' }],
-    ['meta', { property: 'og:description', content: 'Automated web monitoring with intelligent condition evaluation' }],
-    ['meta', { property: 'og:image', content: 'https://docs.torale.ai/og-image.png' }],
+    ['meta', { property: 'og:site_name', content: 'Torale Docs' }],
+    ['meta', { property: 'og:image', content: `${SITE_ORIGIN}/og-image.png` }],
     ['meta', { property: 'og:image:width', content: '1200' }],
     ['meta', { property: 'og:image:height', content: '630' }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:image', content: `${SITE_ORIGIN}/og-image.png` }],
   ],
+
+  // Inject per-page canonical + og/twitter title+description+url into the
+  // static HTML Googlebot sees. Without this, every page shares the global
+  // <title>Torale Docs</title> and GSC reports "Duplicate without canonical".
+  transformPageData(pageData: PageData) {
+    const relPath = pageData.relativePath.replace(/(index)?\.md$/, '').replace(/\/$/, '')
+    const canonical = relPath ? `${SITE_ORIGIN}/${relPath}` : `${SITE_ORIGIN}/`
+    const pageTitle = pageData.title || pageData.frontmatter.title || 'Torale Docs'
+    const pageDescription = pageData.frontmatter.description || SITE_DESCRIPTION
+    const fullTitle = pageTitle === 'Torale Docs' ? pageTitle : `${pageTitle} | Torale Docs`
+
+    pageData.frontmatter.head ??= []
+    pageData.frontmatter.head.push(
+      ['link', { rel: 'canonical', href: canonical }],
+      ['meta', { name: 'description', content: pageDescription }],
+      ['meta', { property: 'og:title', content: fullTitle }],
+      ['meta', { property: 'og:description', content: pageDescription }],
+      ['meta', { property: 'og:url', content: canonical }],
+      ['meta', { name: 'twitter:title', content: fullTitle }],
+      ['meta', { name: 'twitter:description', content: pageDescription }],
+    )
+  },
 
   themeConfig: {
     logo: '/logo.svg',
