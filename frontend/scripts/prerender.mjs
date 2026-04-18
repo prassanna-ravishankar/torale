@@ -71,10 +71,12 @@ for (const route of ROUTES) {
   await page.evaluate(() => { delete window.__PRERENDER__; });
 
   const html = await page.content();
+  // Non-trailing-slash is the canonical URL form. Write /route to /route.html
+  // so nginx `try_files $uri $uri.html` serves it without a 301 hop.
   const outPath =
     route === '/'
       ? join(DIST, 'index.html')
-      : join(DIST, route.slice(1), 'index.html');
+      : join(DIST, `${route.slice(1)}.html`);
 
   mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, html, 'utf-8');
