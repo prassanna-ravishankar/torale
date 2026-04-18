@@ -82,4 +82,5 @@ If impressions look high but the agent reports no match, the condition is probab
 
 ## Related
 
+- [Self-Scheduling Agents](/architecture/self-scheduling-agents) — how the agent, scheduler, and grounded search compose into a self-driving monitoring loop
 - [Task State Machine](/architecture/task-state-machine) — how task execution is scheduled and terminated

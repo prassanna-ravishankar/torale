@@ -67,7 +67,7 @@ export default withMermaid(
 
     nav: [
       { text: 'Getting Started', link: '/getting-started/', activeMatch: '/getting-started/' },
-      { text: 'Architecture', link: '/architecture/grounded-search', activeMatch: '/architecture/' },
+      { text: 'Architecture', link: '/architecture/self-scheduling-agents', activeMatch: '/architecture/' },
       { text: 'API', link: '/api/overview', activeMatch: '/api/' },
       { text: 'SDK', link: '/sdk/quickstart', activeMatch: '/sdk/' },
       { text: 'App', link: 'https://torale.ai' }
@@ -88,6 +88,7 @@ export default withMermaid(
         {
           text: 'Architecture',
           items: [
+            { text: 'Self-Scheduling Agents', link: '/architecture/self-scheduling-agents' },
             { text: 'Grounded Search', link: '/architecture/grounded-search' },
             { text: 'Task State Machine', link: '/architecture/task-state-machine' }
           ]

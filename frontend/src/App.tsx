@@ -24,6 +24,7 @@ const WaitlistPage = lazy(() => import('@/components/WaitlistPage').then(m => ({
 const Explore = lazy(() => import('@/pages/Explore').then(m => ({ default: m.Explore })))
 const ComparePage = lazy(() => import('@/pages/ComparePage').then(m => ({ default: m.ComparePage })))
 const UseCasePage = lazy(() => import('@/pages/UseCasePage').then(m => ({ default: m.UseCasePage })))
+const ConceptPage = lazy(() => import('@/pages/ConceptPage').then(m => ({ default: m.ConceptPage })))
 const Welcome = lazy(() => import('@/components/Welcome').then(m => ({ default: m.Welcome })))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -222,6 +223,14 @@ export default function App() {
           element={
             <OptionalAuthRoute>
               <UseCasePage />
+            </OptionalAuthRoute>
+          }
+        />
+        <Route
+          path="/concepts/:concept"
+          element={
+            <OptionalAuthRoute>
+              <ConceptPage />
             </OptionalAuthRoute>
           }
         />

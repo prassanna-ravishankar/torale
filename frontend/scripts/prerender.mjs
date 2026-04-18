@@ -3,23 +3,25 @@ import handler from 'serve-handler';
 import http from 'node:http';
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import { build } from 'esbuild';
 
-const DIST = join(import.meta.dirname, '..', 'dist');
+const PROJECT_ROOT = join(import.meta.dirname, '..');
+const DIST = join(PROJECT_ROOT, 'dist');
 const PORT = 4567;
 
-const ROUTES = [
-  '/',
-  '/explore',
-  '/changelog',
-  '/terms',
-  '/privacy',
-  '/use-cases/steam-game-price-alerts',
-  '/use-cases/competitor-price-change-monitor',
-  '/use-cases/crypto-exchange-listing-alert',
-  '/compare/visualping-alternative',
-  '/compare/distill-alternative',
-  '/compare/changetower-alternative',
-];
+// Source the route list from publicRoutes.ts so prerender, sitemap, and
+// runtime meta can't drift. Bundle via esbuild (vite transitive dep).
+const bundle = await build({
+  entryPoints: [join(PROJECT_ROOT, 'src/data/publicRoutes.ts')],
+  bundle: true,
+  format: 'esm',
+  platform: 'node',
+  target: 'node20',
+  write: false,
+});
+const dataUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`;
+const { PUBLIC_ROUTES } = await import(dataUrl);
+const ROUTES = PUBLIC_ROUTES.map((r) => r.path);
 
 // Ensure config.js exists (normally injected at runtime by nginx)
 const configPath = join(DIST, 'config.js');

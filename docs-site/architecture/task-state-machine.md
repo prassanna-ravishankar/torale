@@ -75,3 +75,4 @@ The state machine guarantees:
 ## Related
 
 - [Grounded Search](/architecture/grounded-search) — what runs during an execution, and how it decides `condition_met`/`next_run`
+- [Self-Scheduling Agents](/architecture/self-scheduling-agents) — the broader loop the state machine sits inside
