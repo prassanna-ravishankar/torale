@@ -6,6 +6,7 @@ import json
 import logging
 import time
 import uuid
+from http import HTTPStatus
 
 import httpx
 from a2a.client import A2AClient
@@ -35,6 +36,9 @@ logger = logging.getLogger(__name__)
 AGENT_TIMEOUT = 120  # seconds
 POLL_BACKOFF = [0.5, 1, 2, 4, 8, 16, 32]  # exponential backoff steps
 MAX_CONSECUTIVE_POLL_FAILURES = 3
+
+# Upstream model failures worth retrying on the paid tier.
+FALLBACK_STATUS_CODES = frozenset({HTTPStatus.TOO_MANY_REQUESTS, HTTPStatus.SERVICE_UNAVAILABLE})
 
 # Reuse httpx client for connection pooling
 _httpx_client: httpx.AsyncClient | None = None
@@ -85,7 +89,8 @@ def _handle_failed_task(task: Task) -> None:
     """Process failed task and raise appropriate error.
 
     Extracts error details from task status and raises:
-    - A2AClientHTTPError(429) for rate limits (triggers paid tier fallback)
+    - A2AClientHTTPError for upstream model failures eligible for paid tier fallback
+      (see FALLBACK_STATUS_CODES)
     - RuntimeError for other errors
     """
     task_id = task.id
@@ -105,8 +110,10 @@ def _handle_failed_task(task: Task) -> None:
 
     if error_type == "ModelHTTPError":
         status_code = error_details.get("status_code")
-        if status_code == 429:
-            raise A2AClientHTTPError(429, f"Agent task {task_id} hit rate limit: {message}")
+        if status_code in FALLBACK_STATUS_CODES:
+            raise A2AClientHTTPError(
+                status_code, f"Agent task {task_id} upstream {status_code}: {message}"
+            )
         raise RuntimeError(f"Agent task {task_id} HTTP error {status_code}: {message}")
 
     raise RuntimeError(f"Agent task {task_id} {error_type}: {message}")
@@ -115,15 +122,16 @@ def _handle_failed_task(task: Task) -> None:
 async def call_agent(
     prompt: str, user_id: str | None = None, task_id: str | None = None
 ) -> MonitoringResponse:
-    """Send task to agent with automatic paid tier fallback on 429."""
+    """Send task to agent with automatic paid tier fallback on upstream failures."""
     try:
         result = await _call_agent_internal(settings.agent_url_free, prompt, user_id, task_id)
         tier, fallback = "free", False
     except A2AClientHTTPError as e:
-        if e.status_code != 429:
+        if e.status_code not in FALLBACK_STATUS_CODES:
             raise
         logger.info(
-            "Free tier rate limit hit (429), falling back to paid tier",
+            "Free tier upstream failure (%s), falling back to paid tier",
+            e.status_code,
             extra={"status_code": e.status_code},
         )
         result = await _call_agent_internal(settings.agent_url_paid, prompt, user_id, task_id)
@@ -173,9 +181,8 @@ async def _call_agent_internal(
     try:
         send_response = await client.send_message(request)
     except A2AClientHTTPError as e:
-        # Re-raise 429 to preserve status_code for fallback logic
-        # Wrap other HTTP errors in RuntimeError for consistent error handling
-        if e.status_code == 429:
+        # Preserve status_code for fallback-eligible upstream failures; wrap the rest.
+        if e.status_code in FALLBACK_STATUS_CODES:
             raise
         raise RuntimeError(
             f"Failed to send task to agent at {base_url}: status={e.status_code} {e.message[:200]}"

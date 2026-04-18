@@ -493,7 +493,7 @@ class TestCallAgent:
     @pytest.mark.parametrize(
         "exception",
         [
-            A2AClientHTTPError(503, "Service Unavailable"),
+            A2AClientHTTPError(500, "Internal Server Error"),
             ConnectionError("Connection refused"),
         ],
         ids=["http_error", "connection_error"],
