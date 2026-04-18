@@ -75,25 +75,72 @@ class TestPaidTierFallback:
             assert "paid" in mock_client_class.call_args_list[1][1]["url"]
 
     @patch("torale.scheduler.agent.settings")
-    async def test_non_429_error_does_not_fallback(self, mock_settings):
-        """Non-429 errors should not trigger paid tier fallback."""
+    async def test_503_triggers_paid_tier_fallback(self, mock_settings):
+        """503 (model overloaded) should also trigger paid tier fallback."""
+        mock_settings.agent_url_free = "http://agent-free:8000"
+        mock_settings.agent_url_paid = "http://agent-paid:8000"
+
+        completed_task = make_a2a_task(
+            task_id="task-paid-503",
+            artifacts=[
+                data_artifact(
+                    {
+                        "evidence": "Test evidence",
+                        "sources": ["http://example.com"],
+                        "confidence": 95,
+                        "next_run": None,
+                        "notification": "Test notification",
+                    }
+                )
+            ],
+        )
+
+        with patch("torale.scheduler.agent.A2AClient") as mock_client_class:
+            free_client = AsyncMock()
+            free_client.send_message = AsyncMock(
+                side_effect=A2AClientHTTPError(503, "Model overloaded")
+            )
+
+            paid_client = AsyncMock()
+            paid_client.send_message = AsyncMock(
+                return_value=send_success(
+                    make_a2a_task(task_id="task-paid-503", status_state=TaskState.submitted)
+                )
+            )
+            paid_client.get_task = AsyncMock(return_value=poll_success(completed_task))
+
+            def get_client(**kwargs):
+                url = kwargs.get("url", "")
+                if "free" in url:
+                    return free_client
+                return paid_client
+
+            mock_client_class.side_effect = get_client
+
+            result = await call_agent("test prompt")
+
+            assert isinstance(result, MonitoringResponse)
+            assert mock_client_class.call_count == 2
+            assert "free" in mock_client_class.call_args_list[0][1]["url"]
+            assert "paid" in mock_client_class.call_args_list[1][1]["url"]
+
+    @patch("torale.scheduler.agent.settings")
+    async def test_non_fallback_error_does_not_fallback(self, mock_settings):
+        """Non-retryable errors (e.g. 500) should not trigger paid tier fallback."""
         mock_settings.agent_url_free = "http://agent-free:8000"
         mock_settings.agent_url_paid = "http://agent-paid:8000"
 
         with patch("torale.scheduler.agent.A2AClient") as mock_client_class:
-            # Free tier raises 503 (not 429)
             free_client = AsyncMock()
             free_client.send_message = AsyncMock(
-                side_effect=A2AClientHTTPError(503, "Service unavailable")
+                side_effect=A2AClientHTTPError(500, "Internal server error")
             )
 
             mock_client_class.return_value = free_client
 
-            # Should raise RuntimeError (wrapped 503), not try paid tier
             with pytest.raises(RuntimeError, match="Failed to send task to agent"):
                 await call_agent("test prompt")
 
-            # Verify only free tier was tried
             assert mock_client_class.call_count == 1
             assert "free" in mock_client_class.call_args[1]["url"]
 
