@@ -3,6 +3,7 @@ import { motion } from '@/lib/motion-compat';
 import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import { CONCEPTS } from '@/data/concepts';
 import { DynamicMeta } from '@/components/DynamicMeta';
+import { generateFAQStructuredData } from '@/utils/structuredData';
 
 /**
  * Concept landing page: explainer content for Torale's conceptual surfaces.
@@ -17,16 +18,7 @@ export function ConceptPage() {
   }
 
   const data = CONCEPTS[concept];
-
-  const faqStructuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: data.faq.map((item) => ({
-      '@type': 'Question',
-      name: item.question,
-      acceptedAnswer: { '@type': 'Answer', text: item.answer },
-    })),
-  };
+  const faqStructuredData = generateFAQStructuredData(data.faq);
 
   return (
     <>

@@ -3,6 +3,7 @@ import { motion } from '@/lib/motion-compat';
 import { CheckCircle2, XCircle, ArrowRight, Zap } from 'lucide-react';
 import { COMPETITORS } from '@/data/competitors';
 import { DynamicMeta } from '@/components/DynamicMeta';
+import { generateFAQStructuredData } from '@/utils/structuredData';
 
 /**
  * Comparison page for Torale vs competitors
@@ -161,18 +162,7 @@ export function ComparePage() {
           <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{
-              __html: JSON.stringify({
-                "@context": "https://schema.org",
-                "@type": "FAQPage",
-                "mainEntity": data.faq.map(faq => ({
-                  "@type": "Question",
-                  "name": faq.question,
-                  "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": faq.answer
-                  }
-                }))
-              }).replace(/</g, '\\u003c')
+              __html: JSON.stringify(generateFAQStructuredData(data.faq)).replace(/</g, '\\u003c')
             }}
           />
           <div className="container mx-auto max-w-3xl">
