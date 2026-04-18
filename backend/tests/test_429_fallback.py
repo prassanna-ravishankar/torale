@@ -15,14 +15,23 @@ from torale.scheduler.models import MonitoringResponse
 class TestPaidTierFallback:
     """Test automatic fallback to paid tier on 429 errors."""
 
+    @pytest.mark.parametrize(
+        ("status_code", "error_message"),
+        [
+            (429, "Rate limit exceeded"),
+            (503, "Model overloaded"),
+        ],
+    )
     @patch("torale.scheduler.agent.settings")
-    async def test_429_triggers_paid_tier_fallback(self, mock_settings):
-        """When free tier returns 429, should automatically try paid tier."""
+    async def test_fallback_status_triggers_paid_tier(
+        self, mock_settings, status_code, error_message
+    ):
+        """Fallback-eligible upstream failures on free tier should retry on paid tier."""
         mock_settings.agent_url_free = "http://agent-free:8000"
         mock_settings.agent_url_paid = "http://agent-paid:8000"
 
         completed_task = make_a2a_task(
-            task_id="task-paid-123",
+            task_id=f"task-paid-{status_code}",
             artifacts=[
                 data_artifact(
                     {
@@ -37,27 +46,24 @@ class TestPaidTierFallback:
         )
 
         with patch("torale.scheduler.agent.A2AClient") as mock_client_class:
-            # First call (free tier) raises 429
             free_client = AsyncMock()
             free_client.send_message = AsyncMock(
-                side_effect=A2AClientHTTPError(429, "Rate limit exceeded")
+                side_effect=A2AClientHTTPError(status_code, error_message)
             )
 
-            # Second call (paid tier) succeeds
             paid_client = AsyncMock()
             paid_client.send_message = AsyncMock(
                 return_value=send_success(
-                    make_a2a_task(task_id="task-paid-123", status_state=TaskState.submitted)
+                    make_a2a_task(
+                        task_id=f"task-paid-{status_code}", status_state=TaskState.submitted
+                    )
                 )
             )
             paid_client.get_task = AsyncMock(return_value=poll_success(completed_task))
 
-            # Return different clients based on url kwarg
             def get_client(**kwargs):
                 url = kwargs.get("url", "")
-                if "free" in url:
-                    return free_client
-                return paid_client
+                return free_client if "free" in url else paid_client
 
             mock_client_class.side_effect = get_client
 
@@ -66,60 +72,6 @@ class TestPaidTierFallback:
             assert isinstance(result, MonitoringResponse)
             assert result.evidence == "Test evidence"
             assert result.notification == "Test notification"
-
-            # Verify both clients were created
-            assert mock_client_class.call_count == 2
-            # First call should be to free tier
-            assert "free" in mock_client_class.call_args_list[0][1]["url"]
-            # Second call should be to paid tier
-            assert "paid" in mock_client_class.call_args_list[1][1]["url"]
-
-    @patch("torale.scheduler.agent.settings")
-    async def test_503_triggers_paid_tier_fallback(self, mock_settings):
-        """503 (model overloaded) should also trigger paid tier fallback."""
-        mock_settings.agent_url_free = "http://agent-free:8000"
-        mock_settings.agent_url_paid = "http://agent-paid:8000"
-
-        completed_task = make_a2a_task(
-            task_id="task-paid-503",
-            artifacts=[
-                data_artifact(
-                    {
-                        "evidence": "Test evidence",
-                        "sources": ["http://example.com"],
-                        "confidence": 95,
-                        "next_run": None,
-                        "notification": "Test notification",
-                    }
-                )
-            ],
-        )
-
-        with patch("torale.scheduler.agent.A2AClient") as mock_client_class:
-            free_client = AsyncMock()
-            free_client.send_message = AsyncMock(
-                side_effect=A2AClientHTTPError(503, "Model overloaded")
-            )
-
-            paid_client = AsyncMock()
-            paid_client.send_message = AsyncMock(
-                return_value=send_success(
-                    make_a2a_task(task_id="task-paid-503", status_state=TaskState.submitted)
-                )
-            )
-            paid_client.get_task = AsyncMock(return_value=poll_success(completed_task))
-
-            def get_client(**kwargs):
-                url = kwargs.get("url", "")
-                if "free" in url:
-                    return free_client
-                return paid_client
-
-            mock_client_class.side_effect = get_client
-
-            result = await call_agent("test prompt")
-
-            assert isinstance(result, MonitoringResponse)
             assert mock_client_class.call_count == 2
             assert "free" in mock_client_class.call_args_list[0][1]["url"]
             assert "paid" in mock_client_class.call_args_list[1][1]["url"]
