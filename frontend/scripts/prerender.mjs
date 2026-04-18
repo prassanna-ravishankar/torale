@@ -3,25 +3,11 @@ import handler from 'serve-handler';
 import http from 'node:http';
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { build } from 'esbuild';
+import { loadTsModule } from './_lib/load-ts.mjs';
 
 const PROJECT_ROOT = join(import.meta.dirname, '..');
 const DIST = join(PROJECT_ROOT, 'dist');
 const PORT = 4567;
-
-// Source the route list from publicRoutes.ts so prerender, sitemap, and
-// runtime meta can't drift. Bundle via esbuild (vite transitive dep).
-const bundle = await build({
-  entryPoints: [join(PROJECT_ROOT, 'src/data/publicRoutes.ts')],
-  bundle: true,
-  format: 'esm',
-  platform: 'node',
-  target: 'node20',
-  write: false,
-});
-const dataUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`;
-const { PUBLIC_ROUTES } = await import(dataUrl);
-const ROUTES = PUBLIC_ROUTES.map((r) => r.path);
 
 // Ensure config.js exists (normally injected at runtime by nginx)
 const configPath = join(DIST, 'config.js');
@@ -37,10 +23,17 @@ const server = http.createServer((req, res) =>
   })
 );
 
-await new Promise((resolve) => server.listen(PORT, resolve));
+// Source the route list from publicRoutes.ts (so prerender, sitemap, and
+// runtime meta can't drift) in parallel with the Chromium launch.
+const [{ PUBLIC_ROUTES }, browser] = await Promise.all([
+  loadTsModule(join(PROJECT_ROOT, 'src/data/publicRoutes.ts')),
+  chromium.launch(),
+  new Promise((resolve) => server.listen(PORT, resolve)),
+]);
+const ROUTES = PUBLIC_ROUTES.map((r) => r.path);
+
 console.log(`Prerendering ${ROUTES.length} routes...`);
 
-const browser = await chromium.launch();
 const context = await browser.newContext();
 
 // Bypass auth during prerendering — app checks this flag to use NoAuthProvider

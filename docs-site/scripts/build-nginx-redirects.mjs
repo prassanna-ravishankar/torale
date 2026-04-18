@@ -1,24 +1,11 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { build } from 'esbuild';
+import { loadTsModule } from './_lib/load-ts.mjs';
 
-// Bundle redirects.ts to a data URL so we can dynamic-import it from a .mjs
-// without needing a runtime TS loader.
 const PROJECT_ROOT = join(import.meta.dirname, '..');
-const SOURCE = join(PROJECT_ROOT, '.vitepress/redirects.ts');
 const OUT_PATH = join(PROJECT_ROOT, 'nginx-redirects.conf');
 
-const bundle = await build({
-  entryPoints: [SOURCE],
-  bundle: true,
-  format: 'esm',
-  platform: 'node',
-  target: 'node20',
-  write: false,
-});
-const code = bundle.outputFiles[0].text;
-const dataUrl = `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`;
-const { REDIRECTS } = await import(dataUrl);
+const { REDIRECTS } = await loadTsModule(join(PROJECT_ROOT, '.vitepress/redirects.ts'));
 
 // Group rules into exact and prefix buckets so the generated config has the
 // shape: one `map` block for exact matches + per-prefix `location` blocks.

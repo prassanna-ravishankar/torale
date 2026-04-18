@@ -1,28 +1,12 @@
 import { writeFileSync, existsSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
-import { build } from 'esbuild';
+import { loadTsModule } from './_lib/load-ts.mjs';
 
-// publicRoutes.ts lives in TS and imports from other TS files. Bundle it to a
-// single in-memory ESM module via esbuild (already a transitive dep of vite),
-// then dynamic-import the bundle to get PUBLIC_ROUTES. No separate tsconfig,
-// no ts-node/tsx runtime.
 const PROJECT_ROOT = join(import.meta.dirname, '..');
 const DIST = join(PROJECT_ROOT, 'dist');
-const SOURCE = join(PROJECT_ROOT, 'src/data/publicRoutes.ts');
 const SITE_ORIGIN = 'https://torale.ai';
 
-const bundle = await build({
-  entryPoints: [SOURCE],
-  bundle: true,
-  format: 'esm',
-  platform: 'node',
-  target: 'node20',
-  write: false,
-  external: [],
-});
-const code = bundle.outputFiles[0].text;
-const dataUrl = `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`;
-const { PUBLIC_ROUTES } = await import(dataUrl);
+const { PUBLIC_ROUTES } = await loadTsModule(join(PROJECT_ROOT, 'src/data/publicRoutes.ts'));
 
 const now = new Date().toISOString().slice(0, 10);
 const urls = PUBLIC_ROUTES.map((route) => {
