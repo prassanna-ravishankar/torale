@@ -15,10 +15,7 @@ export default withMermaid(
 
   sitemap: {
     hostname: SITE_ORIGIN,
-    transformItems: (items) => {
-      const filtered = items.filter((item) => item.url !== '404' && !item.url.endsWith('/404'))
-      return filtered
-    },
+    transformItems: (items) => items.filter((item) => item.url !== '404'),
   },
 
   ignoreDeadLinks: [
