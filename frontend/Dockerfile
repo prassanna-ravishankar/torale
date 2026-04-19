@@ -2,7 +2,7 @@
 
 # Stage 1: Build the application
 # Using Playwright base image for Chromium (needed for prerendering public routes)
-FROM mcr.microsoft.com/playwright:v1.58.2-noble AS builder
+FROM mcr.microsoft.com/playwright:v1.59.1-noble AS builder
 
 WORKDIR /app
 
