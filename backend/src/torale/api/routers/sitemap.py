@@ -18,19 +18,43 @@ router = APIRouter(tags=["seo"])
 
 
 @router.get("/sitemap.xml")
-async def generate_sitemap(db: Database = Depends(get_db)):
+async def generate_sitemap_index(db: Database = Depends(get_db)):
     """
-    Generate dynamic sitemap.xml for search engines.
+    Sitemap index pointing at the static (frontend-served) and dynamic (backend)
+    child sitemaps. Frontend owns enumerated SEO routes (publicRoutes.ts);
+    backend owns DB-derived public task pages.
+    """
+    base_url = settings.frontend_url
 
-    Includes:
-    - Static pages (landing, explore)
-    - Public task pages
+    latest_task_lastmod = await db.fetch_val(
+        "SELECT MAX(updated_at) FROM tasks WHERE is_public = true"
+    )
+    dynamic_lastmod = (
+        latest_task_lastmod.strftime("%Y-%m-%d")
+        if latest_task_lastmod
+        else datetime.now().strftime("%Y-%m-%d")
+    )
+    static_lastmod = datetime.now().strftime("%Y-%m-%d")
+
+    sitemapindex = ET.Element("sitemapindex", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
+    for loc, lastmod in (
+        (f"{base_url}/sitemap-static.xml", static_lastmod),
+        (f"{base_url}/sitemap-dynamic.xml", dynamic_lastmod),
+    ):
+        sitemap_elem = ET.SubElement(sitemapindex, "sitemap")
+        ET.SubElement(sitemap_elem, "loc").text = loc
+        ET.SubElement(sitemap_elem, "lastmod").text = lastmod
+
+    xml_output = ET.tostring(sitemapindex, encoding="utf-8", xml_declaration=True)
+    return Response(content=xml_output, media_type="application/xml")
+
+
+@router.get("/sitemap-dynamic.xml")
+async def generate_sitemap_dynamic(db: Database = Depends(get_db)):
     """
-    # Get all public tasks with updated_at
-    # TODO: At scale (>10k public tasks), implement sitemap index pattern:
-    # - Split into multiple sitemap files (50k URLs each per Google guidelines)
-    # - Use sitemap index file to reference individual sitemaps
-    # - Consider caching the generated sitemap with periodic regeneration
+    Dynamic sitemap covering DB-derived public pages: landing, explore, changelog,
+    and every public task. Linked from /sitemap.xml (the index).
+    """
     tasks_query = """
         SELECT t.id, t.updated_at
         FROM tasks t
@@ -196,18 +220,13 @@ async def generate_changelog_rss():
 @router.get("/robots.txt")
 async def robots_txt():
     """
-    Generate robots.txt for search engine crawlers.
-
-    Allows:
-    - All public pages
-    - Sitemap location
-
-    Disallows:
-    - Auth pages
-    - API endpoints
-    - Admin endpoints
+    robots.txt for search engine crawlers. Non-prod hosts return a blanket
+    disallow so staging/preview deployments don't get indexed.
     """
     base_url = settings.frontend_url
+
+    if base_url != "https://torale.ai":
+        return Response(content="User-agent: *\nDisallow: /\n", media_type="text/plain")
 
     robots = f"""User-agent: *
 Allow: /

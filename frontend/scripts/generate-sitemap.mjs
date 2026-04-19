@@ -97,13 +97,16 @@ ${urls}
 </urlset>
 `;
 
-const outPath = join(DIST, 'sitemap.xml');
+const outPath = join(DIST, 'sitemap-static.xml');
 writeFileSync(outPath, xml, 'utf-8');
 console.log(`Wrote ${PUBLIC_ROUTES.length} routes to ${outPath}`);
 
-// Remove any stale sitemap-index.xml vite may have copied from public/.
-const staleIndex = join(DIST, 'sitemap-index.xml');
-if (existsSync(staleIndex)) {
-  unlinkSync(staleIndex);
-  console.log(`Removed stale ${staleIndex}`);
+// Remove stale sitemap files vite may have copied from public/. The backend
+// owns /sitemap.xml (sitemap index) and /sitemap-dynamic.xml at the gateway.
+for (const stale of ['sitemap.xml', 'sitemap-index.xml', 'sitemap-dynamic.xml']) {
+  const path = join(DIST, stale);
+  if (existsSync(path)) {
+    unlinkSync(path);
+    console.log(`Removed stale ${path}`);
+  }
 }
