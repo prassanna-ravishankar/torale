@@ -18,7 +18,7 @@ export default withMermaid(
     transformItems: (items) =>
       items
         .filter((item) => item.url !== '404')
-        .map((item) => ({ ...item, url: item.url.replace(/\/$/, '') })),
+        .map((item) => ({ ...item, url: item.url.replace(/\/$/, '') || '/' })),
   },
 
   ignoreDeadLinks: [
