@@ -1,5 +1,6 @@
-import { writeFileSync, existsSync, unlinkSync, statSync } from 'node:fs';
+import { writeFileSync, existsSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { loadTsModule } from './_lib/load-ts.mjs';
 
 const PROJECT_ROOT = join(import.meta.dirname, '..');
@@ -35,8 +36,14 @@ function sourceFor(path) {
 function lastmodFor(path) {
   const rel = sourceFor(path);
   if (!rel) return buildDate;
+  // Git commit date, not mtime: CI fresh clones set mtimes to checkout time,
+  // which would otherwise mark every page as changed on every deploy.
   try {
-    return statSync(join(PROJECT_ROOT, rel)).mtime.toISOString().slice(0, 10);
+    const iso = execFileSync('git', ['log', '-1', '--format=%cI', '--', rel], {
+      cwd: PROJECT_ROOT,
+      encoding: 'utf-8',
+    }).trim();
+    return iso ? iso.slice(0, 10) : buildDate;
   } catch {
     return buildDate;
   }
