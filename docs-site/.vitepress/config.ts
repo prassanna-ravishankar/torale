@@ -52,7 +52,11 @@ export default withMermaid(
     const fullTitle = pageTitle === 'Torale Docs' ? pageTitle : `${pageTitle} | Torale Docs`
 
     pageData.frontmatter.head ??= []
-    pageData.frontmatter.head.push(
+    const head = pageData.frontmatter.head as Array<[string, Record<string, string>]>
+    const has = (tag: string, attr: string, value: string) =>
+      head.some(([t, a]) => t === tag && a?.[attr] === value)
+
+    const injected: Array<[string, Record<string, string>]> = [
       ['link', { rel: 'canonical', href: canonical }],
       ['meta', { name: 'description', content: pageDescription }],
       ['meta', { property: 'og:title', content: fullTitle }],
@@ -60,7 +64,12 @@ export default withMermaid(
       ['meta', { property: 'og:url', content: canonical }],
       ['meta', { name: 'twitter:title', content: fullTitle }],
       ['meta', { name: 'twitter:description', content: pageDescription }],
-    )
+    ]
+    for (const entry of injected) {
+      const [tag, attrs] = entry
+      const key = 'rel' in attrs ? 'rel' : 'property' in attrs ? 'property' : 'name'
+      if (!has(tag, key, attrs[key])) head.push(entry)
+    }
   },
 
   themeConfig: {
