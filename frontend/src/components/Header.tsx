@@ -15,7 +15,7 @@ import { FeedbackModal } from "@/components/FeedbackModal";
 export const Header: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
-  const noAuth = import.meta.env.VITE_TORALE_NOAUTH === '1' || (window as any).__PRERENDER__;
+  const noAuth = import.meta.env.VITE_TORALE_NOAUTH === '1' || window.__PRERENDER__;
   const isAdmin = user?.publicMetadata?.role === "admin";
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
@@ -98,7 +98,7 @@ export const Header: React.FC = () => {
               {noAuth && " (Dev)"}
             </span>
           )}
-          {!noAuth && <UserButton afterSignOutUrl="/sign-in" />}
+          {!noAuth && user && <UserButton afterSignOutUrl="/sign-in" />}
         </div>
       </div>
       <FeedbackModal open={feedbackOpen} onOpenChange={setFeedbackOpen} />
