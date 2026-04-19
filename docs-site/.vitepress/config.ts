@@ -15,7 +15,10 @@ export default withMermaid(
 
   sitemap: {
     hostname: SITE_ORIGIN,
-    transformItems: (items) => items.filter((item) => item.url !== '404'),
+    transformItems: (items) =>
+      items
+        .filter((item) => item.url !== '404')
+        .map((item) => ({ ...item, url: item.url.replace(/\/$/, '') })),
   },
 
   ignoreDeadLinks: [
@@ -40,12 +43,10 @@ export default withMermaid(
   // Per-page meta has to land in static HTML — VitePress sets it client-side
   // otherwise, and Googlebot sees only the global <title>Torale Docs</title>.
   transformPageData(pageData: PageData) {
-    // Index pages (foo/index.md) canonicalize with a trailing slash to match
-    // VitePress's sitemap output and what Google has already indexed.
     const rel = pageData.relativePath
       .replace(/\.md$/, '')
-      .replace(/(^|\/)index$/, '$1')
-    const canonical = `${SITE_ORIGIN}/${rel}`
+      .replace(/(^|\/)index$/, '')
+    const canonical = rel ? `${SITE_ORIGIN}/${rel}` : `${SITE_ORIGIN}/`
     const pageTitle = pageData.title || pageData.frontmatter.title || 'Torale Docs'
     const pageDescription = pageData.frontmatter.description || SITE_DESCRIPTION
     const fullTitle = pageTitle === 'Torale Docs' ? pageTitle : `${pageTitle} | Torale Docs`
