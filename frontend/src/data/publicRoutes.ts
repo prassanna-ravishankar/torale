@@ -1,14 +1,5 @@
-/**
- * Single source of truth for public (SEO-relevant) routes on torale.ai.
- *
- * Consumed by:
- *   - scripts/prerender.mjs   — knows which routes to prerender
- *   - scripts/generate-sitemap.mjs — emits sitemap.xml
- *   - DynamicMeta component   — rendering per-page meta
- *
- * Adding a new public page means: add a data entry (if dynamic) or push
- * to STATIC_ROUTES here. Nothing else to wire up.
- */
+// Source of truth for public routes — consumed by prerender, sitemap, and
+// DynamicMeta. Add a new public page here and it flows to all three.
 
 import { COMPETITORS } from './competitors';
 import { USE_CASES } from './useCases';
@@ -18,12 +9,11 @@ export interface PublicRoute {
   path: string;
   title: string;
   description: string;
-  /** Relative priority in sitemap; 0.0–1.0. Defaults to 0.8 if omitted. */
+  /** Sitemap priority, 0.0–1.0. Defaults to 0.8. */
   priority?: number;
   ogType?: 'website' | 'article';
 }
 
-/** Routes with no dynamic parameter, defined inline. */
 const STATIC_ROUTES: PublicRoute[] = [
   {
     path: '/',
@@ -60,40 +50,26 @@ const STATIC_ROUTES: PublicRoute[] = [
   },
 ];
 
-function getCompareRoutes(): PublicRoute[] {
-  return Object.entries(COMPETITORS).map(([slug, data]) => ({
-    path: `/compare/${slug}`,
+interface SEOPageMeta {
+  metaTitle: string;
+  metaDescription: string;
+}
+
+function articleRoutes(
+  pathPrefix: string,
+  record: Record<string, SEOPageMeta>,
+): PublicRoute[] {
+  return Object.entries(record).map(([slug, data]) => ({
+    path: `${pathPrefix}/${slug}`,
     title: data.metaTitle,
     description: data.metaDescription,
     ogType: 'article',
   }));
 }
 
-function getUseCaseRoutes(): PublicRoute[] {
-  return Object.entries(USE_CASES).map(([slug, data]) => ({
-    path: `/use-cases/${slug}`,
-    title: data.metaTitle,
-    description: data.metaDescription,
-    ogType: 'article',
-  }));
-}
-
-function getConceptRoutes(): PublicRoute[] {
-  return Object.entries(CONCEPTS).map(([slug, data]) => ({
-    path: `/concepts/${slug}`,
-    title: data.metaTitle,
-    description: data.metaDescription,
-    ogType: 'article',
-  }));
-}
-
-/**
- * All public routes — the union of static + dynamic. Order is stable across
- * builds (alphabetical within each group) so sitemap diffs stay minimal.
- */
 export const PUBLIC_ROUTES: PublicRoute[] = [
   ...STATIC_ROUTES,
-  ...getCompareRoutes(),
-  ...getUseCaseRoutes(),
-  ...getConceptRoutes(),
+  ...articleRoutes('/compare', COMPETITORS),
+  ...articleRoutes('/use-cases', USE_CASES),
+  ...articleRoutes('/concepts', CONCEPTS),
 ];
