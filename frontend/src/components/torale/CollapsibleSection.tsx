@@ -7,7 +7,7 @@ import {
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SectionLabel } from './SectionLabel';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/lib/motion-compat';
 
 /**
  * CollapsibleSection - Unified collapsible section with consistent trigger styling

@@ -1,6 +1,5 @@
 import React, { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { SignIn, SignUp } from '@clerk/clerk-react'
 import { Header } from '@/components/Header'
 import { MobileNav } from '@/components/MobileNav'
 import { Toaster } from '@/components/ui/sonner'
@@ -26,6 +25,8 @@ const ComparePage = lazy(() => import('@/pages/ComparePage').then(m => ({ defaul
 const UseCasePage = lazy(() => import('@/pages/UseCasePage').then(m => ({ default: m.UseCasePage })))
 const ConceptPage = lazy(() => import('@/pages/ConceptPage').then(m => ({ default: m.ConceptPage })))
 const Welcome = lazy(() => import('@/components/Welcome').then(m => ({ default: m.Welcome })))
+const SignInPage = lazy(() => import('@/pages/SignInPage'))
+const SignUpPage = lazy(() => import('@/pages/SignUpPage'))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoaded, isAuthenticated } = useAuth()
@@ -135,13 +136,7 @@ export default function App() {
           element={
             <AuthRedirect>
               <AuthLayout>
-                <SignIn
-                  routing="path"
-                  path="/sign-in"
-                  signUpUrl="/sign-up"
-                  forceRedirectUrl="/dashboard"
-                  fallbackRedirectUrl="/dashboard"
-                />
+                <SignInPage />
               </AuthLayout>
             </AuthRedirect>
           }
@@ -152,13 +147,7 @@ export default function App() {
             <AuthRedirect>
               <AuthLayout>
                 <CapacityGate fallback={<Navigate to="/waitlist" replace />}>
-                  <SignUp
-                    routing="path"
-                    path="/sign-up"
-                    signInUrl="/sign-in"
-                    forceRedirectUrl="/dashboard"
-                    fallbackRedirectUrl="/dashboard"
-                  />
+                  <SignUpPage />
                 </CapacityGate>
               </AuthLayout>
             </AuthRedirect>

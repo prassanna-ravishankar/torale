@@ -1,6 +1,11 @@
-import React, { createContext, useContext, ReactNode } from 'react'
-import { ClerkAuthProvider } from './ClerkAuthProvider'
+import React, { createContext, useContext, ReactNode, Suspense, lazy, useMemo } from 'react'
 import { NoAuthProvider } from './NoAuthProvider'
+
+// Lazy-loaded so the Clerk SDK (77 KiB gzip) is not part of the initial bundle.
+// Unauthenticated visits to the landing page never need it.
+const ClerkAuthProvider = lazy(() =>
+  import('./ClerkAuthProvider').then((m) => ({ default: m.ClerkAuthProvider }))
+)
 
 export interface User {
   id: string | null // Nullable to handle cases where backend UUID is unavailable
@@ -38,6 +43,22 @@ interface AuthProviderProps {
   children: ReactNode
 }
 
+// Placeholder context while the Clerk SDK chunk is still loading. Mirrors
+// Clerk's "not yet loaded" state so consumers (ProtectedRoute, AuthRedirect)
+// show their usual spinners instead of redirecting.
+const PendingAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const value = useMemo<AuthContextType>(
+    () => ({
+      isLoaded: false,
+      isAuthenticated: false,
+      user: null,
+      getToken: async () => null,
+    }),
+    []
+  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const noAuth = import.meta.env.VITE_TORALE_NOAUTH === '1' || window.__PRERENDER__
 
@@ -45,7 +66,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return <NoAuthProvider>{children}</NoAuthProvider>
   }
 
-  return <ClerkAuthProvider>{children}</ClerkAuthProvider>
+  return (
+    <Suspense fallback={<PendingAuthProvider>{children}</PendingAuthProvider>}>
+      <ClerkAuthProvider>{children}</ClerkAuthProvider>
+    </Suspense>
+  )
 }
 
 export const useAuth = (): AuthContextType => {
