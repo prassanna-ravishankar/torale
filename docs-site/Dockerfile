@@ -26,8 +26,12 @@ FROM nginx:alpine
 # Copy built docs from builder
 COPY --from=builder /app/.vitepress/dist /usr/share/nginx/html
 
-# Copy nginx config
+# Copy nginx configs. The redirects-map.conf defines a top-level `map` at
+# http{} scope; default.conf references that map inside its server{} block
+# via include of nginx-redirects.conf.
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/nginx-redirects-map.conf /etc/nginx/conf.d/nginx-redirects-map.conf
+COPY --from=builder /app/nginx-redirects.conf /etc/nginx/nginx-redirects.conf
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

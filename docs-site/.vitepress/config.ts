@@ -1,16 +1,24 @@
-import { defineConfig } from 'vitepress'
+import { defineConfig, type PageData } from 'vitepress'
 import { withMermaid } from 'vitepress-plugin-mermaid'
+
+const SITE_ORIGIN = 'https://docs.torale.ai'
+const SITE_DESCRIPTION = 'Torale developer documentation — API reference and Python SDK'
 
 export default withMermaid(
   defineConfig({
   title: 'Torale Docs',
-  description: 'Torale developer documentation — API reference and Python SDK',
+  description: SITE_DESCRIPTION,
   base: '/',
   lang: 'en-US',
   lastUpdated: true,
+  cleanUrls: true,
 
   sitemap: {
-    hostname: 'https://docs.torale.ai'
+    hostname: SITE_ORIGIN,
+    transformItems: (items) =>
+      items
+        .filter((item) => item.url !== '404')
+        .map((item) => ({ ...item, url: item.url.replace(/\/$/, '') || '/' })),
   },
 
   ignoreDeadLinks: [
@@ -24,18 +32,52 @@ export default withMermaid(
     ['link', { rel: 'icon', type: 'image/png', sizes: '64x64', href: '/logo-64.png' }],
     ['meta', { name: 'theme-color', content: '#18181b' }],
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:title', content: 'Torale Documentation' }],
-    ['meta', { property: 'og:description', content: 'Automated web monitoring with intelligent condition evaluation' }],
-    ['meta', { property: 'og:image', content: 'https://docs.torale.ai/og-image.png' }],
+    ['meta', { property: 'og:site_name', content: 'Torale Docs' }],
+    ['meta', { property: 'og:image', content: `${SITE_ORIGIN}/og-image.png` }],
     ['meta', { property: 'og:image:width', content: '1200' }],
     ['meta', { property: 'og:image:height', content: '630' }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:image', content: `${SITE_ORIGIN}/og-image.png` }],
   ],
+
+  // Per-page meta has to land in static HTML — VitePress sets it client-side
+  // otherwise, and Googlebot sees only the global <title>Torale Docs</title>.
+  transformPageData(pageData: PageData) {
+    const rel = pageData.relativePath
+      .replace(/\.md$/, '')
+      .replace(/(^|\/)index$/, '')
+    const canonical = rel ? `${SITE_ORIGIN}/${rel}` : `${SITE_ORIGIN}/`
+    const pageTitle = pageData.title || pageData.frontmatter.title || 'Torale Docs'
+    const pageDescription = pageData.frontmatter.description || SITE_DESCRIPTION
+    const fullTitle = pageTitle === 'Torale Docs' ? pageTitle : `${pageTitle} | Torale Docs`
+
+    pageData.frontmatter.head ??= []
+    const head = pageData.frontmatter.head as Array<[string, Record<string, string>]>
+    const has = (tag: string, attr: string, value: string) =>
+      head.some(([t, a]) => t === tag && a?.[attr] === value)
+
+    const injected: Array<[string, Record<string, string>]> = [
+      ['link', { rel: 'canonical', href: canonical }],
+      ['meta', { name: 'description', content: pageDescription }],
+      ['meta', { property: 'og:title', content: fullTitle }],
+      ['meta', { property: 'og:description', content: pageDescription }],
+      ['meta', { property: 'og:url', content: canonical }],
+      ['meta', { name: 'twitter:title', content: fullTitle }],
+      ['meta', { name: 'twitter:description', content: pageDescription }],
+    ]
+    for (const entry of injected) {
+      const [tag, attrs] = entry
+      const key = 'rel' in attrs ? 'rel' : 'property' in attrs ? 'property' : 'name'
+      if (!has(tag, key, attrs[key])) head.push(entry)
+    }
+  },
 
   themeConfig: {
     logo: '/logo.svg',
 
     nav: [
       { text: 'Getting Started', link: '/getting-started/', activeMatch: '/getting-started/' },
+      { text: 'Architecture', link: '/architecture/self-scheduling-agents', activeMatch: '/architecture/' },
       { text: 'API', link: '/api/overview', activeMatch: '/api/' },
       { text: 'SDK', link: '/sdk/quickstart', activeMatch: '/sdk/' },
       { text: 'App', link: 'https://torale.ai' }
@@ -48,6 +90,17 @@ export default withMermaid(
           items: [
             { text: 'Overview', link: '/getting-started/' },
             { text: 'Python SDK', link: '/getting-started/sdk' }
+          ]
+        }
+      ],
+
+      '/architecture/': [
+        {
+          text: 'Architecture',
+          items: [
+            { text: 'Self-Scheduling Agents', link: '/architecture/self-scheduling-agents' },
+            { text: 'Grounded Search', link: '/architecture/grounded-search' },
+            { text: 'Task State Machine', link: '/architecture/task-state-machine' }
           ]
         }
       ],

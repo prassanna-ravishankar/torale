@@ -3,3 +3,7 @@ node_modules
 .vitepress/dist
 *.log
 .DS_Store
+
+# Generated nginx redirect config (emitted by scripts/build-nginx-redirects.mjs)
+nginx-redirects.conf
+nginx-redirects-map.conf

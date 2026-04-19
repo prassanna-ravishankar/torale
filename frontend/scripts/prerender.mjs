@@ -3,23 +3,11 @@ import handler from 'serve-handler';
 import http from 'node:http';
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import { loadTsModule } from './_lib/load-ts.mjs';
 
-const DIST = join(import.meta.dirname, '..', 'dist');
+const PROJECT_ROOT = join(import.meta.dirname, '..');
+const DIST = join(PROJECT_ROOT, 'dist');
 const PORT = 4567;
-
-const ROUTES = [
-  '/',
-  '/explore',
-  '/changelog',
-  '/terms',
-  '/privacy',
-  '/use-cases/steam-game-price-alerts',
-  '/use-cases/competitor-price-change-monitor',
-  '/use-cases/crypto-exchange-listing-alert',
-  '/compare/visualping-alternative',
-  '/compare/distill-alternative',
-  '/compare/changetower-alternative',
-];
 
 // Ensure config.js exists (normally injected at runtime by nginx)
 const configPath = join(DIST, 'config.js');
@@ -35,10 +23,15 @@ const server = http.createServer((req, res) =>
   })
 );
 
-await new Promise((resolve) => server.listen(PORT, resolve));
+const [{ PUBLIC_ROUTES }, browser] = await Promise.all([
+  loadTsModule(join(PROJECT_ROOT, 'src/data/publicRoutes.ts')),
+  chromium.launch(),
+  new Promise((resolve) => server.listen(PORT, resolve)),
+]);
+const ROUTES = PUBLIC_ROUTES.map((r) => r.path);
+
 console.log(`Prerendering ${ROUTES.length} routes...`);
 
-const browser = await chromium.launch();
 const context = await browser.newContext();
 
 // Bypass auth during prerendering — app checks this flag to use NoAuthProvider
@@ -74,7 +67,7 @@ for (const route of ROUTES) {
   const outPath =
     route === '/'
       ? join(DIST, 'index.html')
-      : join(DIST, route.slice(1), 'index.html');
+      : join(DIST, `${route.slice(1)}.html`);
 
   mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, html, 'utf-8');

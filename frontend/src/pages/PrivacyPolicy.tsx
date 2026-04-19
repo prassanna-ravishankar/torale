@@ -1,17 +1,18 @@
 import { useNavigate } from "react-router-dom"
 import { Logo } from "@/components/Logo"
 import { ArrowLeft } from "lucide-react"
-import { Helmet } from "react-helmet-async"
+import { DynamicMeta } from "@/components/DynamicMeta"
 
 export function PrivacyPolicy() {
   const navigate = useNavigate()
 
   return (
     <>
-      <Helmet>
-        <title>Privacy Policy - Torale</title>
-        <meta name="description" content="Privacy policy for Torale. Learn how we protect your data and monitoring queries." />
-      </Helmet>
+      <DynamicMeta
+        path="/privacy"
+        title="Privacy Policy - Torale"
+        description="Privacy policy for Torale. Learn how we protect your data and monitoring queries."
+      />
       <div className="min-h-screen bg-[#fafafa]">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full bg-[#fafafa]/90 backdrop-blur-md border-b border-zinc-200">

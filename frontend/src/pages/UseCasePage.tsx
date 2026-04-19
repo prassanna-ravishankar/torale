@@ -1,8 +1,8 @@
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { motion } from '@/lib/motion-compat';
 import { CheckCircle2, ArrowRight, Zap, Shield, Clock } from 'lucide-react';
 import { USE_CASES } from '@/data/useCases';
+import { DynamicMeta } from '@/components/DynamicMeta';
 
 /**
  * Use case landing page for Torale
@@ -27,12 +27,12 @@ export function UseCasePage() {
 
   return (
     <>
-      <Helmet>
-        <title>{data.metaTitle}</title>
-        <meta name="description" content={data.metaDescription} />
-        <meta name="keywords" content={data.targetKeyword} />
-        <link rel="canonical" href={`https://torale.ai/use-cases/${usecase}`} />
-      </Helmet>
+      <DynamicMeta
+        path={`/use-cases/${usecase}`}
+        title={data.metaTitle}
+        description={data.metaDescription}
+        type="article"
+      />
 
       <div className="min-h-screen bg-[#fafafa]">
         {/* Hero Section */}

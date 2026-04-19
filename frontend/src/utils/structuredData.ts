@@ -1,5 +1,25 @@
 import { ChangelogEntry } from "@/types/changelog";
 
+export interface FAQItem {
+  question: string;
+  answer: string;
+}
+
+export function generateFAQStructuredData(items: FAQItem[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  };
+}
+
 export function generateChangelogStructuredData(entries: ChangelogEntry[]) {
   return {
     "@context": "https://schema.org",
