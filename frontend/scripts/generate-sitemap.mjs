@@ -33,20 +33,51 @@ function sourceFor(path) {
   return dyn?.file;
 }
 
+// Batch git history lookup: one `git log` call produces dates for every
+// tracked source file at once. Per-file execFile would scale O(routes).
+// Use commit dates, not mtimes — CI fresh clones otherwise mark every
+// page as changed on every deploy.
+function loadCommitDates(sources) {
+  if (sources.length === 0) return new Map();
+  try {
+    const out = execFileSync(
+      'git',
+      ['log', '--name-only', '--format=__COMMIT__%cI', '--', ...sources],
+      { cwd: PROJECT_ROOT, encoding: 'utf-8' },
+    );
+    // git emits paths relative to the repo root, which may differ from our
+    // PROJECT_ROOT-relative input. Index by path basename+suffix so both
+    // "src/data/concepts.ts" and "frontend/src/data/concepts.ts" resolve.
+    const dates = new Map();
+    let currentDate = null;
+    for (const line of out.split('\n')) {
+      if (line.startsWith('__COMMIT__')) {
+        currentDate = line.slice('__COMMIT__'.length, '__COMMIT__'.length + 10);
+      } else if (line && currentDate) {
+        // Match on suffix so the input key ("src/data/x.ts") finds entries
+        // that git reports with a package prefix ("frontend/src/data/x.ts").
+        for (const source of sources) {
+          if ((line === source || line.endsWith(`/${source}`)) && !dates.has(source)) {
+            dates.set(source, currentDate);
+          }
+        }
+      }
+    }
+    return dates;
+  } catch {
+    return new Map();
+  }
+}
+
+const allSources = [
+  ...Object.values(STATIC_SOURCES),
+  ...DYNAMIC_SOURCES.map((d) => d.file),
+];
+const commitDates = loadCommitDates(allSources);
+
 function lastmodFor(path) {
   const rel = sourceFor(path);
-  if (!rel) return buildDate;
-  // Git commit date, not mtime: CI fresh clones set mtimes to checkout time,
-  // which would otherwise mark every page as changed on every deploy.
-  try {
-    const iso = execFileSync('git', ['log', '-1', '--format=%cI', '--', rel], {
-      cwd: PROJECT_ROOT,
-      encoding: 'utf-8',
-    }).trim();
-    return iso ? iso.slice(0, 10) : buildDate;
-  } catch {
-    return buildDate;
-  }
+  return (rel && commitDates.get(rel)) || buildDate;
 }
 
 const urls = PUBLIC_ROUTES.map((route) => {
