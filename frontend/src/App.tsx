@@ -83,20 +83,6 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-function OptionalAuthRoute({ children }: { children: React.ReactNode }) {
-  const { isLoaded } = useAuth()
-
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
-
-  return <>{children}</>
-}
-
 function ScrollToTop() {
   const { pathname } = useLocation()
 
@@ -203,36 +189,22 @@ export default function App() {
         <Route
           path="/explore"
           element={
-            <OptionalAuthRoute>
-              <AppLayout>
-                <Explore />
-              </AppLayout>
-            </OptionalAuthRoute>
+            <AppLayout>
+              <Explore />
+            </AppLayout>
           }
         />
         <Route
           path="/compare/:tool"
-          element={
-            <OptionalAuthRoute>
-              <ComparePage />
-            </OptionalAuthRoute>
-          }
+          element={<ComparePage />}
         />
         <Route
           path="/use-cases/:usecase"
-          element={
-            <OptionalAuthRoute>
-              <UseCasePage />
-            </OptionalAuthRoute>
-          }
+          element={<UseCasePage />}
         />
         <Route
           path="/concepts/:concept"
-          element={
-            <OptionalAuthRoute>
-              <ConceptPage />
-            </OptionalAuthRoute>
-          }
+          element={<ConceptPage />}
         />
         <Route
           path="/"
@@ -261,11 +233,9 @@ export default function App() {
         <Route
           path="/tasks/:taskId"
           element={
-            <OptionalAuthRoute>
-              <AppLayout>
-                <TaskDetailRoute onBack={handleBackToDashboard} onDeleted={handleBackToDashboard} />
-              </AppLayout>
-            </OptionalAuthRoute>
+            <AppLayout>
+              <TaskDetailRoute onBack={handleBackToDashboard} onDeleted={handleBackToDashboard} />
+            </AppLayout>
           }
         />
         <Route

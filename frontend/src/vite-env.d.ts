@@ -18,4 +18,5 @@ interface RuntimeConfig {
 
 interface Window {
   CONFIG: RuntimeConfig
+  __PRERENDER__?: boolean
 }
