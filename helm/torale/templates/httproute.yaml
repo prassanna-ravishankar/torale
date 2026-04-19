@@ -40,6 +40,17 @@ spec:
   - matches:
     - path:
         type: Exact
+        value: /sitemap-dynamic.xml
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: {{ $fullName }}-api
+      namespace: {{ $serviceNamespace }}
+      port: {{ .Values.api.service.port }}
+      weight: 1
+  - matches:
+    - path:
+        type: Exact
         value: /changelog.xml
     backendRefs:
     - group: ""
