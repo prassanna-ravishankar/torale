@@ -16,11 +16,11 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:image" content="https://torale.ai/og-image.webp">
 
-    <!-- Neo-Brutalist Fonts: Space Grotesk (Structure) + JetBrains Mono (Data) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+    <!-- Warm up TLS to the API so Landing's /public/stats fetch is not gated on DNS+TLS -->
+    <link rel="preconnect" href="https://api.torale.ai" crossorigin>
+
+    <!-- Neo-Brutalist Fonts: Space Grotesk (Structure) + JetBrains Mono (Data). Self-hosted, see src/index.css. -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/space-grotesk-latin.woff2" crossorigin>
 
     <!-- Load runtime config (deferred for better performance) -->
     <script src="/config.js" defer></script>

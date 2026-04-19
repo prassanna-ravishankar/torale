@@ -1,11 +1,12 @@
-import React, { useState } from "react";
-import { UserButton } from "@clerk/clerk-react";
+import React, { lazy, Suspense, useState } from "react";
 import { Shield, Bell, BookOpen, Compass, MessageSquare } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Logo } from "@/components/Logo";
 import { FeedbackModal } from "@/components/FeedbackModal";
+
+const UserMenu = lazy(() => import("@/components/UserMenu"));
 
 /**
  * Header - Brutalist navigation for authenticated app
@@ -98,7 +99,11 @@ export const Header: React.FC = () => {
               {noAuth && " (Dev)"}
             </span>
           )}
-          {!noAuth && user && <UserButton afterSignOutUrl="/sign-in" />}
+          {!noAuth && user && (
+            <Suspense fallback={<div className="h-8 w-8" aria-hidden />}>
+              <UserMenu />
+            </Suspense>
+          )}
         </div>
       </div>
       <FeedbackModal open={feedbackOpen} onOpenChange={setFeedbackOpen} />
