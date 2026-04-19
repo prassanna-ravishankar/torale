@@ -37,9 +37,8 @@ export default withMermaid(
     ['meta', { name: 'twitter:image', content: `${SITE_ORIGIN}/og-image.png` }],
   ],
 
-  // Inject per-page canonical + og/twitter title+description+url into the
-  // static HTML Googlebot sees. Without this, every page shares the global
-  // <title>Torale Docs</title> and GSC reports "Duplicate without canonical".
+  // Per-page meta has to land in static HTML — VitePress sets it client-side
+  // otherwise, and Googlebot sees only the global <title>Torale Docs</title>.
   transformPageData(pageData: PageData) {
     const relPath = pageData.relativePath.replace(/(index)?\.md$/, '').replace(/\/$/, '')
     const canonical = relPath ? `${SITE_ORIGIN}/${relPath}` : `${SITE_ORIGIN}/`

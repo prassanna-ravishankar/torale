@@ -23,8 +23,6 @@ const server = http.createServer((req, res) =>
   })
 );
 
-// Source the route list from publicRoutes.ts (so prerender, sitemap, and
-// runtime meta can't drift) in parallel with the Chromium launch.
 const [{ PUBLIC_ROUTES }, browser] = await Promise.all([
   loadTsModule(join(PROJECT_ROOT, 'src/data/publicRoutes.ts')),
   chromium.launch(),
@@ -66,8 +64,6 @@ for (const route of ROUTES) {
   await page.evaluate(() => { delete window.__PRERENDER__; });
 
   const html = await page.content();
-  // Non-trailing-slash is the canonical URL form. Write /route to /route.html
-  // so nginx `try_files $uri $uri.html` serves it without a 301 hop.
   const outPath =
     route === '/'
       ? join(DIST, 'index.html')

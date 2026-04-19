@@ -1,17 +1,10 @@
 /**
- * Concept data for public SEO landing pages explaining how Torale works.
- * Used by ConceptPage.tsx (route: /concepts/:concept).
- *
- * Shape mirrors competitors.ts and useCases.ts so the same meta/sitemap
- * plumbing applies uniformly.
+ * Concept data for /concepts/:concept pages. Used by ConceptPage.tsx.
  */
 
 export interface ConceptSection {
   heading: string;
-  /**
-   * Paragraphs rendered as <p> in order. No embedded markdown — keep it plain.
-   * Use multiple short paragraphs rather than one long one with line breaks.
-   */
+  /** Rendered as <p> in order — plain strings, no markdown. */
   paragraphs: string[];
 }
 
