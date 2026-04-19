@@ -9,10 +9,8 @@
     <link rel="apple-touch-icon" sizes="256x256" href="/favicons/logo-256.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Fallback for SPA-only routes. Public pages override via <DynamicMeta>;
-         page-specific og:url/twitter:url are intentionally absent here. -->
-    <title>Torale - Monitor the Web, Get Notified When It Matters</title>
-    <meta name="description" content="Automate web monitoring with AI-powered conditional alerts. Track product launches, stock availability, event announcements, and more. Set it and forget it.">
+    <!-- Title + description are set per-page via <DynamicMeta>. react-helmet-async
+         only dedupes tags it rendered, so static fallbacks here would collide. -->
     <meta property="og:site_name" content="Torale">
     <meta property="og:image" content="https://torale.ai/og-image.webp">
     <meta name="twitter:card" content="summary_large_image">
