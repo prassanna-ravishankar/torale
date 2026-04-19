@@ -13,6 +13,7 @@ import {
 import { UniversalEventStream } from "./ui/UniversalEventStream";
 import { SystemTrace } from "./ui/SystemTrace";
 import { Logo } from "@/components/Logo";
+import { DynamicMeta } from "@/components/DynamicMeta";
 
 /**
  * Landing Page - Based on MockLandingPage.tsx
@@ -81,6 +82,11 @@ export default function Landing() {
 
   return (
     <>
+      <DynamicMeta
+        path="/"
+        title="Torale - Monitor the Web, Get Notified When It Matters"
+        description="Automate web monitoring with AI-powered conditional alerts. Track product launches, stock availability, event announcements, and more. Set it and forget it."
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
