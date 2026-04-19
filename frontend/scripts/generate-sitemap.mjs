@@ -1,4 +1,4 @@
-import { writeFileSync, existsSync, unlinkSync } from 'node:fs';
+import { writeFileSync, existsSync, unlinkSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadTsModule } from './_lib/load-ts.mjs';
 
@@ -8,13 +8,46 @@ const SITE_ORIGIN = 'https://torale.ai';
 
 const { PUBLIC_ROUTES } = await loadTsModule(join(PROJECT_ROOT, 'src/data/publicRoutes.ts'));
 
-const now = new Date().toISOString().slice(0, 10);
+// Map each route to the source file whose mtime best represents "when this
+// route's content last changed". Used for <lastmod> so Google doesn't treat
+// every deploy as a content change on every page.
+const STATIC_SOURCES = {
+  '/': 'src/components/Landing.tsx',
+  '/changelog': 'src/components/Changelog.tsx',
+  '/explore': 'src/pages/Explore.tsx',
+  '/terms': 'src/pages/TermsOfService.tsx',
+  '/privacy': 'src/pages/PrivacyPolicy.tsx',
+};
+const DYNAMIC_SOURCES = [
+  { prefix: '/compare/', file: 'src/data/competitors.ts' },
+  { prefix: '/use-cases/', file: 'src/data/useCases.ts' },
+  { prefix: '/concepts/', file: 'src/data/concepts.ts' },
+];
+
+const buildDate = new Date().toISOString().slice(0, 10);
+
+function sourceFor(path) {
+  if (STATIC_SOURCES[path]) return STATIC_SOURCES[path];
+  const dyn = DYNAMIC_SOURCES.find((d) => path.startsWith(d.prefix));
+  return dyn?.file;
+}
+
+function lastmodFor(path) {
+  const rel = sourceFor(path);
+  if (!rel) return buildDate;
+  try {
+    return statSync(join(PROJECT_ROOT, rel)).mtime.toISOString().slice(0, 10);
+  } catch {
+    return buildDate;
+  }
+}
+
 const urls = PUBLIC_ROUTES.map((route) => {
   const priority = route.priority ?? 0.8;
   return [
     '  <url>',
     `    <loc>${SITE_ORIGIN}${route.path}</loc>`,
-    `    <lastmod>${now}</lastmod>`,
+    `    <lastmod>${lastmodFor(route.path)}</lastmod>`,
     `    <priority>${priority.toFixed(1)}</priority>`,
     '  </url>',
   ].join('\n');
