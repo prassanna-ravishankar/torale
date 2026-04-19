@@ -25,8 +25,8 @@ export const REDIRECTS: RedirectRule[] = [
   { kind: 'exact', from: '/getting-started/web-dashboard', to: '/getting-started', code: 301 },
   { kind: 'exact', from: '/getting-started/self-hosted', code: 410 },
 
-  { kind: 'prefix', prefix: '/deployment/', code: 410 },
-  { kind: 'prefix', prefix: '/self-hosted/', code: 410 },
-  { kind: 'prefix', prefix: '/contributing/', code: 410 },
-  { kind: 'prefix', prefix: '/cli/', to: '/sdk/quickstart', code: 301 },
+  { kind: 'prefix', prefix: '/deployment', code: 410 },
+  { kind: 'prefix', prefix: '/self-hosted', code: 410 },
+  { kind: 'prefix', prefix: '/contributing', code: 410 },
+  { kind: 'prefix', prefix: '/cli', to: '/sdk/quickstart', code: 301 },
 ];
