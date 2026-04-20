@@ -31,7 +31,7 @@ class AgentExecutionResult(BaseModel):
     confidence: int
     next_run: str | None = None
     grounding_sources: list[GroundingSource] = []
-    activity: list[dict] | None = None
+    activity: list["ActivityStep"] | None = None
 
 
 class EnrichedExecutionResult(BaseModel):

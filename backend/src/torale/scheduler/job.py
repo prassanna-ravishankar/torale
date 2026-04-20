@@ -225,7 +225,7 @@ async def _execute(
             confidence=confidence,
             next_run=next_run,
             grounding_sources=grounding_sources,
-            activity=[s.model_dump() for s in activity] if activity else None,
+            activity=activity,
         )
         await persist_execution_result(
             task_id=task_id,
