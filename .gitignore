@@ -1,6 +1,9 @@
 # Scratch / local experiments
 scratch/
 
+# Beads hook sometimes writes this at repo root; the canonical location is .beads/
+/issues.jsonl
+
 # Python
 __pycache__/
 *.py[cod]
