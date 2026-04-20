@@ -279,3 +279,27 @@ export interface CreateApiKeyResponse {
   key: string; // Full key shown only once
   key_info: ApiKey;
 }
+
+// Connector toolkit status, mirrors backend Composio ConnectionStatus.
+export type ConnectorStatus =
+  | 'INITIALIZING'
+  | 'INITIATED'
+  | 'ACTIVE'
+  | 'FAILED'
+  | 'EXPIRED'
+  | 'INACTIVE';
+
+export interface AvailableToolkit {
+  slug: string;
+  display_name: string;
+  description: string;
+}
+
+export interface UserConnection {
+  toolkit_slug: string;
+  display_name: string;
+  status: ConnectorStatus | null;
+  status_reason: string | null;
+  connected_at: string | null;
+  last_used_at: string | null;
+}

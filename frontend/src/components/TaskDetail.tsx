@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge, DeleteMonitorDialog } from "@/components/torale";
 import { ExecutionTimeline } from "@/components/ExecutionTimeline";
 import { TaskConfiguration } from "@/components/task/TaskConfiguration";
+import { ConnectorDegradationBanner } from "@/components/connectors/ConnectorDegradationBanner";
 import { getTaskStatus } from '@/lib/taskStatus';
 import { formatTimeUntil } from '@/lib/utils';
 import {
@@ -281,6 +282,10 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
           </div>
         </div>
       </div>
+
+      {isOwner && (
+        <ConnectorDegradationBanner attachedSlugs={task.attached_connector_slugs ?? []} />
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="sticky top-0 z-10 bg-zinc-50 pb-2 -mx-4 px-4 sm:-mx-8 sm:px-8 border-b border-zinc-200 mb-6">

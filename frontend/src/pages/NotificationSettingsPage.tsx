@@ -5,6 +5,7 @@ import { EmailManagementSection } from '@/components/settings/EmailManagementSec
 import { WebhookConfigSection } from '@/components/settings/WebhookConfigSection';
 import { NotificationHistorySection } from '@/components/settings/NotificationHistorySection';
 import { ApiKeyManagementSection } from '@/components/settings/ApiKeyManagementSection';
+import { SettingsTabs } from '@/components/settings/SettingsTabs';
 
 /**
  * NotificationSettingsPage - Brutalist settings panel
@@ -31,6 +32,8 @@ export const NotificationSettingsPage: React.FC = () => {
             </div>
           </div>
         </header>
+
+        <SettingsTabs />
 
         {/* Settings Grid */}
         <div className="grid gap-6 lg:grid-cols-2">

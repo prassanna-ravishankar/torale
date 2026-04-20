@@ -16,6 +16,8 @@ const Landing = lazy(() => import('@/components/Landing'))
 const Changelog = lazy(() => import('@/components/Changelog'))
 const Admin = lazy(() => import('@/pages/Admin').then(m => ({ default: m.Admin })))
 const NotificationSettingsPage = lazy(() => import('@/pages/NotificationSettingsPage').then(m => ({ default: m.NotificationSettingsPage })))
+const ConnectorsPage = lazy(() => import('@/pages/ConnectorsPage').then(m => ({ default: m.ConnectorsPage })))
+import { connectorsEnabled } from '@/components/connectors/connectorsFlag'
 const TermsOfService = lazy(() => import('@/pages/TermsOfService').then(m => ({ default: m.TermsOfService })))
 const PrivacyPolicy = lazy(() => import('@/pages/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })))
 const CapacityGate = lazy(() => import('@/components/CapacityGate').then(m => ({ default: m.CapacityGate })))
@@ -44,6 +46,21 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   return <>{children}</>
+}
+
+function ConnectorsRoute() {
+  const { isLoaded, user } = useAuth()
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+  if (!connectorsEnabled(user)) {
+    return <Navigate to="/settings/notifications" replace />
+  }
+  return <ConnectorsPage />
 }
 
 function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -238,11 +255,25 @@ export default function App() {
           }
         />
         <Route
+          path="/settings"
+          element={<Navigate to="/settings/notifications" replace />}
+        />
+        <Route
           path="/settings/notifications"
           element={
             <ProtectedRoute>
               <AppLayout>
                 <NotificationSettingsPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings/connectors"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ConnectorsRoute />
               </AppLayout>
             </ProtectedRoute>
           }
