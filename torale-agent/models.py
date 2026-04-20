@@ -28,7 +28,9 @@ class ActivityStep(BaseModel):
     SYNC: Keep in sync with backend/src/torale/scheduler/models.py:ActivityStep
     """
 
-    tool: str = Field(description="Tool name (e.g. perplexity_search, NOTION_SEARCH_NOTION_PAGE)")
+    tool: str = Field(
+        description="Tool name (e.g. perplexity_search, NOTION_SEARCH_NOTION_PAGE)"
+    )
     detail: str = Field(description="Human-readable summary of what was done")
     connector_slug: str | None = Field(
         default=None,
