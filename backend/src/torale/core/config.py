@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
 
+    # Composio — hosted MCP gateway for custom connectors (Notion/Linear/GitHub).
+    # See backend/src/torale/connectors/registry.py for the toolkit registry.
+    composio_api_key: str | None = None
+
     # Novu Cloud configuration
     novu_secret_key: str | None = None
     novu_workflow_id: str = "torale-condition-met"
