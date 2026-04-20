@@ -32,7 +32,12 @@ from torale.scheduler.errors import (
     should_retry,
 )
 from torale.scheduler.history import format_execution_history
-from torale.scheduler.models import MonitoringResponse
+from torale.scheduler.models import (
+    AgentExecutionResult,
+    EnrichedExecutionResult,
+    GroundingSource,
+    MonitoringResponse,
+)
 from torale.scheduler.prompt_sanitizer import PromptSanitizer
 from torale.scheduler.scheduler import get_scheduler
 from torale.tasks import TaskState, TaskStatus
@@ -211,20 +216,21 @@ async def _execute(
         next_run_dt = _parse_next_run(next_run_value)
         next_run = next_run_dt.isoformat() if next_run_dt else None
 
-        grounding_sources = [{"url": u, "title": urlparse(u).netloc or u} for u in sources]
+        grounding_sources = [GroundingSource(url=u, title=urlparse(u).netloc or u) for u in sources]
 
         activity = agent_response.activity
+        agent_exec_result = AgentExecutionResult(
+            evidence=evidence,
+            notification=notification,
+            confidence=confidence,
+            next_run=next_run,
+            grounding_sources=grounding_sources,
+            activity=activity,
+        )
         await persist_execution_result(
             task_id=task_id,
             execution_id=execution_id,
-            agent_result={
-                "evidence": evidence,
-                "notification": notification,
-                "confidence": confidence,
-                "next_run": next_run,
-                "grounding_sources": grounding_sources,
-                "activity": [s.model_dump() for s in activity] if activity else None,
-            },
+            agent_result=agent_exec_result,
         )
 
         # Send notifications if notification text present
@@ -235,7 +241,7 @@ async def _execute(
                     task_id, execution_id, user_id
                 )
 
-                channels = notification_context.get("notification_channels", ["email"])
+                channels = notification_context.notification_channels
 
                 execution_count = await db.fetch_val(
                     "SELECT COUNT(*) FROM task_executions WHERE task_id = $1 AND status = $2",
@@ -243,15 +249,15 @@ async def _execute(
                     TaskStatus.SUCCESS.value,
                 )
 
-                enriched_result = {
-                    "execution_id": execution_id,
-                    "summary": notification or evidence,
-                    "sources": grounding_sources,
-                    "notification": notification,
-                    "is_first_execution": execution_count == 1,
-                    "next_run": next_run,
-                    "confidence": confidence,
-                }
+                enriched_result = EnrichedExecutionResult(
+                    execution_id=execution_id,
+                    summary=notification or evidence,
+                    sources=grounding_sources,
+                    notification=notification,
+                    is_first_execution=execution_count == 1,
+                    next_run=next_run,
+                    confidence=confidence,
+                )
 
                 if "email" in channels:
                     email_delivered = await send_email_notification(

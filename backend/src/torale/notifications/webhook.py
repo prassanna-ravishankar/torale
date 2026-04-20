@@ -1,16 +1,21 @@
 """Webhook delivery service with HMAC signing and retry logic."""
 
+from __future__ import annotations
+
 import hashlib
 import hmac
 import secrets
 import time
 from datetime import datetime, timedelta
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import httpx
 from pydantic import BaseModel
 
 from torale.utils.jsonb import parse_jsonb
+
+if TYPE_CHECKING:
+    from torale.scheduler.models import EnrichedExecutionResult
 
 
 class WebhookPayload(BaseModel):
@@ -165,7 +170,7 @@ class WebhookDeliveryService:
 
 
 def build_webhook_payload(
-    execution_id: str, task: dict, execution: dict, result: dict
+    execution_id: str, task: dict, execution: dict, result: EnrichedExecutionResult
 ) -> WebhookPayload:
     """
     Build standardized webhook payload.
@@ -174,13 +179,11 @@ def build_webhook_payload(
         execution_id: Execution ID
         task: Task database record
         execution: Execution database record
-        result: MonitoringResult dict with summary, sources, metadata
+        result: Enriched execution result with summary, sources, notification
 
     Returns:
         WebhookPayload with standardized structure
     """
-    notification_text = result.get("notification", "")
-
     data = {
         "task": {
             "id": str(task["id"]),
@@ -190,12 +193,12 @@ def build_webhook_payload(
         },
         "execution": {
             "id": execution_id,
-            "notification": notification_text,
+            "notification": result.notification or "",
             "completed_at": str(execution.get("completed_at", "")),
         },
         "result": {
-            "answer": result.get("summary", ""),
-            "grounding_sources": result.get("sources", []),
+            "answer": result.summary,
+            "grounding_sources": [s.model_dump() for s in result.sources],
         },
     }
 
