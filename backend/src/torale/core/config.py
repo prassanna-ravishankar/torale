@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     # Frontend URL for SEO (sitemap, OpenGraph, etc.)
     frontend_url: str = "https://torale.ai"
 
+    # Public backend URL — used to build callback URLs for third-party redirects
+    # (e.g. Composio OAuth callbacks). Set via BACKEND_URL env var per-env.
+    backend_url: str = "http://localhost:8000"
+
     # Path to changelog.json file (relative to project root or absolute path)
     changelog_json_path: str = "static/changelog.json"
 
