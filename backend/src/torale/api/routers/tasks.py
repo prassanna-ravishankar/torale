@@ -161,9 +161,9 @@ async def create_task(
             user_id, name, state, next_run,
             search_query, condition_description, notifications,
             notification_channels, notification_email, webhook_url, webhook_secret,
-            context
+            context, attached_connector_slugs
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING *
     """
 
@@ -181,6 +181,7 @@ async def create_task(
         extracted["webhook_url"],
         extracted["webhook_secret"],
         task.context,
+        task.attached_connector_slugs,
     )
 
     if not row:

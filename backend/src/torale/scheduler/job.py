@@ -25,6 +25,10 @@ from torale.scheduler.activities import (
     send_webhook_notification,
 )
 from torale.scheduler.agent import call_agent
+from torale.scheduler.connector_resolution import (
+    mark_connectors_used,
+    resolve_mcp_servers,
+)
 from torale.scheduler.errors import (
     classify_error,
     get_retry_delay,
@@ -152,13 +156,19 @@ async def _execute(
         )
 
         task = await db.fetch_one(
-            """SELECT search_query, condition_description, name, notification_channels
+            """SELECT search_query, condition_description, name, notification_channels,
+                      attached_connector_slugs, user_id
                FROM tasks WHERE id = $1""",
             uuid.UUID(task_id),
         )
 
         if not task:
             raise RuntimeError(f"Task {task_id} not found")
+
+        mcp_servers = await resolve_mcp_servers(
+            db, task["user_id"], task["attached_connector_slugs"]
+        )
+        mcp_metadata = [s.model_dump() for s in mcp_servers] if mcp_servers else None
 
         # Build agent prompt
         recent_executions = await fetch_recent_executions(task_id)
@@ -189,8 +199,16 @@ async def _execute(
             prompt_parts.append(history_block)
 
         agent_response: MonitoringResponse = await call_agent(
-            "\n".join(prompt_parts), user_id=user_id, task_id=task_id
+            "\n".join(prompt_parts),
+            user_id=user_id,
+            task_id=task_id,
+            mcp_servers=mcp_metadata,
         )
+
+        if mcp_servers:
+            await mark_connectors_used(
+                db, task["user_id"], [s.toolkit for s in mcp_servers]
+            )
 
         notification = agent_response.notification
         evidence = agent_response.evidence
