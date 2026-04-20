@@ -46,6 +46,11 @@ export interface Task {
   view_count: number;
   subscriber_count: number;
   forked_from_task_id: string | null;
+
+  // Connectors attached to this task (toolkit slugs, e.g. "notion", "linear").
+  // Re-resolved to active connections at each run — dropped silently if a
+  // referenced slug is no longer ACTIVE. See design memo §4, §10.1.
+  attached_connector_slugs: string[];
 }
 
 /**
@@ -59,6 +64,26 @@ export interface TaskCreatePayload {
   state: TaskState;
   run_immediately?: boolean;  // Execute task immediately after creation
   notifications?: NotificationConfig[];  // Notification configurations (optional)
+  attached_connector_slugs?: string[];
+}
+
+/** Mirror of backend `ConnectionStatus` (see connectors/client.py). */
+export type ConnectionStatus =
+  | "INITIALIZING"
+  | "INITIATED"
+  | "ACTIVE"
+  | "FAILED"
+  | "EXPIRED"
+  | "INACTIVE";
+
+/** One user's connection to one toolkit — response shape from GET /connectors. */
+export interface UserConnection {
+  toolkit_slug: string;
+  display_name: string;
+  status: ConnectionStatus | null;
+  status_reason: string | null;
+  connected_at: string | null;
+  last_used_at: string | null;
 }
 
 export interface GroundingSource {

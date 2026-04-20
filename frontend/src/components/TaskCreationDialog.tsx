@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CollapsibleSection, FieldError } from "@/components/torale";
+import { ConnectorPickerSection } from "@/components/connectors/ConnectorPickerSection";
 import type { TaskTemplate, Task } from "@/types";
 import api from "@/lib/api";
 import {
@@ -63,6 +64,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("none");
   const [instructions, setInstructions] = useState("");
+  const [attachedConnectors, setAttachedConnectors] = useState<string[]>([]);
 
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,6 +91,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
     if (!open) {
       setSelectedTemplateId("none");
       setInstructions("");
+      setAttachedConnectors([]);
       setValidationErrors({});
       setError("");
     }
@@ -147,6 +150,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
         condition_description: instructions,
         state: "active",
         run_immediately: true,
+        attached_connector_slugs: attachedConnectors,
       });
 
       onTaskCreated(newTask);
@@ -261,6 +265,12 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
                 </div>
               </CollapsibleSection>
             )}
+
+            <ConnectorPickerSection
+              selected={attachedConnectors}
+              onChange={setAttachedConnectors}
+              disabled={isSubmitting}
+            />
 
             {error && (
               <Alert variant="destructive">

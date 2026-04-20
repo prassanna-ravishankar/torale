@@ -4,6 +4,7 @@ import type {
   TaskExecution,
   TaskTemplate,
   User,
+  UserConnection,
   UserWithNotifications,
   WebhookConfig,
   WebhookDelivery,
@@ -502,6 +503,14 @@ class ApiClient {
 
   async getPublicTaskById(taskId: string): Promise<Task> {
     const response = await fetch(`${this.baseUrl}/api/v1/public/tasks/id/${taskId}`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  // Connector endpoints
+  async getConnections(): Promise<UserConnection[]> {
+    const response = await fetch(`${this.baseUrl}/api/v1/connectors`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
