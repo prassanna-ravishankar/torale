@@ -46,11 +46,30 @@ class EnrichedExecutionResult(BaseModel):
     confidence: int | None = None
 
 
-class ActivityStep(BaseModel):
-    """A single step the agent took during monitoring."""
+class ToolAnnotations(BaseModel):
+    """Passthrough MCP tool annotations. Unrendered in v1; forward-compat for write-tool UX."""
 
-    tool: str = Field(description="Tool name (e.g. perplexity_search, fetch_url)")
+    readOnlyHint: bool | None = None
+    destructiveHint: bool | None = None
+    idempotentHint: bool | None = None
+
+
+class ActivityStep(BaseModel):
+    """A single step the agent took during monitoring.
+
+    SYNC: Keep in sync with torale-agent/models.py:ActivityStep
+    """
+
+    tool: str = Field(description="Tool name (e.g. perplexity_search, NOTION_SEARCH_NOTION_PAGE)")
     detail: str = Field(description="Human-readable summary of what was done")
+    connector_slug: str | None = Field(
+        default=None,
+        description="Toolkit slug (e.g. 'notion') for MCP tools, None for built-ins",
+    )
+    annotations: ToolAnnotations | None = Field(
+        default=None,
+        description="MCP tool annotations passthrough (readOnlyHint etc.)",
+    )
 
 
 class MonitoringResponse(BaseModel):
