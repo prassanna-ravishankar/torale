@@ -156,6 +156,11 @@ export const ConnectorsPage: React.FC = () => {
 
         <SettingsTabs />
 
+        <p className="text-xs text-zinc-400 font-mono mb-6">
+          Connections powered by Composio — you'll see their name on the
+          authorization screen.
+        </p>
+
         {isLoading ? (
           <div className="flex items-center justify-center py-24">
             <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
