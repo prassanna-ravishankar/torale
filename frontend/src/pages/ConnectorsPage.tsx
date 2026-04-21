@@ -99,12 +99,21 @@ export const ConnectorsPage: React.FC = () => {
   };
 
   const handleConnect = async (slug: string) => {
+    // Open popup synchronously to preserve the user-gesture token. Chrome,
+    // Safari, and Firefox block window.open if called after an await — the
+    // user-activation has already been consumed by then.
+    const popup = window.open('about:blank', '_blank', 'noopener,noreferrer');
     markWorking(slug, true);
     try {
       const { redirect_url } = await api.connectToolkit(slug);
-      window.open(redirect_url, '_blank', 'noopener,noreferrer');
+      if (popup) {
+        popup.location.href = redirect_url;
+      } else {
+        toast.error('Popup blocked. Allow popups for Torale and try again.');
+      }
       await refresh();
     } catch (err) {
+      if (popup) popup.close();
       const msg = err instanceof Error ? err.message : 'Connection service unavailable.';
       toast.error(msg);
     } finally {

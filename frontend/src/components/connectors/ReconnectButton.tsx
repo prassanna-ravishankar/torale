@@ -22,11 +22,19 @@ export const ReconnectButton: React.FC<ReconnectButtonProps> = ({
   const [isWorking, setIsWorking] = useState(false);
 
   const handleClick = async () => {
+    // Open popup synchronously to preserve the user-gesture token. Browsers
+    // block window.open after an await because user-activation is consumed.
+    const popup = window.open('about:blank', '_blank', 'noopener,noreferrer');
     setIsWorking(true);
     try {
       const { redirect_url } = await api.connectToolkit(toolkitSlug);
-      window.open(redirect_url, '_blank', 'noopener,noreferrer');
+      if (popup) {
+        popup.location.href = redirect_url;
+      } else {
+        toast.error('Popup blocked. Allow popups for Torale and try again.');
+      }
     } catch (err) {
+      if (popup) popup.close();
       const msg = err instanceof Error ? err.message : 'Connection service unavailable.';
       toast.error(`Couldn't reconnect ${displayName}: ${msg}`);
     } finally {
