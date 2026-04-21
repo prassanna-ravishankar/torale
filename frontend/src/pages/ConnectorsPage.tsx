@@ -101,13 +101,19 @@ export const ConnectorsPage: React.FC = () => {
   const handleConnect = async (slug: string) => {
     // Open popup synchronously to preserve the user-gesture token. Chrome,
     // Safari, and Firefox block window.open if called after an await — the
-    // user-activation has already been consumed by then.
-    const popup = window.open('about:blank', '_blank', 'noopener,noreferrer');
+    // user-activation is consumed by the time the fetch resolves.
+    //
+    // Do NOT pass 'noopener,noreferrer' here: per HTML spec, noopener makes
+    // window.open return null, so we lose the handle we need to later set
+    // popup.location.href. Instead we null out popup.opener after navigation
+    // to get the same tamper-prevention property without losing the ref.
+    const popup = window.open('about:blank', '_blank');
     markWorking(slug, true);
     try {
       const { redirect_url } = await api.connectToolkit(slug);
       if (popup) {
         popup.location.href = redirect_url;
+        popup.opener = null;
       } else {
         toast.error('Popup blocked. Allow popups for Torale and try again.');
       }

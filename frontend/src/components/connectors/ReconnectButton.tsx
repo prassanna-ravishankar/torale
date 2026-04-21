@@ -24,12 +24,17 @@ export const ReconnectButton: React.FC<ReconnectButtonProps> = ({
   const handleClick = async () => {
     // Open popup synchronously to preserve the user-gesture token. Browsers
     // block window.open after an await because user-activation is consumed.
-    const popup = window.open('about:blank', '_blank', 'noopener,noreferrer');
+    //
+    // Do NOT pass 'noopener,noreferrer' here: per HTML spec, noopener makes
+    // window.open return null, so we lose the handle we need to later set
+    // popup.location.href. We null out popup.opener after navigation instead.
+    const popup = window.open('about:blank', '_blank');
     setIsWorking(true);
     try {
       const { redirect_url } = await api.connectToolkit(toolkitSlug);
       if (popup) {
         popup.location.href = redirect_url;
+        popup.opener = null;
       } else {
         toast.error('Popup blocked. Allow popups for Torale and try again.');
       }
