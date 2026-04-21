@@ -173,9 +173,7 @@ async def connect_toolkit(
     )
 
     if not initiation.redirect_url:
-        raise HTTPException(
-            status.HTTP_502_BAD_GATEWAY, "Composio returned no redirect URL"
-        )
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Composio returned no redirect URL")
     return InitiateResponse(redirect_url=initiation.redirect_url)
 
 

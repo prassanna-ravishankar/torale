@@ -206,9 +206,7 @@ async def _execute(
         )
 
         if mcp_servers:
-            await mark_connectors_used(
-                db, task["user_id"], [s.toolkit for s in mcp_servers]
-            )
+            await mark_connectors_used(db, task["user_id"], [s.toolkit for s in mcp_servers])
 
         notification = agent_response.notification
         evidence = agent_response.evidence
