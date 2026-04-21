@@ -46,13 +46,10 @@ frontend:
 
 agent:
   replicaCount: 1
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
+  # Resources inherit from values.yaml (256Mi/512Mi). Composio SDK + MCP
+  # client push the import-time footprint past the old 128Mi/256Mi staging
+  # override — keep staging and prod on the same agent sizing to avoid
+  # "worked on staging, broke prod" drift.
 
 # Staging database (separate from production)
 database:
