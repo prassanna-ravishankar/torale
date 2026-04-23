@@ -1,0 +1,5 @@
+# graphify scratch files
+.graphify_*
+.chunk_list_*.txt
+cache/
+manifest.json
