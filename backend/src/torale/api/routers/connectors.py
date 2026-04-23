@@ -241,15 +241,27 @@ _CALLBACK_HTML = """<!doctype html>
 async def connector_callback(
     user_id: str = Query(...),
     status_param: str = Query(..., alias="status"),
-    connected_account_id: str | None = Query(None),
+    connected_account_id: str | None = Query(None, alias="connectedAccountId"),
+    app_name: str | None = Query(None, alias="appName"),
     db: Database = Depends(get_db),
 ) -> HTMLResponse:
     """Composio redirects here after the user completes auth.
 
-    Updates the corresponding user_connectors row and renders a minimal HTML
-    page telling the user they can close the tab. Rendered by backend (not
-    frontend) so it's a plain static page, no Clerk/auth roundtrip needed.
+    Composio sends query params in camelCase (connectedAccountId, appName).
+    We match the local row on (user_id, toolkit_slug) — toolkit_slug is the
+    stable key since connected_account_id can change across reconnects.
     """
+    if not app_name:
+        logger.warning("callback missing appName; skipping DB update: user_id=%s", user_id)
+        return HTMLResponse(
+            _CALLBACK_HTML.format(
+                status_class="failed",
+                border_color="#ef4444",
+                title="Connection failed",
+                body="Missing toolkit info. Close this tab and try again from Torale.",
+            )
+        )
+
     if status_param == "success":
         await db.execute(
             """
@@ -259,11 +271,10 @@ async def connector_callback(
                 connected_at = COALESCE(connected_at, NOW()),
                 updated_at = NOW(),
                 connected_account_id = COALESCE($3, connected_account_id)
-            WHERE user_id = $1::uuid
-                AND connected_account_id = $2
+            WHERE user_id = $1::uuid AND toolkit_slug = $2
             """,
             user_id,
-            connected_account_id,
+            app_name,
             connected_account_id,
         )
         html = _CALLBACK_HTML.format(
@@ -279,11 +290,10 @@ async def connector_callback(
             SET status = 'FAILED',
                 status_reason = $3,
                 updated_at = NOW()
-            WHERE user_id = $1::uuid
-                AND connected_account_id = $2
+            WHERE user_id = $1::uuid AND toolkit_slug = $2
             """,
             user_id,
-            connected_account_id,
+            app_name,
             f"callback_status={status_param}",
         )
         html = _CALLBACK_HTML.format(
