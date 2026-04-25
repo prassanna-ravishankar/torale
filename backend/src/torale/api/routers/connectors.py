@@ -110,19 +110,27 @@ async def list_connections(
     except ComposioClientError as e:
         logger.warning("Composio list_user_connections failed: %s", e)
         composio_conns = []
-    composio_by_slug = {c.toolkit_slug: c for c in composio_conns}
+    # Index by connected_account_id (truly unique) rather than toolkit_slug —
+    # Composio can return multiple connections for the same toolkit (e.g. a
+    # stale INITIATED row alongside a fresh ACTIVE one), and matching by slug
+    # would silently pick whichever the dict comp visited last.
+    composio_by_ca = {c.connected_account_id: c for c in composio_conns}
 
-    # Best-effort reconcile: flip INITIATED/EXPIRED → ACTIVE when Composio is authoritative
-    # and the connected_account_id matches (avoids overwriting a concurrent re-auth).
-    slugs_to_flip = [
-        slug
-        for slug, remote in composio_by_slug.items()
-        if (local := local_by_slug.get(slug))
+    def _remote_for(local_row: dict | None):
+        if not local_row:
+            return None
+        return composio_by_ca.get(local_row.get("connected_account_id"))
+
+    # Best-effort reconcile: flip INITIATED/EXPIRED → ACTIVE when Composio is
+    # authoritative for the same connected_account_id we have locally.
+    rows_to_flip = [
+        local
+        for local in local_by_slug.values()
+        if local["status"] in ("INITIATED", "EXPIRED")
+        and (remote := _remote_for(local))
         and remote.status == "ACTIVE"
-        and local["status"] in ("INITIATED", "EXPIRED")
-        and local.get("connected_account_id") == remote.connected_account_id
     ]
-    if slugs_to_flip:
+    if rows_to_flip:
         try:
             updated_rows = await db.fetch_all(
                 """
@@ -131,11 +139,14 @@ async def list_connections(
                     status_reason = NULL,
                     connected_at = COALESCE(connected_at, NOW()),
                     updated_at = NOW()
-                WHERE user_id = $1 AND toolkit_slug = ANY($2::text[])
+                WHERE user_id = $1
+                  AND toolkit_slug = ANY($2::text[])
+                  AND connected_account_id = ANY($3::text[])
                 RETURNING toolkit_slug, status, status_reason, connected_at
                 """,
                 user.id,
-                slugs_to_flip,
+                [r["toolkit_slug"] for r in rows_to_flip],
+                [r["connected_account_id"] for r in rows_to_flip],
             )
             # Patch the in-memory cache with the actual persisted values so the
             # response reflects DB state exactly (no datetime drift).
@@ -152,7 +163,7 @@ async def list_connections(
     result: list[UserConnection] = []
     for tk in TOOLKIT_REGISTRY:
         local = local_by_slug.get(tk.slug)
-        remote = composio_by_slug.get(tk.slug)
+        remote = _remote_for(local)
         if not local and not remote:
             continue
         result.append(
