@@ -14,7 +14,7 @@ about Composio specifics lives in torale.connectors.client.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -113,33 +113,39 @@ async def list_connections(
 
     # Best-effort reconcile: flip INITIATED/EXPIRED → ACTIVE when Composio is authoritative
     # and the connected_account_id matches (avoids overwriting a concurrent re-auth).
-    try:
-        for slug, remote in composio_by_slug.items():
-            local = local_by_slug.get(slug)
-            if (
-                local
-                and remote.status == "ACTIVE"
-                and local["status"] in ("INITIATED", "EXPIRED")
-                and local.get("connected_account_id") == remote.connected_account_id
-            ):
-                await db.execute(
-                    """
-                    UPDATE user_connectors
-                    SET status = 'ACTIVE',
-                        connected_at = COALESCE(connected_at, NOW()),
-                        updated_at = NOW()
-                    WHERE user_id = $1 AND toolkit_slug = $2
-                    """,
-                    user.id,
-                    slug,
-                )
+    slugs_to_flip = [
+        slug
+        for slug, remote in composio_by_slug.items()
+        if (local := local_by_slug.get(slug))
+        and remote.status == "ACTIVE"
+        and local["status"] in ("INITIATED", "EXPIRED")
+        and local.get("connected_account_id") == remote.connected_account_id
+    ]
+    if slugs_to_flip:
+        try:
+            await db.execute(
+                """
+                UPDATE user_connectors
+                SET status = 'ACTIVE',
+                    status_reason = NULL,
+                    connected_at = COALESCE(connected_at, NOW()),
+                    updated_at = NOW()
+                WHERE user_id = $1 AND toolkit_slug = ANY($2::text[])
+                """,
+                user.id,
+                slugs_to_flip,
+            )
+            for slug in slugs_to_flip:
+                local = local_by_slug[slug]
                 local["status"] = "ACTIVE"
+                local["status_reason"] = None
                 if local["connected_at"] is None:
-                    local["connected_at"] = datetime.now()
-    except Exception:
-        logger.warning(
-            "Connector reconcile write-back failed; continuing with cached state", exc_info=True
-        )
+                    local["connected_at"] = datetime.now(UTC)
+        except Exception:
+            logger.warning(
+                "Connector reconcile write-back failed; continuing with cached state",
+                exc_info=True,
+            )
 
     result: list[UserConnection] = []
     for tk in TOOLKIT_REGISTRY:
