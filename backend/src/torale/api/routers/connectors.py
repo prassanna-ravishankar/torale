@@ -309,6 +309,11 @@ async def connector_callback(
         )
         return HTMLResponse(_CALLBACK_FAILED_HTML)
 
+    # Composio sometimes returns appName in mixed case across surfaces; our
+    # toolkit_slug column stores the lowercase registry slug. Normalize so
+    # case differences don't reject a legitimate callback.
+    toolkit_slug = app_name.lower()
+
     pending = await db.fetch_one(
         """
         SELECT 1 FROM user_connectors
@@ -318,14 +323,14 @@ async def connector_callback(
           AND status = 'INITIATED'
         """,
         user_id,
-        app_name,
+        toolkit_slug,
         connected_account_id,
     )
     if pending is None:
         logger.warning(
             "callback rejected: no INITIATED row for user_id=%s toolkit=%s ca=%s",
             user_id,
-            app_name,
+            toolkit_slug,
             connected_account_id,
         )
         return HTMLResponse(_CALLBACK_FAILED_HTML)
@@ -343,7 +348,7 @@ async def connector_callback(
               AND connected_account_id = $3
             """,
             user_id,
-            app_name,
+            toolkit_slug,
             connected_account_id,
         )
         html = _CALLBACK_HTML.format(
@@ -364,7 +369,7 @@ async def connector_callback(
               AND connected_account_id = $3
             """,
             user_id,
-            app_name,
+            toolkit_slug,
             connected_account_id,
             f"callback_status={status_param}",
         )
