@@ -336,7 +336,7 @@ async def connector_callback(
         )
         return HTMLResponse(_CALLBACK_FAILED_HTML)
 
-    if status_param == "success":
+    if status_param.lower() == "success":
         await db.execute(
             """
             UPDATE user_connectors
