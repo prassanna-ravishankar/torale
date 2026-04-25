@@ -140,8 +140,9 @@ async def list_connections(
                     connected_at = COALESCE(connected_at, NOW()),
                     updated_at = NOW()
                 WHERE user_id = $1
-                  AND toolkit_slug = ANY($2::text[])
-                  AND connected_account_id = ANY($3::text[])
+                  AND (toolkit_slug, connected_account_id) IN (
+                      SELECT unnest($2::text[]), unnest($3::text[])
+                  )
                 RETURNING toolkit_slug, status, status_reason, connected_at
                 """,
                 user.id,
