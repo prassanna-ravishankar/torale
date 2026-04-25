@@ -1174,15 +1174,11 @@ async def admin_reset_connectors(
                     user_id,
                 )
 
-    result = await db.execute(
-        "DELETE FROM user_connectors WHERE user_id = $1",
+    deleted_rows = await db.fetch_all(
+        "DELETE FROM user_connectors WHERE user_id = $1 RETURNING id",
         user_id,
     )
-    # asyncpg returns "DELETE N" as the status string
-    try:
-        deleted_local = int(result.split()[-1])
-    except (AttributeError, ValueError, IndexError):
-        deleted_local = 0
+    deleted_local = len(deleted_rows)
 
     logger.info(
         "Admin %s reset connectors for user %s: composio=%d failed=%d local=%d",
