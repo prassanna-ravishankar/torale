@@ -267,6 +267,14 @@ _CALLBACK_HTML = """<!doctype html>
 </html>"""
 
 
+_CALLBACK_FAILED_HTML = _CALLBACK_HTML.format(
+    status_class="failed",
+    border_color="#ef4444",
+    title="Connection failed",
+    body="Something went wrong. Close this tab and try again from Torale.",
+)
+
+
 @router.get("/callback", response_class=HTMLResponse)
 async def connector_callback(
     user_id: str = Query(...),
@@ -278,19 +286,42 @@ async def connector_callback(
     """Composio redirects here after the user completes auth.
 
     Composio sends query params in camelCase (connectedAccountId, appName).
-    We match the local row on (user_id, toolkit_slug) — toolkit_slug is the
-    stable key since connected_account_id can change across reconnects.
+    The unauthenticated `user_id` query param is not sufficient on its own — an
+    attacker who knows a victim's user_id could otherwise spoof a callback and
+    flip the victim's row to ACTIVE pointing at an attacker-controlled
+    connected_account_id. We defend by requiring that (user_id, toolkit_slug,
+    connected_account_id) match a row already in INITIATED state, which only
+    the authenticated POST /connect endpoint can create.
     """
-    if not app_name:
-        logger.warning("callback missing appName; skipping DB update: user_id=%s", user_id)
-        return HTMLResponse(
-            _CALLBACK_HTML.format(
-                status_class="failed",
-                border_color="#ef4444",
-                title="Connection failed",
-                body="Missing toolkit info. Close this tab and try again from Torale.",
-            )
+    if not app_name or not connected_account_id:
+        logger.warning(
+            "callback missing required params; skipping DB update: user_id=%s app_name=%s ca=%s",
+            user_id,
+            app_name,
+            connected_account_id,
         )
+        return HTMLResponse(_CALLBACK_FAILED_HTML)
+
+    pending = await db.fetch_one(
+        """
+        SELECT 1 FROM user_connectors
+        WHERE user_id = $1::uuid
+          AND toolkit_slug = $2
+          AND connected_account_id = $3
+          AND status = 'INITIATED'
+        """,
+        user_id,
+        app_name,
+        connected_account_id,
+    )
+    if pending is None:
+        logger.warning(
+            "callback rejected: no INITIATED row for user_id=%s toolkit=%s ca=%s",
+            user_id,
+            app_name,
+            connected_account_id,
+        )
+        return HTMLResponse(_CALLBACK_FAILED_HTML)
 
     if status_param == "success":
         await db.execute(
@@ -299,9 +330,10 @@ async def connector_callback(
             SET status = 'ACTIVE',
                 status_reason = NULL,
                 connected_at = COALESCE(connected_at, NOW()),
-                updated_at = NOW(),
-                connected_account_id = COALESCE($3, connected_account_id)
-            WHERE user_id = $1::uuid AND toolkit_slug = $2
+                updated_at = NOW()
+            WHERE user_id = $1::uuid
+              AND toolkit_slug = $2
+              AND connected_account_id = $3
             """,
             user_id,
             app_name,
@@ -318,18 +350,16 @@ async def connector_callback(
             """
             UPDATE user_connectors
             SET status = 'FAILED',
-                status_reason = $3,
+                status_reason = $4,
                 updated_at = NOW()
-            WHERE user_id = $1::uuid AND toolkit_slug = $2
+            WHERE user_id = $1::uuid
+              AND toolkit_slug = $2
+              AND connected_account_id = $3
             """,
             user_id,
             app_name,
+            connected_account_id,
             f"callback_status={status_param}",
         )
-        html = _CALLBACK_HTML.format(
-            status_class="failed",
-            border_color="#ef4444",
-            title="Connection failed",
-            body="Something went wrong. Close this tab and try again from Torale.",
-        )
+        html = _CALLBACK_FAILED_HTML
     return HTMLResponse(html)
