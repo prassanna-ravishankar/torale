@@ -14,7 +14,7 @@ about Composio specifics lives in torale.connectors.client.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 from urllib.parse import quote
 from uuid import UUID
 
@@ -124,7 +124,7 @@ async def list_connections(
     ]
     if slugs_to_flip:
         try:
-            await db.execute(
+            updated_rows = await db.fetch_all(
                 """
                 UPDATE user_connectors
                 SET status = 'ACTIVE',
@@ -132,16 +132,17 @@ async def list_connections(
                     connected_at = COALESCE(connected_at, NOW()),
                     updated_at = NOW()
                 WHERE user_id = $1 AND toolkit_slug = ANY($2::text[])
+                RETURNING toolkit_slug, status, status_reason, connected_at
                 """,
                 user.id,
                 slugs_to_flip,
             )
-            for slug in slugs_to_flip:
-                local = local_by_slug[slug]
-                local["status"] = "ACTIVE"
-                local["status_reason"] = None
-                if local["connected_at"] is None:
-                    local["connected_at"] = datetime.now(UTC)
+            # Patch the in-memory cache with the actual persisted values so the
+            # response reflects DB state exactly (no datetime drift).
+            for row in updated_rows:
+                slug = row["toolkit_slug"]
+                if slug in local_by_slug:
+                    local_by_slug[slug].update(dict(row))
         except Exception:
             logger.warning(
                 "Connector reconcile write-back failed; continuing with cached state",
