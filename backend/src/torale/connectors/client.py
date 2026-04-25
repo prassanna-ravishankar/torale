@@ -120,29 +120,42 @@ async def get_connection(connected_account_id: str) -> Connection:
 
 
 async def list_user_connections(user_id: str) -> list[Connection]:
-    """List all connections for a given user, across all toolkits."""
+    """List all connections for a given user, across all toolkits.
+
+    Iterates through every page of the Composio response so callers see the
+    full set even when a user has more connections than fit in one page (the
+    admin reset path is the main case where this matters).
+    """
 
     def _call() -> list[Connection]:
         c = _sdk()
-        resp = c.connected_accounts.list(user_ids=[user_id])
-        items = getattr(resp, "items", None) or []
         connections: list[Connection] = []
-        for item in items:
-            toolkit_slug = _normalize_toolkit_slug(getattr(item, "toolkit", None))
-            if not toolkit_slug:
-                logger.warning(
-                    "Skipping connection %s with missing toolkit",
-                    getattr(item, "id", "<unknown>"),
+        cursor: str | None = None
+        while True:
+            kwargs: dict = {"user_ids": [user_id]}
+            if cursor:
+                kwargs["cursor"] = cursor
+            resp = c.connected_accounts.list(**kwargs)
+            items = getattr(resp, "items", None) or []
+            for item in items:
+                toolkit_slug = _normalize_toolkit_slug(getattr(item, "toolkit", None))
+                if not toolkit_slug:
+                    logger.warning(
+                        "Skipping connection %s with missing toolkit",
+                        getattr(item, "id", "<unknown>"),
+                    )
+                    continue
+                connections.append(
+                    Connection(
+                        connected_account_id=item.id,
+                        toolkit_slug=toolkit_slug,
+                        status=item.status,
+                        status_reason=getattr(item, "status_reason", None),
+                    )
                 )
-                continue
-            connections.append(
-                Connection(
-                    connected_account_id=item.id,
-                    toolkit_slug=toolkit_slug,
-                    status=item.status,
-                    status_reason=getattr(item, "status_reason", None),
-                )
-            )
+            cursor = getattr(resp, "next_cursor", None)
+            if not cursor:
+                break
         return connections
 
     return await asyncio.to_thread(_call)
