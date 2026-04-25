@@ -24,7 +24,7 @@ def upgrade() -> None:
             toolkit_slug TEXT NOT NULL,
             connected_account_id TEXT,
             status TEXT NOT NULL DEFAULT 'INITIATED'
-                CHECK (status IN ('ACTIVE', 'INITIATED', 'EXPIRED', 'FAILED', 'INACTIVE')),
+                CHECK (status IN ('ACTIVE', 'INITIATED', 'INITIALIZING', 'EXPIRED', 'FAILED', 'INACTIVE')),
             status_reason TEXT,
             connected_at TIMESTAMP WITH TIME ZONE,
             last_used_at TIMESTAMP WITH TIME ZONE,
