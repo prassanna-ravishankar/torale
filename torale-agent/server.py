@@ -63,11 +63,12 @@ def _build_mcp_toolsets(
 
     Composio's `mcp.generate()` returns a URL that 307-redirects to the real
     endpoint (`.../v3/mcp/{id}` -> `.../v3/mcp/{id}/mcp`). The MCP streamable-http
-    client doesn't follow redirects by default, so each toolset gets an httpx
-    client with `follow_redirects=True`.
+    client doesn't follow redirects by default, so we share one httpx client
+    across all toolsets with `follow_redirects=True`. The toolsets share config
+    (the same x-api-key header), so a single client suffices.
 
-    The httpx clients are returned alongside the toolsets so the caller can
-    close them after the agent run — otherwise each run leaks file descriptors.
+    The shared client is returned alongside the toolsets so the caller can
+    close it after the agent run — otherwise each run leaks file descriptors.
     """
     if not mcp_servers:
         return [], []
@@ -78,23 +79,29 @@ def _build_mcp_toolsets(
             "MCP tools will be unreachable for this run"
         )
         return [], []
-    toolsets: list[MCPServerStreamableHTTP] = []
-    http_clients: list[httpx.AsyncClient] = []
+
+    # Build entries first so we don't allocate a client when nothing valid lands.
+    valid_entries: list[tuple[str, str]] = []
     for entry in mcp_servers:
         url = entry.get("url") if isinstance(entry, dict) else None
         toolkit = entry.get("toolkit") if isinstance(entry, dict) else None
         if not url or not toolkit:
             logger.warning("Skipping malformed mcp_server entry: %r", entry)
             continue
-        http_client = httpx.AsyncClient(
-            follow_redirects=True,
-            headers={"x-api-key": api_key},
-        )
-        http_clients.append(http_client)
-        toolsets.append(
-            MCPServerStreamableHTTP(url=url, http_client=http_client, id=toolkit)
-        )
-    return toolsets, http_clients
+        valid_entries.append((toolkit, url))
+
+    if not valid_entries:
+        return [], []
+
+    shared_client = httpx.AsyncClient(
+        follow_redirects=True,
+        headers={"x-api-key": api_key},
+    )
+    toolsets = [
+        MCPServerStreamableHTTP(url=url, http_client=shared_client, id=toolkit)
+        for toolkit, url in valid_entries
+    ]
+    return toolsets, [shared_client]
 
 
 class ToraleAgentExecutor(AgentExecutor):
