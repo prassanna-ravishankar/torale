@@ -5,6 +5,7 @@ or newly-connected toolkits are picked up on the next run without touching
 the task record. See design memo §10.1 D4.
 """
 
+import asyncio
 import logging
 from uuid import UUID
 
@@ -49,19 +50,37 @@ async def resolve_mcp_servers(
     )
     active_slugs = {r["toolkit_slug"] for r in rows}
 
-    servers: list[McpServerDescriptor] = []
+    slugs_to_resolve: list[str] = []
     for slug in attached_slugs:
         if slug not in active_slugs:
             continue
         if get_toolkit(slug) is None:
             logger.warning("Task references unknown toolkit %r; skipping", slug)
             continue
-        try:
-            instance = await generate_mcp_url(str(user_id), slug)
-        except ComposioClientError as e:
-            logger.warning("generate_mcp_url failed for %s/%s: %s", user_id, slug, e)
+        slugs_to_resolve.append(slug)
+
+    if not slugs_to_resolve:
+        return []
+
+    results = await asyncio.gather(
+        *(generate_mcp_url(str(user_id), slug) for slug in slugs_to_resolve),
+        return_exceptions=True,
+    )
+
+    servers: list[McpServerDescriptor] = []
+    for slug, res in zip(slugs_to_resolve, results, strict=True):
+        if isinstance(res, ComposioClientError):
+            logger.warning("generate_mcp_url failed for %s/%s: %s", user_id, slug, res)
             continue
-        servers.append(McpServerDescriptor(toolkit=slug, url=instance.url))
+        if isinstance(res, Exception):
+            logger.error(
+                "Unexpected error resolving MCP URL for %s/%s",
+                user_id,
+                slug,
+                exc_info=res,
+            )
+            continue
+        servers.append(McpServerDescriptor(toolkit=slug, url=res.url))
 
     return servers
 
