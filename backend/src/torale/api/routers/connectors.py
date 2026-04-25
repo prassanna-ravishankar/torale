@@ -96,13 +96,13 @@ async def list_connections(
     """
     rows = await db.fetch_all(
         """
-        SELECT toolkit_slug, status, status_reason, connected_at, last_used_at
+        SELECT toolkit_slug, connected_account_id, status, status_reason, connected_at, last_used_at
         FROM user_connectors
         WHERE user_id = $1
         """,
         user.id,
     )
-    local_by_slug = {r["toolkit_slug"]: r for r in rows}
+    local_by_slug: dict[str, dict] = {r["toolkit_slug"]: dict(r) for r in rows}
 
     try:
         composio_conns = await list_user_connections(str(user.id))
@@ -110,6 +110,36 @@ async def list_connections(
         logger.warning("Composio list_user_connections failed: %s", e)
         composio_conns = []
     composio_by_slug = {c.toolkit_slug: c for c in composio_conns}
+
+    # Best-effort reconcile: flip INITIATED/EXPIRED → ACTIVE when Composio is authoritative
+    # and the connected_account_id matches (avoids overwriting a concurrent re-auth).
+    try:
+        for slug, remote in composio_by_slug.items():
+            local = local_by_slug.get(slug)
+            if (
+                local
+                and remote.status == "ACTIVE"
+                and local["status"] in ("INITIATED", "EXPIRED")
+                and local.get("connected_account_id") == remote.connected_account_id
+            ):
+                await db.execute(
+                    """
+                    UPDATE user_connectors
+                    SET status = 'ACTIVE',
+                        connected_at = COALESCE(connected_at, NOW()),
+                        updated_at = NOW()
+                    WHERE user_id = $1 AND toolkit_slug = $2
+                    """,
+                    user.id,
+                    slug,
+                )
+                local["status"] = "ACTIVE"
+                if local["connected_at"] is None:
+                    local["connected_at"] = datetime.now()
+    except Exception:
+        logger.warning(
+            "Connector reconcile write-back failed; continuing with cached state", exc_info=True
+        )
 
     result: list[UserConnection] = []
     for tk in TOOLKIT_REGISTRY:

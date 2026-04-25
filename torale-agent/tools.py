@@ -37,7 +37,31 @@ _TOOL_INPUT_KEYS: dict[str, str] = {
     "fetch_url": "url",
     "search_memories": "query",
     "add_memory": "text",
+    # MCP tools — Notion
+    "NOTION_SEARCH_NOTION_PAGE": "query",
+    "NOTION_FETCH_DATA": "pageId",
+    # MCP tools — Linear
+    "LINEAR_GET_ALL_LINEAR_TEAMS": "",
+    "LINEAR_GET_CYCLES_BY_TEAM_ID": "teamId",
+    "LINEAR_GET_CURRENT_USER": "",
+    # MCP tools — GitHub
+    "GITHUB_SEARCH_ISSUES_AND_PULL_REQUESTS": "query",
+    "GITHUB_LIST_REPOSITORY_ISSUES": "owner",
+    "GITHUB_GET_A_PULL_REQUEST": "pullNumber",
 }
+
+_MCP_TOOL_PREFIX_TO_SLUG: dict[str, str] = {
+    "NOTION_": "notion",
+    "LINEAR_": "linear",
+    "GITHUB_": "github",
+}
+
+
+def _connector_slug_from_tool(tool: str) -> str | None:
+    for prefix, slug in _MCP_TOOL_PREFIX_TO_SLUG.items():
+        if tool.startswith(prefix):
+            return slug
+    return None
 
 
 async def _is_safe_url(url: str) -> bool:
@@ -225,5 +249,11 @@ def extract_activity(messages: list) -> list[ActivityStep]:
             args = part.args if isinstance(part.args, dict) else {}
             key = _TOOL_INPUT_KEYS.get(tool, "")
             input_val = args.get(key, "") if key else ""
-            steps.append(ActivityStep(tool=tool, detail=input_val))
+            steps.append(
+                ActivityStep(
+                    tool=tool,
+                    detail=input_val,
+                    connector_slug=_connector_slug_from_tool(tool),
+                )
+            )
     return steps

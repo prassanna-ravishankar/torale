@@ -173,7 +173,15 @@ export const ConnectorsPage: React.FC = () => {
 
         <p className="text-xs text-zinc-400 font-mono mb-6">
           Connections powered by Composio — you'll see their name on the
-          authorization screen.
+          authorization screen.{' '}
+          <a
+            href="https://docs.torale.ai/architecture/connectors-trust"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-zinc-600"
+          >
+            Privacy & security
+          </a>
         </p>
 
         {isLoading ? (

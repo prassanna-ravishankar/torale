@@ -7,6 +7,11 @@ import {
   Brain,
   BookOpen,
   Twitter,
+  FileSearch,
+  FileText,
+  Layers,
+  GitPullRequest,
+  CircleDot,
   LucideIcon,
 } from "lucide-react";
 
@@ -15,12 +20,24 @@ interface AgentActivityProps {
 }
 
 const TOOL_CONFIG: Record<string, { icon: LucideIcon; color: string; label: string }> = {
+  // Built-in tools
   perplexity_search: { icon: Search, color: "text-blue-500", label: "Searched" },
   parallel_search: { icon: Search, color: "text-indigo-500", label: "Searched" },
   twitter_search: { icon: Twitter, color: "text-sky-500", label: "Searched X" },
   fetch_url: { icon: Globe, color: "text-emerald-500", label: "Fetched" },
   search_memories: { icon: BookOpen, color: "text-amber-500", label: "Recalled" },
   add_memory: { icon: Brain, color: "text-purple-500", label: "Remembered" },
+  // Notion MCP tools
+  NOTION_SEARCH_NOTION_PAGE: { icon: FileSearch, color: "text-zinc-700", label: "Searched Notion" },
+  NOTION_FETCH_DATA: { icon: FileText, color: "text-zinc-700", label: "Read Notion" },
+  // Linear MCP tools
+  LINEAR_GET_ALL_LINEAR_TEAMS: { icon: Layers, color: "text-violet-500", label: "Listed Linear teams" },
+  LINEAR_GET_CYCLES_BY_TEAM_ID: { icon: Layers, color: "text-violet-500", label: "Fetched Linear cycle" },
+  LINEAR_GET_CURRENT_USER: { icon: Layers, color: "text-violet-500", label: "Checked Linear user" },
+  // GitHub MCP tools
+  GITHUB_SEARCH_ISSUES_AND_PULL_REQUESTS: { icon: GitPullRequest, color: "text-zinc-800", label: "Searched GitHub" },
+  GITHUB_LIST_REPOSITORY_ISSUES: { icon: CircleDot, color: "text-zinc-800", label: "Listed issues" },
+  GITHUB_GET_A_PULL_REQUEST: { icon: GitPullRequest, color: "text-zinc-800", label: "Fetched PR" },
 };
 
 const FALLBACK_CONFIG = { icon: Search, color: "text-zinc-400", label: "Ran" };

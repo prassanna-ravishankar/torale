@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from torale.access import ClerkUser, clerk_client, require_admin
 from torale.api.routers.tasks import start_task_execution
+from torale.connectors import ComposioClientError, delete_connection, list_user_connections
 from torale.core.config import settings
 from torale.core.database import Database, get_db
 from torale.scheduler.scheduler import get_scheduler
@@ -1130,3 +1131,63 @@ async def reset_task_history(
         "executions_deleted": deleted_count,
         "days": days,
     }
+
+
+class ConnectorResetResponse(BaseModel):
+    deleted_composio: int
+    failed_composio: list[str]
+    deleted_local: int
+
+
+@router.post("/connectors/reset", response_model=ConnectorResetResponse)
+async def admin_reset_connectors(
+    user_id: UUID,
+    admin: ClerkUser = Depends(require_admin),
+    db: Database = Depends(get_db),
+) -> ConnectorResetResponse:
+    """Hard-reset all connector state for a user across Composio and local DB."""
+    try:
+        conns = await list_user_connections(str(user_id))
+    except ComposioClientError as e:
+        logger.warning("Composio list failed for user %s: %s", user_id, e)
+        conns = []
+
+    deleted_composio = 0
+    failed_composio: list[str] = []
+    for conn in conns:
+        try:
+            await delete_connection(conn.connected_account_id)
+            deleted_composio += 1
+            logger.info(
+                "Admin %s deleted Composio ca %s for user %s",
+                admin.clerk_user_id,
+                conn.connected_account_id,
+                user_id,
+            )
+        except ComposioClientError as e:
+            logger.warning("Failed to delete Composio ca %s: %s", conn.connected_account_id, e)
+            failed_composio.append(conn.connected_account_id)
+
+    result = await db.execute(
+        "DELETE FROM user_connectors WHERE user_id = $1",
+        user_id,
+    )
+    # asyncpg returns "DELETE N" as the status string
+    try:
+        deleted_local = int(result.split()[-1])
+    except (AttributeError, ValueError, IndexError):
+        deleted_local = 0
+
+    logger.info(
+        "Admin %s reset connectors for user %s: composio=%d failed=%d local=%d",
+        admin.clerk_user_id,
+        user_id,
+        deleted_composio,
+        len(failed_composio),
+        deleted_local,
+    )
+    return ConnectorResetResponse(
+        deleted_composio=deleted_composio,
+        failed_composio=failed_composio,
+        deleted_local=deleted_local,
+    )

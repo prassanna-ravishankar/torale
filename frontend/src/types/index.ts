@@ -94,6 +94,12 @@ export interface GroundingSource {
 export interface ActivityStep {
   tool: string;
   detail: string;
+  connector_slug?: string;
+  annotations?: {
+    readOnlyHint?: boolean;
+    destructiveHint?: boolean;
+    idempotentHint?: boolean;
+  };
 }
 
 export interface ExecutionResult {
