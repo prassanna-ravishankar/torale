@@ -1154,19 +1154,25 @@ async def admin_reset_connectors(
 
     deleted_composio = 0
     failed_composio: list[str] = []
-    for conn in conns:
-        try:
-            await delete_connection(conn.connected_account_id)
-            deleted_composio += 1
-            logger.info(
-                "Admin %s deleted Composio ca %s for user %s",
-                admin.clerk_user_id,
-                conn.connected_account_id,
-                user_id,
-            )
-        except ComposioClientError as e:
-            logger.warning("Failed to delete Composio ca %s: %s", conn.connected_account_id, e)
-            failed_composio.append(conn.connected_account_id)
+    if conns:
+        results = await asyncio.gather(
+            *(delete_connection(conn.connected_account_id) for conn in conns),
+            return_exceptions=True,
+        )
+        for conn, res in zip(conns, results, strict=True):
+            if isinstance(res, Exception):
+                logger.warning(
+                    "Failed to delete Composio ca %s: %s", conn.connected_account_id, res
+                )
+                failed_composio.append(conn.connected_account_id)
+            else:
+                deleted_composio += 1
+                logger.info(
+                    "Admin %s deleted Composio ca %s for user %s",
+                    admin.clerk_user_id,
+                    conn.connected_account_id,
+                    user_id,
+                )
 
     result = await db.execute(
         "DELETE FROM user_connectors WHERE user_id = $1",
