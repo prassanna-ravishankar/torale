@@ -68,7 +68,7 @@ class InitiateResponse(BaseModel):
 def _callback_url(user_id: str) -> str:
     """Build the absolute callback URL Composio redirects to after auth."""
     base = settings.api_url.rstrip("/")
-    return f"{base}/api/v1/connectors/callback?user_id={quote(user_id)}"
+    return f"{base}/api/v1/connectors/callback?user_id={quote(str(user_id))}"
 
 
 @router.get("/available", response_model=list[AvailableToolkit])
