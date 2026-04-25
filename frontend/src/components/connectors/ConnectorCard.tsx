@@ -12,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { AvailableToolkit, ConnectorStatus, UserConnection } from '@/types';
+import type { AvailableToolkit, ConnectionStatus, UserConnection } from '@/types';
 import { cn } from '@/lib/utils';
 import { ConnectorLogo } from './ConnectorLogo';
 
@@ -38,7 +38,7 @@ function formatRelative(iso: string | null): string | null {
   return `${days}d ago`;
 }
 
-function statusVariant(status: ConnectorStatus | null): {
+function statusVariant(status: ConnectionStatus | null): {
   variant: 'active' | 'running' | 'failed' | 'pending' | null;
   label?: string;
 } {
