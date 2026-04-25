@@ -1,5 +1,6 @@
 """Torale agent A2A server."""
 
+import asyncio
 import json
 import logging
 import os
@@ -277,11 +278,16 @@ class ToraleAgentExecutor(AgentExecutor):
                 },
             )
         finally:
-            for client in mcp_http_clients:
-                try:
-                    await client.aclose()
-                except Exception:
-                    logger.warning("Failed to close MCP httpx client", exc_info=True)
+            if mcp_http_clients:
+                results = await asyncio.gather(
+                    *(client.aclose() for client in mcp_http_clients),
+                    return_exceptions=True,
+                )
+                for res in results:
+                    if isinstance(res, Exception):
+                        logger.warning(
+                            "Failed to close MCP httpx client", exc_info=res
+                        )
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         await event_queue.enqueue_event(
