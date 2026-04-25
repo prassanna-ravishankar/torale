@@ -127,11 +127,16 @@ async def list_user_connections(user_id: str) -> list[Connection]:
     admin reset path is the main case where this matters).
     """
 
+    # Defensive cap so a misbehaving cursor can't pin a worker forever. At the
+    # default page size this covers thousands of connections per user, which
+    # is far more than we expect.
+    max_pages = 50
+
     def _call() -> list[Connection]:
         c = _sdk()
         connections: list[Connection] = []
         cursor: str | None = None
-        while True:
+        for _ in range(max_pages):
             kwargs: dict = {"user_ids": [user_id]}
             if cursor:
                 kwargs["cursor"] = cursor
@@ -155,8 +160,10 @@ async def list_user_connections(user_id: str) -> list[Connection]:
                 )
             cursor = getattr(resp, "next_cursor", None)
             if not cursor:
-                break
-        return connections
+                return connections
+        raise ComposioClientError(
+            f"list_user_connections exceeded {max_pages} pages for user {user_id}; aborting"
+        )
 
     return await asyncio.to_thread(_call)
 
