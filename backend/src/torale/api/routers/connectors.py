@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 from urllib.parse import quote
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse
@@ -283,7 +284,7 @@ _CALLBACK_FAILED_HTML = _CALLBACK_HTML.format(
 
 @router.get("/callback", response_class=HTMLResponse)
 async def connector_callback(
-    user_id: str = Query(...),
+    user_id: UUID = Query(...),
     status_param: str = Query(..., alias="status"),
     connected_account_id: str | None = Query(None, alias="connectedAccountId"),
     app_name: str | None = Query(None, alias="appName"),
@@ -311,7 +312,7 @@ async def connector_callback(
     pending = await db.fetch_one(
         """
         SELECT 1 FROM user_connectors
-        WHERE user_id = $1::uuid
+        WHERE user_id = $1
           AND toolkit_slug = $2
           AND connected_account_id = $3
           AND status = 'INITIATED'
@@ -337,7 +338,7 @@ async def connector_callback(
                 status_reason = NULL,
                 connected_at = COALESCE(connected_at, NOW()),
                 updated_at = NOW()
-            WHERE user_id = $1::uuid
+            WHERE user_id = $1
               AND toolkit_slug = $2
               AND connected_account_id = $3
             """,
@@ -358,7 +359,7 @@ async def connector_callback(
             SET status = 'FAILED',
                 status_reason = $4,
                 updated_at = NOW()
-            WHERE user_id = $1::uuid
+            WHERE user_id = $1
               AND toolkit_slug = $2
               AND connected_account_id = $3
             """,
