@@ -174,7 +174,7 @@ async def list_connections(
                     updated_at = NOW()
                 WHERE user_id = $1
                   AND (toolkit_slug, connected_account_id) IN (
-                      SELECT unnest($2::text[]), unnest($3::text[])
+                      SELECT * FROM unnest($2::text[], $3::text[])
                   )
                 RETURNING toolkit_slug, connected_account_id, status, status_reason,
                           connected_at, last_used_at
