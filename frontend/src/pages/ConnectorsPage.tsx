@@ -111,7 +111,12 @@ export const ConnectorsPage: React.FC = () => {
     markWorking(slug, true);
     try {
       const { redirect_url } = await api.connectToolkit(slug);
-      if (popup) {
+      if (!redirect_url) {
+        // Composio returned ACTIVE — already connected. Close the popup and
+        // let refresh() pick up the live state.
+        if (popup) popup.close();
+        toast.success('Already connected.');
+      } else if (popup) {
         popup.location.href = redirect_url;
         popup.opener = null;
       } else {

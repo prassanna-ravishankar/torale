@@ -547,7 +547,7 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
-  async connectToolkit(toolkitSlug: string): Promise<{ redirect_url: string }> {
+  async connectToolkit(toolkitSlug: string): Promise<{ redirect_url: string | null }> {
     const response = await fetch(
       `${this.baseUrl}/api/v1/connectors/${toolkitSlug}/connect`,
       {
