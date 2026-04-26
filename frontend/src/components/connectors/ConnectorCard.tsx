@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+// Mirror of backend ConnectionStatus StrEnum (backend/src/torale/connectors/client.py); keep in sync.
 import type { AvailableToolkit, ConnectionStatus, UserConnection } from '@/types';
 import { cn } from '@/lib/utils';
 import { ConnectorLogo } from './ConnectorLogo';
