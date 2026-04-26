@@ -62,6 +62,11 @@ spec:
             secretKeyRef:
               name: {{ $.Values.secrets.name }}
               key: TWITTERIO_API_KEY
+        - name: COMPOSIO_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ $.Values.secrets.name }}
+              key: COMPOSIO_API_KEY
         - name: LOGFIRE_TOKEN
           valueFrom:
             secretKeyRef:

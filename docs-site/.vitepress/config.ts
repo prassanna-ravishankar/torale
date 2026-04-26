@@ -100,7 +100,8 @@ export default withMermaid(
           items: [
             { text: 'Self-Scheduling Agents', link: '/architecture/self-scheduling-agents' },
             { text: 'Grounded Search', link: '/architecture/grounded-search' },
-            { text: 'Task State Machine', link: '/architecture/task-state-machine' }
+            { text: 'Task State Machine', link: '/architecture/task-state-machine' },
+            { text: 'Connector Trust Model', link: '/architecture/connectors-trust' }
           ]
         }
       ],

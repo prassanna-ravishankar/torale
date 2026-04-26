@@ -28,6 +28,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn, getErrorMessage } from '@/lib/utils';
 import { BrutalistSwitch, FieldError } from "@/components/torale";
+import { ConnectorPickerSection } from "@/components/connectors/ConnectorPickerSection";
 
 interface TaskEditDialogProps {
   open: boolean;
@@ -48,6 +49,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   // Form data
   const [name, setName] = useState('');
   const [instructions, setInstructions] = useState('');
+  const [attachedConnectors, setAttachedConnectors] = useState<string[]>([]);
 
   // UI state
   const [isUpdating, setIsUpdating] = useState(false);
@@ -64,6 +66,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
       setName(task.name);
       setInstructions(task.search_query || '');
       setIsPublic(task.is_public);
+      setAttachedConnectors(task.attached_connector_slugs ?? []);
     }
   }, [task, open]);
 
@@ -145,6 +148,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
         name,
         search_query: instructions,
         condition_description: instructions,
+        attached_connector_slugs: attachedConnectors,
       });
 
       toast.success('Task updated successfully');
@@ -213,6 +217,12 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
             </div>
 
           </div>
+
+          <ConnectorPickerSection
+            selected={attachedConnectors}
+            onChange={setAttachedConnectors}
+            disabled={isUpdating}
+          />
 
           {/* Sharing Section */}
           <div className="space-y-4 p-4 bg-zinc-50 border-2 border-zinc-200">

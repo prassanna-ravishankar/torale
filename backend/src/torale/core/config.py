@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
 
+    # Composio — hosted MCP gateway for custom connectors (Notion/Linear/GitHub).
+    # See backend/src/torale/connectors/registry.py for the toolkit registry.
+    composio_api_key: str | None = None
+
     # Novu Cloud configuration
     novu_secret_key: str | None = None
     novu_workflow_id: str = "torale-condition-met"
@@ -44,6 +48,12 @@ class Settings(BaseSettings):
 
     # Frontend URL for SEO (sitemap, OpenGraph, etc.)
     frontend_url: str = "https://torale.ai"
+
+    # Public API URL — used to build callback URLs for third-party redirects
+    # (e.g. Composio OAuth callbacks). Populated from the API_URL env var in
+    # k8s (see helm/torale/templates/configmap.yaml). Falls back to the local
+    # dev default only when API_URL is unset.
+    api_url: str = "http://localhost:8000"
 
     # Path to changelog.json file (relative to project root or absolute path)
     changelog_json_path: str = "static/changelog.json"

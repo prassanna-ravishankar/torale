@@ -53,6 +53,7 @@ class TaskData(TypedDict, total=False):
     webhook_url: str | None
     webhook_secret: str | None
     context: dict | None
+    attached_connector_slugs: list[str]
 
 
 class TaskBase(BaseModel):
@@ -64,6 +65,9 @@ class TaskBase(BaseModel):
     condition_description: str | None = None
     # Notification configuration
     notifications: list[NotificationConfig] = Field(default_factory=list)
+    # Connector toolkits the agent may use at runtime (user-level connections
+    # filtered by task-level intent). Empty for tasks that only use web search.
+    attached_connector_slugs: list[str] = Field(default_factory=list)
 
 
 class TaskCreate(TaskBase):
@@ -82,6 +86,7 @@ class TaskUpdate(BaseModel):
     condition_description: str | None = None
     notifications: list[NotificationConfig] | None = None
     context: dict | None = None
+    attached_connector_slugs: list[str] | None = None
 
 
 class TaskExecutionBase(BaseModel):

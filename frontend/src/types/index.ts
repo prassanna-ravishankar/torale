@@ -46,6 +46,11 @@ export interface Task {
   view_count: number;
   subscriber_count: number;
   forked_from_task_id: string | null;
+
+  // Connectors attached to this task (toolkit slugs, e.g. "notion", "linear").
+  // Re-resolved to active connections at each run — dropped silently if a
+  // referenced slug is no longer ACTIVE. See design memo §4, §10.1.
+  attached_connector_slugs: string[];
 }
 
 /**
@@ -59,6 +64,33 @@ export interface TaskCreatePayload {
   state: TaskState;
   run_immediately?: boolean;  // Execute task immediately after creation
   notifications?: NotificationConfig[];  // Notification configurations (optional)
+  attached_connector_slugs?: string[];
+}
+
+/** Mirror of backend ConnectionStatus StrEnum (backend/src/torale/connectors/client.py); keep in sync. */
+export type ConnectionStatus =
+  | "INITIALIZING"
+  | "INITIATED"
+  | "ACTIVE"
+  | "FAILED"
+  | "EXPIRED"
+  | "INACTIVE";
+
+/** One supported toolkit — response shape from GET /connectors/available. */
+export interface AvailableToolkit {
+  slug: string;
+  display_name: string;
+  description: string;
+}
+
+/** One user's connection to one toolkit — response shape from GET /connectors. */
+export interface UserConnection {
+  toolkit_slug: string;
+  display_name: string;
+  status: ConnectionStatus | null;
+  status_reason: string | null;
+  connected_at: string | null;
+  last_used_at: string | null;
 }
 
 export interface GroundingSource {
@@ -69,6 +101,12 @@ export interface GroundingSource {
 export interface ActivityStep {
   tool: string;
   detail: string;
+  connector_slug?: string;
+  annotations?: {
+    readOnlyHint?: boolean;
+    destructiveHint?: boolean;
+    idempotentHint?: boolean;
+  };
 }
 
 export interface ExecutionResult {
@@ -254,3 +292,4 @@ export interface CreateApiKeyResponse {
   key: string; // Full key shown only once
   key_info: ApiKey;
 }
+

@@ -24,13 +24,15 @@ MODULE = "torale.scheduler.job"
 FUTURE = "2099-01-01T00:00:00Z"
 
 
-def _make_task_row():
+def _make_task_row(attached_connector_slugs=None):
     return {
         "search_query": "iPhone release date",
         "condition_description": "Release date announced",
         "name": TASK_NAME,
         "notification_channels": ["email"],
         "state": "active",
+        "user_id": USER_ID,
+        "attached_connector_slugs": attached_connector_slugs or [],
     }
 
 

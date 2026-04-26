@@ -19,6 +19,7 @@ from torale.api.rate_limiter import limiter
 from torale.api.routers import (
     admin,
     auth,
+    connectors,
     email_verification,
     notifications,
     og,
@@ -193,6 +194,7 @@ app.include_router(templates.router, prefix="/api/v1")
 app.include_router(email_verification.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
+app.include_router(connectors.router, prefix="/api/v1")
 app.include_router(public_tasks.router, prefix="/api/v1")
 app.include_router(og.router, prefix="/api/v1")
 

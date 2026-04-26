@@ -1,11 +1,14 @@
 """Torale agent A2A server."""
 
+import asyncio
 import json
 import logging
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
+import httpx
 import logfire
 from a2a.server.agent_execution import AgentExecutor
 from a2a.server.agent_execution.context import RequestContext
@@ -30,6 +33,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from pydantic_ai import Agent
 from pydantic_ai.exceptions import ModelHTTPError
+from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from agent import create_monitoring_agent
 from models import Clients, MonitoringDeps, MonitoringResponse, create_clients
@@ -45,6 +49,59 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+def _build_mcp_toolsets(
+    mcp_servers: list[dict] | None,
+) -> tuple[list[MCPServerStreamableHTTP], list[httpx.AsyncClient]]:
+    """Construct Pydantic AI MCP toolsets from A2A metadata entries.
+
+    Each entry is expected to be {"toolkit": str, "url": str}. The composio API
+    key is read from the process env since the backend doesn't ship the secret
+    over the wire. Returns ([], []) when mcp_servers is None/empty so the common
+    path stays allocation-free.
+
+    Composio's `mcp.generate()` returns a URL that 307-redirects to the real
+    endpoint (`.../v3/mcp/{id}` -> `.../v3/mcp/{id}/mcp`). The MCP streamable-http
+    client doesn't follow redirects by default, so we share one httpx client
+    across all toolsets with `follow_redirects=True`. The toolsets share config
+    (the same x-api-key header), so a single client suffices.
+
+    The shared client is returned alongside the toolsets so the caller can
+    close it after the agent run — otherwise each run leaks file descriptors.
+    """
+    if not mcp_servers:
+        return [], []
+    api_key = os.environ.get("COMPOSIO_API_KEY")
+    if not api_key:
+        logger.warning(
+            "mcp_servers passed in metadata but COMPOSIO_API_KEY not set in agent env; "
+            "MCP tools will be unreachable for this run"
+        )
+        return [], []
+
+    # Build entries first so we don't allocate a client when nothing valid lands.
+    valid_entries: list[tuple[str, str]] = []
+    for entry in mcp_servers:
+        url = entry.get("url") if isinstance(entry, dict) else None
+        toolkit = entry.get("toolkit") if isinstance(entry, dict) else None
+        if not url or not toolkit:
+            logger.warning("Skipping malformed mcp_server entry: %r", entry)
+            continue
+        valid_entries.append((toolkit, url))
+
+    if not valid_entries:
+        return [], []
+
+    shared_client = httpx.AsyncClient(
+        follow_redirects=True,
+        headers={"x-api-key": api_key},
+    )
+    toolsets = [
+        MCPServerStreamableHTTP(url=url, http_client=shared_client, id=toolkit)
+        for toolkit, url in valid_entries
+    ]
+    return toolsets, [shared_client]
 
 
 class ToraleAgentExecutor(AgentExecutor):
@@ -139,6 +196,8 @@ class ToraleAgentExecutor(AgentExecutor):
             user_id=user_id, task_id=monitoring_task_id, clients=self.clients
         )
 
+        mcp_toolsets, mcp_http_clients = _build_mcp_toolsets(metadata.get("mcp_servers"))
+
         # Signal working state
         await event_queue.enqueue_event(
             TaskStatusUpdateEvent(
@@ -150,7 +209,11 @@ class ToraleAgentExecutor(AgentExecutor):
         )
 
         try:
-            result = await self.agent.run(user_input, deps=deps)
+            result = await self.agent.run(
+                user_input,
+                deps=deps,
+                toolsets=mcp_toolsets or None,
+            )
             response = result.output
 
             # Extract activity trail from message history
@@ -221,6 +284,17 @@ class ToraleAgentExecutor(AgentExecutor):
                     "message": str(e),
                 },
             )
+        finally:
+            if mcp_http_clients:
+                results = await asyncio.gather(
+                    *(client.aclose() for client in mcp_http_clients),
+                    return_exceptions=True,
+                )
+                for res in results:
+                    if isinstance(res, Exception):
+                        logger.warning(
+                            "Failed to close MCP httpx client", exc_info=res
+                        )
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         await event_queue.enqueue_event(

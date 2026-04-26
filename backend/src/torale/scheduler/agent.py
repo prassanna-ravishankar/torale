@@ -120,11 +120,21 @@ def _handle_failed_task(task: Task) -> None:
 
 
 async def call_agent(
-    prompt: str, user_id: str | None = None, task_id: str | None = None
+    prompt: str,
+    user_id: str | None = None,
+    task_id: str | None = None,
+    mcp_servers: list[dict] | None = None,
 ) -> MonitoringResponse:
-    """Send task to agent with automatic paid tier fallback on upstream failures."""
+    """Send task to agent with automatic paid tier fallback on upstream failures.
+
+    mcp_servers is a list of `{toolkit, url}` dicts; forwarded in A2A metadata
+    so the agent can wire per-run MCP tools. Omit or empty for the common
+    no-connectors path.
+    """
     try:
-        result = await _call_agent_internal(settings.agent_url_free, prompt, user_id, task_id)
+        result = await _call_agent_internal(
+            settings.agent_url_free, prompt, user_id, task_id, mcp_servers
+        )
         tier, fallback = "free", False
     except A2AClientHTTPError as e:
         if e.status_code not in FALLBACK_STATUS_CODES:
@@ -134,7 +144,9 @@ async def call_agent(
             e.status_code,
             extra={"status_code": e.status_code},
         )
-        result = await _call_agent_internal(settings.agent_url_paid, prompt, user_id, task_id)
+        result = await _call_agent_internal(
+            settings.agent_url_paid, prompt, user_id, task_id, mcp_servers
+        )
         tier, fallback = "paid", True
 
     if user_id:
@@ -150,7 +162,11 @@ async def call_agent(
 
 
 async def _call_agent_internal(
-    base_url: str, prompt: str, user_id: str | None = None, task_id: str | None = None
+    base_url: str,
+    prompt: str,
+    user_id: str | None = None,
+    task_id: str | None = None,
+    mcp_servers: list[dict] | None = None,
 ) -> MonitoringResponse:
     """Send task to torale-agent via A2A and poll for result."""
     message_id = f"msg-{uuid.uuid4().hex[:12]}"
@@ -169,12 +185,16 @@ async def _call_agent_internal(
 
     configuration = MessageSendConfiguration(accepted_output_modes=["application/json"])
 
+    metadata: dict = {"user_id": user_id, "task_id": task_id}
+    if mcp_servers:
+        metadata["mcp_servers"] = mcp_servers
+
     request = SendMessageRequest(
         id=request_id,
         params=MessageSendParams(
             message=message,
             configuration=configuration,
-            metadata={"user_id": user_id, "task_id": task_id},
+            metadata=metadata,
         ),
     )
 

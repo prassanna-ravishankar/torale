@@ -1,9 +1,11 @@
 import type {
+  AvailableToolkit,
   Task,
   TaskCreatePayload,
   TaskExecution,
   TaskTemplate,
   User,
+  UserConnection,
   UserWithNotifications,
   WebhookConfig,
   WebhookDelivery,
@@ -507,6 +509,14 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
+  // Connector endpoints
+  async getConnections(): Promise<UserConnection[]> {
+    const response = await fetch(`${this.baseUrl}/api/v1/connectors`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
   // Feed endpoints
   async getFeed(limit: number = 50): Promise<FeedExecution[]> {
     const url = this.buildUrl('/api/v1/tasks/feed', { limit })
@@ -520,6 +530,45 @@ class ApiClient {
     const url = this.buildUrl('/api/v1/public/feed', { limit })
     const response = await fetch(url)
     return this.handleResponse(response)
+  }
+
+  // Connector endpoints
+  async getAvailableToolkits(): Promise<AvailableToolkit[]> {
+    const response = await fetch(`${this.baseUrl}/api/v1/connectors/available`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async getUserConnections(): Promise<UserConnection[]> {
+    const response = await fetch(`${this.baseUrl}/api/v1/connectors`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
+  }
+
+  async connectToolkit(toolkitSlug: string): Promise<{ redirect_url: string | null }> {
+    const response = await fetch(
+      `${this.baseUrl}/api/v1/connectors/${toolkitSlug}/connect`,
+      {
+        method: 'POST',
+        headers: await this.getAuthHeaders(),
+      }
+    )
+    return this.handleResponse(response)
+  }
+
+  async disconnectToolkit(toolkitSlug: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/v1/connectors/${toolkitSlug}`,
+      {
+        method: 'DELETE',
+        headers: await this.getAuthHeaders(),
+      }
+    )
+    if (!response.ok) {
+      throw new Error(`Failed to disconnect: ${response.status}`)
+    }
   }
 }
 
