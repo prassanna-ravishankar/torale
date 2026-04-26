@@ -145,14 +145,17 @@ async def get_connection(connected_account_id: str) -> Connection:
     def _call() -> Connection:
         c = _sdk()
         conn = c.connected_accounts.get(connected_account_id)
-        toolkit_slug = _normalize_toolkit_slug(getattr(conn, "toolkit", None))
+        toolkit_slug = _normalize_toolkit_slug(_field(conn, "toolkit"))
         if not toolkit_slug:
             raise ComposioClientError(f"Connection {connected_account_id} has no toolkit slug")
+        status = _field(conn, "status")
+        if not status:
+            raise ComposioClientError(f"Connection {connected_account_id} has no status")
         return Connection(
             connected_account_id=connected_account_id,
             toolkit_slug=toolkit_slug,
-            status=conn.status,
-            status_reason=getattr(conn, "status_reason", None),
+            status=status,
+            status_reason=_field(conn, "status_reason"),
         )
 
     return await asyncio.to_thread(_call)
@@ -180,7 +183,7 @@ async def list_user_connections(user_id: str) -> list[Connection]:
             if cursor:
                 kwargs["cursor"] = cursor
             resp = c.connected_accounts.list(**kwargs)
-            items = getattr(resp, "items", None)
+            items = _field(resp, "items")
             if items is None:
                 # Hard-fail rather than silently returning [] — callers already
                 # wrap this in try/except ComposioClientError, and surfacing the
@@ -206,7 +209,7 @@ async def list_user_connections(user_id: str) -> list[Connection]:
                         status_reason=_field(item, "status_reason"),
                     )
                 )
-            cursor = getattr(resp, "next_cursor", None)
+            cursor = _field(resp, "next_cursor")
             if not cursor:
                 return connections
         raise ComposioClientError(
