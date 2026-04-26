@@ -26,12 +26,13 @@ from torale.access import CurrentUser
 from torale.connectors import (
     TOOLKIT_REGISTRY,
     ComposioClientError,
+    Connection,
+    ConnectionStatus,
     delete_connection,
     get_toolkit,
     initiate_connection,
     list_user_connections,
 )
-from torale.connectors.client import ConnectionStatus
 from torale.core.config import settings
 from torale.core.database import Database, get_db
 
@@ -63,6 +64,25 @@ class InitiateResponse(BaseModel):
     """Response from POST /connectors/{toolkit}/connect."""
 
     redirect_url: str
+
+
+class LocalConnection(BaseModel):
+    """One row from user_connectors, parsed at retrieval.
+
+    Mirrors the SELECT in list_connections so downstream access is typed
+    rather than dict-keyed.
+    """
+
+    toolkit_slug: str
+    connected_account_id: str | None = None
+    status: ConnectionStatus
+    status_reason: str | None = None
+    connected_at: datetime | None = None
+    last_used_at: datetime | None = None
+
+    @classmethod
+    def from_db_row(cls, row: dict) -> LocalConnection:
+        return cls.model_validate(row)
 
 
 def _callback_url(user_id: str) -> str:
@@ -103,7 +123,9 @@ async def list_connections(
         """,
         user.id,
     )
-    local_by_slug: dict[str, dict] = {r["toolkit_slug"]: dict(r) for r in rows}
+    local_by_slug: dict[str, LocalConnection] = {
+        r["toolkit_slug"]: LocalConnection.from_db_row(dict(r)) for r in rows
+    }
 
     try:
         composio_conns = await list_user_connections(str(user.id))
@@ -114,21 +136,24 @@ async def list_connections(
     # Composio can return multiple connections for the same toolkit (e.g. a
     # stale INITIATED row alongside a fresh ACTIVE one), and matching by slug
     # would silently pick whichever the dict comp visited last.
-    composio_by_ca = {c.connected_account_id: c for c in composio_conns}
+    composio_by_ca: dict[str, Connection] = {c.connected_account_id: c for c in composio_conns}
 
-    def _remote_for(local_row: dict | None):
-        if not local_row:
+    def _remote_for(local: LocalConnection | None) -> Connection | None:
+        if local is None or local.connected_account_id is None:
             return None
-        return composio_by_ca.get(local_row.get("connected_account_id"))
+        return composio_by_ca.get(local.connected_account_id)
 
-    # Best-effort reconcile: flip INITIATED/EXPIRED → ACTIVE when Composio is
-    # authoritative for the same connected_account_id we have locally.
+    # Best-effort reconcile: flip INITIATED/INITIALIZING/EXPIRED → ACTIVE when
+    # Composio is authoritative for the same connected_account_id we have locally.
+    # connected_at is set to NOW() (not COALESCE'd) so the UI's "Connected: 2m ago"
+    # reflects the current valid session, not a stale prior one on EXPIRED→ACTIVE.
     rows_to_flip = [
         local
         for local in local_by_slug.values()
-        if local["status"] in ("INITIATED", "EXPIRED")
+        if local.status
+        in (ConnectionStatus.INITIATED, ConnectionStatus.INITIALIZING, ConnectionStatus.EXPIRED)
         and (remote := _remote_for(local))
-        and remote.status == "ACTIVE"
+        and remote.status == ConnectionStatus.ACTIVE
     ]
     if rows_to_flip:
         try:
@@ -137,24 +162,25 @@ async def list_connections(
                 UPDATE user_connectors
                 SET status = 'ACTIVE',
                     status_reason = NULL,
-                    connected_at = COALESCE(connected_at, NOW()),
+                    connected_at = NOW(),
                     updated_at = NOW()
                 WHERE user_id = $1
                   AND (toolkit_slug, connected_account_id) IN (
                       SELECT unnest($2::text[]), unnest($3::text[])
                   )
-                RETURNING toolkit_slug, status, status_reason, connected_at
+                RETURNING toolkit_slug, connected_account_id, status, status_reason,
+                          connected_at, last_used_at
                 """,
                 user.id,
-                [r["toolkit_slug"] for r in rows_to_flip],
-                [r["connected_account_id"] for r in rows_to_flip],
+                [r.toolkit_slug for r in rows_to_flip],
+                [r.connected_account_id for r in rows_to_flip],
             )
-            # Patch the in-memory cache with the actual persisted values so the
-            # response reflects DB state exactly (no datetime drift).
+            # Replace the in-memory cache with the actual persisted values so
+            # the response reflects DB state exactly (no datetime drift).
             for row in updated_rows:
                 slug = row["toolkit_slug"]
                 if slug in local_by_slug:
-                    local_by_slug[slug].update(dict(row))
+                    local_by_slug[slug] = LocalConnection.from_db_row(dict(row))
         except Exception:
             logger.warning(
                 "Connector reconcile write-back failed; continuing with cached state",
@@ -171,16 +197,16 @@ async def list_connections(
             UserConnection(
                 toolkit_slug=tk.slug,
                 display_name=tk.display_name,
-                status=(remote.status if remote else local["status"] if local else None),
+                status=(remote.status if remote else local.status if local else None),
                 status_reason=(
                     remote.status_reason
                     if remote and remote.status_reason
-                    else local["status_reason"]
+                    else local.status_reason
                     if local
                     else None
                 ),
-                connected_at=local["connected_at"] if local else None,
-                last_used_at=local["last_used_at"] if local else None,
+                connected_at=local.connected_at if local else None,
+                last_used_at=local.last_used_at if local else None,
             )
         )
     return result
@@ -294,6 +320,13 @@ _CALLBACK_FAILED_HTML = _CALLBACK_HTML.format(
     body="Something went wrong. Close this tab and try again from Torale.",
 )
 
+_CALLBACK_SUCCESS_HTML = _CALLBACK_HTML.format(
+    status_class="success",
+    border_color="#10b981",
+    title="Connection complete",
+    body="You can close this tab and return to Torale.",
+)
+
 
 @router.get("/callback", response_class=HTMLResponse)
 async def connector_callback(
@@ -310,8 +343,10 @@ async def connector_callback(
     attacker who knows a victim's user_id could otherwise spoof a callback and
     flip the victim's row to ACTIVE pointing at an attacker-controlled
     connected_account_id. We defend by requiring that (user_id, toolkit_slug,
-    connected_account_id) match a row already in INITIATED state, which only
-    the authenticated POST /connect endpoint can create.
+    connected_account_id) match a row already in INITIATED or INITIALIZING
+    state, which only the authenticated POST /connect endpoint can create.
+    Also idempotent: a refresh after success short-circuits to the success page
+    instead of failing because the row is now ACTIVE.
     """
     if not app_name or not connected_account_id:
         logger.warning(
@@ -327,24 +362,31 @@ async def connector_callback(
     # case differences don't reject a legitimate callback.
     toolkit_slug = app_name.lower()
 
-    pending = await db.fetch_one(
+    row = await db.fetch_one(
         """
-        SELECT 1 FROM user_connectors
+        SELECT status FROM user_connectors
         WHERE user_id = $1
           AND toolkit_slug = $2
           AND connected_account_id = $3
-          AND status = 'INITIATED'
         """,
         user_id,
         toolkit_slug,
         connected_account_id,
     )
-    if pending is None:
+    current_status = row["status"] if row else None
+
+    # Idempotent: refreshing the callback after a successful auth lands on an
+    # ACTIVE row — show success rather than the spoof-rejection page.
+    if current_status == ConnectionStatus.ACTIVE:
+        return HTMLResponse(_CALLBACK_SUCCESS_HTML)
+
+    if current_status not in (ConnectionStatus.INITIATED, ConnectionStatus.INITIALIZING):
         logger.warning(
-            "callback rejected: no INITIATED row for user_id=%s toolkit=%s ca=%s",
+            "callback rejected: no INITIATED/INITIALIZING row for user_id=%s toolkit=%s ca=%s status=%s",
             user_id,
             toolkit_slug,
             connected_account_id,
+            current_status,
         )
         return HTMLResponse(_CALLBACK_FAILED_HTML)
 
@@ -354,7 +396,7 @@ async def connector_callback(
             UPDATE user_connectors
             SET status = 'ACTIVE',
                 status_reason = NULL,
-                connected_at = COALESCE(connected_at, NOW()),
+                connected_at = NOW(),
                 updated_at = NOW()
             WHERE user_id = $1
               AND toolkit_slug = $2
@@ -364,12 +406,7 @@ async def connector_callback(
             toolkit_slug,
             connected_account_id,
         )
-        html = _CALLBACK_HTML.format(
-            status_class="success",
-            border_color="#10b981",
-            title="Connection complete",
-            body="You can close this tab and return to Torale.",
-        )
+        html = _CALLBACK_SUCCESS_HTML
     else:
         await db.execute(
             """
