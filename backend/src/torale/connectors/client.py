@@ -173,7 +173,13 @@ async def list_user_connections(user_id: str) -> list[Connection]:
             if cursor:
                 kwargs["cursor"] = cursor
             resp = c.connected_accounts.list(**kwargs)
-            items = getattr(resp, "items", None) or []
+            items = getattr(resp, "items", None)
+            if items is None:
+                logger.warning(
+                    "Composio list response missing 'items' attribute; SDK shape may have changed. resp_type=%s",
+                    type(resp).__name__,
+                )
+                items = []
             for item in items:
                 toolkit_slug = _normalize_toolkit_slug(getattr(item, "toolkit", None))
                 if not toolkit_slug:
