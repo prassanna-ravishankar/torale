@@ -143,15 +143,22 @@ async def list_connections(
             return None
         return composio_by_ca.get(local.connected_account_id)
 
-    # Best-effort reconcile: flip INITIATED/INITIALIZING/EXPIRED → ACTIVE when
-    # Composio is authoritative for the same connected_account_id we have locally.
+    # Best-effort reconcile: flip any non-ACTIVE local row → ACTIVE when Composio
+    # is authoritative for the same connected_account_id. Includes FAILED so a
+    # row left FAILED by a callback error self-heals once Composio agrees.
     # connected_at is set to NOW() (not COALESCE'd) so the UI's "Connected: 2m ago"
-    # reflects the current valid session, not a stale prior one on EXPIRED→ACTIVE.
+    # reflects the current valid session, not a stale prior one. status_reason is
+    # cleared in the UPDATE so transient error text doesn't carry across.
     rows_to_flip = [
         local
         for local in local_by_slug.values()
         if local.status
-        in (ConnectionStatus.INITIATED, ConnectionStatus.INITIALIZING, ConnectionStatus.EXPIRED)
+        in (
+            ConnectionStatus.INITIATED,
+            ConnectionStatus.INITIALIZING,
+            ConnectionStatus.EXPIRED,
+            ConnectionStatus.FAILED,
+        )
         and (remote := _remote_for(local))
         and remote.status == ConnectionStatus.ACTIVE
     ]
