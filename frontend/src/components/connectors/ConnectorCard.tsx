@@ -29,7 +29,8 @@ function formatRelative(iso: string | null): string | null {
   if (!iso) return null;
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return null;
-  const diffMs = Date.now() - then;
+  // Clamp to zero so client/server clock drift can't render "-1m ago".
+  const diffMs = Math.max(0, Date.now() - then);
   const mins = Math.floor(diffMs / 60000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;
