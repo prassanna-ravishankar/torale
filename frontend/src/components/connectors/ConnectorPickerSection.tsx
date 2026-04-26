@@ -70,14 +70,16 @@ export const ConnectorPickerSection: React.FC<ConnectorPickerSectionProps> = ({
     ? `Connected Tools (${selectedCount})`
     : "Connected Tools (optional)";
 
-  // Warn if a selected slug is attached but EXPIRED or FAILED — the backend's
-  // resolve_mcp_servers only passes ACTIVE rows to the agent, so anything else
-  // is silently skipped at runtime. Preserve intent — don't unselect.
+  // Warn if a selected slug is attached but in a state the agent will skip —
+  // EXPIRED, FAILED, INACTIVE all get filtered out by resolve_mcp_servers.
+  // Skip INITIATED/INITIALIZING; warning a user who's mid-OAuth that "this
+  // won't work" tells them to do the thing they're already doing.
+  // Preserve intent — don't unselect.
   const unhealthySelected = useMemo(() => {
     if (!connections) return [] as UserConnection[];
     return connections.filter(
       (c) =>
-        (c.status === "EXPIRED" || c.status === "FAILED") &&
+        (c.status === "EXPIRED" || c.status === "FAILED" || c.status === "INACTIVE") &&
         selected.includes(c.toolkit_slug),
     );
   }, [connections, selected]);
