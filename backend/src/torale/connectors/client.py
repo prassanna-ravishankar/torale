@@ -175,11 +175,12 @@ async def list_user_connections(user_id: str) -> list[Connection]:
             resp = c.connected_accounts.list(**kwargs)
             items = getattr(resp, "items", None)
             if items is None:
-                logger.warning(
-                    "Composio list response missing 'items' attribute; SDK shape may have changed. resp_type=%s",
-                    type(resp).__name__,
+                # Hard-fail rather than silently returning [] — callers already
+                # wrap this in try/except ComposioClientError, and surfacing the
+                # contract drift loudly is better than UI showing "no connections".
+                raise ComposioClientError(
+                    f"Composio list response missing 'items' attribute (resp_type={type(resp).__name__}); SDK shape may have changed"
                 )
-                items = []
             for item in items:
                 toolkit_slug = _normalize_toolkit_slug(getattr(item, "toolkit", None))
                 if not toolkit_slug:
