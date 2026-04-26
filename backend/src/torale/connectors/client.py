@@ -102,6 +102,13 @@ def _normalize_toolkit_slug(raw) -> str | None:
     return getattr(raw, "slug", None)
 
 
+def _field(item, name):
+    """Read a field from a Composio item that may arrive as either an object or a dict."""
+    if isinstance(item, dict):
+        return item.get(name)
+    return getattr(item, name, None)
+
+
 async def initiate_connection(
     user_id: str,
     toolkit_slug: str,
@@ -182,19 +189,21 @@ async def list_user_connections(user_id: str) -> list[Connection]:
                     f"Composio list response missing 'items' attribute (resp_type={type(resp).__name__}); SDK shape may have changed"
                 )
             for item in items:
-                toolkit_slug = _normalize_toolkit_slug(getattr(item, "toolkit", None))
+                item_id = _field(item, "id")
+                item_status = _field(item, "status")
+                toolkit_slug = _normalize_toolkit_slug(_field(item, "toolkit"))
+                if not item_id or not item_status:
+                    logger.warning("Skipping malformed Composio item: %r", item)
+                    continue
                 if not toolkit_slug:
-                    logger.warning(
-                        "Skipping connection %s with missing toolkit",
-                        getattr(item, "id", "<unknown>"),
-                    )
+                    logger.warning("Skipping connection %s with missing toolkit", item_id)
                     continue
                 connections.append(
                     Connection(
-                        connected_account_id=item.id,
+                        connected_account_id=item_id,
                         toolkit_slug=toolkit_slug,
-                        status=item.status,
-                        status_reason=getattr(item, "status_reason", None),
+                        status=item_status,
+                        status_reason=_field(item, "status_reason"),
                     )
                 )
             cursor = getattr(resp, "next_cursor", None)
