@@ -130,10 +130,16 @@ async def initiate_connection(
             auth_config_id=toolkit.auth_config_id,
             callback_url=callback_url,
         )
+        req_id = _field(req, "id")
+        req_status = _field(req, "status")
+        if not req_id or not req_status:
+            raise ComposioClientError(
+                f"initiate response missing id or status for {toolkit_slug}/{user_id}"
+            )
         return ConnectionInitiation(
-            connected_account_id=req.id,
-            status=req.status,
-            redirect_url=req.redirect_url,
+            connected_account_id=req_id,
+            status=req_status,
+            redirect_url=_field(req, "redirect_url"),
         )
 
     return await asyncio.to_thread(_call)
@@ -246,7 +252,7 @@ async def generate_mcp_url(user_id: str, toolkit_slug: str) -> MCPInstance:
             user_id=user_id,
             mcp_config_id=toolkit.mcp_server_id,
         )
-        url = instance["url"] if isinstance(instance, dict) else getattr(instance, "url", None)
+        url = _field(instance, "url")
         if not url:
             raise ComposioClientError(f"mcp.generate returned no URL for {toolkit_slug}/{user_id}")
         return MCPInstance(url=url, toolkit_slug=toolkit_slug)
