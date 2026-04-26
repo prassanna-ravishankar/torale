@@ -9,7 +9,7 @@ Intended consumers: API routers, scheduler, agent dispatcher.
 
 import asyncio
 import logging
-from typing import Literal
+from enum import StrEnum
 
 from composio import Composio
 from pydantic import BaseModel, Field
@@ -20,7 +20,39 @@ from torale.core.config import settings
 logger = logging.getLogger(__name__)
 
 
-ConnectionStatus = Literal["INITIALIZING", "INITIATED", "ACTIVE", "FAILED", "EXPIRED", "INACTIVE"]
+class ConnectionStatus(StrEnum):
+    """Status of a Composio-managed connection.
+
+    Single source of truth — the migration's CHECK constraint, the in-memory
+    LocalConnection model, the callback validator, and the reconcile filter
+    all consume this enum. The startup assertion below catches drift between
+    this enum and the CHECK constraint.
+    """
+
+    INITIALIZING = "INITIALIZING"
+    INITIATED = "INITIATED"
+    ACTIVE = "ACTIVE"
+    FAILED = "FAILED"
+    EXPIRED = "EXPIRED"
+    INACTIVE = "INACTIVE"
+
+
+# Mirror of the CHECK constraint in
+# backend/alembic/versions/b2d4e7f89a10_add_user_connectors.py. If you add a
+# value to ConnectionStatus, write a new migration that ALTERs the CHECK and
+# update this tuple — the assertion below will fire otherwise.
+_CHECK_CONSTRAINT_VALUES = (
+    "ACTIVE",
+    "INITIATED",
+    "INITIALIZING",
+    "EXPIRED",
+    "FAILED",
+    "INACTIVE",
+)
+assert frozenset(s.value for s in ConnectionStatus) == frozenset(_CHECK_CONSTRAINT_VALUES), (
+    "ConnectionStatus drifted from the user_connectors CHECK constraint. "
+    "Add an alembic migration to update the CHECK and adjust _CHECK_CONSTRAINT_VALUES."
+)
 
 
 class ConnectionInitiation(BaseModel):
