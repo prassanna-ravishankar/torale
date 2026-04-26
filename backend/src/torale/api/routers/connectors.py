@@ -61,9 +61,15 @@ class UserConnection(BaseModel):
 
 
 class InitiateResponse(BaseModel):
-    """Response from POST /connectors/{toolkit}/connect."""
+    """Response from POST /connectors/{toolkit}/connect.
 
-    redirect_url: str
+    redirect_url is None when Composio returns ACTIVE without a redirect (the
+    user already has an active connection for this toolkit). The frontend
+    refreshes the connections list after this call, so the picker will pick up
+    the live state.
+    """
+
+    redirect_url: str | None = None
 
 
 class LocalConnection(BaseModel):
@@ -256,7 +262,9 @@ async def connect_toolkit(
         initiation.status,
     )
 
-    if not initiation.redirect_url:
+    # ACTIVE without redirect_url means the user already has an active connection;
+    # other statuses without a redirect URL are an integration failure.
+    if not initiation.redirect_url and initiation.status != ConnectionStatus.ACTIVE:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Composio returned no redirect URL")
     return InitiateResponse(redirect_url=initiation.redirect_url)
 
