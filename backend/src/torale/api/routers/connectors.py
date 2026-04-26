@@ -158,6 +158,7 @@ async def list_connections(
             ConnectionStatus.INITIALIZING,
             ConnectionStatus.EXPIRED,
             ConnectionStatus.FAILED,
+            ConnectionStatus.INACTIVE,
         )
         and (remote := _remote_for(local))
         and remote.status == ConnectionStatus.ACTIVE
