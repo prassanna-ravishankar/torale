@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn, getErrorMessage } from "@/lib/utils";
 import api from "@/lib/api";
+// Mirror of backend ConnectionStatus StrEnum (backend/src/torale/connectors/client.py); keep in sync.
 import type { ConnectionStatus, UserConnection } from "@/types";
 
 /**
@@ -69,11 +70,15 @@ export const ConnectorPickerSection: React.FC<ConnectorPickerSectionProps> = ({
     ? `Connected Tools (${selectedCount})`
     : "Connected Tools (optional)";
 
-  // Warn if a selected slug is attached but EXPIRED. Preserve intent — don't unselect.
-  const expiredSelected = useMemo(() => {
+  // Warn if a selected slug is attached but EXPIRED or FAILED — the backend's
+  // resolve_mcp_servers only passes ACTIVE rows to the agent, so anything else
+  // is silently skipped at runtime. Preserve intent — don't unselect.
+  const unhealthySelected = useMemo(() => {
     if (!connections) return [] as UserConnection[];
     return connections.filter(
-      (c) => c.status === "EXPIRED" && selected.includes(c.toolkit_slug),
+      (c) =>
+        (c.status === "EXPIRED" || c.status === "FAILED") &&
+        selected.includes(c.toolkit_slug),
     );
   }, [connections, selected]);
 
@@ -98,13 +103,13 @@ export const ConnectorPickerSection: React.FC<ConnectorPickerSectionProps> = ({
           </Alert>
         )}
 
-        {expiredSelected.length > 0 && (
+        {unhealthySelected.length > 0 && (
           <Alert className="border-amber-300 bg-amber-50 text-amber-900">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              {expiredSelected.length === 1
-                ? `${expiredSelected[0].display_name} connection expired. This task will skip it until reconnected.`
-                : `${expiredSelected.length} connections expired. Tasks will skip them until reconnected.`}
+              {unhealthySelected.length === 1
+                ? `${unhealthySelected[0].display_name} connection isn't healthy (${unhealthySelected[0].status?.toLowerCase()}). This task will skip it until reconnected.`
+                : `${unhealthySelected.length} connections aren't healthy. Tasks will skip them until reconnected.`}
             </AlertDescription>
           </Alert>
         )}
