@@ -1,5 +1,14 @@
 [
   {
+    "id": "2026-04-26-custom-connectors",
+    "date": "2026-04-26",
+    "title": "Custom Connectors: Notion, Linear, GitHub",
+    "description": "Attach private data sources to your monitoring tasks. The agent can now reach into Notion, Linear, and GitHub at run time via Composio's hosted MCP gateway, with per-user OAuth handled end-to-end. Connect tools from /settings/connectors, then pick which ones each task can use. Behind the VITE_ENABLE_CONNECTORS flag at launch.",
+    "category": "feature",
+    "requestedBy": [],
+    "pr": 219
+  },
+  {
     "id": "2026-03-12-headless-browser",
     "date": "2026-03-12",
     "title": "Headless Browser for Deep Page Reading",
