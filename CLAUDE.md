@@ -2,7 +2,7 @@
 
 ## Identity
 
-Torale is a **grounded search monitoring platform**. Users create tasks that watch for conditions using Google Search + LLM analysis, then get notified when conditions are met. Think "alert me when the iPhone release date is announced."
+Torale is a **grounded monitoring platform**. Users create tasks that watch for conditions using an LLM agent with web search and browser tools, then get notified when conditions are met. Think "alert me when the iPhone release date is announced."
 
 **Scale**: Early-stage, small user base. This doc assumes single-developer velocity. Revisit if team or user scale increases significantly.
 
@@ -12,34 +12,23 @@ Torale is a **grounded search monitoring platform**. Users create tasks that wat
 
 ## Codebase
 
-**Stack**: Python FastAPI + React/TypeScript + GKE + APScheduler + Clerk Auth + Gemini
+**Stack**: Python FastAPI + React/TypeScript + GKE + APScheduler + Clerk Auth + Gemini (with tools: Perplexity, Parallel web systems, browser, MCP)
 
-**Structure**:
-```
-torale/
-├── backend/                 # Python FastAPI + APScheduler
-│   ├── src/torale/api/      # API endpoints
-│   ├── src/torale/scheduler/ # APScheduler jobs, activities, state sync
-│   ├── src/torale/tasks/    # Task domain models and state machine
-│   └── alembic/             # DB migrations
-├── torale-agent/            # Monitoring agent (Pydantic AI + Gemini)
-│   └── agent.py             # Agent service entry point (A2A server)
-├── frontend/                # React + TypeScript + Vite
-│   └── src/components/      # UI components
-│       └── torale/          # Design system components
-├── helm/                    # Kubernetes Helm charts
-├── .github/workflows/       # CI/CD (GitHub Actions)
-└── docs-site/               # Documentation (VitePress)
-```
+**Three services**:
+- `backend/` — FastAPI + APScheduler. Entry: `backend/src/torale/api/main.py`
+- `torale-agent/` — Pydantic AI monitoring agent (A2A server). Entry: `torale-agent/server.py`
+- `frontend/` — React + Vite. Entry: `frontend/src/main.tsx`
+
+Plus `helm/` (k8s charts), `docs-site/` (VitePress), `.github/workflows/` (CI).
+
+**Architecture**: Frontend → FastAPI → APScheduler (cron) → Agent (Gemini + tools) → Notifications (Novu, webhooks)
 
 **Tooling**: `uv` (backend), `npm` (frontend), `vite` (docs-site), `justfile` for commands:
-- `just dev-noauth` - Run local dev without auth
-- `just test` - Run tests
-- `just lint` - Run all linting (backend + frontend + TypeScript)
+- `just dev-noauth` — local dev without auth
+- `just test` — run tests
+- `just lint` — lint backend + frontend + TypeScript
 
-**Architecture**: Frontend → FastAPI → APScheduler (cron) → Agent → Gemini + Perplexity Search → Notifications
-
-See `docs-site/architecture/` for detailed docs.
+For cross-cutting questions ("what touches X?", "where does data flow?"), use graphify. See `docs-site/architecture/` for human docs.
 
 ## Development Flow
 
@@ -75,8 +64,11 @@ See `docs-site/architecture/` for detailed docs.
 ## Skills & Patterns
 
 See `.claude/skills/` for implementation guidance:
-- **`torale-design-patterns.md`** - UI patterns, anti-patterns, StatusBadge usage
-- **`torale-component-library.md`** - When to use shared components vs custom
+- **`torale-design-patterns.md`** — UI patterns, anti-patterns, StatusBadge usage
+- **`torale-design-system.md`** — design system tokens and primitives
+- **`torale-component-library.md`** — when to use shared components vs custom
+- **`torale-animation-patterns.md`** — animation conventions
+- **`tmux-playwright-dev/`** — live UI dev workflow with tmux + Playwright
 
 ## Critical Patterns
 
@@ -99,7 +91,7 @@ refactor: code change that neither fixes nor adds
 ```
 
 ### Agent-Backend Schema Contract
-`MonitoringResponse` model is duplicated between `torale-agent/agent.py` and `backend/src/torale/scheduler/models.py`. Keep them in sync manually when changing fields. Backend validates agent responses via Pydantic at runtime.
+`MonitoringResponse` model is duplicated between `torale-agent/models.py` and `backend/src/torale/scheduler/models.py`. Keep them in sync manually when changing fields. Backend validates agent responses via Pydantic at runtime.
 
 ### Changelog Management
 
@@ -124,16 +116,14 @@ This file is:
 
 | What | Where |
 |------|-------|
-| Agent service | `torale-agent/agent.py` |
-| Agent run | `just dev-noauth` (included in docker compose) or `cd torale-agent && uv run uvicorn agent:app --host 0.0.0.0 --port 8001` |
+| Agent service | `torale-agent/server.py` (A2A server entry); `torale-agent/agent.py` builds the Pydantic AI agent |
+| Agent run | `just dev-noauth` (included in docker compose) or `cd torale-agent && uv run uvicorn server:app --host 0.0.0.0 --port 8001` |
 | Agent call | `curl -X POST http://localhost:8001/ -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"1","method":"message/send","params":{"message":{"kind":"message","messageId":"msg-001","role":"user","parts":[{"kind":"text","text":"YOUR PROMPT"}]}}}'` |
 | Agent poll | `curl -X POST http://localhost:8001/ -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"2","method":"tasks/get","params":{"id":"TASK_ID"}}'` |
 | API endpoints | `backend/src/torale/api/routers/` |
-| DB schema | `docs-site/architecture/database-schema.md` |
 | Migrations | `backend/alembic/versions/` |
 | UI components | `frontend/src/components/torale/` |
 | Changelog | `backend/static/changelog.json` (backend serves, frontend fetches) |
-| Deployment | `docs-site/deployment/` |
 | Architecture | `docs-site/architecture/` |
 
 ## Commits
