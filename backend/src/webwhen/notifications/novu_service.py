@@ -3,6 +3,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from urllib.parse import quote
 
 from pydantic import BaseModel
 
@@ -56,6 +57,11 @@ def _md_to_html(text: str, extensions: list[str] | None = None) -> str:
 def _format_sources(sources: list[dict], limit: int = 5) -> list[dict]:
     """Transform grounding sources: url → uri for Novu template compatibility."""
     return [{"uri": s.get("url", ""), "title": s.get("title", "Unknown")} for s in sources[:limit]]
+
+
+def _build_task_url(task_id: str) -> str:
+    """Build the canonical frontend task detail URL for notification CTAs."""
+    return f"{settings.frontend_url.rstrip('/')}/tasks/{quote(task_id, safe='')}"
 
 
 class NovuTriggerResult(BaseModel):
@@ -149,6 +155,7 @@ class NovuService:
                 ),
                 "grounding_sources": _format_sources(payload.grounding_sources),
                 "task_id": payload.task_id,
+                "task_url": _build_task_url(payload.task_id),
                 "execution_id": execution_id,
                 "next_run": _format_next_run(payload.next_run),
                 "confidence": _format_confidence(confidence),
@@ -197,6 +204,7 @@ class NovuService:
                 ),
                 "grounding_sources": formatted_sources,
                 "task_id": payload.task_id,
+                "task_url": _build_task_url(payload.task_id),
                 "next_run": _format_next_run(payload.next_run),
             },
         )

@@ -242,6 +242,10 @@ export default function App() {
           }
         />
         <Route
+          path="/watches/:taskId"
+          element={<WatchRouteRedirect />}
+        />
+        <Route
           path="/admin"
           element={
             <ProtectedRoute>
@@ -301,6 +305,17 @@ function TaskDetailRoute({ onBack, onDeleted }: { onBack: () => void; onDeleted:
       currentUserId={user?.id}
     />
   )
+}
+
+function WatchRouteRedirect() {
+  const { taskId } = useParams()
+  const location = useLocation()
+
+  if (!taskId) {
+    return <Navigate to="/" replace />
+  }
+
+  return <Navigate to={`/tasks/${encodeURIComponent(taskId)}${location.search}`} replace />
 }
 
 function HomeRoute() {
