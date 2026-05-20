@@ -58,6 +58,11 @@ def _format_sources(sources: list[dict], limit: int = 5) -> list[dict]:
     return [{"uri": s.get("url", ""), "title": s.get("title", "Unknown")} for s in sources[:limit]]
 
 
+def _build_task_url(task_id: str) -> str:
+    """Build the canonical frontend task detail URL for notification CTAs."""
+    return f"{settings.frontend_url.rstrip('/')}/tasks/{task_id}"
+
+
 class NovuTriggerResult(BaseModel):
     """Result from triggering a Novu workflow."""
 
@@ -149,6 +154,7 @@ class NovuService:
                 ),
                 "grounding_sources": _format_sources(payload.grounding_sources),
                 "task_id": payload.task_id,
+                "task_url": _build_task_url(payload.task_id),
                 "execution_id": execution_id,
                 "next_run": _format_next_run(payload.next_run),
                 "confidence": _format_confidence(confidence),
@@ -197,6 +203,7 @@ class NovuService:
                 ),
                 "grounding_sources": formatted_sources,
                 "task_id": payload.task_id,
+                "task_url": _build_task_url(payload.task_id),
                 "next_run": _format_next_run(payload.next_run),
             },
         )
