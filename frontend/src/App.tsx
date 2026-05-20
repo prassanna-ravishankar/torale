@@ -315,7 +315,7 @@ function WatchRouteRedirect() {
     return <Navigate to="/" replace />
   }
 
-  return <Navigate to={`/tasks/${taskId}${location.search}`} replace />
+  return <Navigate to={`/tasks/${encodeURIComponent(taskId)}${location.search}`} replace />
 }
 
 function HomeRoute() {

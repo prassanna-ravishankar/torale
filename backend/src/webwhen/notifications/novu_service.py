@@ -3,6 +3,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from urllib.parse import quote
 
 from pydantic import BaseModel
 
@@ -60,7 +61,7 @@ def _format_sources(sources: list[dict], limit: int = 5) -> list[dict]:
 
 def _build_task_url(task_id: str) -> str:
     """Build the canonical frontend task detail URL for notification CTAs."""
-    return f"{settings.frontend_url.rstrip('/')}/tasks/{task_id}"
+    return f"{settings.frontend_url.rstrip('/')}/tasks/{quote(task_id, safe='')}"
 
 
 class NovuTriggerResult(BaseModel):
