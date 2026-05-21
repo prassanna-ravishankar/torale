@@ -1,14 +1,16 @@
-import { useNavigate } from 'react-router-dom'
+'use client'
+
+import { useRouter } from 'next/navigation'
 import { FirstTimeExperience } from './FirstTimeExperience'
 import { useWelcomeFlow } from '@/hooks/useWelcomeFlow'
 
 export function Welcome() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const { handleWelcomeComplete } = useWelcomeFlow()
 
   const handleComplete = async () => {
     await handleWelcomeComplete()
-    navigate('/dashboard')
+    router.push('/dashboard')
   }
 
   return <FirstTimeExperience onComplete={handleComplete} />

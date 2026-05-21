@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useState, ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -22,7 +24,7 @@ export function CapacityGate({ children, fallback }: CapacityGateProps) {
   useEffect(() => {
     const fetchCapacity = async () => {
       try {
-        const apiUrl = window.CONFIG?.apiUrl || import.meta.env.VITE_API_BASE_URL;
+        const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
         if (!apiUrl) {
           console.error("API URL is not set");
           setAvailableSlots(0); // Fail closed - deny access if config is missing

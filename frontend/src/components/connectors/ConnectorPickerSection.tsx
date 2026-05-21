@@ -1,6 +1,8 @@
+'use client';
+
 import React, { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Plug2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 
 import {
   Table,
@@ -153,7 +155,7 @@ const EmptyPickerState: React.FC = () => (
       No tools connected yet.
     </p>
     <Link
-      to="/settings/connectors"
+      href="/settings/connectors"
       className="font-mono text-xs uppercase tracking-wider text-ink-0 hover:underline"
     >
       Connect one →

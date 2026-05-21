@@ -1,5 +1,7 @@
-import { useState, useCallback } from 'react'
-import { Navigate } from 'react-router-dom'
+'use client'
+
+import { useState, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { OverviewStats } from '@/components/admin/OverviewStats'
 import { TasksTable } from '@/components/admin/TasksTable'
 import { ExecutionsTable } from '@/components/admin/ExecutionsTable'
@@ -22,6 +24,7 @@ const tabs: { id: AdminTab; label: string; icon: typeof Shield }[] = [
 
 export function Admin() {
   const { user, isLoaded } = useAuth()
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
   const [taskIdToExpand, setTaskIdToExpand] = useState<string | null>(null)
 
@@ -29,6 +32,14 @@ export function Admin() {
     setTaskIdToExpand(taskId)
     setActiveTab('tasks')
   }, [])
+
+  const isAdmin = user?.publicMetadata?.role === 'admin'
+
+  useEffect(() => {
+    if (isLoaded && user && !isAdmin) {
+      router.replace('/')
+    }
+  }, [isLoaded, user, isAdmin, router])
 
   // Wait for user to load
   if (!isLoaded || !user) {
@@ -39,12 +50,8 @@ export function Admin() {
     )
   }
 
-  // Check if user is admin
-  const isAdmin = user?.publicMetadata?.role === 'admin'
-
-  // Redirect non-admins to dashboard
   if (!isAdmin) {
-    return <Navigate to="/" replace />
+    return null
   }
 
   return (

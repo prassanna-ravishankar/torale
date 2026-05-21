@@ -52,18 +52,6 @@ const nextConfig = {
   // `rewrite ^/(.+)/$ /$1 permanent;` (which Next.js handles natively when
   // this flag is false — the default — but explicit here as a contract).
   trailingSlash: false,
-  // Temporary: the legacy Vite tree under `src/` uses Vite-only APIs
-  // (import.meta.env, window globals) that don't typecheck under Next's
-  // strict tsconfig. `tsconfig.json` already excludes `src/**`;
-  // ignoreBuildErrors mirrors that for the bundler's own pass. Both flags
-  // are REMOVED in commit 6 when src/ is deleted. If any errors surface
-  // post-deletion they are tracked, not silently re-ignored.
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   async headers() {
     return [
       {

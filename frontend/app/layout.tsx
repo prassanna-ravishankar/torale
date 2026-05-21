@@ -1,9 +1,6 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
-// globals.css is imported here so the App Router tree gets fonts + tokens.
-// During scaffold commit this re-exports the existing index.css; once the
-// Vite tree is deleted (commit 6) we'll rename in place.
-import '../src/index.css'
+import './globals.css'
 import { OrganizationJsonLd } from '../components/seo/OrganizationJsonLd'
 import { PostHogProvider } from '../components/analytics/PostHogProvider'
 

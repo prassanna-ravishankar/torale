@@ -1,5 +1,8 @@
+'use client'
+
 import { lazy, Suspense } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Eye, Bell, Archive, Shield, Settings, Plug } from 'lucide-react'
 
 import { useAuth } from '@/contexts/AuthContext'
@@ -33,11 +36,11 @@ interface NavItemProps {
 }
 
 function NavItem({ to, label, icon, count, matchPaths, onClick }: NavItemProps) {
-  const location = useLocation()
-  const isActive = (matchPaths ?? [to]).some((p) => location.pathname.startsWith(p))
+  const pathname = usePathname() || ''
+  const isActive = (matchPaths ?? [to]).some((p) => pathname.startsWith(p))
   return (
     <Link
-      to={to}
+      href={to}
       onClick={onClick}
       className={cn(styles.item, isActive && styles.active)}
       aria-current={isActive ? 'page' : undefined}
@@ -55,8 +58,8 @@ interface RecentWatchProps {
 }
 
 function RecentWatch({ watch, onClick }: RecentWatchProps) {
-  const location = useLocation()
-  const isActive = location.pathname === `/tasks/${watch.id}`
+  const pathname = usePathname() || ''
+  const isActive = pathname === `/tasks/${watch.id}`
   const status =
     watch.last_execution?.notification != null
       ? 'triggered'
@@ -67,7 +70,7 @@ function RecentWatch({ watch, onClick }: RecentWatchProps) {
           : 'active'
   return (
     <Link
-      to={`/tasks/${watch.id}`}
+      href={`/tasks/${watch.id}`}
       onClick={onClick}
       className={cn(styles.watch, isActive && styles.active)}
     >
@@ -79,7 +82,7 @@ function RecentWatch({ watch, onClick }: RecentWatchProps) {
 
 export const Sidebar: React.FC<SidebarProps> = ({ onNavigate, watches = [] }) => {
   const { user } = useAuth()
-  const noAuth = import.meta.env.VITE_WEBWHEN_NOAUTH === '1' || (typeof window !== 'undefined' && window.__PRERENDER__)
+  const noAuth = process.env.NEXT_PUBLIC_WEBWHEN_NOAUTH === '1'
   const isAdmin = user?.publicMetadata?.role === 'admin'
 
   const triggeredCount = watches.filter(
@@ -107,7 +110,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate, watches = [] }) =>
 
   return (
     <aside className={styles.sidebar}>
-      <Link to="/dashboard" className={styles.brand} onClick={onNavigate}>
+      <Link href="/dashboard" className={styles.brand} onClick={onNavigate}>
         <img
           src="/brand/webwhen-mark.svg"
           alt="webwhen"
@@ -191,7 +194,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate, watches = [] }) =>
             </div>
           </>
         ) : (
-          <Link to="/sign-in" className={styles.signInLink} onClick={onNavigate}>
+          <Link href="/sign-in" className={styles.signInLink} onClick={onNavigate}>
             Sign in →
           </Link>
         )}

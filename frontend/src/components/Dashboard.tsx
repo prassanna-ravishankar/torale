@@ -1,5 +1,7 @@
+'use client'
+
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -35,8 +37,8 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   const { user, isLoaded } = useAuth()
   const { handleWelcomeComplete } = useWelcomeFlow()
-  const [searchParams] = useSearchParams()
-  const initialFilter = (searchParams.get('filter') as 'triggered' | 'all' | null) ?? 'all'
+  const searchParams = useSearchParams()
+  const initialFilter = (searchParams?.get('filter') as 'triggered' | 'all' | null) ?? 'all'
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [isLoading, setIsLoading] = useState(true)

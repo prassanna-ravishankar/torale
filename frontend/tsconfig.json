@@ -1,47 +1,38 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "target": "ES2022",
+    "lib": ["DOM", "DOM.Iterable", "ES2023"],
     "module": "ESNext",
+    "moduleResolution": "Bundler",
     "skipLibCheck": true,
-
-    /* Bundler mode (Vite-era — kept until commit 6 swaps to Next.js as the source of truth) */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
-    "jsx": "preserve",
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "allowJs": true,
     "incremental": true,
-    "plugins": [{ "name": "next" }],
-
-    /* Linting */
+    "jsx": "preserve",
     "strict": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-
-    /* Path mapping */
+    "plugins": [{ "name": "next" }],
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  /* Next.js typechecks files in `include`. During the migration the Vite
-     tree under `src/` is NOT strict-mode clean; including it would require
-     bulk null-check fixes for code that's deleted in commit 6. Restrict to
-     the Next.js App Router surface; Vite still typechecks via build:check
-     (vite-internal swc transform). */
   "include": [
     "next-env.d.ts",
     "app/**/*.ts",
     "app/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
     "lib/**/*.ts",
     "lib/**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
     "middleware.ts",
     ".next/types/**/*.ts"
   ],
