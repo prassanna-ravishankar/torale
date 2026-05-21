@@ -92,17 +92,17 @@ check_route() {
 
 check_route "/explore"
 
-# Per B3 the static sitemap no longer carries /tasks URLs (backend's
-# /sitemap-dynamic.xml owns them). Source UUIDs from that surface first;
-# fall back to a CUTOVER_TASK_UUIDS env override for environments where
-# the backend isn't reachable from this script (local-only previews).
+# The frontend's app/sitemap.ts (served at /sitemap.xml) enumerates every
+# public /tasks/<uuid> URL alongside the static marketing routes. Source
+# UUIDs from there. Fall back to CUTOVER_TASK_UUIDS for environments where
+# the sitemap isn't populated (e.g. fresh staging DB with zero public tasks).
 # If neither yields anything, FAIL — silently skipping defeats the gate.
 discover_task_uuids() {
   if [ -n "${CUTOVER_TASK_UUIDS:-}" ]; then
     printf '%s\n' "$CUTOVER_TASK_UUIDS" | tr ',' '\n' | sed -E 's/^[[:space:]]+|[[:space:]]+$//g' | grep -E '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' | head -3
     return
   fi
-  curl_body "$PREVIEW_URL/sitemap-dynamic.xml" 2>/dev/null \
+  curl_body "$PREVIEW_URL/sitemap.xml" 2>/dev/null \
     | grep -oE '/tasks/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' \
     | head -3 \
     | sed 's|^/tasks/||'
@@ -110,7 +110,7 @@ discover_task_uuids() {
 
 mapfile -t uuids < <(discover_task_uuids)
 if [ ${#uuids[@]} -eq 0 ]; then
-  fail "no /tasks UUIDs available — set CUTOVER_TASK_UUIDS=uuid1,uuid2,uuid3 or run against a PREVIEW_URL that exposes /sitemap-dynamic.xml"
+  fail "no /tasks UUIDs available — set CUTOVER_TASK_UUIDS=uuid1,uuid2,uuid3 or run against a PREVIEW_URL whose /sitemap.xml enumerates public tasks"
 else
   for u in "${uuids[@]}"; do check_route "/tasks/$u"; done
 fi
