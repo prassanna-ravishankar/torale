@@ -30,7 +30,7 @@ export default clerkMiddleware(async (auth, req) => {
 export const config = {
   // Run middleware only for the authenticated app shell and Clerk's own
   // sign-in/sign-up/waitlist surfaces. Everything else (marketing, RSC
-  // static pages, _next/*, /sitemap-static.xml, /manifest.webmanifest,
+  // static pages, _next/*, /sitemap.xml, /manifest.webmanifest,
   // /favicon.ico) is naturally unmatched.
   matcher: [
     '/dashboard/:path*',

@@ -11,7 +11,7 @@ import { SCHEMA_CONTEXT } from '../../lib/seo/jsonLd'
 import { JsonLd } from '../../lib/seo/jsonLdComponent'
 import { siteUrl } from '../../lib/api/origin'
 
-// Per publicRoutes.ts: /, priority 1.0.
+// Per lib/publicRoutes.ts: /, priority 1.0.
 export const metadata: Metadata = {
   title: 'webwhen — the agent that waits for the web',
   description:

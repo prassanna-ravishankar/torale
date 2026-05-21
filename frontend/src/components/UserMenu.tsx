@@ -1,4 +1,4 @@
-import { UserButton } from '@clerk/clerk-react'
+import { UserButton } from '@clerk/nextjs'
 
 export default function UserMenu() {
   return <UserButton afterSignOutUrl="/sign-in" />

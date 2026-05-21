@@ -1,6 +1,5 @@
-// Source of truth for public routes — consumed by app/sitemap-static.xml
-// and per-page metadata. Mirrors src/data/publicRoutes.ts during the
-// migration; commit 6 deletes the src/data copy.
+// Source of truth for public marketing routes consumed by app/sitemap.ts
+// and per-page metadata.
 
 import { COMPETITORS } from '@/data/competitors';
 import { USE_CASES } from '@/data/useCases';
