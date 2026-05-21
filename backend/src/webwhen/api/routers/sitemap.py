@@ -79,26 +79,23 @@ async def generate_sitemap_index(request: Request, db: Database = Depends(get_db
 @router.get("/sitemap-dynamic.xml")
 async def generate_sitemap_dynamic(request: Request, db: Database = Depends(get_db)):
     """
-    Dynamic sitemap covering DB-derived public pages: landing and changelog.
+    Dynamic sitemap covering DB-derived public pages.
 
-    /explore and /tasks/<UUID> were intentionally removed in SEO audit V2 (B3):
-    those routes are not prerendered, so they shipped an empty SPA shell to
-    non-JS crawlers — submitting them in the sitemap promised content that
-    wasn't there. They will return when /explore + public task pages are
-    server-rendered or build-time prerendered with a fetched snapshot.
+    `/` and `/changelog` carry DB-truth lastmod values (newest is_public task
+    timestamp; newest changelog.json entry). `/explore` and `/tasks/<UUID>`
+    re-added once the Next.js migration made them genuinely server-rendered:
+    Googlebot now gets real HTML for those URLs, so submitting them in the
+    sitemap promises content that actually exists. (They were removed in SEO
+    audit V2 (B3) when the Vite SPA shipped empty shells to non-JS crawlers.)
 
-    Why not just drop this whole sitemap-dynamic surface? `/` and `/changelog`
-    benefit from DB-derived lastmod values: changelog.json is the source of
-    truth for changelog freshness, and `/` carries the "newest public task
-    last seen" signal via the latest is_public task's updated_at. The static
-    sitemap can only use git commit dates, which fire on every deploy.
+    Per-task lastmod uses the watch's updated_at so deploys don't churn every
+    task's "last modified" in Google Search Console.
     """
     if not _is_marketing_host(request):
         raise HTTPException(status_code=404)
 
     base_url = settings.frontend_url
 
-    # Create root element with namespace
     urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
 
     # Landing-page lastmod tracks the newest public task we've published.
@@ -127,7 +124,7 @@ async def generate_sitemap_dynamic(request: Request, db: Database = Depends(get_
         # Fall back to current date if changelog read fails
         pass
 
-    pages = [
+    pages: list[dict[str, str]] = [
         {
             "loc": f"{base_url}/",
             "priority": "1.0",
@@ -140,7 +137,46 @@ async def generate_sitemap_dynamic(request: Request, db: Database = Depends(get_
             "changefreq": "weekly",
             "lastmod": changelog_lastmod,
         },
+        # /explore aggregates recent triggered watches; the SSG page revalidates
+        # every 5 minutes, so daily change cadence is the right Google hint.
+        {
+            "loc": f"{base_url}/explore",
+            "priority": "0.8",
+            "changefreq": "daily",
+            "lastmod": landing_lastmod,
+        },
     ]
+
+    # Public tasks. Cap at 5000 to keep the sitemap under the 50k / 50 MiB
+    # sitemap-protocol limit and the response under a sane time budget; if
+    # the public task count grows past that, split into paged sitemaps via
+    # the sitemap-index. Sorted by updated_at DESC so the freshest URLs hit
+    # crawlers first when budgets are tight.
+    public_tasks = await db.fetch_all(
+        """
+        SELECT id, updated_at
+        FROM tasks
+        WHERE is_public = true
+        ORDER BY updated_at DESC NULLS LAST
+        LIMIT 5000
+        """
+    )
+    for row in public_tasks:
+        task_id = row["id"]
+        updated = row["updated_at"]
+        lastmod = (
+            updated.strftime("%Y-%m-%d")
+            if updated
+            else datetime.now().strftime("%Y-%m-%d")
+        )
+        pages.append(
+            {
+                "loc": f"{base_url}/tasks/{task_id}",
+                "priority": "0.6",
+                "changefreq": "weekly",
+                "lastmod": lastmod,
+            }
+        )
 
     for page in pages:
         url_elem = ET.SubElement(urlset, "url")
