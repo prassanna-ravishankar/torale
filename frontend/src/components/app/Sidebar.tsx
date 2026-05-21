@@ -59,7 +59,7 @@ interface RecentWatchProps {
 
 function RecentWatch({ watch, onClick }: RecentWatchProps) {
   const pathname = usePathname() || ''
-  const isActive = pathname === `/tasks/${watch.id}`
+  const isActive = pathname === `/dashboard/tasks/${watch.id}`
   const status =
     watch.last_execution?.notification != null
       ? 'triggered'
@@ -70,7 +70,7 @@ function RecentWatch({ watch, onClick }: RecentWatchProps) {
           : 'active'
   return (
     <Link
-      href={`/tasks/${watch.id}`}
+      href={`/dashboard/tasks/${watch.id}`}
       onClick={onClick}
       className={cn(styles.watch, isActive && styles.active)}
     >

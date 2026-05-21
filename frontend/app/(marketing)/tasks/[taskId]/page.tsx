@@ -238,6 +238,13 @@ export default async function PublicTaskPage({
             <span>
               <Link href="/explore">← back to explore</Link>
             </span>
+            {/* Passive affordance — statically rendered for everyone.
+                Signed-in owners click through to the dashboard view;
+                visitors without a Clerk session land on /sign-in. Avoids
+                conditional rendering so the page stays cacheable. */}
+            <span>
+              <Link href={`/dashboard/tasks/${task.id}`}>open in dashboard →</Link>
+            </span>
           </div>
         </div>
       </header>
