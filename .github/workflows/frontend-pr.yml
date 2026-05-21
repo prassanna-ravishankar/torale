@@ -1,5 +1,9 @@
-# Frontend PR checks: lint
-# Runs on pull requests to ensure code quality
+# Frontend PR checks: lint, typecheck, full Next.js build, public-env parity.
+# Runs on pull requests so semantic regressions land at PR-time, not on the
+# staging deploy. The Next.js build exercises the App Router type-check
+# pipeline + bundle-analyzer chunk inspection (catches the PR #337 LCP
+# invariant via Clerk-in-marketing-chunks check). See review notif-d7f9dcd9
+# (B5) for the rationale.
 
 name: Frontend PR Checks
 
@@ -35,4 +39,66 @@ jobs:
 
       - name: Check TypeScript
         working-directory: ./frontend
-        run: npx tsc --noEmit
+        run: npm run typecheck
+
+  build:
+    name: Next.js build + invariants
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      # Run the full next build with the same NEXT_PUBLIC_* placeholders
+      # production.yml uses, so any per-environment value mismatch surfaces
+      # here too. Real prod/staging builds get the real values via
+      # docker --build-arg; these are stubs sufficient to compile.
+      - name: Next.js build
+        working-directory: ./frontend
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://api.webwhen.ai
+          NEXT_PUBLIC_SITE_ORIGIN: https://webwhen.ai
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_live_placeholder
+          NEXT_PUBLIC_POSTHOG_API_KEY: phc_placeholder
+          NEXT_PUBLIC_POSTHOG_HOST: https://eu.posthog.com
+        run: npm run build
+
+      # PR #337 LCP invariant: marketing chunks must NOT pull Clerk JS.
+      # Implemented as a structural property of the route-group split
+      # (commit f83a70e) — this check is a regression alarm.
+      - name: Verify marketing chunks Clerk-free
+        working-directory: ./frontend
+        run: |
+          manifest=.next/app-build-manifest.json
+          marketing_chunks=$(jq -r '
+            .pages
+            | to_entries
+            | map(select(.key | test("\\(marketing\\)")))
+            | map(.value[])
+            | unique
+            | .[]
+          ' "$manifest")
+          bad=$(printf '%s\n' "$marketing_chunks" | xargs -I{} grep -l 'clerk' ".next/{}" 2>/dev/null || true)
+          if [ -n "$bad" ]; then
+            echo "FAIL: marketing chunks contain Clerk references:"
+            printf '%s\n' "$bad" | sed 's/^/  /'
+            exit 1
+          fi
+          echo "OK: marketing chunks are Clerk-free."
+
+      # Drift check: per-environment NEXT_PUBLIC_* in the deploy workflows
+      # must match the Helm values they mirror. Fails the PR if the two
+      # diverge — easier to keep in sync at PR time than to discover at
+      # deploy time. See M8 below.
+      - name: Workflow build-args vs Helm values parity
+        run: ./frontend/scripts/check-public-env-parity.sh
