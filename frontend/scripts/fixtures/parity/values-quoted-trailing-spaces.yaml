@@ -1,0 +1,24 @@
+# Fixture: trailing spaces AFTER closing `"` on quoted scalars.
+# Pins a known parser limitation: in extract_helm_kv, `gsub(/^"|"$/, "")`
+# runs BEFORE `sub(/[[:space:]]+$/, "")`, so a closing quote not at the
+# end of the line is not stripped. Parity must therefore report drift
+# on NEXT_PUBLIC_POSTHOG_API_KEY when compared against the canonical
+# workflow.
+#
+# If a future PR fixes the parser to handle this case, update the
+# scenario in check-public-env-parity.test.sh deliberately.
+domains:
+  legacy:
+    frontend: torale.ai
+    api: api.torale.ai
+  live:
+    frontend: webwhen.ai
+    api: api.webwhen.ai
+
+clerk:
+  publishableKey: pk_live_Y2xlcmsud2Vid2hlbi5haSQ
+
+posthog:
+  enabled: true
+  apiKey: "phc_aBJidBfDmxU0jaAn6K1168Ob6sGDdOc9hVImLHCTCWJ"  
+  apiHost: "https://eu.posthog.com"  

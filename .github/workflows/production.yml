@@ -5,6 +5,11 @@
 
 name: Deploy to Production
 
+# Default least-privilege for all jobs. Build + deploy jobs override below
+# to add `id-token: write` for GCP Workload Identity Federation.
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -97,14 +102,19 @@ jobs:
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker gcr.io
 
-      # Frontend prerender bakes article-level JSON-LD into dist/changelog.html
-      # using backend/static/changelog.json. The frontend image build context is
-      # `frontend/` and cannot reach `../backend/`, so stage the fixture inside
-      # the context first. See frontend/scripts/sync-changelog-fixture.mjs.
-      - name: Stage changelog fixture for frontend prerender
+      # Stage backend/static/changelog.json inside the frontend build
+      # context so the SSG fallback in app/(marketing)/changelog/page.tsx
+      # can read it when the API isn't reachable at image-build time. The
+      # frontend Docker context is `frontend/` only.
+      - name: Stage changelog fixture for frontend build
         if: matrix.component == 'frontend'
         run: cp backend/static/changelog.json frontend/.changelog-fixture.json
 
+      # Next.js inlines NEXT_PUBLIC_* into the client bundle at build time,
+      # so the per-environment public config (API host, Clerk PK, PostHog
+      # key) MUST be passed as Docker --build-arg here. Values mirror
+      # helm/torale/values-production.yaml (kept in sync manually; both
+      # files carry public-safe keys per the Clerk + PostHog comments).
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -112,6 +122,12 @@ jobs:
           file: ${{ matrix.dockerfile }}
           push: true
           provenance: false  # Prevent manifest list creation that breaks tagging with GHA cache
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=https://api.webwhen.ai
+            NEXT_PUBLIC_SITE_ORIGIN=https://webwhen.ai
+            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsud2Vid2hlbi5haSQ
+            NEXT_PUBLIC_POSTHOG_API_KEY=phc_aBJidBfDmxU0jaAn6K1168Ob6sGDdOc9hVImLHCTCWJ
+            NEXT_PUBLIC_POSTHOG_HOST=https://eu.posthog.com
           tags: |
             gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:${{ env.IMAGE_TAG }}
             gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:latest

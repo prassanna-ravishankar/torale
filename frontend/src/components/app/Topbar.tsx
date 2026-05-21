@@ -1,5 +1,7 @@
+'use client'
+
 import { Menu } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 
 import { cn } from '@/lib/utils'
 
@@ -46,7 +48,7 @@ export const Topbar: React.FC<TopbarProps> = ({ crumbs, actions, onHamburger }) 
                 {c.label}
               </span>
             ) : c.href ? (
-              <Link key={c.label} to={c.href} className={styles.crumbLink}>
+              <Link key={c.label} href={c.href} className={styles.crumbLink}>
                 {c.label}
               </Link>
             ) : (

@@ -22,9 +22,9 @@ interface ApiError {
 class ApiClient {
   private tokenGetter: (() => Promise<string | null>) | null = null
 
-  // Read API URL from runtime config (evaluated at request time, not module load time)
+  // Read API URL from build-time env var
   private get baseUrl(): string {
-    return window.CONFIG?.apiUrl || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+    return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
   }
 
   // Public getter for API base URL (for use in components that need direct API URL access)

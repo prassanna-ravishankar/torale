@@ -1,6 +1,7 @@
+'use client'
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Helmet } from 'react-helmet-async'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 
 import api from '@/lib/api'
@@ -39,9 +40,9 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   onDeleted,
   currentUserId,
 }) => {
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const isJustCreated = searchParams.get('justCreated') === 'true'
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const isJustCreated = searchParams?.get('justCreated') === 'true'
 
   const [task, setTask] = useState<Task | null>(null)
   const [executions, setExecutions] = useState<TaskExecution[]>([])
@@ -129,7 +130,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   // === Derived view-model ================================================
 
   const isOwner = !!(task && task.user_id === currentUserId)
-  const rssUrl = task ? api.getTaskRssUrl(taskId) : ''
 
   const moments = useMemo(
     () =>
@@ -229,7 +229,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         try {
           const forked = await api.forkTask(taskId)
           toast.success('copied to your watches')
-          navigate(`/tasks/${forked.id}?justCreated=true`)
+          router.push(`/dashboard/tasks/${forked.id}?justCreated=true`)
         } catch (error) {
           console.error('Failed to fork watch:', error)
           toast.error("Couldn't copy the watch")
@@ -248,16 +248,10 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       ]}
       actions={actions}
     >
-      {task.is_public && (
-        <Helmet>
-          <link
-            rel="alternate"
-            type="application/rss+xml"
-            title={`${task.name} - RSS Feed`}
-            href={rssUrl}
-          />
-        </Helmet>
-      )}
+      {/* Public-watch RSS alternate is set by the surrounding page (server
+          component) via Next metadata so it lands in the static HTML head
+          before hydration. The Helmet that used to live here served the
+          same purpose under Vite. */}
 
       {isOwner && (
         <ConnectorDegradationBanner attachedSlugs={task.attached_connector_slugs ?? []} />

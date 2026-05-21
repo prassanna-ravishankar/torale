@@ -53,17 +53,11 @@ spec:
         hostname: {{ .Values.domains.live.frontend | quote }}
         statusCode: 301
   {{- else }}
-  # SEO endpoints served by backend API (must be before frontend catchall).
-  # Grouped into one rule with multiple matches — Gateway API treats each
-  # match independently while sharing backendRefs, which is exactly what
-  # this set wants.
+  # Backend-served SEO endpoints (must be before the frontend catchall).
+  # /sitemap.xml is owned by the Next.js frontend now via app/sitemap.ts —
+  # the catchall below handles it. /sitemap-dynamic.xml and /sitemap-static.xml
+  # were retired along with the split (one source-of-truth sitemap).
   - matches:
-    - path:
-        type: Exact
-        value: /sitemap.xml
-    - path:
-        type: Exact
-        value: /sitemap-dynamic.xml
     - path:
         type: Exact
         value: /changelog.xml
@@ -266,15 +260,10 @@ spec:
   hostnames:
   - {{ .Values.domains.live.frontend | quote }}
   rules:
-  # SEO endpoints served by backend API (must be before frontend catchall).
-  # Grouped — same backendRefs and same noindex filter for all four paths.
+  # Backend-served SEO endpoints (must be before frontend catchall). /sitemap.xml
+  # is owned by the Next.js frontend now via app/sitemap.ts — the catchall below
+  # handles it. /sitemap-dynamic.xml retired along with the split.
   - matches:
-    - path:
-        type: Exact
-        value: /sitemap.xml
-    - path:
-        type: Exact
-        value: /sitemap-dynamic.xml
     - path:
         type: Exact
         value: /changelog.xml

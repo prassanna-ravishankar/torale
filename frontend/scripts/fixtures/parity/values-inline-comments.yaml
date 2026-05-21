@@ -1,0 +1,23 @@
+# Fixture: same values as canonical, but PostHog and clerk lines carry
+# inline comments (`# rotated 2026-05-03`). YAML treats `#` as a comment
+# start outside of quoted strings. The existing parser does NOT strip
+# inline comments — so this fixture is paired with a DRIFTED expectation:
+# the parity script SHOULD report drift here because the parser will
+# include the comment text in the helm value. This pins current
+# behaviour so any future "fix" (proper YAML parsing) is a deliberate
+# choice with a test update, not silent breakage.
+domains:
+  legacy:
+    frontend: torale.ai
+    api: api.torale.ai
+  live:
+    frontend: webwhen.ai  # primary cutover domain
+    api: api.webwhen.ai
+
+clerk:
+  publishableKey: pk_live_Y2xlcmsud2Vid2hlbi5haSQ  # rotated 2026-05-03
+
+posthog:
+  enabled: true
+  apiKey: "phc_aBJidBfDmxU0jaAn6K1168Ob6sGDdOc9hVImLHCTCWJ"
+  apiHost: "https://eu.posthog.com"

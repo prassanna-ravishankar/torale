@@ -1,3 +1,5 @@
+'use client';
+
 // Single source of post-hydration revalidated landing-page watch state.
 //
 // First paint: returns the build-time snapshot baked by
@@ -46,17 +48,6 @@ function partition(snapshot: LandingSnapshot): ExampleBySurface {
     hero: snapshot.examples.filter((e) => e.surfaces.includes('hero')),
     cases: snapshot.examples.filter((e) => e.surfaces.includes('cases')),
   };
-}
-
-/**
- * Inside scripts/prerender.mjs Playwright sets window.__PRERENDER__ = true
- * before navigating. Skip the runtime revalidation fetch under prerender
- * so the captured HTML is always the build-time bake — no race between
- * the in-flight fetch resolving and `page.content()` capturing.
- */
-function isPrerender(): boolean {
-  if (typeof window === 'undefined') return false;
-  return window.__PRERENDER__ === true;
 }
 
 interface FeedExecutionLike {
@@ -120,13 +111,12 @@ export function LandingExamplesProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState<LandingSnapshot>(FALLBACK);
 
   useEffect(() => {
-    if (isPrerender()) return;
     let cancelled = false;
     // Only refresh the per-watch evidence here. We deliberately do NOT
     // refresh `totalPublicConditions` post-hydration: the bake is
     // cross-env (always reads the prod public feed at build, see
     // sync-landing-examples.mjs), but the runtime API client uses
-    // window.CONFIG.apiUrl — which on staging points at api-staging
+    // NEXT_PUBLIC_API_BASE_URL — which on staging points at api-staging
     // (0 public tasks) and would clobber the prod-baked count to 0 on
     // first interaction. The count chip stays baked-fresh per deploy.
     api

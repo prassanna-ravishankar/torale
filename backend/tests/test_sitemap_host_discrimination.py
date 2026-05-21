@@ -34,18 +34,25 @@ def client_api_host():
 
 
 class TestApiHostDoesNotLeakSeoEndpoints:
-    """B4: api.webwhen.ai must not mirror the marketing sitemap/changelog."""
+    """B4: api.webwhen.ai must not mirror the marketing changelog/robots.
+
+    Sitemap-handling endpoints (/sitemap.xml, /sitemap-dynamic.xml, and the
+    retired /sitemap-static.xml) are no longer registered with this app —
+    the Next.js frontend owns /sitemap.xml via its app/sitemap.ts convention.
+    Any request on the api host for /sitemap.xml falls through to FastAPI's
+    default 404, which is the desired behavior.
+    """
 
     def test_robots_on_api_host_is_blanket_disallow(self, client_api_host):
         resp = client_api_host.get("/robots.txt")
         assert resp.status_code == 200
         assert resp.text.strip() == "User-agent: *\nDisallow: /"
 
-    def test_sitemap_index_on_api_host_returns_404(self, client_api_host):
+    def test_sitemap_not_registered_on_backend(self, client_api_host):
+        # Sanity check the retirement: backend no longer serves /sitemap.xml at
+        # all. The frontend's app/sitemap.ts is the source of truth.
         resp = client_api_host.get("/sitemap.xml")
         assert resp.status_code == 404
-
-    def test_sitemap_dynamic_on_api_host_returns_404(self, client_api_host):
         resp = client_api_host.get("/sitemap-dynamic.xml")
         assert resp.status_code == 404
 

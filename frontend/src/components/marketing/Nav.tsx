@@ -1,4 +1,7 @@
-import { Link, useLocation } from 'react-router-dom'
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
@@ -24,14 +27,14 @@ const TOP_LEVEL_LINKS: Array<{ href: string; label: string; matchPath?: string }
 
 export const Nav: React.FC<NavProps> = ({ activePath }) => {
   const { user } = useAuth()
-  const location = useLocation()
-  const path = activePath ?? location.pathname
+  const pathname = usePathname() || ''
+  const path = activePath ?? pathname
 
   return (
     <nav className={styles.nav}>
       <div className={cn(styles.container, styles.navRow)}>
         <div className={styles.navLeft}>
-          <Link to="/" className={styles.brand}>
+          <Link href="/" className={styles.brand}>
             <img
               src="/brand/webwhen-mark.svg"
               alt="webwhen"
@@ -60,15 +63,15 @@ export const Nav: React.FC<NavProps> = ({ activePath }) => {
         </div>
         <div className={styles.navRight}>
           {user ? (
-            <Link to="/dashboard" className={cn(styles.btn, styles.btnPrimary)}>
+            <Link href="/dashboard" className={cn(styles.btn, styles.btnPrimary)}>
               Dashboard <span style={{ fontFamily: 'var(--ww-font-mono)' }}>→</span>
             </Link>
           ) : (
             <>
-              <Link to="/sign-in" className={cn(styles.btn, styles.btnGhost)}>
+              <Link href="/sign-in" className={cn(styles.btn, styles.btnGhost)}>
                 Sign in
               </Link>
-              <Link to="/sign-up" className={cn(styles.btn, styles.btnPrimary)}>
+              <Link href="/sign-up" className={cn(styles.btn, styles.btnPrimary)}>
                 Start watching <span style={{ fontFamily: 'var(--ww-font-mono)' }}>→</span>
               </Link>
             </>

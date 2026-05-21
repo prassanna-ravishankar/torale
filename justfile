@@ -27,7 +27,7 @@ dev-full: build
 dev-noauth: build
     #!/usr/bin/env bash
     WEBWHEN_NOAUTH=1 docker compose up -d
-    cd frontend && npm install && VITE_WEBWHEN_NOAUTH=1 npm run dev
+    cd frontend && npm install && NEXT_PUBLIC_WEBWHEN_NOAUTH=1 npm run dev
 
 # Start specific service (api, workers)
 dev-service service: build

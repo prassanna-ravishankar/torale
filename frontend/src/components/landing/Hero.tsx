@@ -1,5 +1,7 @@
+'use client'
+
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 
 import { useLandingExamples } from '@/contexts/LandingExamplesContext'
 import { cn } from '@/lib/utils'
@@ -19,19 +21,6 @@ type Phase = 'idle' | 'deleting' | 'typing'
 function prefersReducedMotion(): boolean {
   if (typeof window === 'undefined') return false
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
-}
-
-/**
- * Inside scripts/prerender.mjs Playwright sets `window.__PRERENDER__ = true`
- * before navigating. Gating the cycle effect on this flag stops the state
- * machine from advancing during prerender — so the captured HTML is
- * always idle/full-prompt-#0, regardless of how long Playwright takes to
- * settle on `networkidle`. Defence-in-depth alongside the deterministic
- * first-paint state.
- */
-function isPrerender(): boolean {
-  if (typeof window === 'undefined') return false
-  return window.__PRERENDER__ === true
 }
 
 /** Render a date as "May 9" — absolute, deterministic across SSR/CSR. */
@@ -60,9 +49,6 @@ export const Hero: React.FC = () => {
   useEffect(() => {
     if (hero.length <= 1) return
     if (paused) return
-    // Don't run the typewriter while Playwright is capturing the prerender
-    // shell — keeps captured HTML deterministic regardless of settle time.
-    if (isPrerender()) return
     if (prefersReducedMotion()) {
       // Reduced motion: instant swap, no character animation. The cadence
       // here is intentionally a touch longer than IDLE_MS alone (since the
@@ -149,7 +135,7 @@ export const Hero: React.FC = () => {
             Tell webwhen what to watch for in plain English. It will sit with the question, search the web on a schedule, and tell you the moment your condition is met.
           </p>
           <div className={styles.heroActions}>
-            <Link to="/sign-up" className={cn(styles.btn, styles.btnPrimary, styles.btnLg)}>
+            <Link href="/sign-up" className={cn(styles.btn, styles.btnPrimary, styles.btnLg)}>
               Start watching <span style={{ fontFamily: 'var(--ww-font-mono)' }}>→</span>
             </Link>
           </div>
@@ -194,7 +180,7 @@ export const Hero: React.FC = () => {
                   per-task page because /tasks/:id requires auth; /explore
                   is the public surface for "what webwhen is doing now". */}
               <Link
-                to="/explore"
+                href="/explore"
                 className={cn(styles.btn, styles.btnPrimary)}
                 style={{ padding: '8px 14px' }}
               >

@@ -1,0 +1,18 @@
+# Fixture: canonical workflow build-args block. Mirrors the shape of
+# .github/workflows/{production,staging}.yml — only the build-args region
+# matters to the parity script.
+name: fixture-canonical
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build frontend image
+        uses: docker/build-push-action@v5
+        with:
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=https://api.webwhen.ai
+            NEXT_PUBLIC_SITE_ORIGIN=https://webwhen.ai
+            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsud2Vid2hlbi5haSQ
+            NEXT_PUBLIC_POSTHOG_API_KEY=phc_aBJidBfDmxU0jaAn6K1168Ob6sGDdOc9hVImLHCTCWJ
+            NEXT_PUBLIC_POSTHOG_HOST=https://eu.posthog.com

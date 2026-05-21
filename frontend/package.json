@@ -7,15 +7,17 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "dev": "vite",
-    "prebuild": "node scripts/sync-changelog-fixture.mjs && node scripts/sync-landing-examples.mjs",
-    "build": "vite build && node scripts/prerender.mjs && node scripts/generate-sitemap.mjs",
-    "build:check": "tsc && vite build",
-    "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives"
+    "dev": "next dev",
+    "prebuild": "node scripts/sync-changelog-fixture.mjs",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "next lint",
+    "test": "tsx lib/seo/jsonLd.test.ts && bash scripts/check-public-env-parity.test.sh"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.61.6",
+    "@clerk/nextjs": "^6.18.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -50,6 +52,7 @@
     "input-otp": "^1.4.2",
     "lucide-react": "^0.441.0",
     "motion": "^12.23.25",
+    "next": "^15.5.0",
     "picomatch": "^4.0.4",
     "posthog-js": "^1.342.1",
     "react": "^18.3.1",
@@ -69,23 +72,20 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^15.5.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
-    "@vitejs/plugin-react-swc": "^4.3.0",
     "autoprefixer": "^10.4.20",
-    "esbuild": "^0.27.7",
     "eslint": "^8.57.1",
+    "eslint-config-next": "^15.5.0",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.12",
-    "playwright": "1.59.1",
     "postcss": "^8.4.45",
-    "rollup-plugin-visualizer": "^6.0.5",
-    "serve-handler": "^6.1.7",
     "tailwindcss": "^3.4.11",
+    "tsx": "^4.22.3",
     "typescript": "^5.5.3",
-    "vite": "^8.0.10",
     "vitest": "^4.1.6"
   }
 }

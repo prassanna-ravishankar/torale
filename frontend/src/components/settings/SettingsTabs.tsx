@@ -1,5 +1,8 @@
+'use client';
+
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { connectorsEnabled } from '@/components/connectors/connectorsFlag';
@@ -11,7 +14,7 @@ interface SettingsTab {
 }
 
 export const SettingsTabs: React.FC = () => {
-  const { pathname } = useLocation();
+  const pathname = usePathname() || '';
   const { user } = useAuth();
   const tabs: SettingsTab[] = [
     { label: 'Notifications', to: '/settings/notifications' },
@@ -27,7 +30,7 @@ export const SettingsTabs: React.FC = () => {
         return (
           <Link
             key={tab.to}
-            to={tab.to}
+            href={tab.to}
             className={cn(styles.tab, active && styles.tabActive)}
           >
             {tab.label}

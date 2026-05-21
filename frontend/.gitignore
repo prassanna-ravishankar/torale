@@ -10,6 +10,12 @@ node_modules
 /build
 /dist
 
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+tsconfig.tsbuildinfo
+
 # Synced from backend/static/changelog.json by scripts/sync-changelog-fixture.mjs
 # at build time. See scripts/prerender.mjs for the why.
 /.changelog-fixture.json
@@ -37,3 +43,4 @@ yarn-error.log*
 *.swp
 *.swo
 *~
+tsconfig.next.tsbuildinfo

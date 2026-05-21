@@ -1,0 +1,19 @@
+# Fixture: same values as canonical, but with adversarial whitespace —
+# trailing spaces after scalar values, blank lines between siblings.
+# The parity script must strip trailing whitespace and still match.
+domains:
+  legacy:
+    frontend: torale.ai
+    api: api.torale.ai
+
+  live:
+    frontend: webwhen.ai
+    api: api.webwhen.ai
+
+clerk:
+  publishableKey: pk_live_Y2xlcmsud2Vid2hlbi5haSQ
+
+posthog:
+  enabled: true
+  apiKey: "phc_aBJidBfDmxU0jaAn6K1168Ob6sGDdOc9hVImLHCTCWJ"
+  apiHost: "https://eu.posthog.com"

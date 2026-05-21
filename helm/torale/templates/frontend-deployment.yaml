@@ -1,4 +1,10 @@
 {{- if .Values.frontend.enabled -}}
+{{- /*
+Live API hostname. Resolution order: live first (post-cutover), then legacy
+(the rebrand-source). Mirrors the (now-deleted) frontend-config.yaml lookup.
+*/ -}}
+{{- $apiHost := coalesce (dig "live" "api" "" .Values.domains) (dig "legacy" "api" "" .Values.domains) -}}
+{{- $frontendHost := coalesce (dig "live" "frontend" "" .Values.domains) (dig "legacy" "frontend" "" .Values.domains) -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -32,34 +38,68 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
         - name: http
-          containerPort: 80
+          containerPort: 3000
           protocol: TCP
-        volumeMounts:
-        - name: config
-          mountPath: /usr/share/nginx/html/config.js
-          subPath: config.js
+        # Runtime env. NEXT_PUBLIC_* values were already inlined into the
+        # client bundle at docker build time via --build-arg (see Dockerfile).
+        # Setting them here ALSO makes them available to RSC / route handlers
+        # at request time (server-side reads of process.env.NEXT_PUBLIC_*).
+        env:
+        - name: NODE_ENV
+          value: production
+        - name: HOSTNAME
+          value: "0.0.0.0"
+        - name: PORT
+          value: "3000"
+        - name: NEXT_PUBLIC_API_BASE_URL
+          value: "https://{{ $apiHost }}"
+        - name: NEXT_PUBLIC_SITE_ORIGIN
+          value: "https://{{ $frontendHost }}"
+        - name: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+          value: {{ .Values.clerk.publishableKey | quote }}
+        {{- if .Values.posthog.enabled }}
+        - name: NEXT_PUBLIC_POSTHOG_API_KEY
+          value: {{ .Values.posthog.apiKey | quote }}
+        - name: NEXT_PUBLIC_POSTHOG_HOST
+          value: {{ .Values.posthog.apiHost | quote }}
+        {{- end }}
+        # CLERK_SECRET_KEY: required by clerkMiddleware() at module init.
+        # Sourced from the shared torale-secrets Secret (same one the api
+        # reads). Without it, every request through the middleware matcher
+        # (/dashboard, /settings, /admin, /welcome, /sign-in, /sign-up,
+        # /waitlist) 500s with "Missing secretKey". Marketing routes don't
+        # hit middleware so they'd still serve.
+        - name: CLERK_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.name }}
+              key: CLERK_SECRET_KEY
+        {{- with .Values.frontend.extraEnv }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
         resources:
           {{- toYaml .Values.frontend.resources | nindent 10 }}
+        # Probes hit `/` (a static route — cheap, no DB, no Clerk).
+        # Next.js standalone starts in ~200ms but tracing-aware initial
+        # compile can take 2-3s — startup probe gives 150s of slack.
         livenessProbe:
           httpGet:
             path: /
             port: http
-          initialDelaySeconds: 10
-          periodSeconds: 10
+          initialDelaySeconds: 15
+          periodSeconds: 15
+          timeoutSeconds: 5
         readinessProbe:
           httpGet:
             path: /
             port: http
           initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 3
         startupProbe:
           httpGet:
             path: /
             port: http
           failureThreshold: 30
           periodSeconds: 5
-      volumes:
-      - name: config
-        configMap:
-          name: {{ include "torale.fullname" . }}-frontend-config
 {{- end }}

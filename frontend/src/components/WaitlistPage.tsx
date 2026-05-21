@@ -1,8 +1,10 @@
+'use client';
+
 import { useState } from "react";
 import { getErrorMessage } from "@/lib/utils";
 import { motion } from "@/lib/motion-compat";
 import { Mail, CheckCircle2, AlertCircle, Sparkles } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 
 export function WaitlistPage() {
   const [email, setEmail] = useState("");
@@ -10,7 +12,7 @@ export function WaitlistPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [position, setPosition] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,7 +20,7 @@ export function WaitlistPage() {
     setError(null);
 
     try {
-      const apiUrl = window.CONFIG?.apiUrl || import.meta.env.VITE_API_BASE_URL;
+      const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
       if (!apiUrl) {
         throw new Error("API URL not configured");
       }
@@ -73,7 +75,7 @@ export function WaitlistPage() {
           </div>
 
           <button
-            onClick={() => navigate("/")}
+            onClick={() => router.push("/")}
             className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
           >
             Back to home
@@ -138,7 +140,7 @@ export function WaitlistPage() {
 
         <div className="text-center">
           <button
-            onClick={() => navigate("/sign-in")}
+            onClick={() => router.push("/sign-in")}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             Already have an account? <span className="font-medium">Sign in</span>

@@ -1,0 +1,18 @@
+# Fixture: drifted workflow build-args block. The PostHog API key is
+# wrong (phc_DRIFTED_KEY) so the parity script must report DRIFT for
+# NEXT_PUBLIC_POSTHOG_API_KEY against a canonical values file.
+name: fixture-drifted
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build frontend image
+        uses: docker/build-push-action@v5
+        with:
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=https://api.webwhen.ai
+            NEXT_PUBLIC_SITE_ORIGIN=https://webwhen.ai
+            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsud2Vid2hlbi5haSQ
+            NEXT_PUBLIC_POSTHOG_API_KEY=phc_DRIFTED_KEY
+            NEXT_PUBLIC_POSTHOG_HOST=https://eu.posthog.com

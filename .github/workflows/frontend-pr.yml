@@ -1,7 +1,14 @@
-# Frontend PR checks: lint
-# Runs on pull requests to ensure code quality
+# Frontend PR checks: lint, typecheck, full Next.js build, public-env parity.
+# Runs on pull requests so semantic regressions land at PR-time, not on the
+# staging deploy. The Next.js build exercises the App Router type-check
+# pipeline + bundle-analyzer chunk inspection (catches the PR #337 LCP
+# invariant via Clerk-in-marketing-chunks check). See review notif-d7f9dcd9
+# (B5) for the rationale.
 
 name: Frontend PR Checks
+
+permissions:
+  contents: read
 
 on:
   pull_request:
@@ -9,6 +16,21 @@ on:
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-pr.yml'
+      # The parity gate (M8/H2) compares workflow build-args against Helm
+      # values; without these path filters, a drift-only PR (one that only
+      # changes the deploy workflow or Helm values) would skip the gate
+      # and ship divergence. Trigger here too.
+      - '.github/workflows/production.yml'
+      - '.github/workflows/staging.yml'
+      - 'helm/torale/values.yaml'
+      - 'helm/torale/values-production.yaml'
+      - 'helm/torale/values-staging.yaml'
+      # Helm templates affect Gateway routing (e.g. which paths land on
+      # frontend vs backend). Without these triggers, a Helm-only change
+      # — for example, retargeting /sitemap.xml — could ship without
+      # exercising the helm lint / template smoke job below.
+      - 'helm/torale/templates/**'
+      - 'helm/torale/Chart.yaml'
 
 jobs:
   lint:
@@ -35,4 +57,121 @@ jobs:
 
       - name: Check TypeScript
         working-directory: ./frontend
-        run: npx tsc --noEmit
+        run: npm run typecheck
+
+      - name: Run unit tests
+        working-directory: ./frontend
+        run: npm run test
+
+  build:
+    name: Next.js build + invariants
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      # Run the full next build with the same NEXT_PUBLIC_* placeholders
+      # production.yml uses, so any per-environment value mismatch surfaces
+      # here too. Real prod/staging builds get the real values via
+      # docker --build-arg; these are stubs sufficient to compile.
+      - name: Next.js build
+        working-directory: ./frontend
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://api.webwhen.ai
+          NEXT_PUBLIC_SITE_ORIGIN: https://webwhen.ai
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_live_placeholder
+          NEXT_PUBLIC_POSTHOG_API_KEY: phc_placeholder
+          NEXT_PUBLIC_POSTHOG_HOST: https://eu.posthog.com
+        run: npm run build
+
+      # PR #337 LCP invariant: marketing chunks must NOT pull Clerk JS.
+      # Implemented as a structural property of the route-group split
+      # (commit f83a70e) — this check is a regression alarm.
+      - name: Verify marketing chunks Clerk-free
+        working-directory: ./frontend
+        run: |
+          manifest=.next/app-build-manifest.json
+          marketing_chunks=$(jq -r '
+            .pages
+            | to_entries
+            | map(select(.key | test("\\(marketing\\)")))
+            | map(.value[])
+            | unique
+            | .[]
+          ' "$manifest")
+          bad=$(printf '%s\n' "$marketing_chunks" | xargs -I{} grep -l 'clerk' ".next/{}" 2>/dev/null || true)
+          if [ -n "$bad" ]; then
+            echo "FAIL: marketing chunks contain Clerk references:"
+            printf '%s\n' "$bad" | sed 's/^/  /'
+            exit 1
+          fi
+          echo "OK: marketing chunks are Clerk-free."
+
+      # Drift check: per-environment NEXT_PUBLIC_* in the deploy workflows
+      # must match the Helm values they mirror. Fails the PR if the two
+      # diverge — easier to keep in sync at PR time than to discover at
+      # deploy time. See M8 below.
+      - name: Workflow build-args vs Helm values parity
+        run: ./frontend/scripts/check-public-env-parity.sh
+
+  helm:
+    name: Helm lint + template smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+
+      - name: helm lint (production)
+        run: helm lint helm/torale --values helm/torale/values.yaml --values helm/torale/values-production.yaml
+
+      - name: helm lint (staging)
+        run: helm lint helm/torale --values helm/torale/values.yaml --values helm/torale/values-staging.yaml
+
+      # Gateway routing smoke: the /sitemap.xml URL is load-bearing for SEO.
+      # The frontend's app/sitemap.ts owns it via the catchall — but only if
+      # the Helm HTTPRoute doesn't accidentally route /sitemap.xml to the
+      # backend service (regression mode: someone re-adds it to the
+      # backend-routed SEO group). Assert via helm template that /sitemap.xml
+      # is NOT in any exact-match path list. /changelog.xml and /robots.txt
+      # MUST stay on backend (RSS feed + host-discrimination logic).
+      - name: Gateway routing smoke (sitemap ownership)
+        run: |
+          set -e
+          for env in production staging; do
+            rendered=$(helm template helm/torale \
+              --values helm/torale/values.yaml \
+              --values helm/torale/values-${env}.yaml \
+              -s templates/httproute.yaml)
+            # Strip comments before grepping so doc strings don't false-positive.
+            stripped=$(printf '%s\n' "$rendered" | sed 's/#.*$//')
+            if printf '%s\n' "$stripped" | grep -qE 'value:\s*/sitemap\.xml$'; then
+              echo "FAIL [$env]: /sitemap.xml present in an exact-match path rule —"
+              echo "         it should fall through to the frontend catchall."
+              printf '%s\n' "$rendered" | grep -nE '/sitemap\.xml' | sed 's/^/  /'
+              exit 1
+            fi
+            # /changelog.xml and /robots.txt stay backend.
+            for path in '/changelog\.xml' '/robots\.txt'; do
+              if ! printf '%s\n' "$stripped" | grep -qE "value:\s*${path}$"; then
+                echo "FAIL [$env]: ${path} missing from backend-routed HTTPRoute rules."
+                exit 1
+              fi
+            done
+            echo "OK [$env]: HTTPRoute routing matches expected sitemap/changelog/robots ownership."
+          done

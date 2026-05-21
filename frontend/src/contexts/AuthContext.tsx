@@ -1,12 +1,8 @@
-import React, { createContext, useContext, ReactNode, Suspense, lazy, useMemo, useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
-import { NoAuthProvider } from './NoAuthProvider'
+'use client'
 
-// Lazy-loaded so the Clerk SDK (77 KiB gzip) is not part of the initial bundle.
-// Unauthenticated visits to the landing page never need it.
-const ClerkAuthProvider = lazy(() =>
-  import('./ClerkAuthProvider').then((m) => ({ default: m.ClerkAuthProvider }))
-)
+import React, { createContext, useContext, ReactNode } from 'react'
+import { NoAuthProvider } from './NoAuthProvider'
+import { ClerkAuthProvider } from './ClerkAuthProvider'
 
 export interface User {
   id: string | null // Nullable to handle cases where backend UUID is unavailable
@@ -44,134 +40,23 @@ interface AuthProviderProps {
   children: ReactNode
 }
 
-// Placeholder context while the Clerk SDK chunk is still loading. Mirrors
-// Clerk's "not yet loaded" state so consumers (ProtectedRoute, AuthRedirect)
-// show their usual spinners instead of redirecting.
-const PendingAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const value = useMemo<AuthContextType>(
-    () => ({
-      isLoaded: false,
-      isAuthenticated: false,
-      user: null,
-      getToken: async () => null,
-    }),
-    []
-  )
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-// Anonymous-on-marketing context: Clerk is intentionally never loaded, so the
-// auth state is *known* (anonymous) rather than pending. Renders with
-// `isLoaded: false` on the first paint to match the prerendered HTML, then
-// flips to `isLoaded: true` after mount so any consumer waiting on the
-// AuthContext contract can proceed. The post-mount flip is a normal state
-// update, not a hydration mismatch.
-const MarketingAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isLoaded, setIsLoaded] = useState(false)
-  useEffect(() => {
-    setIsLoaded(true)
-  }, [])
-  const value = useMemo<AuthContextType>(
-    () => ({
-      isLoaded,
-      isAuthenticated: false,
-      user: null,
-      getToken: async () => null,
-    }),
-    [isLoaded],
-  )
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-// Routes that always need Clerk: auth flows + the authenticated app shell.
-// Anything not matching is treated as a marketing/SEO route and only
-// hydrates Clerk if a session cookie is already present. Public marketing
-// routes live in `data/publicRoutes.ts`; this list is the inverse and is
-// kept inline because it only needs to identify the auth boundary, not
-// every individual marketing path.
-const AUTH_REQUIRED_PREFIXES = [
-  '/sign-in',
-  '/sign-up',
-  // /waitlist runs Clerk's CapacityGate + AuthRedirect logic and lives behind
-  // ClerkProvider's `waitlistUrl` config — Clerk needs to be hydrated for
-  // sign-up gating to work. (Per gemini-code-assist on PR #337.)
-  '/waitlist',
-  '/dashboard',
-  '/tasks',
-  '/settings',
-  '/admin',
-  '/welcome',
-  '/explore',
-] as const
-
-function isAuthRequiredPath(pathname: string): boolean {
-  return AUTH_REQUIRED_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(p + '/'),
-  )
-}
-
-// Clerk sets `__client_uat` (user authenticated timestamp) on the app domain.
-// It may also leave `__client_uat=0` behind as a signed-out state marker, so
-// presence alone is not enough to infer an active session.
-export function hasActiveClerkSessionCookie(cookieString: string): boolean {
-  const cookies = cookieString.split(';')
-  return cookies.some((cookie) => {
-    const [rawName, rawValue] = cookie.trim().split('=')
-    const name = rawName.trim()
-    if (!name || !/^__client_uat(?:_|$)/.test(name)) return false
-    const value = Number(rawValue)
-    return Number.isFinite(value) && value > 0
-  })
-}
-
-function hasClerkSession(): boolean {
-  if (typeof document === 'undefined') return false
-  return hasActiveClerkSessionCookie(document.cookie)
-}
-
+/**
+ * AuthProvider mounts inside the (app) and (auth) route groups only. The
+ * route-group split is the structural replacement for the runtime
+ * `__client_uat`-cookie probe used in the Vite era — marketing routes never
+ * see this provider (their tree never mounts ClerkProvider either), so the
+ * previous PendingAuthProvider / MarketingAuthProvider / lazy-Clerk branches
+ * are gone.
+ *
+ * NEXT_PUBLIC_WEBWHEN_NOAUTH=1 is the local-dev escape hatch — the layout
+ * around this provider switches off the same env var to skip <ClerkProvider>
+ * entirely, and this provider returns a stable mock user.
+ */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  // useLocation must run unconditionally to satisfy rules-of-hooks. The early
-  // returns below short-circuit on env constants (NOAUTH, __PRERENDER__) which
-  // never change across renders for a given app instance, so React's hook
-  // order stays stable in practice — but reading the location up front keeps
-  // the dependency obvious and lint-clean.
-  const { pathname } = useLocation()
-  const authRequired = isAuthRequiredPath(pathname)
-  const [shouldHydrateMarketingClerk, setShouldHydrateMarketingClerk] = useState(false)
-
-  useEffect(() => {
-    setShouldHydrateMarketingClerk(hasClerkSession())
-  }, [pathname])
-
-  // VITE_WEBWHEN_NOAUTH is the local-dev escape hatch — runs against a mocked
-  // user end-to-end. NoAuthProvider returns a stable mock user so dev flows
-  // work without Clerk.
-  if (import.meta.env.VITE_WEBWHEN_NOAUTH === '1') {
+  if (process.env.NEXT_PUBLIC_WEBWHEN_NOAUTH === '1') {
     return <NoAuthProvider>{children}</NoAuthProvider>
   }
-
-  // Prerender uses the same "not yet loaded" shape that the runtime Suspense
-  // fallback emits — both produce HTML matching `user: null, isLoaded: false`.
-  // Without this, the prerender baked a logged-in mock user (NoAuthProvider's
-  // default) into HTML, and the runtime ClerkAuthProvider's Suspense fallback
-  // hydrated against null, tripping React #418/#423 hydration mismatches on
-  // every marketing route. See #299.
-  if (window.__PRERENDER__) {
-    return <PendingAuthProvider>{children}</PendingAuthProvider>
-  }
-
-  // Marketing routes are prerendered with anonymous auth state. Keep the first
-  // client render identical, then hydrate Clerk after mount only when Clerk's
-  // active-session timestamp says there is a real signed-in browser session.
-  if (!authRequired && !shouldHydrateMarketingClerk) {
-    return <MarketingAuthProvider>{children}</MarketingAuthProvider>
-  }
-
-  return (
-    <Suspense fallback={<PendingAuthProvider>{children}</PendingAuthProvider>}>
-      <ClerkAuthProvider>{children}</ClerkAuthProvider>
-    </Suspense>
-  )
+  return <ClerkAuthProvider>{children}</ClerkAuthProvider>
 }
 
 export const useAuth = (): AuthContextType => {

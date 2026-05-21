@@ -45,8 +45,7 @@ async function boot() {
     if (initialized) return
     posthog.init(apiKey, {
       api_host:
-        window.CONFIG?.posthogHost ||
-        import.meta.env.VITE_POSTHOG_HOST ||
+        process.env.NEXT_PUBLIC_POSTHOG_HOST ||
         'https://eu.posthog.com',
       capture_pageview: false,
       capture_pageleave: true,
@@ -89,7 +88,7 @@ function scheduleBoot() {
 }
 
 export function initPostHog(userId?: string) {
-  apiKey = window.CONFIG?.posthogApiKey || import.meta.env.VITE_POSTHOG_API_KEY
+  apiKey = process.env.NEXT_PUBLIC_POSTHOG_API_KEY
   if (!apiKey) return
 
   if (userId) {

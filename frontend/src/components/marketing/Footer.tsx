@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 
 import { cn } from '@/lib/utils'
 
@@ -9,7 +9,7 @@ export const Footer: React.FC = () => {
     <footer className={styles.footer}>
       <div className={cn(styles.container, styles.footerGrid)}>
         <div>
-          <Link to="/" className={styles.brand}>
+          <Link href="/" className={styles.brand}>
             <img
               src="/brand/webwhen-mark-dark.svg"
               alt="webwhen"
@@ -34,13 +34,13 @@ export const Footer: React.FC = () => {
           <h4 className={styles.footerHeading}>Product</h4>
           <ul className={styles.footerList}>
             <li className={styles.footerListItem}>
-              <Link to="/explore">Explore</Link>
+              <Link href="/explore">Explore</Link>
             </li>
             <li className={styles.footerListItem}>
-              <Link to="/changelog">Changelog</Link>
+              <Link href="/changelog">Changelog</Link>
             </li>
             <li className={styles.footerListItem}>
-              <Link to="/concepts/self-scheduling-agents">Self-scheduling agents</Link>
+              <Link href="/concepts/self-scheduling-agents">Self-scheduling agents</Link>
             </li>
           </ul>
         </div>
@@ -48,13 +48,13 @@ export const Footer: React.FC = () => {
           <h4 className={styles.footerHeading}>Compare</h4>
           <ul className={styles.footerList}>
             <li className={styles.footerListItem}>
-              <Link to="/compare/visualping-alternative">vs VisualPing</Link>
+              <Link href="/compare/visualping-alternative">vs VisualPing</Link>
             </li>
             <li className={styles.footerListItem}>
-              <Link to="/compare/distill-alternative">vs Distill</Link>
+              <Link href="/compare/distill-alternative">vs Distill</Link>
             </li>
             <li className={styles.footerListItem}>
-              <Link to="/compare/changetower-alternative">vs ChangeTower</Link>
+              <Link href="/compare/changetower-alternative">vs ChangeTower</Link>
             </li>
           </ul>
         </div>
@@ -73,13 +73,13 @@ export const Footer: React.FC = () => {
           <h4 className={styles.footerHeading}>Use cases</h4>
           <ul className={styles.footerList}>
             <li className={styles.footerListItem}>
-              <Link to="/use-cases/steam-game-price-alerts">Steam game prices</Link>
+              <Link href="/use-cases/steam-game-price-alerts">Steam game prices</Link>
             </li>
             <li className={styles.footerListItem}>
-              <Link to="/use-cases/competitor-price-change-monitor">Competitor pricing</Link>
+              <Link href="/use-cases/competitor-price-change-monitor">Competitor pricing</Link>
             </li>
             <li className={styles.footerListItem}>
-              <Link to="/use-cases/crypto-exchange-listing-alert">Crypto listings</Link>
+              <Link href="/use-cases/crypto-exchange-listing-alert">Crypto listings</Link>
             </li>
           </ul>
         </div>
@@ -87,10 +87,10 @@ export const Footer: React.FC = () => {
           <h4 className={styles.footerHeading}>Company</h4>
           <ul className={styles.footerList}>
             <li className={styles.footerListItem}>
-              <Link to="/privacy">Privacy</Link>
+              <Link href="/privacy">Privacy</Link>
             </li>
             <li className={styles.footerListItem}>
-              <Link to="/terms">Terms</Link>
+              <Link href="/terms">Terms</Link>
             </li>
           </ul>
         </div>
