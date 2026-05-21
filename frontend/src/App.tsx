@@ -14,22 +14,22 @@ const Dashboard = lazy(() => import('@/components/Dashboard').then(m => ({ defau
 const TaskDetail = lazy(() => import('@/components/TaskDetail').then(m => ({ default: m.TaskDetail })))
 const Landing = lazy(() => import('@/components/Landing'))
 const Changelog = lazy(() => import('@/components/Changelog'))
-const Admin = lazy(() => import('@/pages/Admin').then(m => ({ default: m.Admin })))
-const NotificationSettingsPage = lazy(() => import('@/pages/NotificationSettingsPage').then(m => ({ default: m.NotificationSettingsPage })))
-const ConnectorsPage = lazy(() => import('@/pages/ConnectorsPage').then(m => ({ default: m.ConnectorsPage })))
+const Admin = lazy(() => import('@/route-views/Admin').then(m => ({ default: m.Admin })))
+const NotificationSettingsPage = lazy(() => import('@/route-views/NotificationSettingsPage').then(m => ({ default: m.NotificationSettingsPage })))
+const ConnectorsPage = lazy(() => import('@/route-views/ConnectorsPage').then(m => ({ default: m.ConnectorsPage })))
 import { connectorsEnabled } from '@/components/connectors/connectorsFlag'
-const TermsOfService = lazy(() => import('@/pages/TermsOfService').then(m => ({ default: m.TermsOfService })))
-const PrivacyPolicy = lazy(() => import('@/pages/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })))
-const NotFound = lazy(() => import('@/pages/NotFound'))
+const TermsOfService = lazy(() => import('@/route-views/TermsOfService').then(m => ({ default: m.TermsOfService })))
+const PrivacyPolicy = lazy(() => import('@/route-views/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })))
+const NotFound = lazy(() => import('@/route-views/NotFound'))
 const CapacityGate = lazy(() => import('@/components/CapacityGate').then(m => ({ default: m.CapacityGate })))
 const WaitlistPage = lazy(() => import('@/components/WaitlistPage').then(m => ({ default: m.WaitlistPage })))
-const Explore = lazy(() => import('@/pages/Explore').then(m => ({ default: m.Explore })))
-const ComparePage = lazy(() => import('@/pages/ComparePage').then(m => ({ default: m.ComparePage })))
-const UseCasePage = lazy(() => import('@/pages/UseCasePage').then(m => ({ default: m.UseCasePage })))
-const ConceptPage = lazy(() => import('@/pages/ConceptPage').then(m => ({ default: m.ConceptPage })))
+const Explore = lazy(() => import('@/route-views/Explore').then(m => ({ default: m.Explore })))
+const ComparePage = lazy(() => import('@/route-views/ComparePage').then(m => ({ default: m.ComparePage })))
+const UseCasePage = lazy(() => import('@/route-views/UseCasePage').then(m => ({ default: m.UseCasePage })))
+const ConceptPage = lazy(() => import('@/route-views/ConceptPage').then(m => ({ default: m.ConceptPage })))
 const Welcome = lazy(() => import('@/components/Welcome').then(m => ({ default: m.Welcome })))
-const SignInPage = lazy(() => import('@/pages/SignInPage'))
-const SignUpPage = lazy(() => import('@/pages/SignUpPage'))
+const SignInPage = lazy(() => import('@/route-views/SignInPage'))
+const SignUpPage = lazy(() => import('@/route-views/SignUpPage'))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoaded, isAuthenticated } = useAuth()
@@ -302,7 +302,7 @@ function TaskDetailRoute({ onBack, onDeleted }: { onBack: () => void; onDeleted:
       taskId={taskId}
       onBack={onBack}
       onDeleted={onDeleted}
-      currentUserId={user?.id}
+      currentUserId={user?.id ?? undefined}
     />
   )
 }

@@ -4,6 +4,8 @@ import type { ReactNode } from 'react'
 // During scaffold commit this re-exports the existing index.css; once the
 // Vite tree is deleted (commit 6) we'll rename in place.
 import '../src/index.css'
+import { OrganizationJsonLd } from '../components/seo/OrganizationJsonLd'
+import { PostHogProvider } from '../components/analytics/PostHogProvider'
 
 // Root metadata — per-page metadata in (marketing)/* and (app)/* overrides
 // title via `template`. See app/(marketing)/page.tsx etc.
@@ -26,7 +28,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <head>
+        <OrganizationJsonLd />
+      </head>
+      <body>
+        <PostHogProvider>{children}</PostHogProvider>
+      </body>
     </html>
   )
 }

@@ -6,13 +6,18 @@
     "module": "ESNext",
     "skipLibCheck": true,
 
-    /* Bundler mode */
+    /* Bundler mode (Vite-era — kept until commit 6 swaps to Next.js as the source of truth) */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
-    "jsx": "react-jsx",
+    "jsx": "preserve",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
 
     /* Linting */
     "strict": false,
@@ -26,6 +31,19 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"],
-  "exclude": ["**/*.test.ts", "**/*.test.tsx"]
+  /* Next.js typechecks files in `include`. During the migration the Vite
+     tree under `src/` is NOT strict-mode clean; including it would require
+     bulk null-check fixes for code that's deleted in commit 6. Restrict to
+     the Next.js App Router surface; Vite still typechecks via build:check
+     (vite-internal swc transform). */
+  "include": [
+    "next-env.d.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "middleware.ts",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", "**/*.test.ts", "**/*.test.tsx"]
 }

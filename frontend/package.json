@@ -10,12 +10,18 @@
     "dev": "vite",
     "prebuild": "node scripts/sync-changelog-fixture.mjs && node scripts/sync-landing-examples.mjs",
     "build": "vite build && node scripts/prerender.mjs && node scripts/generate-sitemap.mjs",
-    "build:check": "tsc && vite build",
+    "build:check": "tsc -p tsconfig.vite.json && vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives",
+    "next:dev": "next dev",
+    "next:build": "next build",
+    "next:start": "next start",
+    "next:typecheck": "tsc -p tsconfig.next.json --noEmit"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.61.6",
+    "@clerk/nextjs": "^6.18.0",
+    "next": "^15.5.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -86,6 +92,8 @@
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "vite": "^8.0.10",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.6",
+    "@next/bundle-analyzer": "^15.5.0",
+    "eslint-config-next": "^15.5.0"
   }
 }
