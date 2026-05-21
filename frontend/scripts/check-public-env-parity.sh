@@ -15,7 +15,10 @@
 
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# ROOT_OVERRIDE allows tests (scripts/check-public-env-parity.test.sh) to
+# point this script at a fixture tree containing .github/workflows/*.yml
+# and helm/torale/values-*.yaml. Defaults to the repo root.
+ROOT="${ROOT_OVERRIDE:-$(cd "$(dirname "$0")/../.." && pwd)}"
 
 # ---- extractors --------------------------------------------------------
 #

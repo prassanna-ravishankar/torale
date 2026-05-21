@@ -1,0 +1,22 @@
+# Fixture: trailing spaces on UNQUOTED scalars only. The parser's
+# `sub(/[[:space:]]+$/, "")` strips these correctly, so parity passes.
+#
+# Counterpart fixture values-quoted-trailing-spaces.yaml pins the
+# known parser limitation: trailing spaces AFTER a closing quote leave
+# a stray `"` in the extracted value (gsub strips quotes before the
+# trailing-whitespace strip runs).
+domains:
+  legacy:
+    frontend: torale.ai  
+    api: api.torale.ai  
+  live:
+    frontend: webwhen.ai  
+    api: api.webwhen.ai  
+
+clerk:
+  publishableKey: pk_live_Y2xlcmsud2Vid2hlbi5haSQ  
+
+posthog:
+  enabled: true
+  apiKey: "phc_aBJidBfDmxU0jaAn6K1168Ob6sGDdOc9hVImLHCTCWJ"
+  apiHost: "https://eu.posthog.com"

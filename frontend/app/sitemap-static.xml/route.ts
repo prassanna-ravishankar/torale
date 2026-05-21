@@ -20,9 +20,22 @@ const SITE_ORIGIN =
 // Routes that backend dynamic owns. Filter these out of the static export.
 const DYNAMIC_OWNED = new Set<string>(['/', '/changelog'])
 
-export function GET() {
-  const lastmod = new Date().toISOString().slice(0, 10)
+// Revalidate the cached response once per day. Combined with the
+// Cache-Control header below, this lets Next.js's ISR + the CDN serve a
+// stable sitemap between origin hits instead of regenerating on every
+// crawler request.
+export const revalidate = 86400
 
+// Compute lastmod ONCE at module load time, not per-request. Using
+// `new Date()` inside GET() incorrectly signals to crawlers that every URL
+// was modified at the moment of the request — a regression flagged in PR
+// review PRRT_kwDON2GAYM6Dr-YA. Trade-off: a long-running container will
+// drift from "today" until it's restarted/redeployed, but ISR refreshes
+// this module's response every `revalidate` seconds so the worst case is
+// roughly one day of staleness. Acceptable for a marketing sitemap.
+const LASTMOD = new Date().toISOString().slice(0, 10)
+
+export function GET() {
   const urls = PUBLIC_ROUTES.filter(
     (route) => !DYNAMIC_OWNED.has(route.path),
   ).map((route) => {
@@ -30,7 +43,7 @@ export function GET() {
     return [
       '  <url>',
       `    <loc>${SITE_ORIGIN}${route.path}</loc>`,
-      `    <lastmod>${lastmod}</lastmod>`,
+      `    <lastmod>${LASTMOD}</lastmod>`,
       `    <priority>${priority}</priority>`,
       '  </url>',
     ].join('\n')
@@ -44,6 +57,10 @@ ${urls.join('\n')}
 
   return new Response(xml, {
     status: 200,
-    headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+    headers: {
+      'Content-Type': 'application/xml; charset=utf-8',
+      // Match the ISR window so CDN edges can cache between origin hits.
+      'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+    },
   })
 }

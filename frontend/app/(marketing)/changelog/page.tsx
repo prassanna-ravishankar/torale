@@ -67,16 +67,15 @@ async function fetchChangelog(): Promise<ChangelogEntry[]> {
     // fall through to filesystem fallback
   }
 
+  // Build-time fallback: scripts/sync-changelog-fixture.mjs (prebuild) copies
+  // backend/static/changelog.json into frontend/.changelog-fixture.json before
+  // `next build`. Resolving relative to ../backend/ doesn't work in the Docker
+  // builder stage because the frontend image's build context is `frontend/`
+  // alone — `../backend/` is outside the context.
   try {
     const { readFile } = await import('node:fs/promises')
     const path = await import('node:path')
-    const fallbackPath = path.resolve(
-      process.cwd(),
-      '..',
-      'backend',
-      'static',
-      'changelog.json',
-    )
+    const fallbackPath = path.resolve(process.cwd(), '.changelog-fixture.json')
     const raw = await readFile(fallbackPath, 'utf-8')
     const data = JSON.parse(raw) as ChangelogEntry[]
     return Array.isArray(data) ? data : []

@@ -1,0 +1,18 @@
+# Fixture: same values as canonical, but posthog scalars are unquoted.
+# YAML accepts either form; the parity script must compare values
+# identically regardless of quoting.
+domains:
+  legacy:
+    frontend: torale.ai
+    api: api.torale.ai
+  live:
+    frontend: webwhen.ai
+    api: api.webwhen.ai
+
+clerk:
+  publishableKey: pk_live_Y2xlcmsud2Vid2hlbi5haSQ
+
+posthog:
+  enabled: true
+  apiKey: phc_aBJidBfDmxU0jaAn6K1168Ob6sGDdOc9hVImLHCTCWJ
+  apiHost: https://eu.posthog.com

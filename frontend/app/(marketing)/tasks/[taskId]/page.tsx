@@ -11,6 +11,7 @@ import {
   type PublicGroundingSource,
   type PublicTask,
 } from '../../../../lib/api/public'
+import { apiUrl } from '../../../../lib/api/origin'
 import { formatTimeAgo } from '@/lib/utils'
 import watchStyles from '@/components/watch/Watch.module.css'
 import { jsonLdHtml } from '../../../../lib/seo/jsonLd'
@@ -211,7 +212,7 @@ export default async function PublicTaskPage({
         rel="alternate"
         type="application/rss+xml"
         title={`${task.name || 'watch'} — RSS feed`}
-        href={`${process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.webwhen.ai'}/tasks/${task.id}/rss`}
+        href={apiUrl(`/tasks/${task.id}/rss`)}
       />
 
       <header className={watchStyles.detailHead}>

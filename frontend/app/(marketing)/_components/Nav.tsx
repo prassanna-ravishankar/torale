@@ -14,9 +14,9 @@ interface NavProps {
 }
 
 const TOP_LEVEL_LINKS: Array<{ href: string; label: string; matchPath?: string }> = [
-  { href: '#how', label: 'How it works' },
-  { href: '#cases', label: 'Use cases', matchPath: '/use-cases' },
-  { href: '#manifesto', label: 'Approach', matchPath: '/concepts' },
+  { href: '/#how', label: 'How it works' },
+  { href: '/#cases', label: 'Use cases', matchPath: '/use-cases' },
+  { href: '/#manifesto', label: 'Approach', matchPath: '/concepts' },
 ]
 
 // Anonymous-only nav for the marketing tree. The auth-aware Dashboard CTA
