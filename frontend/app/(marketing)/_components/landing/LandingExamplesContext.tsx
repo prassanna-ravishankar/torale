@@ -1,12 +1,8 @@
 'use client'
 
-// Client-side landing-examples provider for the App Router tree.
-//
-// Mirrors src/contexts/LandingExamplesContext.tsx but inlines the public-feed
-// fetch instead of pulling in src/lib/api.ts (which depends on Vite's
-// import.meta.env and the window.CONFIG runtime shim — neither survives the
-// Next.js typechecker). First paint is always the build-time fallback bake,
-// post-hydration the provider fires a single fetch to refresh evidence.
+// Client-side landing-examples provider. First paint renders the build-time
+// fallback bake; post-hydration the provider fires a single fetch to refresh
+// evidence from the public feed.
 
 import {
   createContext,
@@ -24,6 +20,7 @@ import {
 } from '@/data/landingExamples'
 import fallbackJson from '@/data/landingExamples.fallback.json'
 import { hostOf, paraphraseTool, trimEvidence } from '@/utils/landingExamples'
+import { apiUrl } from '../../../../lib/api/origin'
 
 const FALLBACK = fallbackJson as LandingSnapshot
 
@@ -107,11 +104,8 @@ export function LandingExamplesProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    const apiBase =
-      process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
-    const url = `${apiBase}/api/v1/public/feed?limit=100`
 
-    fetch(url)
+    fetch(apiUrl('/api/v1/public/feed?limit=100'))
       .then((r) => (r.ok ? r.json() : null))
       .then((feed) => {
         if (cancelled || !Array.isArray(feed)) return

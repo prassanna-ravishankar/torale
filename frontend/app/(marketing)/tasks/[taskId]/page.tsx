@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import ReactMarkdown, { type Components } from 'react-markdown'
+import ReactMarkdown from 'react-markdown'
 import rehypeSanitize from 'rehype-sanitize'
 
 import {
@@ -11,25 +11,14 @@ import {
   type PublicGroundingSource,
   type PublicTask,
 } from '../../../../lib/api/public'
-import { apiUrl } from '../../../../lib/api/origin'
+import { apiUrl, getSiteOrigin } from '../../../../lib/api/origin'
 import { formatTimeAgo } from '@/lib/utils'
 import watchStyles from '@/components/watch/Watch.module.css'
-import { jsonLdHtml } from '../../../../lib/seo/jsonLd'
+import { SCHEMA_CONTEXT } from '../../../../lib/seo/jsonLd'
+import { JsonLd } from '../../../../lib/seo/jsonLdComponent'
+import { makeConstrainedMarkdown } from '../../../../lib/seo/constrainedMarkdown'
 
-/**
- * /tasks/[taskId] — public, statically-rendered watch detail page.
- *
- * The whole point of issue #334 / the Next.js migration: Googlebot now
- * receives real HTML containing the watch's condition and its most recent
- * triggered moment, instead of an empty SPA shell. Private tasks 404 (we
- * never even include them in `generateStaticParams`, so they cannot be
- * cached at the CDN edge).
- *
- * Authenticated viewing (owner actions: run, pause, edit, delete) stays on
- * the in-app dashboard route group. This static page intentionally renders
- * the anonymous view only — layering an authed enhancement on top is a
- * follow-up (see report).
- */
+/** Public, statically-rendered watch detail page; private tasks 404. */
 export const revalidate = 60
 export const dynamicParams = true
 
@@ -73,24 +62,11 @@ export async function generateMetadata({
 }
 
 // Constrained markdown — same allowlist as MomentBlock / Explore.
-const momentMarkdown: Components = {
-  p: ({ children }) => <p className={watchStyles.momentAnswerP}>{children}</p>,
-  strong: ({ children }) => <strong>{children}</strong>,
-  em: ({ children }) => <em>{children}</em>,
-  ul: ({ children }) => <ul className={watchStyles.momentList}>{children}</ul>,
-  ol: ({ children }) => <ol className={watchStyles.momentList}>{children}</ol>,
-  li: ({ children }) => <li className={watchStyles.momentListItem}>{children}</li>,
-  h1: ({ children }) => <p className={watchStyles.momentAnswerP}>{children}</p>,
-  h2: ({ children }) => <p className={watchStyles.momentAnswerP}>{children}</p>,
-  h3: ({ children }) => <p className={watchStyles.momentAnswerP}>{children}</p>,
-  h4: ({ children }) => <p className={watchStyles.momentAnswerP}>{children}</p>,
-  h5: ({ children }) => <p className={watchStyles.momentAnswerP}>{children}</p>,
-  h6: ({ children }) => <p className={watchStyles.momentAnswerP}>{children}</p>,
-  code: ({ children }) => <span>{children}</span>,
-  pre: ({ children }) => <p className={watchStyles.momentAnswerP}>{children}</p>,
-  img: () => null,
-  a: ({ children }) => <span>{children}</span>,
-}
+const momentMarkdown = makeConstrainedMarkdown({
+  paragraph: watchStyles.momentAnswerP,
+  list: watchStyles.momentList,
+  listItem: watchStyles.momentListItem,
+})
 
 function hostFromUrl(url: string): string {
   try {
@@ -164,7 +140,7 @@ function buildJsonLd(task: PublicTask, origin: string) {
   const dateModified =
     last?.completed_at || last?.started_at || task.updated_at || task.created_at
   return {
-    '@context': 'https://schema.org',
+    '@context': SCHEMA_CONTEXT,
     '@type': 'Article',
     headline: task.name || task.condition_description,
     description: task.condition_description,
@@ -199,15 +175,11 @@ export default async function PublicTaskPage({
 
   const lastWhen = last?.completed_at || last?.started_at || null
 
-  const siteOrigin =
-    process.env.NEXT_PUBLIC_SITE_ORIGIN || 'https://webwhen.ai'
+  const siteOrigin = getSiteOrigin()
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLdHtml(buildJsonLd(task, siteOrigin)) }}
-      />
+      <JsonLd data={buildJsonLd(task, siteOrigin)} />
       <link
         rel="alternate"
         type="application/rss+xml"

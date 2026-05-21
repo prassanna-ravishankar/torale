@@ -8,9 +8,7 @@ import { cn } from '@/lib/utils'
 import landingStyles from '@/components/landing/Landing.module.css'
 import marketingStyles from '@/components/marketing/marketing.module.css'
 import { COMPETITORS } from '@/data/competitors'
-
-const SITE_ORIGIN =
-  process.env.NEXT_PUBLIC_SITE_ORIGIN || 'https://webwhen.ai'
+import { siteUrl } from '../../../../lib/api/origin'
 
 interface PageProps {
   params: Promise<{ tool: string }>
@@ -30,16 +28,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: { canonical: `/compare/${competitor.slug}` },
     openGraph: {
       type: 'article',
-      url: `${SITE_ORIGIN}/compare/${competitor.slug}`,
+      url: siteUrl(`/compare/${competitor.slug}`),
       title: competitor.seoTitle,
       description: competitor.seoDescription,
-      images: [`${SITE_ORIGIN}/og-image.webp`],
+      images: [siteUrl('/og-image.webp')],
     },
     twitter: {
       card: 'summary_large_image',
       title: competitor.seoTitle,
       description: competitor.seoDescription,
-      images: [`${SITE_ORIGIN}/og-image.webp`],
+      images: [siteUrl('/og-image.webp')],
     },
   }
 }

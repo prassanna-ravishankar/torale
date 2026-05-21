@@ -8,9 +8,7 @@ import { cn } from '@/lib/utils'
 import landingStyles from '@/components/landing/Landing.module.css'
 import marketingStyles from '@/components/marketing/marketing.module.css'
 import { USE_CASES } from '@/data/useCases'
-
-const SITE_ORIGIN =
-  process.env.NEXT_PUBLIC_SITE_ORIGIN || 'https://webwhen.ai'
+import { siteUrl } from '../../../../lib/api/origin'
 
 interface PageProps {
   params: Promise<{ usecase: string }>
@@ -32,16 +30,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: { canonical: `/use-cases/${data.slug}` },
     openGraph: {
       type: 'article',
-      url: `${SITE_ORIGIN}/use-cases/${data.slug}`,
+      url: siteUrl(`/use-cases/${data.slug}`),
       title,
       description,
-      images: [`${SITE_ORIGIN}/og-image.webp`],
+      images: [siteUrl('/og-image.webp')],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: [`${SITE_ORIGIN}/og-image.webp`],
+      images: [siteUrl('/og-image.webp')],
     },
   }
 }

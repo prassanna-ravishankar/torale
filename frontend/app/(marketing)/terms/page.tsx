@@ -4,9 +4,7 @@ import { MarketingLayout } from '../_components/MarketingLayout'
 import { cn } from '@/lib/utils'
 import landingStyles from '@/components/landing/Landing.module.css'
 import marketingStyles from '@/components/marketing/marketing.module.css'
-
-const SITE_ORIGIN =
-  process.env.NEXT_PUBLIC_SITE_ORIGIN || 'https://webwhen.ai'
+import { siteUrl } from '../../../lib/api/origin'
 
 export const metadata: Metadata = {
   title: 'Terms — webwhen',
@@ -15,11 +13,11 @@ export const metadata: Metadata = {
   alternates: { canonical: '/terms' },
   openGraph: {
     type: 'website',
-    url: `${SITE_ORIGIN}/terms`,
+    url: siteUrl('/terms'),
     title: 'Terms — webwhen',
     description:
       'Terms of service for webwhen, the agent that waits for the web.',
-    images: [`${SITE_ORIGIN}/og-image.webp`],
+    images: [siteUrl('/og-image.webp')],
   },
 }
 

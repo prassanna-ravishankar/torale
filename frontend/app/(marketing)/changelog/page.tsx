@@ -5,12 +5,11 @@ import { cn } from '@/lib/utils'
 import landingStyles from '@/components/landing/Landing.module.css'
 import marketingStyles from '@/components/marketing/marketing.module.css'
 import type { ChangelogEntry } from '@/types/changelog'
-import { jsonLdHtml } from '../../../lib/seo/jsonLd'
+import { apiUrl, getSiteOrigin } from '../../../lib/api/origin'
+import { SCHEMA_CONTEXT } from '../../../lib/seo/jsonLd'
+import { JsonLd } from '../../../lib/seo/jsonLdComponent'
 
-const SITE_ORIGIN =
-  process.env.NEXT_PUBLIC_SITE_ORIGIN || 'https://webwhen.ai'
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
+const SITE_ORIGIN = getSiteOrigin()
 
 const CATEGORY_LABELS: Record<ChangelogEntry['category'], string> = {
   feature: 'new',
@@ -44,19 +43,13 @@ export const metadata: Metadata = {
   },
 }
 
-// Fetched server-side with ISR (10min). Replaces the Vite-era
-// __PRERENDER_CHANGELOG__ global + runtime refetch dance. The JSON-LD
-// emitted below is the #261 postcondition — at least one TechArticle item
-// must appear in the rendered HTML.
-// Build-time filesystem fallback. The backend HTTP endpoint isn't reachable
-// during `next build` in CI/sandbox shells, but the source JSON is checked
-// in alongside the frontend at ../backend/static/changelog.json. Reading
-// the file synchronously here means SSG always renders article-level
-// JSON-LD (preserves the #261 postcondition); ISR replaces it on the first
-// real request once the API is live.
+// Fetched server-side with ISR (10min). The emitted JSON-LD is the #261
+// postcondition — at least one TechArticle item must appear in the
+// rendered HTML; the filesystem fallback below preserves that invariant
+// when the backend HTTP endpoint isn't reachable during `next build`.
 async function fetchChangelog(): Promise<ChangelogEntry[]> {
   try {
-    const res = await fetch(`${API_BASE}/static/changelog.json`, {
+    const res = await fetch(apiUrl('/static/changelog.json'), {
       next: { revalidate: 600 },
     })
     if (res.ok) {
@@ -94,7 +87,7 @@ function formatChangelogDate(dateStr: string): string {
 
 function buildStructuredData(entries: ChangelogEntry[]) {
   return {
-    '@context': 'https://schema.org',
+    '@context': SCHEMA_CONTEXT,
     '@type': 'CollectionPage',
     name: 'webwhen Changelog',
     description:
@@ -152,14 +145,10 @@ function buildStructuredData(entries: ChangelogEntry[]) {
 
 export default async function ChangelogPage() {
   const entries = await fetchChangelog()
-  const structuredJson = jsonLdHtml(buildStructuredData(entries))
 
   return (
     <MarketingLayout activePath="/changelog">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: structuredJson }}
-      />
+      <JsonLd data={buildStructuredData(entries)} />
 
       <section
         className={cn(landingStyles.section, marketingStyles.articleHero)}

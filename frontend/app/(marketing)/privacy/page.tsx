@@ -4,9 +4,7 @@ import { MarketingLayout } from '../_components/MarketingLayout'
 import { cn } from '@/lib/utils'
 import landingStyles from '@/components/landing/Landing.module.css'
 import marketingStyles from '@/components/marketing/marketing.module.css'
-
-const SITE_ORIGIN =
-  process.env.NEXT_PUBLIC_SITE_ORIGIN || 'https://webwhen.ai'
+import { siteUrl } from '../../../lib/api/origin'
 
 export const metadata: Metadata = {
   title: 'Privacy — webwhen',
@@ -15,11 +13,11 @@ export const metadata: Metadata = {
   alternates: { canonical: '/privacy' },
   openGraph: {
     type: 'website',
-    url: `${SITE_ORIGIN}/privacy`,
+    url: siteUrl('/privacy'),
     title: 'Privacy — webwhen',
     description:
       "How webwhen handles your data, why we collect what we do, and what we don't do with it.",
-    images: [`${SITE_ORIGIN}/og-image.webp`],
+    images: [siteUrl('/og-image.webp')],
   },
 }
 

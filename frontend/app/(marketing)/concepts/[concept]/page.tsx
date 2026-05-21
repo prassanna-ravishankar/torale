@@ -8,9 +8,7 @@ import { cn } from '@/lib/utils'
 import landingStyles from '@/components/landing/Landing.module.css'
 import marketingStyles from '@/components/marketing/marketing.module.css'
 import { CONCEPTS } from '@/data/concepts'
-
-const SITE_ORIGIN =
-  process.env.NEXT_PUBLIC_SITE_ORIGIN || 'https://webwhen.ai'
+import { siteUrl } from '../../../../lib/api/origin'
 
 interface PageProps {
   params: Promise<{ concept: string }>
@@ -30,16 +28,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: { canonical: `/concepts/${data.slug}` },
     openGraph: {
       type: 'article',
-      url: `${SITE_ORIGIN}/concepts/${data.slug}`,
+      url: siteUrl(`/concepts/${data.slug}`),
       title: data.metaTitle,
       description: data.metaDescription,
-      images: [`${SITE_ORIGIN}/og-image.webp`],
+      images: [siteUrl('/og-image.webp')],
     },
     twitter: {
       card: 'summary_large_image',
       title: data.metaTitle,
       description: data.metaDescription,
-      images: [`${SITE_ORIGIN}/og-image.webp`],
+      images: [siteUrl('/og-image.webp')],
     },
   }
 }

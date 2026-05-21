@@ -7,10 +7,9 @@ import { Cases } from './_components/landing/Cases'
 import { Manifesto } from './_components/landing/Manifesto'
 import { CTA } from './_components/landing/CTA'
 import { LandingExamplesProvider } from './_components/landing/LandingExamplesContext'
-import { jsonLdHtml } from '../../lib/seo/jsonLd'
-
-const SITE_ORIGIN =
-  process.env.NEXT_PUBLIC_SITE_ORIGIN || 'https://webwhen.ai'
+import { SCHEMA_CONTEXT } from '../../lib/seo/jsonLd'
+import { JsonLd } from '../../lib/seo/jsonLdComponent'
+import { siteUrl } from '../../lib/api/origin'
 
 // Per publicRoutes.ts: /, priority 1.0.
 export const metadata: Metadata = {
@@ -20,24 +19,23 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
-    url: `${SITE_ORIGIN}/`,
+    url: siteUrl('/'),
     title: 'webwhen — the agent that waits for the web',
     description:
       'Tell webwhen what to watch for in plain English. It will sit with the question, search the web on a schedule, and tell you the moment your condition is met.',
-    images: [`${SITE_ORIGIN}/og-image.webp`],
+    images: [siteUrl('/og-image.webp')],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'webwhen — the agent that waits for the web',
     description:
       'Tell webwhen what to watch for in plain English. It will sit with the question, search the web on a schedule, and tell you the moment your condition is met.',
-    images: [`${SITE_ORIGIN}/og-image.webp`],
+    images: [siteUrl('/og-image.webp')],
   },
 }
 
-// SoftwareApplication JSON-LD — preserved verbatim from src/components/Landing.tsx.
 const softwareJsonLd = {
-  '@context': 'https://schema.org',
+  '@context': SCHEMA_CONTEXT,
   '@type': 'SoftwareApplication',
   name: 'webwhen',
   applicationCategory: 'WebApplication',
@@ -54,10 +52,7 @@ const softwareJsonLd = {
 export default function LandingPage() {
   return (
     <MarketingLayout activePath="">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLdHtml(softwareJsonLd) }}
-      />
+      <JsonLd data={softwareJsonLd} />
       <LandingExamplesProvider>
         <Hero />
         <Steps />
