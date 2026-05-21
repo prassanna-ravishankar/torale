@@ -164,11 +164,7 @@ async def generate_sitemap_dynamic(request: Request, db: Database = Depends(get_
     for row in public_tasks:
         task_id = row["id"]
         updated = row["updated_at"]
-        lastmod = (
-            updated.strftime("%Y-%m-%d")
-            if updated
-            else datetime.now().strftime("%Y-%m-%d")
-        )
+        lastmod = updated.strftime("%Y-%m-%d") if updated else datetime.now().strftime("%Y-%m-%d")
         pages.append(
             {
                 "loc": f"{base_url}/tasks/{task_id}",
