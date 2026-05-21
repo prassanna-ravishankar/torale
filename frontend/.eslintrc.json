@@ -7,36 +7,25 @@
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
-    "plugin:react-hooks/recommended"
+    "next/core-web-vitals"
   ],
   "ignorePatterns": ["dist", ".eslintrc.json", ".next", "next-env.d.ts"],
   "parser": "@typescript-eslint/parser",
-  "plugins": ["react-refresh"],
   "rules": {
-    "react-refresh/only-export-components": [
-      "warn",
-      { "allowConstantExport": true }
-    ],
     "@typescript-eslint/no-unused-vars": [
       "warn",
       { "argsIgnorePattern": "^_" }
     ],
     "@typescript-eslint/no-explicit-any": "warn",
     "@typescript-eslint/ban-ts-comment": "warn",
-    "react-hooks/exhaustive-deps": "warn"
+    "react-hooks/exhaustive-deps": "warn",
+    "react/no-unescaped-entities": "off"
   },
   "overrides": [
     {
       "files": ["src/components/ui/**/*.tsx"],
       "rules": {
-        "react-refresh/only-export-components": "off",
         "@typescript-eslint/ban-ts-comment": "off"
-      }
-    },
-    {
-      "files": ["src/contexts/**/*.tsx"],
-      "rules": {
-        "react-refresh/only-export-components": "off"
       }
     }
   ]
