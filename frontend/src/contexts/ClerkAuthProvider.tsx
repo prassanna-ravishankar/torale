@@ -1,17 +1,16 @@
+'use client'
+
 import React, { ReactNode, useMemo, useEffect, useCallback, useState } from 'react'
-import { ClerkProvider, useAuth as useClerkAuth, useUser } from '@clerk/clerk-react'
+import { useAuth as useClerkAuth, useUser } from '@clerk/nextjs'
 import { AuthContext, AuthContextType, User } from './AuthContext'
 import { initPostHog, resetPostHog } from '@/lib/posthog'
-
-const CLERK_PUBLISHABLE_KEY = window.CONFIG?.clerkPublishableKey || import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
 interface ClerkAuthProviderProps {
   children: ReactNode
 }
 
 /**
- * Helper function to construct a User object from backend data and Clerk user.
- * Reduces duplication between initial fetch, fallback, and sync operations.
+ * Helper to construct a User object from backend data and Clerk user.
  */
 const createUserFromData = (
   backendData: { id: string | null; email: string; username: string | null; has_seen_welcome?: boolean },
@@ -27,14 +26,17 @@ const createUserFromData = (
   publicMetadata: clerkUser.publicMetadata as { role?: string;[key: string]: unknown } | undefined,
 })
 
-const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
+/**
+ * Reads Clerk state via @clerk/nextjs hooks and exposes the AuthContext shape
+ * to existing consumers. <ClerkProvider> itself is mounted by the
+ * (app)/(auth) route-group layout — this wrapper is only the state bridge.
+ */
+export const ClerkAuthProvider: React.FC<ClerkAuthProviderProps> = ({ children }) => {
   const { isLoaded: clerkIsLoaded, userId, getToken: clerkGetToken, signOut } = useClerkAuth()
   const { user: clerkUser } = useUser()
   const [backendUser, setBackendUser] = useState<User | null>(null)
   const isFetchingRef = React.useRef(false)
 
-  // Fetch user data from backend when Clerk user is available
-  // Automatically syncs user if not found in database
   useEffect(() => {
     if (!clerkUser || isFetchingRef.current) return
 
@@ -45,7 +47,6 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
         const userData = await api.getCurrentUser()
         setBackendUser(createUserFromData(userData, clerkUser))
       } catch (error) {
-        // User doesn't exist in backend - sync automatically
         console.warn('User not found in backend, syncing automatically...', error)
         try {
           const { api } = await import('@/lib/api')
@@ -54,8 +55,6 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
           setBackendUser(createUserFromData(userData, clerkUser))
         } catch (syncError) {
           console.error('Failed to sync user:', syncError)
-          // Last resort fallback to Clerk data without database UUID
-          // Set id to null to ensure ownership checks fail safely
           setBackendUser(createUserFromData({
             id: null,
             email: clerkUser.primaryEmailAddress?.emailAddress || '',
@@ -72,7 +71,6 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   const user: User | null = backendUser
 
-  // Initialize PostHog when user is authenticated
   useEffect(() => {
     if (user?.id) {
       initPostHog(user.id)
@@ -91,9 +89,7 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
   }, [clerkGetToken])
 
   const refreshUser = useCallback(async () => {
-    // Refresh user data from backend (used after mutations like username change)
     if (!clerkUser) return
-
     const { api } = await import('@/lib/api')
     const userData = await api.getCurrentUser()
     setBackendUser(createUserFromData(userData, clerkUser))
@@ -116,16 +112,4 @@ const ClerkAuthWrapper: React.FC<{ children: ReactNode }> = ({ children }) => {
   )
 
   return <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>
-}
-
-export const ClerkAuthProvider: React.FC<ClerkAuthProviderProps> = ({ children }) => {
-  if (!CLERK_PUBLISHABLE_KEY) {
-    throw new Error('Missing Clerk Publishable Key. Set VITE_CLERK_PUBLISHABLE_KEY in your environment.')
-  }
-
-  return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} waitlistUrl="/waitlist">
-      <ClerkAuthWrapper>{children}</ClerkAuthWrapper>
-    </ClerkProvider>
-  )
 }
