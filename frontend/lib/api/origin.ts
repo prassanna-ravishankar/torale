@@ -18,3 +18,21 @@ export function apiUrl(path: string): string {
   const suffix = path.startsWith('/') ? path : `/${path}`
   return `${origin}${suffix}`
 }
+
+/**
+ * Marketing/site origin (the host visitors hit, not the API). Used for
+ * canonical URLs, OG tags, JSON-LD URL fields, and sitemap <loc> entries.
+ * Single source of truth — previously copy-pasted across 11 files.
+ */
+export function getSiteOrigin(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_SITE_ORIGIN
+  if (fromEnv && fromEnv.length > 0) return fromEnv.replace(/\/+$/, '')
+  return 'https://webwhen.ai'
+}
+
+/** Build a fully-qualified site URL by joining `path` onto the origin. */
+export function siteUrl(path: string): string {
+  const origin = getSiteOrigin()
+  const suffix = path.startsWith('/') ? path : `/${path}`
+  return `${origin}${suffix}`
+}

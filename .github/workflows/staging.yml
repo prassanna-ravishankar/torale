@@ -11,6 +11,15 @@ name: Deploy to Staging
 permissions:
   contents: read
 
+# Single-tenant staging namespace: two PRs racing through `helmfile sync`
+# would interleave manifests and the surviving pod set is whichever lost.
+# Serialize at the workflow level and cancel any in-flight deploy so the
+# latest push wins cleanly. Matches the single-PR-at-a-time usage pattern
+# documented on the scale_down job.
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: true
+
 # Trigger matrix:
 # - workflow_dispatch: manual deploy from any branch
 # - labeled (with name=deploy): bring staging up for a PR
