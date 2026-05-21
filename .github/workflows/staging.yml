@@ -60,12 +60,13 @@ jobs:
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker gcr.io
 
-      # See production.yml for context: stages backend/static/changelog.json
-      # inside the frontend build context so prerender can bake JSON-LD.
-      - name: Stage changelog fixture for frontend prerender
-        if: matrix.component == 'frontend'
-        run: cp backend/static/changelog.json frontend/.changelog-fixture.json
-
+      # Next.js inlines NEXT_PUBLIC_* into the client bundle at build time,
+      # so the per-environment public config (API host, Clerk PK, PostHog
+      # key) MUST be passed as Docker --build-arg here. Setting them only
+      # in the deployment env is too late — by then the client JS is frozen
+      # with whatever was in the image. Values mirror
+      # helm/torale/values-staging.yaml (kept in sync manually; both files
+      # carry public-safe keys).
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -73,16 +74,12 @@ jobs:
           file: ${{ matrix.dockerfile }}
           push: true
           provenance: false
-          # Stage origin baked into prerendered JSON-LD / RSS / etc. for the
-          # frontend image only. Other components ignore the arg.
-          # Note: LANDING_EXAMPLES_API_ORIGIN is intentionally NOT set
-          # here. Marketing snapshot data is brand-curated and lives in
-          # the production public feed; staging builds bake from prod by
-          # design so stakeholders eyeballing the landing on staging see
-          # real watches, not an empty staging-API. See
-          # frontend/scripts/sync-landing-examples.mjs for the rationale.
           build-args: |
-            PRERENDER_ORIGIN=https://staging.webwhen.ai
+            NEXT_PUBLIC_API_BASE_URL=https://api-staging.webwhen.ai
+            NEXT_PUBLIC_SITE_ORIGIN=https://staging.webwhen.ai
+            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsud2Vid2hlbi5haSQ
+            NEXT_PUBLIC_POSTHOG_API_KEY=phc_OFKCUKk0xOos42tBeoRUjmgKfp6xXqKb81tZQwxDJdc
+            NEXT_PUBLIC_POSTHOG_HOST=https://eu.posthog.com
           tags: |
             gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:${{ env.IMAGE_TAG }}
             gcr.io/${{ env.GCP_PROJECT_ID }}/torale-${{ matrix.component }}:staging
