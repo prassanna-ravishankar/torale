@@ -25,6 +25,12 @@ on:
       - 'helm/torale/values.yaml'
       - 'helm/torale/values-production.yaml'
       - 'helm/torale/values-staging.yaml'
+      # Helm templates affect Gateway routing (e.g. which paths land on
+      # frontend vs backend). Without these triggers, a Helm-only change
+      # — for example, retargeting /sitemap.xml — could ship without
+      # exercising the helm lint / template smoke job below.
+      - 'helm/torale/templates/**'
+      - 'helm/torale/Chart.yaml'
 
 jobs:
   lint:
@@ -118,3 +124,54 @@ jobs:
       # deploy time. See M8 below.
       - name: Workflow build-args vs Helm values parity
         run: ./frontend/scripts/check-public-env-parity.sh
+
+  helm:
+    name: Helm lint + template smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+
+      - name: helm lint (production)
+        run: helm lint helm/torale --values helm/torale/values.yaml --values helm/torale/values-production.yaml
+
+      - name: helm lint (staging)
+        run: helm lint helm/torale --values helm/torale/values.yaml --values helm/torale/values-staging.yaml
+
+      # Gateway routing smoke: the /sitemap.xml URL is load-bearing for SEO.
+      # The frontend's app/sitemap.ts owns it via the catchall — but only if
+      # the Helm HTTPRoute doesn't accidentally route /sitemap.xml to the
+      # backend service (regression mode: someone re-adds it to the
+      # backend-routed SEO group). Assert via helm template that /sitemap.xml
+      # is NOT in any exact-match path list. /changelog.xml and /robots.txt
+      # MUST stay on backend (RSS feed + host-discrimination logic).
+      - name: Gateway routing smoke (sitemap ownership)
+        run: |
+          set -e
+          for env in production staging; do
+            rendered=$(helm template helm/torale \
+              --values helm/torale/values.yaml \
+              --values helm/torale/values-${env}.yaml \
+              -s templates/httproute.yaml)
+            # Strip comments before grepping so doc strings don't false-positive.
+            stripped=$(printf '%s\n' "$rendered" | sed 's/#.*$//')
+            if printf '%s\n' "$stripped" | grep -qE 'value:\s*/sitemap\.xml$'; then
+              echo "FAIL [$env]: /sitemap.xml present in an exact-match path rule —"
+              echo "         it should fall through to the frontend catchall."
+              printf '%s\n' "$rendered" | grep -nE '/sitemap\.xml' | sed 's/^/  /'
+              exit 1
+            fi
+            # /changelog.xml and /robots.txt stay backend.
+            for path in '/changelog\.xml' '/robots\.txt'; do
+              if ! printf '%s\n' "$stripped" | grep -qE "value:\s*${path}$"; then
+                echo "FAIL [$env]: ${path} missing from backend-routed HTTPRoute rules."
+                exit 1
+              fi
+            done
+            echo "OK [$env]: HTTPRoute routing matches expected sitemap/changelog/robots ownership."
+          done

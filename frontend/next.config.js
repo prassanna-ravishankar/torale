@@ -87,6 +87,12 @@ const nextConfig = {
       { source: '/:path*.html', destination: '/:path*', permanent: true },
       { source: '/watches/:taskId', destination: '/tasks/:taskId', permanent: true },
       { source: '/settings', destination: '/settings/notifications', permanent: true },
+      // Retired sitemap children (collapsed into the unified /sitemap.xml).
+      // Googlebot and other crawlers may have the old sitemap-index entries
+      // cached pointing at /sitemap-static.xml + /sitemap-dynamic.xml; 308
+      // them to the canonical so the next crawl re-anchors cleanly.
+      { source: '/sitemap-static.xml', destination: '/sitemap.xml', permanent: true },
+      { source: '/sitemap-dynamic.xml', destination: '/sitemap.xml', permanent: true },
     ]
   },
 }
