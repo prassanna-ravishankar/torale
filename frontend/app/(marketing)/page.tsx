@@ -7,6 +7,7 @@ import { Cases } from './_components/landing/Cases'
 import { Manifesto } from './_components/landing/Manifesto'
 import { CTA } from './_components/landing/CTA'
 import { LandingExamplesProvider } from './_components/landing/LandingExamplesContext'
+import { jsonLdHtml } from '../../lib/seo/jsonLd'
 
 const SITE_ORIGIN =
   process.env.NEXT_PUBLIC_SITE_ORIGIN || 'https://webwhen.ai'
@@ -55,9 +56,7 @@ export default function LandingPage() {
     <MarketingLayout activePath="">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(softwareJsonLd).replace(/</g, '\\u003c'),
-        }}
+        dangerouslySetInnerHTML={{ __html: jsonLdHtml(softwareJsonLd) }}
       />
       <LandingExamplesProvider>
         <Hero />

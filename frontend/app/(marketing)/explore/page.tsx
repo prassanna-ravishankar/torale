@@ -10,6 +10,7 @@ import {
 } from '../../../lib/api/public'
 import { formatTimeAgo } from '@/lib/utils'
 import styles from '@/components/explore/Explore.module.css'
+import { jsonLdHtml } from '../../../lib/seo/jsonLd'
 
 /**
  * /explore — public feed of recent triggered moments across all public
@@ -137,8 +138,8 @@ export default async function ExplorePage() {
     <>
       <script
         type="application/ld+json"
-        // JSON.stringify with no user-supplied HTML; safe.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+        // task_name is user-controlled; jsonLdHtml() escapes for inline-script safety.
+        dangerouslySetInnerHTML={{ __html: jsonLdHtml(itemListJsonLd) }}
       />
       <div className={styles.column}>
         {feed.length === 0 ? (

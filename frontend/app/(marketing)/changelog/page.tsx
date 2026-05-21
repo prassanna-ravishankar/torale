@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import landingStyles from '@/components/landing/Landing.module.css'
 import marketingStyles from '@/components/marketing/marketing.module.css'
 import type { ChangelogEntry } from '@/types/changelog'
+import { jsonLdHtml } from '../../../lib/seo/jsonLd'
 
 const SITE_ORIGIN =
   process.env.NEXT_PUBLIC_SITE_ORIGIN || 'https://webwhen.ai'
@@ -152,10 +153,7 @@ function buildStructuredData(entries: ChangelogEntry[]) {
 
 export default async function ChangelogPage() {
   const entries = await fetchChangelog()
-  const structuredJson = JSON.stringify(buildStructuredData(entries)).replace(
-    /</g,
-    '\\u003c',
-  )
+  const structuredJson = jsonLdHtml(buildStructuredData(entries))
 
   return (
     <MarketingLayout activePath="/changelog">

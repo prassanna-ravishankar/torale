@@ -13,6 +13,7 @@ import {
 } from '../../../../lib/api/public'
 import { formatTimeAgo } from '@/lib/utils'
 import watchStyles from '@/components/watch/Watch.module.css'
+import { jsonLdHtml } from '../../../../lib/seo/jsonLd'
 
 /**
  * /tasks/[taskId] — public, statically-rendered watch detail page.
@@ -204,9 +205,7 @@ export default async function PublicTaskPage({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(buildJsonLd(task, siteOrigin)),
-        }}
+        dangerouslySetInnerHTML={{ __html: jsonLdHtml(buildJsonLd(task, siteOrigin)) }}
       />
       <link
         rel="alternate"
