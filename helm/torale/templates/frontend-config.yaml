@@ -1,29 +1,13 @@
-{{- if .Values.frontend.enabled -}}
 {{- /*
-Live API hostname. Resolution order: live first (post-cutover), then legacy
-(the rebrand-source). Both `dig` calls return "" when the path is missing,
-so this stays safe even if either block is absent (e.g. post-#281-PR-2
-staging has no legacy block).
+The legacy runtime /config.js ConfigMap (window.CONFIG) is retired.
+
+The Vite app read window.CONFIG at runtime so an nginx-served /config.js
+could be swapped per environment without rebuilding. Next.js inlines
+NEXT_PUBLIC_* into client bundles at build time, so per-environment values
+move to docker --build-arg (see Dockerfile) and to the runtime env block
+in templates/frontend-deployment.yaml.
+
+This file is kept as a stub so `helm upgrade` cleans up the previous
+ConfigMap object. Once a release has applied the empty template (and the
+old ConfigMap has been garbage-collected), the file can be deleted.
 */ -}}
-{{- $apiHost := coalesce (dig "live" "api" "" .Values.domains) (dig "legacy" "api" "" .Values.domains) -}}
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ include "torale.fullname" . }}-frontend-config
-  labels:
-    {{- include "torale.frontend.labels" . | nindent 4 }}
-data:
-  config.js: |
-    // Runtime configuration injected by Kubernetes
-    window.CONFIG = {
-      apiUrl: 'https://{{ $apiHost }}',
-      clerkPublishableKey: '{{ .Values.clerk.publishableKey }}',
-      {{- if .Values.posthog.enabled }}
-      posthogApiKey: '{{ .Values.posthog.apiKey }}',
-      posthogHost: '{{ .Values.posthog.apiHost }}'
-      {{- else }}
-      posthogApiKey: undefined,
-      posthogHost: undefined
-      {{- end }}
-    };
-{{- end }}

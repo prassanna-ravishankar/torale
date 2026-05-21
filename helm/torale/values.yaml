@@ -128,19 +128,27 @@ frontend:
       value: "true"
       effect: NoSchedule
 
-  # Lightweight resources for nginx
+  # Next.js standalone needs more headroom than the nginx-only image.
+  # The runtime now SSRs RSC payloads + runs middleware (Clerk) per
+  # request, so CPU is meaningfully load-shaped vs the static-file
+  # nginx era. Numbers calibrated for current QPS; revisit if HPA
+  # saturates.
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
-    limits:
       cpu: 200m
-      memory: 128Mi
+      memory: 256Mi
+    limits:
+      cpu: 1
+      memory: 512Mi
 
   service:
     type: ClusterIP
     port: 80
-    targetPort: 80
+    targetPort: 3000
+
+  # Per-environment extra env vars (e.g. CLERK_SECRET_KEY via valueFrom
+  # secretKeyRef in production overlays).
+  extraEnv: []
 
   # Horizontal Pod Autoscaler
   autoscaling:
