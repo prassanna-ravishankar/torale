@@ -8,6 +8,11 @@
 #   PREVIEW_URL=http://localhost:3000 ./scripts/cutover-gates.sh
 #   PREVIEW_URL=https://staging.webwhen.ai ./scripts/cutover-gates.sh
 #
+# To bring up a local preview matching the deployed runtime (output:
+# 'standalone'), use scripts/serve-preview.sh — it runs the standalone
+# server.js the production image actually executes. `npm run start` /
+# `next start` emit a warning under standalone and may diverge.
+#
 # Gates (per orchestrator notif-7ac925b3, 2026-05-21):
 #   1. Header / CSP / redirect parity (header presence; full diff happens
 #      in headers-diff.sh).
