@@ -44,8 +44,6 @@ spec:
         # client bundle at docker build time via --build-arg (see Dockerfile).
         # Setting them here ALSO makes them available to RSC / route handlers
         # at request time (server-side reads of process.env.NEXT_PUBLIC_*).
-        # CLERK_SECRET_KEY stays runtime-only — it's a server secret, never
-        # bundled. Source via a Secret in production overlays.
         env:
         - name: NODE_ENV
           value: production
@@ -65,6 +63,17 @@ spec:
         - name: NEXT_PUBLIC_POSTHOG_HOST
           value: {{ .Values.posthog.apiHost | quote }}
         {{- end }}
+        # CLERK_SECRET_KEY: required by clerkMiddleware() at module init.
+        # Sourced from the shared torale-secrets Secret (same one the api
+        # reads). Without it, every request through the middleware matcher
+        # (/dashboard, /settings, /admin, /welcome, /sign-in, /sign-up,
+        # /waitlist) 500s with "Missing secretKey". Marketing routes don't
+        # hit middleware so they'd still serve.
+        - name: CLERK_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.name }}
+              key: CLERK_SECRET_KEY
         {{- with .Values.frontend.extraEnv }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
