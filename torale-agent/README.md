@@ -65,8 +65,9 @@ uv run torale-agent eval run --limit 2
 Requires `GEMINI_API_KEY`. Other providers require their corresponding API key.
 
 The production agent reads `MODEL_THINKING_LEVEL` (`minimal`, `low`, `medium`,
-or `high`). It defaults to `minimal` when unset. CLI `query` and `eval run` commands
-can override the environment value with `--thinking-level`.
+or `high`). Gemini 3.5 Flash-Lite defaults to `minimal` when unset; other Gemini
+models retain their compatible default. CLI `query` and `eval run` commands can
+override the environment value with `--thinking-level`.
 
 Static cases are stored in `evals/cases.yaml`. `uv run torale-agent eval generate` creates a live-data dataset that can be included with `--with-dynamic`.
 

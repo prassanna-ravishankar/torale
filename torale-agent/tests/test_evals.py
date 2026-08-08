@@ -148,6 +148,22 @@ def test_agent_defaults_to_minimal_gemini_thinking(monkeypatch):
     assert thinking["thinking_level"] == "minimal"
 
 
+def test_other_gemini_models_keep_high_thinking_default(monkeypatch):
+    monkeypatch.delenv("MODEL_THINKING_LEVEL", raising=False)
+
+    agent = create_monitoring_agent("google:gemini-3-pro")
+
+    settings = cast(GoogleModelSettings, agent.model_settings)
+    thinking = settings.get("google_thinking_config")
+    assert thinking is not None
+    assert thinking["thinking_level"] == "high"
+
+
+def test_gemini_model_rejects_unsupported_thinking_level():
+    with pytest.raises(ValueError, match="is not supported"):
+        create_monitoring_agent("google:gemini-3-pro", thinking_level="minimal")
+
+
 def test_openai_compatible_models_use_native_structured_output():
     agent = create_monitoring_agent("openai-chat:openai/gpt-oss-120b-maas")
 

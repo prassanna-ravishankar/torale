@@ -13,6 +13,7 @@ _NATIVE_OUTPUT_MAAS_MODELS = {
     "google/gemma-4-26b-a4b-it-maas",
     "openai/gpt-oss-120b-maas",
 }
+_MINIMAL_THINKING_MODELS = {"gemini-3.5-flash-lite"}
 
 
 def create_monitoring_agent(
@@ -24,12 +25,22 @@ def create_monitoring_agent(
     # String matching may need updates for new models.
     model_settings = None
     model_lower = model_id.lower()
+    model_name = model_lower.partition(":")[2]
     if "gemini" in model_lower or "google" in model_lower:
         supports_thinking = "gemini-3" in model_lower or "gemini-2.5-pro" in model_lower
         if supports_thinking:
-            level = thinking_level or os.getenv("MODEL_THINKING_LEVEL", "minimal")
-            if level not in {"minimal", "low", "medium", "high"}:
-                raise ValueError(f"Unsupported thinking level: {level}")
+            default_level = (
+                "minimal" if model_name in _MINIMAL_THINKING_MODELS else "high"
+            )
+            level = thinking_level or os.getenv("MODEL_THINKING_LEVEL") or default_level
+            allowed_levels = {"low", "medium", "high"}
+            if model_name in _MINIMAL_THINKING_MODELS:
+                allowed_levels.add("minimal")
+            if level not in allowed_levels:
+                raise ValueError(
+                    f"Thinking level {level!r} is not supported by {model_name}; "
+                    f"choose one of {', '.join(sorted(allowed_levels))}"
+                )
             model_settings = GoogleModelSettings(
                 google_thinking_config={
                     "thinking_level": level,
@@ -41,7 +52,6 @@ def create_monitoring_agent(
     # forced tool call Pydantic uses for its default structured-output mode.
     # Keep tools available during the run and use native JSON Schema for the
     # final response instead.
-    model_name = model_lower.partition(":")[2]
     output_type = (
         NativeOutput(MonitoringResponse)
         if model_name in _NATIVE_OUTPUT_MAAS_MODELS
