@@ -40,13 +40,13 @@ class TestTaskUrl:
 
         assert (
             _build_task_url("76243542-8019-44d3-b171-4fb334d6f822")
-            == "https://webwhen.ai/tasks/76243542-8019-44d3-b171-4fb334d6f822"
+            == "https://webwhen.ai/dashboard/tasks/76243542-8019-44d3-b171-4fb334d6f822"
         )
 
     def test_url_encodes_task_id(self, monkeypatch):
         monkeypatch.setattr(settings, "frontend_url", "https://webwhen.ai")
 
-        assert _build_task_url("task/../id") == "https://webwhen.ai/tasks/task%2F..%2Fid"
+        assert _build_task_url("task/../id") == "https://webwhen.ai/dashboard/tasks/task%2F..%2Fid"
 
     @pytest.mark.asyncio
     async def test_condition_met_payload_includes_task_url(self, monkeypatch):
@@ -71,5 +71,5 @@ class TestTaskUrl:
         assert sent_payload["task_id"] == "76243542-8019-44d3-b171-4fb334d6f822"
         assert (
             sent_payload["task_url"]
-            == "https://webwhen.ai/tasks/76243542-8019-44d3-b171-4fb334d6f822"
+            == "https://webwhen.ai/dashboard/tasks/76243542-8019-44d3-b171-4fb334d6f822"
         )

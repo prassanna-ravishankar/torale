@@ -11,6 +11,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlparse
 
+from apscheduler.jobstores.base import JobLookupError
 from apscheduler.triggers.date import DateTrigger
 
 from webwhen.core.database import db
@@ -45,7 +46,6 @@ from webwhen.scheduler.models import (
 from webwhen.scheduler.prompt_sanitizer import PromptSanitizer
 from webwhen.scheduler.scheduler import get_scheduler
 from webwhen.tasks import TaskState, TaskStatus
-from webwhen.tasks.service import TaskService
 
 logger = logging.getLogger(__name__)
 
@@ -84,10 +84,33 @@ async def _schedule_next_run(
     execution_id: str | None,
     retry_count: int = 0,
 ) -> None:
-    """Schedule an APScheduler job and persist next_run to DB."""
+    """Persist and schedule the next run while the task remains active.
+
+    A user can pause or complete a task while its current execution is still
+    running. Claim the schedule with an active-state UPDATE, then re-check the
+    state after adding the job so that an in-flight execution cannot resurrect
+    a task that changed state concurrently.
+    """
     try:
-        scheduler = get_scheduler()
         job_id = f"task-{task_id}"
+        task_uuid = uuid.UUID(task_id)
+        claimed = await db.fetch_one(
+            """UPDATE tasks
+               SET next_run = $1
+               WHERE id = $2 AND state = $3
+               RETURNING id""",
+            next_run_dt,
+            task_uuid,
+            TaskState.ACTIVE.value,
+        )
+        if not claimed:
+            logger.info(
+                "Skipped scheduling task %s because it is no longer active",
+                task_id,
+            )
+            return
+
+        scheduler = get_scheduler()
         scheduler.add_job(
             JOB_FUNC_REF,
             trigger=DateTrigger(run_date=next_run_dt),
@@ -95,11 +118,19 @@ async def _schedule_next_run(
             args=[task_id, user_id, task_name, retry_count, execution_id],
             replace_existing=True,
         )
-        await db.execute(
-            "UPDATE tasks SET next_run = $1 WHERE id = $2",
-            next_run_dt,
-            uuid.UUID(task_id),
-        )
+
+        current = await db.fetch_one("SELECT state FROM tasks WHERE id = $1", task_uuid)
+        if not current or current["state"] != TaskState.ACTIVE.value:
+            try:
+                scheduler.remove_job(job_id)
+            except JobLookupError:
+                pass
+            logger.info(
+                "Removed newly scheduled job for task %s after a concurrent state change",
+                task_id,
+            )
+            return
+
         logger.info(f"Scheduled task {task_id} next run at {next_run_dt.isoformat()}")
     except Exception as e:
         logger.error(f"Failed to schedule next run for task {task_id}: {e}", exc_info=True)
@@ -413,23 +444,25 @@ async def _execute(
         # For permanent failures, the task is marked FAILED and no further retries are scheduled.
         # The task will not be automatically rescheduled - user needs to fix the issue and manually re-activate if desired.
     finally:
-        if execution_succeeded and next_run_value is None:
-            # Agent returned next_run=null → monitoring complete
-            try:
-                task_service = TaskService(db=db)
-                await task_service.complete(
-                    task_id=uuid.UUID(task_id), current_state=TaskState.ACTIVE
+        if execution_succeeded:
+            # A watch is ongoing unless a person explicitly changes its state.
+            # LLM-generated next_run=null has incorrectly completed recurring
+            # watches in production, including runs that found no change at all.
+            # Preserve the request in the execution audit trail and fall back to
+            # 24 hours rather than trusting it as a state transition command.
+            if next_run_value is None:
+                await _merge_execution_result(
+                    execution_id,
+                    {
+                        "agent_requested_completion": True,
+                        "completion_suppressed": True,
+                    },
                 )
-                await db.execute(
-                    "UPDATE tasks SET next_run = NULL WHERE id = $1",
-                    uuid.UUID(task_id),
+                logger.warning(
+                    "Suppressed automatic completion for task %s; scheduling fallback run",
+                    task_id,
                 )
-                logger.info(f"Task {task_id} completed (agent returned next_run=null)")
-            except Exception as e:
-                logger.error(f"Auto-complete failed for task {task_id}: {e}", exc_info=True)
-                await _merge_execution_result(execution_id, {"auto_complete_failed": True})
-        elif execution_succeeded:
-            # Agent returned a next_run date → schedule next check.
+
             # Pass execution_id=None so the next scheduled run creates its own
             # row. Reusing the current execution_id would cause subsequent runs
             # to overwrite this row's completed_at, producing inflated durations

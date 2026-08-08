@@ -60,8 +60,8 @@ def _format_sources(sources: list[dict], limit: int = 5) -> list[dict]:
 
 
 def _build_task_url(task_id: str) -> str:
-    """Build the canonical frontend task detail URL for notification CTAs."""
-    return f"{settings.frontend_url.rstrip('/')}/tasks/{quote(task_id, safe='')}"
+    """Build the authenticated owner-view URL for notification CTAs."""
+    return f"{settings.frontend_url.rstrip('/')}/dashboard/tasks/{quote(task_id, safe='')}"
 
 
 class NovuTriggerResult(BaseModel):

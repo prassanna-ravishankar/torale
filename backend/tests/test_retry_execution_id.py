@@ -24,6 +24,7 @@ async def test_schedule_next_run_passes_execution_id():
         mock_scheduler = MagicMock()
         mock_get_scheduler.return_value = mock_scheduler
         mock_db.execute = AsyncMock()
+        mock_db.fetch_one = AsyncMock(side_effect=[{"id": TASK_ID}, {"state": "active"}])
 
         next_run_dt = datetime.now(UTC)
         retry_count = 2

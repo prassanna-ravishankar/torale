@@ -79,13 +79,17 @@ const nextConfig = {
     //   ^/(?!index\.html$|404\.html$)(.+)\.html$ /$1 — general .html strip.
     //
     // Plus app-level redirects from src/App.tsx:
-    //   /watches/:taskId → /tasks/:taskId (legacy URL shape).
+    //   /watches/:taskId → /dashboard/tasks/:taskId (legacy owner URL shape).
     //   /settings → /settings/notifications (bare /settings has no UI).
     return [
       { source: '/index.html', destination: '/', permanent: true },
       { source: '/index', destination: '/', permanent: true },
       { source: '/:path*.html', destination: '/:path*', permanent: true },
-      { source: '/watches/:taskId', destination: '/tasks/:taskId', permanent: true },
+      {
+        source: '/watches/:taskId',
+        destination: '/dashboard/tasks/:taskId',
+        permanent: true,
+      },
       { source: '/settings', destination: '/settings/notifications', permanent: true },
       // Retired sitemap children (collapsed into the unified /sitemap.xml).
       // Googlebot and other crawlers may have the old sitemap-index entries
