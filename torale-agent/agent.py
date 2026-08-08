@@ -1,19 +1,17 @@
 """webwhen watch agent factory."""
 
 import os
+from typing import cast
 
 from pydantic_ai import Agent, NativeOutput
 from pydantic_ai.models.google import GoogleModelSettings
+from pydantic_ai.profiles.google import google_model_profile
+from pydantic_ai.profiles.openai import openai_model_profile
+from pydantic_ai.settings import ThinkingLevel
 
 from models import DEFAULT_MODEL, MonitoringDeps, MonitoringResponse
 from prompts import instructions
 from tools import register_tools
-
-_NATIVE_OUTPUT_MAAS_MODELS = {
-    "google/gemma-4-26b-a4b-it-maas",
-    "openai/gpt-oss-120b-maas",
-}
-_MINIMAL_THINKING_MODELS = {"gemini-3.5-flash-lite"}
 
 
 def create_monitoring_agent(
@@ -21,40 +19,30 @@ def create_monitoring_agent(
     thinking_level: str | None = None,
 ) -> Agent[MonitoringDeps, MonitoringResponse]:
     """Create a monitoring agent with the specified model and all tools registered."""
-    # Enable thinking for supported Gemini models (gemini-3-*, gemini-2.5-pro).
-    # String matching may need updates for new models.
     model_settings = None
     model_lower = model_id.lower()
     model_name = model_lower.partition(":")[2]
-    if "gemini" in model_lower or "google" in model_lower:
-        supports_thinking = "gemini-3" in model_lower or "gemini-2.5-pro" in model_lower
-        if supports_thinking:
+    if model_lower.startswith("google:"):
+        profile = google_model_profile(model_name) or {}
+        if profile.get("supports_thinking", False):
             default_level = (
-                "minimal" if model_name in _MINIMAL_THINKING_MODELS else "high"
+                "minimal" if model_name == DEFAULT_MODEL.partition(":")[2] else "high"
             )
             level = thinking_level or os.getenv("MODEL_THINKING_LEVEL") or default_level
-            allowed_levels = {"low", "medium", "high"}
-            if model_name in _MINIMAL_THINKING_MODELS:
-                allowed_levels.add("minimal")
-            if level not in allowed_levels:
-                raise ValueError(
-                    f"Thinking level {level!r} is not supported by {model_name}; "
-                    f"choose one of {', '.join(sorted(allowed_levels))}"
-                )
-            model_settings = GoogleModelSettings(
-                google_thinking_config={
-                    "thinking_level": level,
-                    "include_thoughts": True,
-                },
-            )
+            if level not in {"minimal", "low", "medium", "high"}:
+                raise ValueError(f"Unsupported thinking level: {level}")
+            # Pydantic AI translates unified thinking effort into each Gemini
+            # model's native thinking level or token budget.
+            model_settings = GoogleModelSettings(thinking=cast(ThinkingLevel, level))
+        elif thinking_level is not None:
+            raise ValueError(f"Thinking is not supported by {model_name}")
 
-    # Agent Platform open models support function calling but may reject the
-    # forced tool call Pydantic uses for its default structured-output mode.
-    # Keep tools available during the run and use native JSON Schema for the
-    # final response instead.
+    supports_native_output = model_lower.startswith(
+        "openai-chat:"
+    ) and openai_model_profile(model_name).get("supports_json_schema_output", False)
     output_type = (
         NativeOutput(MonitoringResponse)
-        if model_name in _NATIVE_OUTPUT_MAAS_MODELS
+        if supports_native_output
         else MonitoringResponse
     )
 

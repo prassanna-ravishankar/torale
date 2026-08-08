@@ -121,9 +121,7 @@ def test_agent_can_override_gemini_thinking_level():
     )
 
     settings = cast(GoogleModelSettings, agent.model_settings)
-    thinking = settings.get("google_thinking_config")
-    assert thinking is not None
-    assert thinking["thinking_level"] == "medium"
+    assert settings["thinking"] == "medium"
 
 
 def test_agent_reads_gemini_thinking_level_from_environment(monkeypatch):
@@ -132,9 +130,7 @@ def test_agent_reads_gemini_thinking_level_from_environment(monkeypatch):
     agent = create_monitoring_agent("google:gemini-3.5-flash-lite")
 
     settings = cast(GoogleModelSettings, agent.model_settings)
-    thinking = settings.get("google_thinking_config")
-    assert thinking is not None
-    assert thinking["thinking_level"] == "low"
+    assert settings["thinking"] == "low"
 
 
 def test_agent_defaults_to_minimal_gemini_thinking(monkeypatch):
@@ -143,9 +139,7 @@ def test_agent_defaults_to_minimal_gemini_thinking(monkeypatch):
     agent = create_monitoring_agent("google:gemini-3.5-flash-lite")
 
     settings = cast(GoogleModelSettings, agent.model_settings)
-    thinking = settings.get("google_thinking_config")
-    assert thinking is not None
-    assert thinking["thinking_level"] == "minimal"
+    assert settings["thinking"] == "minimal"
 
 
 def test_other_gemini_models_keep_high_thinking_default(monkeypatch):
@@ -154,14 +148,12 @@ def test_other_gemini_models_keep_high_thinking_default(monkeypatch):
     agent = create_monitoring_agent("google:gemini-3-pro")
 
     settings = cast(GoogleModelSettings, agent.model_settings)
-    thinking = settings.get("google_thinking_config")
-    assert thinking is not None
-    assert thinking["thinking_level"] == "high"
+    assert settings["thinking"] == "high"
 
 
-def test_gemini_model_rejects_unsupported_thinking_level():
-    with pytest.raises(ValueError, match="is not supported"):
-        create_monitoring_agent("google:gemini-3-pro", thinking_level="minimal")
+def test_non_thinking_model_rejects_thinking_override():
+    with pytest.raises(ValueError, match="Thinking is not supported"):
+        create_monitoring_agent("google:gemini-2.0-flash", thinking_level="minimal")
 
 
 def test_openai_compatible_models_use_native_structured_output():
@@ -170,10 +162,10 @@ def test_openai_compatible_models_use_native_structured_output():
     assert type(agent._output_schema).__name__ == "NativeOutputSchema"
 
 
-def test_other_openai_chat_models_keep_tool_structured_output():
+def test_other_openai_chat_models_expose_native_structured_output():
     agent = create_monitoring_agent("openai-chat:gpt-4o-mini")
 
-    assert type(agent._output_schema).__name__ == "AutoOutputSchema"
+    assert type(agent._output_schema).__name__ == "NativeOutputSchema"
 
 
 @pytest.mark.asyncio
