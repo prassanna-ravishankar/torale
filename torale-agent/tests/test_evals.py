@@ -85,6 +85,18 @@ def test_notification_decision_catches_false_positive():
     assert NotificationDecision().evaluate(ctx).value is False
 
 
+def test_empty_notification_matches_production_no_trigger_semantics():
+    ctx = _context(
+        output=_response(notification=""),
+        metadata=MonitoringCaseMetadata(
+            category="Tech",
+            expected_notification=False,
+        ),
+    )
+
+    assert NotificationDecision().evaluate(ctx).value is True
+
+
 def test_static_dataset_loads_decision_regressions():
     dataset = load_dataset(Path(__file__).parents[1] / "evals" / "cases.yaml")
     decision_cases = [

@@ -33,7 +33,7 @@ class SourcesWhenNotifying(EvalBase):
     """When a notification is sent, sources must be non-empty."""
 
     def evaluate(self, ctx: EvalCtx) -> bool:
-        if ctx.output.notification is None:
+        if not ctx.output.notification:
             return True
         return len(ctx.output.sources) > 0
 
@@ -174,7 +174,7 @@ class NotificationDecision(EvalBase):
                 "NotificationDecision requires expected_notification metadata"
             )
 
-        actual = ctx.output.notification is not None
+        actual = bool(ctx.output.notification)
         expected = metadata.expected_notification
         return EvaluationReason(
             value=actual == expected,
