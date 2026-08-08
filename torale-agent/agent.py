@@ -9,6 +9,11 @@ from models import DEFAULT_MODEL, MonitoringDeps, MonitoringResponse
 from prompts import instructions
 from tools import register_tools
 
+_NATIVE_OUTPUT_MAAS_MODELS = {
+    "google/gemma-4-26b-a4b-it-maas",
+    "openai/gpt-oss-120b-maas",
+}
+
 
 def create_monitoring_agent(
     model_id: str = DEFAULT_MODEL,
@@ -36,9 +41,10 @@ def create_monitoring_agent(
     # forced tool call Pydantic uses for its default structured-output mode.
     # Keep tools available during the run and use native JSON Schema for the
     # final response instead.
+    model_name = model_lower.partition(":")[2]
     output_type = (
         NativeOutput(MonitoringResponse)
-        if model_lower.startswith("openai-chat:")
+        if model_name in _NATIVE_OUTPUT_MAAS_MODELS
         else MonitoringResponse
     )
 

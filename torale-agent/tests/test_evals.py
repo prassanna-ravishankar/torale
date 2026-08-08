@@ -154,6 +154,12 @@ def test_openai_compatible_models_use_native_structured_output():
     assert type(agent._output_schema).__name__ == "NativeOutputSchema"
 
 
+def test_other_openai_chat_models_keep_tool_structured_output():
+    agent = create_monitoring_agent("openai-chat:gpt-4o-mini")
+
+    assert type(agent._output_schema).__name__ == "AutoOutputSchema"
+
+
 @pytest.mark.asyncio
 async def test_fetch_assertion_is_scoped_to_webpage_cases():
     async with httpx.AsyncClient() as client:
