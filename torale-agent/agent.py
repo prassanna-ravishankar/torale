@@ -33,6 +33,9 @@ def create_monitoring_agent(
         instructions=instructions,
         retries=3,
         model_settings=model_settings,
+        # Resolve provider credentials at run time, not module import. This
+        # keeps health checks, tests, and clean CI imports credential-free.
+        defer_model_check=True,
         # Pydantic AI 2 defaults to `graceful`, which can execute more queued
         # tool calls after final output. Keep the v1 monitoring semantics.
         end_strategy="early",
