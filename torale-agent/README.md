@@ -1,6 +1,6 @@
-# Torale Agent
+# webwhen Agent
 
-Monitoring agent service for the Torale platform. Uses Pydantic AI with Gemini for analyzing search results and determining if monitoring conditions are met.
+Watch agent service for webwhen. Uses Pydantic AI with Gemini to gather evidence and determine whether a watch condition has been met.
 
 ## Development
 
@@ -44,37 +44,23 @@ uv sync --group eval
 # List test cases
 uv run torale-agent eval list
 
-# Run evaluations with different models
-uv run torale-agent eval run --model google:gemini-3-flash-preview
-uv run torale-agent eval run --model google:gemini-2-0-flash-exp
-uv run torale-agent eval run --model claude-3-5-sonnet-20241022
-uv run torale-agent eval run --model gpt-4-turbo
+# Run the full suite with a candidate model
+uv run torale-agent eval run --model google:gemini-3.5-flash-lite
 
-# Run specific case
-uv run torale-agent eval run --case "GTA VI Release Date" --model claude-3-5-sonnet-20241022
+# Run the ground-truth trigger-decision subset
+uv run torale-agent eval run --decision-only --model google:gemini-3.5-flash-lite
+
+# Run a specific case
+uv run torale-agent eval run --case "Python 3.13 Released" --model google:gemini-3.5-flash-lite
 
 # Run only first N cases (useful for quick testing)
 uv run torale-agent eval run --limit 2
 
-# View recent results
-uv run torale-agent eval results
-
-# Compare models
-uv run torale-agent eval compare gemini-3-flash claude-3-5-sonnet
 ```
 
-**Model IDs:**
-- Google Gemini: `google:gemini-3-flash-preview`, `google:gemini-2-0-flash-exp`, `google:gemini-2-5-pro`, `google:gemini-2-5-flash`
-  - Note: Thinking config is automatically enabled for gemini-3-* and gemini-2.5-pro models only
-- Anthropic Claude: `claude-3-5-sonnet-20241022`, `claude-opus-4-1`
-- OpenAI: `gpt-4-turbo`, `gpt-4o`
+Requires `GEMINI_API_KEY`. Other providers require their corresponding API key.
 
-**Note:** Requires corresponding API keys as environment variables:
-- `GEMINI_API_KEY` for Google models
-- `ANTHROPIC_API_KEY` for Claude models
-- `OPENAI_API_KEY` for OpenAI models
-
-Test cases are stored in `evals/cases.jsonl` and derived from production task templates.
+Static cases are stored in `evals/cases.yaml`. `uv run torale-agent eval generate` creates a live-data dataset that can be included with `--with-dynamic`.
 
 ## Architecture
 

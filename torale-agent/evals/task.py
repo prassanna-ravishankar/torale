@@ -1,6 +1,7 @@
 """Task function for pydantic-evals: runs the monitoring agent against a case."""
 
 import re
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -14,6 +15,7 @@ from models import (
     MonitoringResponse,
     create_clients,
 )
+from tools import extract_activity
 
 from evals.models import MonitoringCaseInput
 
@@ -21,19 +23,22 @@ from evals.models import MonitoringCaseInput
 _eval_model: str = DEFAULT_MODEL
 _eval_clients: Clients | None = None
 _eval_agent: Agent[MonitoringDeps, MonitoringResponse] | None = None
+_eval_run_id: str | None = None
 
 
 @asynccontextmanager
 async def configure_eval(model: str) -> AsyncIterator[None]:
     """Set up shared agent and clients for an eval run, tear down after."""
-    global _eval_model, _eval_clients, _eval_agent
+    global _eval_model, _eval_clients, _eval_agent, _eval_run_id
     _eval_model = model
+    _eval_run_id = uuid.uuid4().hex[:12]
     _eval_agent = create_monitoring_agent(model)
     async with create_clients() as clients:
         _eval_clients = clients
         yield
         _eval_clients = None
         _eval_agent = None
+        _eval_run_id = None
 
 
 def _build_prompt(case: MonitoringCaseInput, history_block: str = "") -> str:
@@ -86,9 +91,13 @@ async def run_monitoring_task(case_input: MonitoringCaseInput) -> MonitoringResp
     """
     assert _eval_agent is not None, "call configure_eval() before running tasks"
     assert _eval_clients is not None, "call configure_eval() before running tasks"
+    assert _eval_run_id is not None, "call configure_eval() before running tasks"
 
-    task_id = f"eval-{_slugify(case_input.search_query[:50])}"
-    deps = MonitoringDeps(user_id="eval-user", task_id=task_id, clients=_eval_clients)
+    model_slug = _slugify(_eval_model)[:24]
+    task_slug = _slugify(case_input.search_query[:50])
+    namespace = f"eval-{model_slug}-{_eval_run_id}"
+    task_id = f"{namespace}-{task_slug}"
+    deps = MonitoringDeps(user_id=namespace, task_id=task_id, clients=_eval_clients)
 
     history_block = ""
     response: MonitoringResponse | None = None
@@ -97,6 +106,9 @@ async def run_monitoring_task(case_input: MonitoringCaseInput) -> MonitoringResp
         prompt = _build_prompt(case_input, history_block)
         result = await _eval_agent.run(prompt, deps=deps)
         response = result.output
+        activity = extract_activity(result.all_messages())
+        if activity:
+            response.activity = activity
 
         if pass_num < case_input.passes:
             history_block = _format_execution_history(response, pass_num)

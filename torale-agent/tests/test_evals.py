@@ -1,0 +1,109 @@
+"""Regression tests for the monitoring evaluation harness."""
+
+from pathlib import Path
+
+import httpx
+import pytest
+
+from evals.dynamic import generate_webpage_cases
+from evals.evaluators import FetchUrlUsed, NotificationDecision, SearchToolUsed
+from evals.models import MonitoringCaseInput, MonitoringCaseMetadata
+from evals.runner import load_dataset
+from models import ActivityStep, MonitoringResponse
+from pydantic_evals.evaluators import EvaluatorContext
+from pydantic_evals.otel._errors import SpanTreeRecordingError
+
+
+def _response(*, notification: str | None, tools: list[str] | None = None):
+    return MonitoringResponse(
+        evidence="Reviewed evidence",
+        sources=["https://example.com/source"],
+        confidence=90,
+        next_run="2026-08-09T12:00:00Z",
+        notification=notification,
+        activity=[ActivityStep(tool=tool, detail="query") for tool in (tools or [])],
+    )
+
+
+def _context(
+    *, output: MonitoringResponse, metadata: MonitoringCaseMetadata
+) -> EvaluatorContext[MonitoringCaseInput, MonitoringResponse, MonitoringCaseMetadata]:
+    return EvaluatorContext(
+        name="test",
+        inputs=MonitoringCaseInput(
+            search_query="test query",
+            condition_description="test condition",
+            category="Tech",
+        ),
+        metadata=metadata,
+        expected_output=None,
+        output=output,
+        duration=0.1,
+        _span_tree=SpanTreeRecordingError("not recorded"),
+        attributes={},
+        metrics={},
+    )
+
+
+def test_search_tool_evaluator_uses_production_activity():
+    ctx = _context(
+        output=_response(
+            notification=None, tools=["perplexity_search", "final_result"]
+        ),
+        metadata=MonitoringCaseMetadata(category="Tech"),
+    )
+
+    assert SearchToolUsed().evaluate(ctx) == {"used_search": True, "search_count": 1}
+
+
+def test_notification_decision_matches_reviewed_ground_truth():
+    ctx = _context(
+        output=_response(notification="Condition met"),
+        metadata=MonitoringCaseMetadata(
+            category="Tech",
+            expected_notification=True,
+            ground_truth="The release is official.",
+        ),
+    )
+
+    result = NotificationDecision().evaluate(ctx)
+
+    assert result.value is True
+    assert "expected notification=True" in (result.reason or "")
+
+
+def test_notification_decision_catches_false_positive():
+    ctx = _context(
+        output=_response(notification="Incorrect trigger"),
+        metadata=MonitoringCaseMetadata(
+            category="Tech",
+            expected_notification=False,
+            ground_truth="The release does not exist.",
+        ),
+    )
+
+    assert NotificationDecision().evaluate(ctx).value is False
+
+
+def test_static_dataset_loads_decision_regressions():
+    dataset = load_dataset(Path(__file__).parents[1] / "evals" / "cases.yaml")
+    decision_cases = [
+        case
+        for case in dataset.cases
+        if case.metadata is not None and case.metadata.expected_notification is not None
+    ]
+
+    assert len(decision_cases) == 4
+    assert all(
+        any(isinstance(e, NotificationDecision) for e in c.evaluators)
+        for c in decision_cases
+    )
+
+
+@pytest.mark.asyncio
+async def test_fetch_assertion_is_scoped_to_webpage_cases():
+    async with httpx.AsyncClient() as client:
+        cases = await generate_webpage_cases(client)
+
+    assert cases
+    assert all(any(isinstance(e, FetchUrlUsed) for e in c.evaluators) for c in cases)

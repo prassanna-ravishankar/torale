@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from pydantic_evals.evaluators import Evaluator, EvaluatorContext
+from pydantic_evals.evaluators import EvaluationReason, Evaluator, EvaluatorContext
 from pydantic_evals.otel._errors import SpanTreeRecordingError
 
 from evals.models import MonitoringCaseInput, MonitoringCaseMetadata
@@ -21,6 +21,11 @@ def _get_span_tree(ctx: EvalCtx):
         return ctx.span_tree
     except SpanTreeRecordingError:
         return None
+
+
+def _activity_tool_names(ctx: EvalCtx) -> list[str]:
+    """Return production-shaped tool activity recorded on the response."""
+    return [step.tool for step in (ctx.output.activity or [])]
 
 
 @dataclass
@@ -79,6 +84,18 @@ class SearchToolUsed(EvalBase):
     """Span-based: verify that search tools were called during agent execution."""
 
     def evaluate(self, ctx: EvalCtx) -> dict[str, bool | int]:
+        activity_names = _activity_tool_names(ctx)
+        activity_searches = [
+            name
+            for name in activity_names
+            if name in ("perplexity_search", "parallel_search")
+        ]
+        if activity_searches:
+            return {
+                "used_search": True,
+                "search_count": len(activity_searches),
+            }
+
         tree = _get_span_tree(ctx)
         if tree is None:
             return {"used_search": False, "search_count": 0}
@@ -102,6 +119,10 @@ class FetchUrlUsed(EvalBase):
     """Span-based: check if fetch_url tool was called during agent execution."""
 
     def evaluate(self, ctx: EvalCtx) -> dict[str, bool | int]:
+        activity_count = _activity_tool_names(ctx).count("fetch_url")
+        if activity_count:
+            return {"used_fetch": True, "fetch_count": activity_count}
+
         tree = _get_span_tree(ctx)
         if tree is None:
             return {"used_fetch": False, "fetch_count": 0}
@@ -142,10 +163,33 @@ class MultiPassProgression(EvalBase):
         }
 
 
+@dataclass
+class NotificationDecision(EvalBase):
+    """Assert trigger/no-trigger behavior against reviewed case ground truth."""
+
+    def evaluate(self, ctx: EvalCtx) -> EvaluationReason:
+        metadata = ctx.metadata
+        if metadata is None or metadata.expected_notification is None:
+            raise ValueError(
+                "NotificationDecision requires expected_notification metadata"
+            )
+
+        actual = ctx.output.notification is not None
+        expected = metadata.expected_notification
+        return EvaluationReason(
+            value=actual == expected,
+            reason=(
+                f"expected notification={expected}, actual={actual}; "
+                f"ground truth: {metadata.ground_truth or 'not provided'}"
+            ),
+        )
+
+
 CUSTOM_EVALUATORS = [
     SourcesWhenNotifying,
     ReasonableNextRun,
     SearchToolUsed,
     FetchUrlUsed,
     MultiPassProgression,
+    NotificationDecision,
 ]

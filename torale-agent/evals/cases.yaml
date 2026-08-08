@@ -53,6 +53,60 @@ cases:
       condition_description: "A transfer is officially confirmed by clubs or reliable sources"
       category: Sports
 
+  # Durable decision-regression cases. These carry reviewed trigger/no-trigger
+  # ground truth and are the minimum meaningful set for model comparisons.
+  - name: Python 3.13 Released
+    inputs:
+      search_query: "Has Python 3.13 been officially released?"
+      condition_description: "Python 3.13 has an official final release from the Python Software Foundation"
+      category: Tech
+    metadata:
+      category: Tech
+      expected_notification: true
+      ground_truth: "Python 3.13 final was officially released on October 7, 2024."
+      ground_truth_as_of: "2026-08-08"
+    evaluators:
+      - NotificationDecision: {}
+
+  - name: Python 99 Not Released
+    inputs:
+      search_query: "Has Python 99 been officially released?"
+      condition_description: "Python 99 has an official final release from the Python Software Foundation"
+      category: Tech
+    metadata:
+      category: Tech
+      expected_notification: false
+      ground_truth: "No Python 99 release exists."
+      ground_truth_as_of: "2026-08-08"
+    evaluators:
+      - NotificationDecision: {}
+
+  - name: UK India FTA In Force
+    inputs:
+      search_query: "Has the UK-India Free Trade Agreement entered into force?"
+      condition_description: "The UK-India Free Trade Agreement is officially in force"
+      category: Policy
+    metadata:
+      category: Policy
+      expected_notification: true
+      ground_truth: "The agreement entered into force on July 15, 2026, per the UK government."
+      ground_truth_as_of: "2026-08-08"
+    evaluators:
+      - NotificationDecision: {}
+
+  - name: Impossible Mortgage Rate
+    inputs:
+      search_query: "What is the current average 30-year fixed mortgage rate in the US?"
+      condition_description: "The average 30-year fixed mortgage rate is below 0.1%"
+      category: Finance
+    metadata:
+      category: Finance
+      expected_notification: false
+      ground_truth: "The US average 30-year fixed mortgage rate is not below 0.1%."
+      ground_truth_as_of: "2026-08-08"
+    evaluators:
+      - NotificationDecision: {}
+
 evaluators:
   - SourcesWhenNotifying: {}
   - ReasonableNextRun: {}

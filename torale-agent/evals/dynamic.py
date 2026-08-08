@@ -12,6 +12,7 @@ from pydantic_evals import Case, Dataset
 from evals.evaluators import (
     CUSTOM_EVALUATORS,
     FetchUrlUsed,
+    NotificationDecision,
     ReasonableNextRun,
     SearchToolUsed,
     SourcesWhenNotifying,
@@ -112,20 +113,36 @@ async def generate_stock_cases(client: httpx.AsyncClient) -> list[MonitoringCase
                     condition_description=f"{ticker} stock price rises above ${price + 10:.2f}",
                     category="Finance",
                 ),
-                metadata=_meta("Finance"),
+                metadata=MonitoringCaseMetadata(
+                    category="Finance",
+                    source="dynamic",
+                    generated_at=datetime.now(UTC).isoformat(),
+                    expected_notification=False,
+                    ground_truth=f"{ticker} was ${price:.2f} when this case was generated.",
+                    ground_truth_as_of=datetime.now(UTC).date().isoformat(),
+                ),
+                evaluators=(NotificationDecision(),),
             )
         )
 
-        # Case 2: threshold below current price (should notify)
+        # Case 2: current price is already above a lower threshold (should notify)
         cases.append(
             Case(
-                name=f"{ticker} Below {price - 10:.0f} (true)",
+                name=f"{ticker} Above {price - 10:.0f} (true)",
                 inputs=MonitoringCaseInput(
                     search_query=f"What is the current stock price of {company} ({ticker})?",
-                    condition_description=f"{ticker} stock price drops below ${price - 10:.2f}",
+                    condition_description=f"{ticker} stock price rises above ${price - 10:.2f}",
                     category="Finance",
                 ),
-                metadata=_meta("Finance"),
+                metadata=MonitoringCaseMetadata(
+                    category="Finance",
+                    source="dynamic",
+                    generated_at=datetime.now(UTC).isoformat(),
+                    expected_notification=True,
+                    ground_truth=f"{ticker} was ${price:.2f} when this case was generated.",
+                    ground_truth_as_of=datetime.now(UTC).date().isoformat(),
+                ),
+                evaluators=(NotificationDecision(),),
             )
         )
 
@@ -229,6 +246,7 @@ async def generate_webpage_cases(client: httpx.AsyncClient) -> list[MonitoringCa
                 category=page["category"],
             ),
             metadata=_meta(page["category"]),
+            evaluators=(FetchUrlUsed(),),
         )
         for page in pages
     ]
@@ -274,7 +292,6 @@ async def generate_and_save(output_dir: Path) -> Path:
             SourcesWhenNotifying(),
             ReasonableNextRun(),
             SearchToolUsed(),
-            FetchUrlUsed(),
         ],
     )
 

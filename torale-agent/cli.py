@@ -84,13 +84,27 @@ def run(
     with_dynamic: bool = typer.Option(
         False, "--with-dynamic", help="Include latest dynamic cases"
     ),
+    decision_only: bool = typer.Option(
+        False,
+        "--decision-only",
+        help="Run only cases with an expected notification decision",
+    ),
     dataset: Path | None = typer.Option(
         None, help="Path to a specific dataset YAML file"
     ),
 ):
     """Run evaluation suite with specified model."""
     asyncio.run(
-        _run_async(model, case, limit, passes, max_concurrency, with_dynamic, dataset)
+        _run_async(
+            model,
+            case,
+            limit,
+            passes,
+            max_concurrency,
+            with_dynamic,
+            decision_only,
+            dataset,
+        )
     )
 
 
@@ -101,6 +115,7 @@ async def _run_async(
     passes: int,
     max_concurrency: int,
     with_dynamic: bool,
+    decision_only: bool,
     dataset_path: Path | None,
 ):
     from evals.models import MonitoringDataset
@@ -117,6 +132,12 @@ async def _run_async(
 
     # Filter and slice cases in one pass
     cases = list(ds.cases)
+    if decision_only:
+        cases = [
+            c
+            for c in cases
+            if c.metadata is not None and c.metadata.expected_notification is not None
+        ]
     if case_name:
         cases = [c for c in cases if c.name == case_name]
         if not cases:
