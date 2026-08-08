@@ -45,8 +45,8 @@ uv sync --group eval
 uv run torale-agent eval list
 
 # Run evaluations with different models
-uv run torale-agent eval run --model google-gla:gemini-3-flash-preview
-uv run torale-agent eval run --model google-gla:gemini-2-0-flash-exp
+uv run torale-agent eval run --model google:gemini-3-flash-preview
+uv run torale-agent eval run --model google:gemini-2-0-flash-exp
 uv run torale-agent eval run --model claude-3-5-sonnet-20241022
 uv run torale-agent eval run --model gpt-4-turbo
 
@@ -64,7 +64,7 @@ uv run torale-agent eval compare gemini-3-flash claude-3-5-sonnet
 ```
 
 **Model IDs:**
-- Google Gemini: `google-gla:gemini-3-flash-preview`, `google-gla:gemini-2-0-flash-exp`, `google-gla:gemini-2-5-pro`, `google-gla:gemini-2-5-flash`
+- Google Gemini: `google:gemini-3-flash-preview`, `google:gemini-2-0-flash-exp`, `google:gemini-2-5-pro`, `google:gemini-2-5-flash`
   - Note: Thinking config is automatically enabled for gemini-3-* and gemini-2.5-pro models only
 - Anthropic Claude: `claude-3-5-sonnet-20241022`, `claude-opus-4-1`
 - OpenAI: `gpt-4-turbo`, `gpt-4o`

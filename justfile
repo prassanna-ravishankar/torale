@@ -108,6 +108,8 @@ reset:
 test:
     @echo "Running backend unit tests..."
     cd backend && uv run --all-extras pytest tests/ -v
+    @echo "Running agent unit and protocol tests..."
+    cd torale-agent && uv run pytest tests/ -v
 
 # Run tests with coverage
 test-cov:
@@ -142,6 +144,11 @@ lint:
     @echo "Running backend linting..."
     cd backend && uv run ruff check .
     cd backend && uv run ruff format --check .
+    @echo "Running agent linting and type checking..."
+    cd torale-agent && uv run ruff check .
+    cd torale-agent && uv run ruff format --check .
+    cd torale-agent && uv run ty check .
+    cd torale-agent && uv run python -c "import server"
     @echo "Running frontend linting..."
     cd frontend && npm run lint
     cd frontend && npx tsc --noEmit

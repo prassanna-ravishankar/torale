@@ -37,6 +37,7 @@ def merge_datasets(
 
     dynamic = load_dataset(dynamic_path)
     return Dataset(
+        name=f"{static.name}+{dynamic.name}",
         cases=list(static.cases) + list(dynamic.cases),
         evaluators=list(static.evaluators),
     )

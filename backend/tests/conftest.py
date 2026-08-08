@@ -5,18 +5,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from a2a.helpers import new_data_artifact, new_text_artifact
 from a2a.types import (
-    Artifact,
-    DataPart,
-    GetTaskResponse,
-    GetTaskSuccessResponse,
-    Part,
-    SendMessageResponse,
-    SendMessageSuccessResponse,
+    StreamResponse,
     Task,
     TaskState,
     TaskStatus,
-    TextPart,
 )
 
 JOB_MODULE = "webwhen.scheduler.job"
@@ -25,7 +19,12 @@ JOB_MODULE = "webwhen.scheduler.job"
 # --- A2A test helpers ---
 
 
-def make_a2a_task(*, artifacts=None, status_state=TaskState.completed, task_id="task-abc"):
+def make_a2a_task(
+    *,
+    artifacts=None,
+    status_state=TaskState.TASK_STATE_COMPLETED,
+    task_id="task-abc",
+):
     """Build an A2A Task for tests."""
     return Task(
         id=task_id,
@@ -37,28 +36,17 @@ def make_a2a_task(*, artifacts=None, status_state=TaskState.completed, task_id="
 
 def text_artifact(text):
     """Create an artifact with a single TextPart."""
-    return Artifact(
-        artifact_id="art-1",
-        parts=[Part(root=TextPart(kind="text", text=text))],
-    )
+    return new_text_artifact(name="result", text=text, artifact_id="art-1")
 
 
 def data_artifact(data):
     """Create an artifact with a single DataPart."""
-    return Artifact(
-        artifact_id="art-1",
-        parts=[Part(root=DataPart(kind="data", data=data))],
-    )
+    return new_data_artifact(name="result", data=data, artifact_id="art-1")
 
 
-def send_success(task):
-    """Wrap a Task in a SendMessageResponse success."""
-    return SendMessageResponse(root=SendMessageSuccessResponse(id="req-1", result=task))
-
-
-def poll_success(task):
-    """Wrap a Task in a GetTaskResponse success."""
-    return GetTaskResponse(root=GetTaskSuccessResponse(id="req-1", result=task))
+def task_stream_event(task: Task) -> StreamResponse:
+    """Wrap a Task in an A2A stream event."""
+    return StreamResponse(task=task)
 
 
 class MockTransaction:
