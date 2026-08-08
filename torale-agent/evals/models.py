@@ -24,6 +24,9 @@ class MonitoringCaseMetadata(BaseModel):
     category: str
     source: Literal["static", "dynamic"] = "static"
     generated_at: str | None = None
+    expected_notification: bool | None = None
+    ground_truth: str | None = None
+    ground_truth_as_of: str | None = None
 
 
 MonitoringCase = Case[MonitoringCaseInput, MonitoringResponse, MonitoringCaseMetadata]

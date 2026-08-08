@@ -11,7 +11,7 @@ from parallel import AsyncParallel
 from perplexity import AsyncPerplexity
 from pydantic import BaseModel, ConfigDict, Field
 
-DEFAULT_MODEL = "google:gemini-3.1-flash-lite-preview"
+DEFAULT_MODEL = "google:gemini-3.5-flash-lite"
 
 
 class ToolAnnotations(BaseModel):
