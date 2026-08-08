@@ -26,15 +26,19 @@ GENERATED_DIR = Path(__file__).parent / "evals" / "generated"
 def query(
     prompt: str = typer.Argument(..., help="Prompt to send to the agent"),
     model: str = typer.Option(DEFAULT_MODEL, help="Model to use"),
+    thinking_level: str | None = typer.Option(
+        None,
+        help="Gemini thinking level: minimal, low, medium, or high",
+    ),
     raw: bool = typer.Option(
         False, "--raw", help="Show only raw output (no formatting)"
     ),
 ):
     """Run a query against the agent for ad-hoc testing."""
-    asyncio.run(_query_async(prompt, model, raw))
+    asyncio.run(_query_async(prompt, model, thinking_level, raw))
 
 
-async def _query_async(prompt: str, model: str, raw: bool):
+async def _query_async(prompt: str, model: str, thinking_level: str | None, raw: bool):
     if not raw:
         console.print(f"\n[bold]Running query with model [cyan]{model}[/cyan][/bold]\n")
 
@@ -42,7 +46,7 @@ async def _query_async(prompt: str, model: str, raw: bool):
 
     try:
         async with create_clients() as clients:
-            agent = create_monitoring_agent(model)
+            agent = create_monitoring_agent(model, thinking_level=thinking_level)
             deps = MonitoringDeps(
                 user_id="cli-user", task_id="cli-query", clients=clients
             )
@@ -75,6 +79,10 @@ def run(
         DEFAULT_MODEL,
         help="Model to evaluate",
     ),
+    thinking_level: str | None = typer.Option(
+        None,
+        help="Gemini thinking level: minimal, low, medium, or high",
+    ),
     case: str | None = typer.Option(None, help="Specific case name to run"),
     limit: int | None = typer.Option(None, help="Limit to first N test cases"),
     passes: int = typer.Option(
@@ -97,6 +105,7 @@ def run(
     asyncio.run(
         _run_async(
             model,
+            thinking_level,
             case,
             limit,
             passes,
@@ -110,6 +119,7 @@ def run(
 
 async def _run_async(
     model: str,
+    thinking_level: str | None,
     case_name: str | None,
     limit: int | None,
     passes: int,
@@ -165,6 +175,7 @@ async def _run_async(
     report = await run_eval(
         ds,
         model=model,
+        thinking_level=thinking_level,
         max_concurrency=max_concurrency,
     )
     report.print(include_input=True, include_output=True)

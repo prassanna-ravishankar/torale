@@ -1,6 +1,8 @@
 """webwhen watch agent factory."""
 
-from pydantic_ai import Agent
+import os
+
+from pydantic_ai import Agent, NativeOutput
 from pydantic_ai.models.google import GoogleModelSettings
 
 from models import DEFAULT_MODEL, MonitoringDeps, MonitoringResponse
@@ -10,6 +12,7 @@ from tools import register_tools
 
 def create_monitoring_agent(
     model_id: str = DEFAULT_MODEL,
+    thinking_level: str | None = None,
 ) -> Agent[MonitoringDeps, MonitoringResponse]:
     """Create a monitoring agent with the specified model and all tools registered."""
     # Enable thinking for supported Gemini models (gemini-3-*, gemini-2.5-pro).
@@ -19,17 +22,30 @@ def create_monitoring_agent(
     if "gemini" in model_lower or "google" in model_lower:
         supports_thinking = "gemini-3" in model_lower or "gemini-2.5-pro" in model_lower
         if supports_thinking:
+            level = thinking_level or os.getenv("MODEL_THINKING_LEVEL", "minimal")
+            if level not in {"minimal", "low", "medium", "high"}:
+                raise ValueError(f"Unsupported thinking level: {level}")
             model_settings = GoogleModelSettings(
                 google_thinking_config={
-                    "thinking_level": "high",
+                    "thinking_level": level,
                     "include_thoughts": True,
                 },
             )
 
+    # Agent Platform open models support function calling but may reject the
+    # forced tool call Pydantic uses for its default structured-output mode.
+    # Keep tools available during the run and use native JSON Schema for the
+    # final response instead.
+    output_type = (
+        NativeOutput(MonitoringResponse)
+        if model_lower.startswith("openai-chat:")
+        else MonitoringResponse
+    )
+
     agent = Agent[MonitoringDeps, MonitoringResponse](
         model_id,
         deps_type=MonitoringDeps,
-        output_type=MonitoringResponse,
+        output_type=output_type,
         instructions=instructions,
         retries=3,
         model_settings=model_settings,

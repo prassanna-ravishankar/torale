@@ -208,6 +208,7 @@ agents:
 # Shared agent configuration
 agent:
   enabled: true
+  thinkingLevel: minimal
   image:
     name: torale-agent
 

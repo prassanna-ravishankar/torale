@@ -42,6 +42,8 @@ spec:
             secretKeyRef:
               name: {{ $.Values.secrets.name }}
               key: {{ .secretKey }}
+        - name: MODEL_THINKING_LEVEL
+          value: {{ $.Values.agent.thinkingLevel | quote }}
         - name: MEM0_API_KEY
           valueFrom:
             secretKeyRef:

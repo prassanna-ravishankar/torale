@@ -9,14 +9,13 @@ description = "Torale monitoring agent"
 requires-python = ">=3.11"
 dependencies = [
     "a2a-sdk[http-server]>=1.1.2,<2",
-    "pydantic-ai-slim[google,mcp]>=2.27.0,<3",
+    "pydantic-ai-slim[google,mcp,openai]>=2.27.0,<3",
     "mem0ai>=2.0.0b2",
     "perplexityai>=0.27.0",
     "python-dotenv>=1.2.2",
     "uvicorn>=0.34.0",
     "logfire>=4.21.0",
     "anthropic>=0.40.0",
-    "openai>=1.0.0",
     "parallel-web>=0.4.1",
     "httpx>=0.28.0",
 ]

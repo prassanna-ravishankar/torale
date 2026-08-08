@@ -50,6 +50,10 @@ uv run torale-agent eval run --model google:gemini-3.5-flash-lite
 # Run the ground-truth trigger-decision subset
 uv run torale-agent eval run --decision-only --model google:gemini-3.5-flash-lite
 
+# Compare a Gemini thinking level without changing production
+uv run torale-agent eval run --decision-only \
+  --model google:gemini-3.5-flash-lite --thinking-level minimal
+
 # Run a specific case
 uv run torale-agent eval run --case "Python 3.13 Released" --model google:gemini-3.5-flash-lite
 
@@ -59,6 +63,10 @@ uv run torale-agent eval run --limit 2
 ```
 
 Requires `GEMINI_API_KEY`. Other providers require their corresponding API key.
+
+The production agent reads `MODEL_THINKING_LEVEL` (`minimal`, `low`, `medium`,
+or `high`). It defaults to `minimal` when unset. CLI `query` and `eval run` commands
+can override the environment value with `--thinking-level`.
 
 Static cases are stored in `evals/cases.yaml`. `uv run torale-agent eval generate` creates a live-data dataset that can be included with `--with-dynamic`.
 

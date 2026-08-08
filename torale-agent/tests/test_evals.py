@@ -1,6 +1,7 @@
 """Regression tests for the monitoring evaluation harness."""
 
 from pathlib import Path
+from typing import cast
 
 import httpx
 import pytest
@@ -9,7 +10,9 @@ from evals.dynamic import generate_webpage_cases
 from evals.evaluators import FetchUrlUsed, NotificationDecision, SearchToolUsed
 from evals.models import MonitoringCaseInput, MonitoringCaseMetadata
 from evals.runner import load_dataset
+from agent import create_monitoring_agent
 from models import ActivityStep, MonitoringResponse
+from pydantic_ai.models.google import GoogleModelSettings
 from pydantic_evals.evaluators import EvaluatorContext
 from pydantic_evals.otel._errors import SpanTreeRecordingError
 
@@ -110,6 +113,45 @@ def test_static_dataset_loads_decision_regressions():
         any(isinstance(e, NotificationDecision) for e in c.evaluators)
         for c in decision_cases
     )
+
+
+def test_agent_can_override_gemini_thinking_level():
+    agent = create_monitoring_agent(
+        "google:gemini-3.5-flash-lite", thinking_level="medium"
+    )
+
+    settings = cast(GoogleModelSettings, agent.model_settings)
+    thinking = settings.get("google_thinking_config")
+    assert thinking is not None
+    assert thinking["thinking_level"] == "medium"
+
+
+def test_agent_reads_gemini_thinking_level_from_environment(monkeypatch):
+    monkeypatch.setenv("MODEL_THINKING_LEVEL", "low")
+
+    agent = create_monitoring_agent("google:gemini-3.5-flash-lite")
+
+    settings = cast(GoogleModelSettings, agent.model_settings)
+    thinking = settings.get("google_thinking_config")
+    assert thinking is not None
+    assert thinking["thinking_level"] == "low"
+
+
+def test_agent_defaults_to_minimal_gemini_thinking(monkeypatch):
+    monkeypatch.delenv("MODEL_THINKING_LEVEL", raising=False)
+
+    agent = create_monitoring_agent("google:gemini-3.5-flash-lite")
+
+    settings = cast(GoogleModelSettings, agent.model_settings)
+    thinking = settings.get("google_thinking_config")
+    assert thinking is not None
+    assert thinking["thinking_level"] == "minimal"
+
+
+def test_openai_compatible_models_use_native_structured_output():
+    agent = create_monitoring_agent("openai-chat:openai/gpt-oss-120b-maas")
+
+    assert type(agent._output_schema).__name__ == "NativeOutputSchema"
 
 
 @pytest.mark.asyncio

@@ -27,12 +27,14 @@ _eval_run_id: str | None = None
 
 
 @asynccontextmanager
-async def configure_eval(model: str) -> AsyncIterator[None]:
+async def configure_eval(
+    model: str, thinking_level: str | None = None
+) -> AsyncIterator[None]:
     """Set up shared agent and clients for an eval run, tear down after."""
     global _eval_model, _eval_clients, _eval_agent, _eval_run_id
     _eval_model = model
     _eval_run_id = uuid.uuid4().hex[:12]
-    _eval_agent = create_monitoring_agent(model)
+    _eval_agent = create_monitoring_agent(model, thinking_level=thinking_level)
     async with create_clients() as clients:
         _eval_clients = clients
         yield
