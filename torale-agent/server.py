@@ -1,39 +1,39 @@
 """Torale agent A2A server."""
 
-import asyncio
 import json
 import logging
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from uuid import uuid4
 
-import httpx
 import logfire
+from a2a.helpers import (
+    new_data_artifact_update_event,
+    new_task_from_user_message,
+    new_text_message,
+)
 from a2a.server.agent_execution import AgentExecutor
 from a2a.server.agent_execution.context import RequestContext
-from a2a.server.apps import A2AFastAPIApplication
-from a2a.server.events.event_queue import EventQueue
+from a2a.server.events import EventQueue
 from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.routes import create_agent_card_routes, create_jsonrpc_routes
 from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import (
     AgentCapabilities,
     AgentCard,
-    Artifact,
-    DataPart,
-    Message,
-    Role,
-    Task as A2ATask,
+    AgentInterface,
     TaskState,
     TaskStatus,
     TaskStatusUpdateEvent,
-    TextPart,
 )
 from dotenv import load_dotenv
-from fastapi import FastAPI
 from pydantic_ai import Agent
 from pydantic_ai.exceptions import ModelHTTPError
-from pydantic_ai.mcp import MCPServerStreamableHTTP
+from pydantic_ai.mcp import MCPToolset
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.routing import Route
 
 from agent import create_monitoring_agent
 from models import Clients, MonitoringDeps, MonitoringResponse, create_clients
@@ -41,7 +41,7 @@ from tools import extract_activity
 
 load_dotenv()
 
-logfire.configure()
+logfire.configure(send_to_logfire="if-token-present")
 logfire.instrument_pydantic_ai()
 
 logging.basicConfig(
@@ -53,32 +53,23 @@ logger = logging.getLogger(__name__)
 
 def _build_mcp_toolsets(
     mcp_servers: list[dict] | None,
-) -> tuple[list[MCPServerStreamableHTTP], list[httpx.AsyncClient]]:
+) -> list[MCPToolset]:
     """Construct Pydantic AI MCP toolsets from A2A metadata entries.
 
-    Each entry is expected to be {"toolkit": str, "url": str}. The composio API
+    Each entry is expected to be {"toolkit": str, "url": str}. The Composio API
     key is read from the process env since the backend doesn't ship the secret
-    over the wire. Returns ([], []) when mcp_servers is None/empty so the common
-    path stays allocation-free.
-
-    Composio's `mcp.generate()` returns a URL that 307-redirects to the real
-    endpoint (`.../v3/mcp/{id}` -> `.../v3/mcp/{id}/mcp`). The MCP streamable-http
-    client doesn't follow redirects by default, so we share one httpx client
-    across all toolsets with `follow_redirects=True`. The toolsets share config
-    (the same x-api-key header), so a single client suffices.
-
-    The shared client is returned alongside the toolsets so the caller can
-    close it after the agent run — otherwise each run leaks file descriptors.
+    over the wire. FastMCP owns the connection lifecycle and follows Composio's
+    endpoint redirects, so no shared HTTP client or manual cleanup is required.
     """
     if not mcp_servers:
-        return [], []
+        return []
     api_key = os.environ.get("COMPOSIO_API_KEY")
     if not api_key:
         logger.warning(
             "mcp_servers passed in metadata but COMPOSIO_API_KEY not set in agent env; "
             "MCP tools will be unreachable for this run"
         )
-        return [], []
+        return []
 
     # Build entries first so we don't allocate a client when nothing valid lands.
     valid_entries: list[tuple[str, str]] = []
@@ -91,17 +82,12 @@ def _build_mcp_toolsets(
         valid_entries.append((toolkit, url))
 
     if not valid_entries:
-        return [], []
+        return []
 
-    shared_client = httpx.AsyncClient(
-        follow_redirects=True,
-        headers={"x-api-key": api_key},
-    )
-    toolsets = [
-        MCPServerStreamableHTTP(url=url, http_client=shared_client, id=toolkit)
+    return [
+        MCPToolset(url, headers={"x-api-key": api_key}, id=toolkit)
         for toolkit, url in valid_entries
     ]
-    return toolsets, [shared_client]
 
 
 class ToraleAgentExecutor(AgentExecutor):
@@ -114,17 +100,17 @@ class ToraleAgentExecutor(AgentExecutor):
     async def _emit_failure(
         self, event_queue: EventQueue, task_id: str, context_id: str, error_data: dict
     ) -> None:
-        """Enqueue a failed A2ATask with structured error details in status.message."""
+        """Enqueue a final failed status with structured error details."""
         await event_queue.enqueue_event(
-            A2ATask(
-                id=task_id,
+            TaskStatusUpdateEvent(
+                task_id=task_id,
                 context_id=context_id,
                 status=TaskStatus(
-                    state=TaskState.failed,
-                    message=Message(
-                        message_id=str(uuid4()),
-                        role=Role.agent,
-                        parts=[TextPart(text=json.dumps(error_data))],  # type: ignore
+                    state=TaskState.TASK_STATE_FAILED,
+                    message=new_text_message(
+                        json.dumps(error_data),
+                        context_id=context_id,
+                        task_id=task_id,
                     ),
                 ),
             )
@@ -155,6 +141,13 @@ class ToraleAgentExecutor(AgentExecutor):
         task_id = context.task_id or ""
         context_id = context.context_id or ""
         user_input = context.get_user_input()
+
+        if context.message is None:
+            raise ValueError("A2A request is missing its user message")
+
+        # A2A 1.x requires task mode to start with the initial Task before any
+        # status or artifact updates are emitted.
+        await event_queue.enqueue_event(new_task_from_user_message(context.message))
 
         # Extract user_id and task_id from A2A metadata
         # Security note: This agent is deployed as ClusterIP (internal-only) in production,
@@ -196,15 +189,14 @@ class ToraleAgentExecutor(AgentExecutor):
             user_id=user_id, task_id=monitoring_task_id, clients=self.clients
         )
 
-        mcp_toolsets, mcp_http_clients = _build_mcp_toolsets(metadata.get("mcp_servers"))
+        mcp_toolsets = _build_mcp_toolsets(metadata.get("mcp_servers"))
 
         # Signal working state
         await event_queue.enqueue_event(
             TaskStatusUpdateEvent(
                 task_id=task_id,
                 context_id=context_id,
-                final=False,
-                status=TaskStatus(state=TaskState.working),
+                status=TaskStatus(state=TaskState.TASK_STATE_WORKING),
             )
         )
 
@@ -221,18 +213,22 @@ class ToraleAgentExecutor(AgentExecutor):
             if activity:
                 response.activity = activity
 
-            # Return completed Task with MonitoringResponse as DataPart artifact
+            # Stream the structured application result, then finish the task.
             await event_queue.enqueue_event(
-                A2ATask(
-                    id=task_id,
+                new_data_artifact_update_event(
+                    task_id=task_id,
                     context_id=context_id,
-                    status=TaskStatus(state=TaskState.completed),
-                    artifacts=[
-                        Artifact(
-                            artifact_id=str(uuid4()),
-                            parts=[DataPart(data=response.model_dump(mode="json"))],  # type: ignore
-                        )
-                    ],
+                    name="monitoring-response",
+                    data=response.model_dump(mode="json"),
+                    media_type="application/json",
+                    last_chunk=True,
+                )
+            )
+            await event_queue.enqueue_event(
+                TaskStatusUpdateEvent(
+                    task_id=task_id,
+                    context_id=context_id,
+                    status=TaskStatus(state=TaskState.TASK_STATE_COMPLETED),
                 )
             )
 
@@ -284,25 +280,13 @@ class ToraleAgentExecutor(AgentExecutor):
                     "message": str(e),
                 },
             )
-        finally:
-            if mcp_http_clients:
-                results = await asyncio.gather(
-                    *(client.aclose() for client in mcp_http_clients),
-                    return_exceptions=True,
-                )
-                for res in results:
-                    if isinstance(res, Exception):
-                        logger.warning(
-                            "Failed to close MCP httpx client", exc_info=res
-                        )
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         await event_queue.enqueue_event(
             TaskStatusUpdateEvent(
                 task_id=context.task_id or "",
                 context_id=context.context_id or "",
-                final=True,
-                status=TaskStatus(state=TaskState.canceled),
+                status=TaskStatus(state=TaskState.TASK_STATE_CANCELED),
             )
         )
 
@@ -310,11 +294,17 @@ class ToraleAgentExecutor(AgentExecutor):
 agent_card = AgentCard(
     name="torale-agent",
     description="Torale search monitoring agent",
-    url="http://localhost:8001/",
+    supported_interfaces=[
+        AgentInterface(
+            url=os.environ.get("AGENT_URL", "http://localhost:8001"),
+            protocol_binding="JSONRPC",
+            protocol_version="1.0",
+        )
+    ],
     version="0.1.0",
     default_input_modes=["text"],
-    default_output_modes=["text"],
-    capabilities=AgentCapabilities(),
+    default_output_modes=["application/json"],
+    capabilities=AgentCapabilities(streaming=True),
     skills=[],
 )
 
@@ -325,30 +315,31 @@ task_store = InMemoryTaskStore()
 request_handler = DefaultRequestHandler(
     agent_executor=executor,
     task_store=task_store,
+    agent_card=agent_card,
 )
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: Starlette) -> AsyncIterator[None]:
     async with create_clients() as clients:
         executor.clients = clients
-        yield
-        executor.clients = None
+        try:
+            yield
+        finally:
+            executor.clients = None
+            await request_handler.aclose()
 
 
-a2a_app = A2AFastAPIApplication(
-    agent_card=agent_card,
-    http_handler=request_handler,
-)
-
-app = a2a_app.build(lifespan=lifespan)
+async def health(_request: Request) -> JSONResponse:
+    return JSONResponse({"status": "ok"})
 
 
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
+routes = [
+    Route("/health", health, methods=["GET"]),
+    Route("/ready", health, methods=["GET"]),
+    *create_agent_card_routes(agent_card),
+    # TODO(2026-09): remove v0.3 compatibility after one stable release window.
+    *create_jsonrpc_routes(request_handler, rpc_url="/", enable_v0_3_compat=True),
+]
 
-
-@app.get("/ready")
-async def ready():
-    return {"status": "ok"}
+app = Starlette(routes=routes, lifespan=lifespan)

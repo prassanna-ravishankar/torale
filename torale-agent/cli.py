@@ -134,7 +134,7 @@ async def _run_async(
         for c in cases:
             c.inputs.passes = passes
 
-    ds = MonitoringDataset(cases=cases, evaluators=ds.evaluators)
+    ds = MonitoringDataset(name=ds.name, cases=cases, evaluators=ds.evaluators)
 
     console.print(
         f"\n[bold]Running {len(cases)} case(s) with model [cyan]{model}[/cyan]"

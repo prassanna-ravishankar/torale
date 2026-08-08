@@ -268,6 +268,7 @@ async def generate_and_save(output_dir: Path) -> Path:
         raise RuntimeError("No dynamic cases generated — all generators failed")
 
     dataset = Dataset[MonitoringCaseInput, MonitoringResponse, MonitoringCaseMetadata](
+        name="dynamic-monitoring-cases",
         cases=cases,
         evaluators=[
             SourcesWhenNotifying(),

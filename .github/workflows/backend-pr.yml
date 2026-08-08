@@ -11,6 +11,7 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'torale-agent/**'
       - '.github/workflows/backend-pr.yml'
 
 jobs:
@@ -75,3 +76,59 @@ jobs:
       - name: Run pytest
         working-directory: ./backend
         run: uv run pytest --cov=webwhen --cov-report=term-missing --cov-report=xml
+
+  agent-lint:
+    name: Agent lint and typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "torale-agent/uv.lock"
+
+      - name: Install agent dependencies
+        working-directory: ./torale-agent
+        run: uv sync --all-groups
+
+      - name: Run agent checks
+        working-directory: ./torale-agent
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run ty check .
+          uv run python -c "import server"
+
+  agent-test:
+    name: Agent tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "torale-agent/uv.lock"
+
+      - name: Install agent dependencies
+        working-directory: ./torale-agent
+        run: uv sync --all-groups
+
+      - name: Run agent tests
+        working-directory: ./torale-agent
+        run: uv run pytest tests -v
