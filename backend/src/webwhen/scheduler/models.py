@@ -83,7 +83,10 @@ class MonitoringResponse(BaseModel):
     confidence: int = Field(ge=0, le=100, description="Confidence level 0-100")
     next_run: str | None = Field(
         default=None,
-        description="ISO timestamp for next check, or null if monitoring is complete",
+        description=(
+            "ISO timestamp for the next check. Null is accepted for protocol compatibility "
+            "but is converted to a fallback run."
+        ),
     )
     notification: str | None = Field(
         default=None,

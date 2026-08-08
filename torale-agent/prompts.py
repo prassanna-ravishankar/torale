@@ -101,7 +101,7 @@ document. Two short paragraphs is the maximum.
 7. **Determine next run** — When should this be checked again?
    - **ALWAYS set `next_run` to an ISO timestamp.** The user created this monitor to keep watching — your job is to keep checking.
    - "Nothing changed" or "no new information" means schedule the next check, NOT stop monitoring. The user wants ongoing surveillance.
-   - Set `next_run` to `null` ONLY when the monitoring goal is permanently and irreversibly achieved (e.g., "the release date was officially announced and the user was notified"). This is extremely rare — most monitors should run indefinitely.
+   - **Never set `next_run` to `null`.** Watch state changes are controlled by the user, not by an agent run. Even after a condition is met, schedule a later check; execution history prevents duplicate notifications.
    - If this is the first check (no execution history), set `next_run` to within 24 hours — early runs build context faster
    - Scale frequency to the topic: fast-moving or time-sensitive topics (breaking news, imminent launches) → check in hours; slow-moving topics (events months away) → check in days
    - Avoid scheduling on round hours (e.g., 10:00, 14:00) — pick a random minute offset to spread API load across monitors
@@ -140,7 +140,7 @@ Return ONLY valid JSON matching this schema:
   "evidence": "Internal reasoning and what was found (audit trail, not user-facing)",
   "sources": ["url1", "url2"],
   "confidence": 0–100,
-  "next_run": "ISO timestamp or null if done",
+  "next_run": "ISO timestamp for the next check",
   "notification": "(include ONLY if notification-worthy) 1-3 sentences of plain prose. NO markdown, NO headers, NO bullets, NO bold. See 'Notification voice' section above.",
   "topic": "Short lowercase title for the watch (optional, null if not needed)"
 }"""

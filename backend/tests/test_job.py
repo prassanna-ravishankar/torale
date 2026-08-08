@@ -11,7 +11,7 @@ from uuid import uuid4
 import pytest
 
 from webwhen.scheduler.history import ExecutionRecord
-from webwhen.scheduler.job import _execute, execute_task_job
+from webwhen.scheduler.job import _execute, _schedule_next_run, execute_task_job
 from webwhen.scheduler.models import MonitoringResponse, NotificationContext
 
 TASK_ID = str(uuid4())
@@ -70,8 +70,8 @@ class TestExecute:
         job_mocks.webhook.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_next_run_none_completes_task(self, job_mocks):
-        """Agent returns next_run=null -> task completed after notification."""
+    async def test_next_run_none_schedules_fallback(self, job_mocks):
+        """Agent next_run=null is audited and converted to a fallback run."""
         job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
         job_mocks.agent.return_value = _make_agent_response(
             notification="Release date is Sept 9", next_run=None
@@ -79,14 +79,17 @@ class TestExecute:
         job_mocks.fetch_ctx.return_value = _make_notification_context()
         job_mocks.email.return_value = True
 
-        mock_service = MagicMock()
-        mock_service.complete = AsyncMock()
-        job_mocks.service_cls.return_value = mock_service
+        mock_sched = MagicMock()
+        job_mocks.scheduler.return_value = mock_sched
 
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
         job_mocks.email.assert_awaited_once()
-        mock_service.complete.assert_awaited_once()
+        mock_sched.add_job.assert_called_once()
+        merge_calls = [
+            call for call in job_mocks.db.execute.call_args_list if "result =" in call.args[0]
+        ]
+        assert any("completion_suppressed" in str(call) for call in merge_calls)
 
     @pytest.mark.asyncio
     async def test_next_run_set_does_not_complete(self, job_mocks):
@@ -99,7 +102,7 @@ class TestExecute:
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
         job_mocks.email.assert_awaited_once()
-        job_mocks.service_cls.assert_not_called()
+        job_mocks.scheduler.return_value.add_job.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_notification_failure_still_reschedules(self, job_mocks):
@@ -114,12 +117,11 @@ class TestExecute:
 
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
-        job_mocks.service_cls.assert_not_called()
         mock_sched.add_job.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_next_run_none_completes_even_if_notification_fails(self, job_mocks):
-        """next_run=null + notification failure -> task still completes."""
+    async def test_next_run_none_reschedules_even_if_notification_fails(self, job_mocks):
+        """A notification failure does not turn next_run=null into completion."""
         job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
         job_mocks.agent.return_value = _make_agent_response(
             notification="Condition met", next_run=None
@@ -127,13 +129,60 @@ class TestExecute:
         job_mocks.fetch_ctx.return_value = _make_notification_context()
         job_mocks.email.side_effect = RuntimeError("SMTP error")
 
-        mock_service = MagicMock()
-        mock_service.complete = AsyncMock()
-        job_mocks.service_cls.return_value = mock_service
+        mock_sched = MagicMock()
+        job_mocks.scheduler.return_value = mock_sched
 
         await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
 
-        mock_service.complete.assert_awaited_once()
+        mock_sched.add_job.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_next_run_none_without_notification_still_reschedules(self, job_mocks):
+        """No-change runs can never silently stop a watch."""
+        job_mocks.db.fetch_one = AsyncMock(return_value=_make_task_row())
+        job_mocks.agent.return_value = _make_agent_response(notification=None, next_run=None)
+        mock_sched = MagicMock()
+        job_mocks.scheduler.return_value = mock_sched
+
+        await _execute(TASK_ID, EXECUTION_ID, USER_ID, TASK_NAME)
+
+        job_mocks.email.assert_not_awaited()
+        mock_sched.add_job.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_reschedule_skips_task_that_is_no_longer_active(self, job_mocks):
+        """An in-flight run cannot schedule after a concurrent pause/archive."""
+        job_mocks.db.fetch_one = AsyncMock(return_value=None)
+        mock_sched = MagicMock()
+        job_mocks.scheduler.return_value = mock_sched
+
+        await _schedule_next_run(
+            TASK_ID,
+            USER_ID,
+            TASK_NAME,
+            datetime.now(UTC) + timedelta(hours=1),
+            execution_id=None,
+        )
+
+        mock_sched.add_job.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_reschedule_removes_job_after_concurrent_state_change(self, job_mocks):
+        """A state change between the DB claim and add_job wins the race."""
+        job_mocks.db.fetch_one = AsyncMock(side_effect=[{"id": TASK_ID}, {"state": "paused"}])
+        mock_sched = MagicMock()
+        job_mocks.scheduler.return_value = mock_sched
+
+        await _schedule_next_run(
+            TASK_ID,
+            USER_ID,
+            TASK_NAME,
+            datetime.now(UTC) + timedelta(hours=1),
+            execution_id=None,
+        )
+
+        mock_sched.add_job.assert_called_once()
+        mock_sched.remove_job.assert_called_once_with(f"task-{TASK_ID}")
 
     @pytest.mark.asyncio
     async def test_agent_failure_marks_failed(self, job_mocks):

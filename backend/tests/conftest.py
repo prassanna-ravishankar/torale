@@ -124,7 +124,6 @@ def job_mocks():
         patch(f"{JOB_MODULE}.send_email_notification", new_callable=AsyncMock) as mock_email,
         patch(f"{JOB_MODULE}.send_webhook_notification", new_callable=AsyncMock) as mock_webhook,
         patch(f"{JOB_MODULE}.get_scheduler") as mock_scheduler,
-        patch(f"{JOB_MODULE}.TaskService") as mock_service_cls,
         patch(f"{JOB_MODULE}.fetch_recent_executions", new_callable=AsyncMock) as mock_recent_execs,
     ):
         mock_db.execute = AsyncMock()
@@ -140,7 +139,6 @@ def job_mocks():
         mocks.email = mock_email
         mocks.webhook = mock_webhook
         mocks.scheduler = mock_scheduler
-        mocks.service_cls = mock_service_cls
         mocks.recent_execs = mock_recent_execs
 
         yield mocks
