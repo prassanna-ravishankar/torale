@@ -151,18 +151,33 @@ def test_other_gemini_models_keep_high_thinking_default(monkeypatch):
     assert settings["thinking"] == "high"
 
 
+def test_always_on_gemini_model_rejects_minimal_thinking():
+    with pytest.raises(ValueError, match="minimal is not supported"):
+        create_monitoring_agent("google:gemini-3-pro", thinking_level="minimal")
+
+
 def test_non_thinking_model_rejects_thinking_override():
     with pytest.raises(ValueError, match="Thinking is not supported"):
         create_monitoring_agent("google:gemini-2.0-flash", thinking_level="minimal")
 
 
 def test_openai_compatible_models_use_native_structured_output():
-    agent = create_monitoring_agent("openai-chat:openai/gpt-oss-120b-maas")
+    agent = create_monitoring_agent(
+        "openai-chat:openai/gpt-oss-120b-maas", output_mode="native"
+    )
 
     assert type(agent._output_schema).__name__ == "NativeOutputSchema"
 
 
-def test_other_openai_chat_models_expose_native_structured_output():
+def test_openai_compatible_models_default_to_tool_structured_output():
+    agent = create_monitoring_agent("openai-chat:gpt-4o-mini")
+
+    assert type(agent._output_schema).__name__ == "ToolOutputSchema"
+
+
+def test_model_output_mode_can_be_read_from_environment(monkeypatch):
+    monkeypatch.setenv("MODEL_OUTPUT_MODE", "native")
+
     agent = create_monitoring_agent("openai-chat:gpt-4o-mini")
 
     assert type(agent._output_schema).__name__ == "NativeOutputSchema"

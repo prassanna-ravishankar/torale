@@ -58,7 +58,9 @@ and should remain part of the reliability assessment.
 - Pydantic AI's generic `openai:` identifier selects the Responses API. Agent
   Platform open-model MaaS requires the explicit `openai-chat:` provider.
 - Open MaaS models need native JSON-schema output. GPT-OSS rejects the forced
-  final-result tool used by Pydantic AI's default output mode.
+  final-result tool used by Pydantic AI's default output mode. Select it
+  explicitly with `--output-mode native`; model names alone cannot establish
+  an OpenAI-compatible endpoint's capabilities.
 - Pydantic AI 2.27's OpenAI provider requires OpenAI SDK 2.45 or newer; the old
   unconstrained direct dependency resolved to an incompatible SDK.
 - The Gemini free key's 15 requests/minute limit is insufficient for a

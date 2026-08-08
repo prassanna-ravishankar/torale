@@ -54,6 +54,10 @@ uv run torale-agent eval run --decision-only --model google:gemini-3.5-flash-lit
 uv run torale-agent eval run --decision-only \
   --model google:gemini-3.5-flash-lite --thinking-level minimal
 
+# OpenAI-compatible endpoints can opt into native JSON-schema output explicitly
+uv run torale-agent eval run --decision-only \
+  --model openai-chat:openai/gpt-oss-120b-maas --output-mode native
+
 # Run a specific case
 uv run torale-agent eval run --case "Python 3.13 Released" --model google:gemini-3.5-flash-lite
 
@@ -68,6 +72,9 @@ The production agent reads `MODEL_THINKING_LEVEL` (`minimal`, `low`, `medium`,
 or `high`). Gemini 3.5 Flash-Lite defaults to `minimal` when unset; other Gemini
 models retain their compatible default. CLI `query` and `eval run` commands can
 override the environment value with `--thinking-level`.
+Structured output remains in Pydantic AI's portable `tool` mode by default.
+Set `MODEL_OUTPUT_MODE=native` or pass `--output-mode native` only when the
+selected endpoint implements native JSON-schema output.
 
 Static cases are stored in `evals/cases.yaml`. `uv run torale-agent eval generate` creates a live-data dataset that can be included with `--with-dynamic`.
 
