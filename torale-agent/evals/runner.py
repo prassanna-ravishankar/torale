@@ -6,6 +6,7 @@ from pathlib import Path
 import logfire
 from pydantic_evals import Dataset
 
+from agent import OutputMode
 from evals.evaluators import CUSTOM_EVALUATORS
 from evals.models import (
     MonitoringCaseInput,
@@ -46,13 +47,17 @@ def merge_datasets(
 async def run_eval(
     dataset: MonitoringDataset,
     model: str,
+    thinking_level: str | None = None,
+    output_mode: OutputMode | None = None,
     max_concurrency: int = 1,
     name: str | None = None,
 ) -> MonitoringReport:
     """Configure model, run evaluation, return report."""
     logfire.configure(send_to_logfire="if-token-present")
 
-    async with configure_eval(model):
+    async with configure_eval(
+        model, thinking_level=thinking_level, output_mode=output_mode
+    ):
         return await dataset.evaluate(
             run_monitoring_task,
             name=name or f"monitoring-{model}",
