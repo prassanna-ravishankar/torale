@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
@@ -46,7 +46,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
   const [editTask, setEditTask] = useState<Task | null>(null)
   const [showWelcome, setShowWelcome] = useState(false)
 
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     setIsLoading(true)
     try {
       const data = await api.getTasks()
@@ -57,11 +57,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
+    // On the first render after Clerk redirects back from sign-in, the API
+    // client may not have its token getter yet. Waiting for the backend user
+    // also makes this effect rerun once authentication setup is complete.
+    if (!isLoaded || !user) return
+
     loadTasks()
-  }, [])
+  }, [isLoaded, user, loadTasks])
 
   useEffect(() => {
     if (isLoaded && user && user.has_seen_welcome === false) {
