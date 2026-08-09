@@ -37,6 +37,7 @@ from starlette.routing import Route
 
 from agent import create_monitoring_agent
 from models import Clients, MonitoringDeps, MonitoringResponse, create_clients
+from runtime import MONITORING_USAGE_LIMITS, record_run_usage
 from tools import extract_activity
 
 load_dotenv()
@@ -205,6 +206,13 @@ class ToraleAgentExecutor(AgentExecutor):
                 user_input,
                 deps=deps,
                 toolsets=mcp_toolsets or None,
+                usage_limits=MONITORING_USAGE_LIMITS,
+            )
+            record_run_usage(
+                result,
+                operation="a2a",
+                task_id=monitoring_task_id,
+                user_id=user_id,
             )
             response = result.output
 

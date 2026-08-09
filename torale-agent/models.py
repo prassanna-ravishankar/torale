@@ -22,6 +22,51 @@ class ToolAnnotations(BaseModel):
     idempotentHint: bool | None = None
 
 
+class ToolError(BaseModel):
+    """Structured failure returned to the model when a tool cannot produce data."""
+
+    error: str
+
+
+class PerplexitySearchResult(BaseModel):
+    """One result returned by Perplexity's search API."""
+
+    title: str
+    url: str
+    snippet: str
+    date: str | None = None
+    last_updated: str | None = None
+
+
+class ParallelSearchResult(BaseModel):
+    """One result returned by Parallel's search API."""
+
+    title: str
+    url: str
+    excerpts: list[str] = Field(default_factory=list)
+
+
+class TwitterSearchResult(BaseModel):
+    """One result returned by the Twitter search API."""
+
+    text: str
+    author: str
+    url: str
+    likes: int
+    retweets: int
+    created_at: str
+
+
+class FetchResult(BaseModel):
+    """Content extracted from a URL, or a structured fetch failure."""
+
+    url: str
+    content: str | None = None
+    content_length: int | None = None
+    truncated: bool | None = None
+    error: str | None = None
+
+
 class ActivityStep(BaseModel):
     """A single step the agent took during monitoring.
 

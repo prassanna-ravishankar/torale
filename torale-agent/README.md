@@ -82,6 +82,10 @@ Static cases are stored in `evals/cases.yaml`. `uv run torale-agent eval generat
 
 The agent:
 1. Receives monitoring task parameters via A2A protocol
-2. Executes web search using Perplexity
+2. Selects explicit Perplexity, Parallel, Twitter, and direct-fetch evidence tools
 3. Analyzes results with LLM
 4. Returns structured response with evidence and confidence
+
+Search retrieval is intentionally independent from the reasoning model. Evidence
+tools return typed, provider-shaped results with Pydantic AI return schemas; the
+agent does not use Gemini native Google Search grounding.
