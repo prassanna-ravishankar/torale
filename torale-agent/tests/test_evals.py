@@ -15,6 +15,7 @@ from models import ActivityStep, MonitoringResponse
 from pydantic_ai.models.google import GoogleModelSettings
 from pydantic_evals.evaluators import EvaluatorContext
 from pydantic_evals.otel._errors import SpanTreeRecordingError
+from runtime import MONITORING_USAGE_LIMITS
 
 
 def _response(*, notification: str | None, tools: list[str] | None = None):
@@ -121,7 +122,7 @@ def test_agent_can_override_gemini_thinking_level():
     )
 
     settings = cast(GoogleModelSettings, agent.model_settings)
-    assert settings["thinking"] == "medium"
+    assert settings.get("thinking") == "medium"
 
 
 def test_agent_reads_gemini_thinking_level_from_environment(monkeypatch):
@@ -130,7 +131,7 @@ def test_agent_reads_gemini_thinking_level_from_environment(monkeypatch):
     agent = create_monitoring_agent("google:gemini-3.5-flash-lite")
 
     settings = cast(GoogleModelSettings, agent.model_settings)
-    assert settings["thinking"] == "low"
+    assert settings.get("thinking") == "low"
 
 
 def test_agent_defaults_to_minimal_gemini_thinking(monkeypatch):
@@ -139,7 +140,7 @@ def test_agent_defaults_to_minimal_gemini_thinking(monkeypatch):
     agent = create_monitoring_agent("google:gemini-3.5-flash-lite")
 
     settings = cast(GoogleModelSettings, agent.model_settings)
-    assert settings["thinking"] == "minimal"
+    assert settings.get("thinking") == "minimal"
 
 
 def test_other_gemini_models_keep_high_thinking_default(monkeypatch):
@@ -148,7 +149,7 @@ def test_other_gemini_models_keep_high_thinking_default(monkeypatch):
     agent = create_monitoring_agent("google:gemini-3-pro")
 
     settings = cast(GoogleModelSettings, agent.model_settings)
-    assert settings["thinking"] == "high"
+    assert settings.get("thinking") == "high"
 
 
 def test_always_on_gemini_model_rejects_minimal_thinking():
@@ -173,6 +174,27 @@ def test_openai_compatible_models_default_to_tool_structured_output():
     agent = create_monitoring_agent("openai-chat:gpt-4o-mini")
 
     assert type(agent._output_schema).__name__ == "ToolOutputSchema"
+
+
+def test_evidence_tools_expose_typed_return_schemas():
+    agent = create_monitoring_agent()
+
+    for name in (
+        "perplexity_search",
+        "parallel_search",
+        "twitter_search",
+        "fetch_url",
+    ):
+        tool = agent._function_toolset.tools[name]
+        assert tool.include_return_schema is True
+        assert tool.function_schema is not None
+        assert tool.function_schema.return_schema is not None
+
+
+def test_monitoring_usage_policy_bounds_runaway_agent_loops():
+    assert MONITORING_USAGE_LIMITS.request_limit == 20
+    assert MONITORING_USAGE_LIMITS.tool_calls_limit == 40
+    assert MONITORING_USAGE_LIMITS.total_tokens_limit == 100_000
 
 
 def test_model_output_mode_can_be_read_from_environment(monkeypatch):

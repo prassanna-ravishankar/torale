@@ -23,6 +23,7 @@ from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.toolsets import AbstractToolset, ToolsetTool
+from pydantic_ai.usage import RunUsage
 
 import server
 from models import MonitoringResponse
@@ -64,7 +65,11 @@ def make_context(metadata=None):
 
 
 def successful_agent():
-    result = SimpleNamespace(output=RESPONSE, all_messages=lambda: [])
+    result = SimpleNamespace(
+        output=RESPONSE,
+        all_messages=lambda: [],
+        usage=RunUsage(requests=2, tool_calls=1, input_tokens=100, output_tokens=25),
+    )
     agent = MagicMock()
     agent.run = AsyncMock(return_value=result)
     return agent
@@ -86,6 +91,9 @@ async def test_success_emits_initial_task_before_updates():
         RESPONSE.model_dump(mode="json")
     ]
     assert queue.events[3].status.state == TaskState.TASK_STATE_COMPLETED
+    run_mock = cast(AsyncMock, executor.agent.run)
+    assert run_mock.await_args is not None
+    assert run_mock.await_args.kwargs["usage_limits"].request_limit == 20
 
 
 @pytest.mark.asyncio

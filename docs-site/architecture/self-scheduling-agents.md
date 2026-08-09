@@ -22,56 +22,51 @@ flowchart LR
     C --> D[Agent: Pydantic AI + Gemini]
     D --> E[Grounded search + fetch tools]
     E --> F[Typed MonitoringResponse]
-    F --> G{condition_met?}
+    F --> G{notification?}
     G -->|yes| H[Fire trigger]
     G -->|no| I[Skip]
-    H --> J{next_run?}
+    H --> J[Reschedule APScheduler job]
     I --> J
-    J -->|timestamp| K[Reschedule APScheduler job]
-    J -->|null| L[Transition watch to completed]
-    K --> A
+    J --> A
 ```
 
 ## Components
 
 | Component | Lives in | Role |
 | --- | --- | --- |
-| Scheduler | `backend/src/torale/scheduler/` | APScheduler instance. Fires cron ticks, picks up watches, reschedules based on agent output. |
+| Scheduler | `backend/src/webwhen/scheduler/` | APScheduler instance. Picks up watches and reschedules from agent output. |
 | Agent service | `torale-agent/agent.py`, `torale-agent/server.py` | Pydantic AI agent behind an A2A-protocol server. Stateless per-execution. |
-| Tools | `torale-agent/tools.py` | Parallel search, page fetch, activity logging. The agent decides which to call. |
-| Watch state | `backend/src/torale/tasks/tasks.py`, `.../service.py` | Three-state enum (active/paused/completed) guarded by a state machine. |
+| Tools | `torale-agent/tools.py` | Perplexity, Parallel, Twitter, page fetch, memory, and connected read tools. The agent decides which to call. |
+| Watch state | `backend/src/webwhen/tasks/tasks.py`, `.../service.py` | Three-state enum (active/paused/completed) controlled by users and administrators. |
 
 ## Execution contract
 
-The backend invokes the agent with a `MonitoringDeps` payload containing the watch's `search_query`, `condition_description`, `notify_behavior`, `last_executed_at`, and optional `previous_answer`. The agent returns a typed `MonitoringResponse`:
+The backend sends the watch prompt and execution history over A2A. `MonitoringDeps` carries the user ID, watch ID, and scoped service clients. The agent returns a typed `MonitoringResponse`:
 
 ```python
 class MonitoringResponse(BaseModel):
-    condition_met: bool
-    answer: str                   # short, user-readable
-    reasoning: str                # why the agent decided as it did
-    sources: list[Source]         # filtered citations
-    next_run: datetime | None     # None = watch complete
-    activity: list[ActivityStep]  # replayable trace for the UI
+    evidence: str
+    sources: list[str]
+    confidence: int
+    next_run: str | None
+    notification: str | None
+    topic: str | None
+    activity: list[ActivityStep] | None
 ```
 
 This schema is duplicated between `torale-agent/models.py` and `backend/src/torale/scheduler/models.py` (see the note in `CLAUDE.md`). Both must stay in sync.
 
 ## Scheduling semantics
 
-Two behaviours matter:
+The agent is the source of truth for cadence, but not lifecycle. It should always return a future `next_run`, including after a trigger. Execution history helps it avoid sending the same notification repeatedly.
 
-**`notify_behavior="once"`** — fire at most one trigger, then stop scheduling. When the agent returns `condition_met=true` with `next_run=null`, the backend fires the notification and transitions the watch to `completed` via the state machine.
-
-**`notify_behavior="always"`** — fire every time the condition is met. The agent returns a `next_run` even after matches, and the watch stays `active`. The backend uses `previous_answer` to suppress trivially-identical triggers.
-
-In both modes the agent is the source of truth for cadence. The backend doesn't hard-code "check every N minutes"; it only ever respects `next_run`.
+Only an explicit user or administrator action may pause or complete a watch. If an agent returns `next_run=null`, the backend records that request, suppresses completion, and schedules a fallback run. Scheduling also re-checks watch state so an in-flight execution cannot resurrect a concurrently paused watch.
 
 ## Why this shape
 
 - **Fewer false positives.** Grounded reasoning beats byte-diffs on dynamic pages.
 - **Fewer wasted checks.** An agent that just found "announcement expected next week" can schedule itself tighter; one that found nothing can back off.
-- **Clean termination.** A `notify_behavior="once"` watch stops scheduling itself the moment the condition holds. No zombie cron jobs, no per-watch TTL configuration.
+- **Safe continuity.** A single imperfect run cannot silently complete an ongoing watch.
 - **Replayable runs.** The `activity` array in each response is a trace of what the agent did — surfaced in the frontend watch detail view for debugging.
 
 ## Adding a new tool

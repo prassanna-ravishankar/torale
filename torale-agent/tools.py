@@ -10,9 +10,20 @@ import httpx
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 
-from models import ActivityStep, Clients, MonitoringDeps, MonitoringResponse
+from models import (
+    ActivityStep,
+    Clients,
+    FetchResult,
+    MonitoringDeps,
+    MonitoringResponse,
+    ParallelSearchResult,
+    PerplexitySearchResult,
+    ToolError,
+    TwitterSearchResult,
+)
 
 _NO_CLIENTS = json.dumps({"error": "No context available"})
+_NO_CLIENTS_ERROR = ToolError(error="No context available")
 
 
 def _get_clients(ctx: RunContext[MonitoringDeps]) -> Clients | None:
@@ -79,10 +90,10 @@ async def _is_safe_url(url: str) -> bool:
         return False
 
 
-async def _fetch_and_extract(url: str) -> dict:
+async def _fetch_and_extract(url: str) -> FetchResult:
     """Fetch a URL using Lightpanda headless browser and return content as markdown."""
     if not await _is_safe_url(url):
-        return {"url": url, "error": "URL blocked: private or internal address"}
+        return FetchResult(url=url, error="URL blocked: private or internal address")
 
     proc = await asyncio.create_subprocess_exec(
         "lightpanda",
@@ -104,13 +115,13 @@ async def _fetch_and_extract(url: str) -> dict:
     except asyncio.TimeoutError:
         proc.kill()
         await proc.wait()
-        return {"url": url, "error": "Fetch timed out"}
+        return FetchResult(url=url, error="Fetch timed out")
 
     if proc.returncode != 0:
         error_msg = (
             stderr.decode().strip() if stderr else f"Exit code {proc.returncode}"
         )
-        return {"url": url, "error": error_msg}
+        return FetchResult(url=url, error=error_msg)
 
     content = stdout.decode()
     content = "\n".join(line for line in content.splitlines() if line.strip())
@@ -118,12 +129,12 @@ async def _fetch_and_extract(url: str) -> dict:
     full_length = len(content)
     truncated = full_length > FETCH_MAX_CHARS
 
-    return {
-        "url": url,
-        "content": content[:FETCH_MAX_CHARS],
-        "content_length": full_length,
-        "truncated": truncated,
-    }
+    return FetchResult(
+        url=url,
+        content=content[:FETCH_MAX_CHARS],
+        content_length=full_length,
+        truncated=truncated,
+    )
 
 
 def register_tools(agent: Agent[MonitoringDeps, MonitoringResponse]) -> None:
@@ -155,29 +166,32 @@ def register_tools(agent: Agent[MonitoringDeps, MonitoringResponse]) -> None:
         )
         return json.dumps(result, default=str)
 
-    @agent.tool
-    async def perplexity_search(ctx: RunContext[MonitoringDeps], query: str) -> str:
+    @agent.tool(include_return_schema=True)
+    async def perplexity_search(
+        ctx: RunContext[MonitoringDeps], query: str
+    ) -> list[PerplexitySearchResult] | ToolError:
         """Search the web using Perplexity for current information. Include the current year in queries for time-sensitive topics."""
         if (clients := _get_clients(ctx)) is None:
-            return _NO_CLIENTS
+            return _NO_CLIENTS_ERROR
         response = await clients.perplexity.search.create(query=query)
-        results = [
-            {
-                "title": r.title,
-                "url": r.url,
-                "snippet": r.snippet,
-                "date": r.date,
-                "last_updated": r.last_updated,
-            }
+        return [
+            PerplexitySearchResult(
+                title=r.title,
+                url=r.url,
+                snippet=r.snippet,
+                date=r.date,
+                last_updated=r.last_updated,
+            )
             for r in response.results
         ]
-        return json.dumps(results)
 
-    @agent.tool
-    async def parallel_search(ctx: RunContext[MonitoringDeps], query: str) -> str:
+    @agent.tool(include_return_schema=True)
+    async def parallel_search(
+        ctx: RunContext[MonitoringDeps], query: str
+    ) -> list[ParallelSearchResult] | ToolError:
         """Search the web using Parallel for current information. Returns structured results with URLs, titles, and content excerpts. Often finds different authoritative sources than Perplexity."""
         if (clients := _get_clients(ctx)) is None:
-            return _NO_CLIENTS
+            return _NO_CLIENTS_ERROR
         result = await clients.parallel.beta.search(
             objective=query,
             search_queries=[query],
@@ -185,23 +199,24 @@ def register_tools(agent: Agent[MonitoringDeps, MonitoringResponse]) -> None:
             max_chars_per_result=PARALLEL_SEARCH_MAX_CHARS,
             betas=PARALLEL_SEARCH_BETAS,
         )
-        results = [
-            {
-                "title": r.title,
-                "url": r.url,
-                "excerpts": r.excerpts[:PARALLEL_SEARCH_MAX_EXCERPTS]
+        return [
+            ParallelSearchResult(
+                title=r.title or r.url,
+                url=r.url,
+                excerpts=r.excerpts[:PARALLEL_SEARCH_MAX_EXCERPTS]
                 if r.excerpts
                 else [],
-            }
+            )
             for r in (result.results or [])
         ]
-        return json.dumps(results)
 
-    @agent.tool
-    async def twitter_search(ctx: RunContext[MonitoringDeps], query: str) -> str:
+    @agent.tool(include_return_schema=True)
+    async def twitter_search(
+        ctx: RunContext[MonitoringDeps], query: str
+    ) -> list[TwitterSearchResult] | ToolError:
         """Search Twitter/X for recent tweets. Best for real-time public reactions, social sentiment, and announcements posted on Twitter. Uses Twitter's advanced search syntax (e.g. 'from:user', 'min_faves:10')."""
         if (clients := _get_clients(ctx)) is None:
-            return _NO_CLIENTS
+            return _NO_CLIENTS_ERROR
         try:
             resp = await clients.twitter.get(
                 "/twitter/tweet/advanced_search",
@@ -210,30 +225,28 @@ def register_tools(agent: Agent[MonitoringDeps, MonitoringResponse]) -> None:
             resp.raise_for_status()
             tweets = resp.json().get("tweets", [])
         except httpx.HTTPStatusError as e:
-            return json.dumps({"error": f"Twitter API error: {e.response.status_code}"})
+            return ToolError(error=f"Twitter API error: {e.response.status_code}")
         except json.JSONDecodeError:
-            return json.dumps({"error": "Failed to decode response from Twitter API"})
-        results = [
-            {
-                "text": t.get("text", ""),
-                "author": t.get("author", {}).get("userName", ""),
-                "url": t.get("url", ""),
-                "likes": t.get("likeCount", 0),
-                "retweets": t.get("retweetCount", 0),
-                "created_at": t.get("createdAt", ""),
-            }
+            return ToolError(error="Failed to decode response from Twitter API")
+        return [
+            TwitterSearchResult(
+                text=t.get("text", ""),
+                author=t.get("author", {}).get("userName", ""),
+                url=t.get("url", ""),
+                likes=t.get("likeCount", 0),
+                retweets=t.get("retweetCount", 0),
+                created_at=t.get("createdAt", ""),
+            )
             for t in tweets[:TWITTER_SEARCH_MAX_RESULTS]
         ]
-        return json.dumps(results)
 
-    @agent.tool_plain
-    async def fetch_url(url: str) -> str:
+    @agent.tool_plain(include_return_schema=True)
+    async def fetch_url(url: str) -> FetchResult:
         """Fetch a URL directly and extract its content as markdown. Uses a headless browser, so JS-rendered pages work. Useful when search snippets are stale or you need to check the source."""
         try:
-            result = await _fetch_and_extract(url)
-            return json.dumps(result)
+            return await _fetch_and_extract(url)
         except Exception as e:
-            return json.dumps({"url": url, "error": str(e)})
+            return FetchResult(url=url, error=str(e))
 
 
 def extract_activity(messages: list) -> list[ActivityStep]:

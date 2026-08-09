@@ -1,90 +1,62 @@
 ---
 title: Grounded Search
-description: How webwhen combines Google Search with LLM evaluation to watch for web conditions. Pydantic AI agent, Gemini grounding, source attribution, and condition evaluation.
+description: How webwhen keeps search retrieval independent from model reasoning while preserving typed evidence and source attribution.
 ---
 
 # Grounded Search
 
-webwhen watches for conditions on the open web by combining **live search results** with an **LLM that evaluates** whether the condition is met. The combination is called _grounded search_: answers are grounded in current search data rather than the model's training cutoff.
+webwhen combines live evidence with an LLM that decides whether a watch's condition has been met. Search and reasoning are deliberately separate: changing the reasoning model does not silently change how evidence is retrieved.
 
-::: tip Naming during the transition
-Internal modules are still under `torale-agent/` and `backend/src/torale/`. The product is now webwhen; module rename is a later phase.
-:::
+## Retrieval boundary
 
-## Why grounded search
+The Pydantic AI agent can choose among explicit tools defined in `torale-agent/tools.py`:
 
-A pure LLM cannot answer "did Apple announce an iPhone release date today?" — its training data is stale and it cannot browse. A pure scraper cannot answer "is the announced date before Q2 2027?" — it has no reasoning. webwhen's pipeline does both:
+- **Perplexity Search** — synthesized current results with citations and freshness metadata.
+- **Parallel Search** — structured result excerpts that often surface primary sources missed by aggregated search.
+- **Twitter Search** — recent public posts for announcements and fast-moving conversation.
+- **Fetch URL** — direct page content when a search excerpt is stale or incomplete.
 
-- **Current information** from Google Search at execution time
-- **Source attribution** — each answer cites the pages it came from
-- **Condition evaluation** — the LLM decides whether the user's condition is satisfied
-- **Execution awareness** — the agent knows when a watch last ran and focuses on what's new
+The primary reasoning model is Gemini, but webwhen does not use Gemini's native Google Search grounding. This is an evaluated product boundary rather than a framework limitation. A November 2025 comparison found Perplexity more accurate for webwhen's monitoring cases, and Parallel was later added after it improved primary-source coverage without reducing trigger accuracy.
 
-## Pipeline
+Keeping retrieval explicit also means an eval can compare reasoning models against the same evidence tools. Provider-native search should only replace this boundary after a monitoring-specific evaluation shows a material improvement.
 
-Each execution runs the following loop inside the agent:
+## Execution loop
 
-1. **Search.** The agent issues Google Search queries (via Gemini's built-in grounding, and/or Parallel Search for broader coverage) derived from the user's `search_query`.
-2. **Read.** Top results are fetched and excerpted. The agent can follow citations when extra context is needed.
-3. **Reason.** Using the gathered evidence, the agent writes a short, user-readable answer to the query.
-4. **Evaluate.** The agent decides whether the user's `condition_description` is satisfied based on the answer + evidence.
-5. **Attribute.** The agent returns a structured response with the answer, reasoning, and a filtered list of source URLs.
+Each run follows the same evidence-driven loop:
 
-The output is a typed `MonitoringResponse` (see `torale-agent/models.py`) that the backend persists and optionally uses to fire a trigger.
+1. Review previous executions and task-specific search memories.
+2. Select an appropriate search tool and query for current information.
+3. Fetch promising source pages when snippets are insufficient.
+4. Compare new evidence with the user's condition and prior notifications.
+5. Return a typed `MonitoringResponse` containing evidence, source URLs, confidence, an optional notification, and the next run time.
 
-## Agent runtime
+Search and fetch tools return typed, provider-shaped results. Pydantic AI includes their return schemas in the tool definitions, so the model sees the actual fields without webwhen flattening provider capabilities into a lowest-common-denominator result.
 
-The agent is built with [Pydantic AI](https://ai.pydantic.dev/) on top of Gemini (primary) with graceful degradation to the paid tier when the free tier returns a 503 under load (see `backend/src/torale/scheduler/`).
+## Runtime guardrails
 
-Two capabilities drive the loop:
+Pydantic AI enforces per-run limits of 20 model requests, 40 tool calls, and 100,000 total tokens. Each successful production, CLI, and evaluation run emits request, tool-call, and token usage to Logfire in addition to the normal Pydantic AI spans.
 
-- **Google grounding** — Gemini's native search integration returns results with citations the agent can reason over.
-- **Tools** — defined in `torale-agent/tools.py`. Include parallel search (multi-query web search), page fetch (read a specific URL), and activity logging (so the frontend can replay the agent's steps).
-
-The agent runs with `retries=3` and, on supported models, extended thinking enabled.
-
-## Source filtering
-
-Gemini's grounding responses sometimes include Vertex AI redirect URLs rather than the actual source page. Before returning a result, the backend filters these out so the user sees canonical domains (for example, `apple.com`) in triggers rather than `vertexaisearch.cloud.google.com/...` redirects.
+Perplexity and Parallel retain their SDK-native bounded HTTP retries. Direct page fetching has a hard timeout and returns a structured failure the agent can act on.
 
 ## Response shape
 
-A completed execution returns:
+The agent and backend share this application contract:
 
 ```json
 {
-  "condition_met": true,
-  "answer": "Apple announced iPhone 17 will be released on September 19, 2026. Pre-orders begin September 12.",
-  "reasoning": "Apple's official newsroom post confirms a specific release date, satisfying the condition.",
-  "sources": [
-    { "uri": "https://www.apple.com/newsroom/…", "title": "Apple announces iPhone 17" }
-  ],
-  "next_run": "2026-09-20T00:00:00Z"
+  "evidence": "Apple's newsroom confirms a specific release date.",
+  "sources": ["https://www.apple.com/newsroom/…"],
+  "confidence": 96,
+  "next_run": "2026-09-20T00:07:00Z",
+  "notification": "Apple announced the iPhone 17 release date as September 19.",
+  "topic": "iPhone 17 release date",
+  "activity": []
 }
 ```
 
-`next_run` drives the scheduler. When the agent returns `next_run=null`, the backend transitions the watch to `completed` (see [Watch State Machine](/architecture/task-state-machine)).
-
-## Execution context
-
-The backend passes execution context to the agent each run:
-
-- `last_executed_at` — so the agent can prioritise _new_ information since the last check
-- `previous_answer` — so small phrasing changes don't fire false-positive triggers
-- `notify_behavior` — `once` vs `always`, which affects how aggressively the agent declares a match
-
-This context plus typed outputs is what distinguishes webwhen from a plain cron + LLM setup.
-
-## Tuning the query
-
-The query and condition are independent knobs. A good query is specific and search-engine-shaped; a good condition is objectively evaluable.
-
-- Query: "iPhone 17 release date announcement"
-- Condition: "Apple has publicly stated a specific release date"
-
-If impressions look high but the agent reports no match, the condition is probably too strict. If matches happen every run, the condition is too loose.
+`notification` is omitted when there is nothing worth telling the user. `next_run` remains populated because watch lifecycle changes belong to the user or an administrator, not to an individual agent run. If the model nevertheless returns `null`, the backend schedules a fallback rather than completing the watch.
 
 ## Related
 
-- [Self-Scheduling Agents](/architecture/self-scheduling-agents) — how the agent, scheduler, and grounded search compose into a self-driving watch loop
-- [Watch State Machine](/architecture/task-state-machine) — how execution is scheduled and terminated
+- [Self-Scheduling Agents](/architecture/self-scheduling-agents) — how evidence gathering composes with scheduling
+- [Watch State Machine](/architecture/task-state-machine) — user-controlled watch lifecycle

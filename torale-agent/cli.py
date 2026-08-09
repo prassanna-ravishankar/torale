@@ -11,6 +11,7 @@ from rich.table import Table
 
 from agent import OutputMode, create_monitoring_agent
 from models import DEFAULT_MODEL, MonitoringDeps, create_clients
+from runtime import MONITORING_USAGE_LIMITS, record_run_usage
 
 app = typer.Typer(help="Torale Agent Evaluation CLI")
 eval_app = typer.Typer(help="Run and manage evaluations")
@@ -64,7 +65,10 @@ async def _query_async(
             deps = MonitoringDeps(
                 user_id="cli-user", task_id="cli-query", clients=clients
             )
-            result = await agent.run(prompt, deps=deps)
+            result = await agent.run(
+                prompt, deps=deps, usage_limits=MONITORING_USAGE_LIMITS
+            )
+            record_run_usage(result, operation="cli", model=model)
             latency_ms = (time.perf_counter() - start_time) * 1000
 
             output_json = result.output.model_dump_json(indent=2)

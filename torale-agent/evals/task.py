@@ -16,6 +16,7 @@ from models import (
     create_clients,
 )
 from tools import extract_activity
+from runtime import MONITORING_USAGE_LIMITS, record_run_usage
 
 from evals.models import MonitoringCaseInput
 
@@ -112,7 +113,15 @@ async def run_monitoring_task(case_input: MonitoringCaseInput) -> MonitoringResp
 
     for pass_num in range(1, case_input.passes + 1):
         prompt = _build_prompt(case_input, history_block)
-        result = await _eval_agent.run(prompt, deps=deps)
+        result = await _eval_agent.run(
+            prompt, deps=deps, usage_limits=MONITORING_USAGE_LIMITS
+        )
+        record_run_usage(
+            result,
+            operation="eval",
+            model=_eval_model,
+            case=case_input.search_query,
+        )
         response = result.output
         activity = extract_activity(result.all_messages())
         if activity:
