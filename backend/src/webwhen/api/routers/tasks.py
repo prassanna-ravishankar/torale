@@ -1,4 +1,3 @@
-import json
 import logging
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
@@ -34,13 +33,17 @@ from webwhen.tasks.execution import (
 from webwhen.tasks.execution import (
     start_task_execution as _start_task_execution,
 )
-from webwhen.tasks.notifications import TaskNotificationError, prepare_notifications
+from webwhen.tasks.notifications import TaskNotificationError
 from webwhen.tasks.repository import TaskExecutionRepository, TaskRepository
 from webwhen.tasks.service import (
+    ActiveTaskLimitError,
     ForkNameConflictError,
     InvalidTransitionError,
     TaskNotFoundError,
+    TaskPersistenceError,
+    TaskScheduleError,
     TaskService,
+    TaskTransitionError,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,83 +71,25 @@ async def create_task(
     background_tasks: BackgroundTasks,
     db: Database = Depends(get_db),
 ):
-    if task.state == TaskState.ACTIVE:
-        active_count = await db.fetch_val(
-            "SELECT COUNT(*) FROM tasks WHERE user_id = $1 AND state = 'active'",
-            user.id,
-        )
-        if active_count >= settings.max_active_tasks_per_user:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Maximum of {settings.max_active_tasks_per_user} active tasks reached. Complete or pause existing tasks first.",
-            )
-
-    # Validate notifications and extract fields for database
     try:
-        validated_notifications, extracted = await prepare_notifications(task.notifications)
+        row = await TaskService(db).create(
+            task,
+            user.id,
+            settings.max_active_tasks_per_user,
+            datetime.now(UTC) + timedelta(minutes=1),
+        )
+    except ActiveTaskLimitError as exc:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
+    except TaskPersistenceError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except TaskNotificationError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-
-    final_condition = task.condition_description or task.search_query
-    initial_next_run = datetime.now(UTC) + timedelta(minutes=1)
-
-    # Create task in database
-    query = """
-        INSERT INTO tasks (
-            user_id, name, state, next_run,
-            search_query, condition_description, notifications,
-            notification_channels, notification_email, webhook_url, webhook_secret,
-            context, attached_connector_slugs
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        RETURNING *
-    """
-
-    row = await db.fetch_one(
-        query,
-        user.id,
-        task.name,
-        task.state.value,
-        initial_next_run,
-        task.search_query,
-        final_condition,
-        json.dumps(validated_notifications),
-        extracted.notification_channels,
-        extracted.notification_email,
-        extracted.webhook_url,
-        extracted.webhook_secret,
-        task.context,
-        task.attached_connector_slugs,
-    )
-
-    if not row:
+    except TaskScheduleError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to create task",
-        )
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
 
     task_id = str(row["id"])
-
-    # Create APScheduler job for automatic execution if task is active
-    if task.state == TaskState.ACTIVE:
-        try:
-            task_service = TaskService(db=db)
-            # For new tasks, create the schedule directly (not a transition)
-            await task_service.create_schedule_for_new_task(
-                task_id=UUID(task_id),
-                task_name=task.name,
-                user_id=user.id,
-                next_run=initial_next_run,
-            )
-            logger.info(f"Successfully created schedule for task {task_id}")
-        except Exception as e:
-            # If schedule creation fails, delete the task and raise error
-            logger.error(f"Failed to create schedule for task {task_id}: {str(e)}")
-            await db.execute("DELETE FROM tasks WHERE id = $1", row["id"])
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to create schedule: {str(e)}",
-            ) from e
 
     # Execute task immediately if requested
     immediate_execution_error = None
@@ -322,148 +267,26 @@ async def fork_task(
 async def update_task(
     task_id: UUID, task_update: TaskUpdate, user: CurrentUser, db: Database = Depends(get_db)
 ):
-    # First verify the task belongs to the user
-    existing = await TaskRepository(db).find_owned(task_id, user.id)
-
-    if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-
-    # Update only provided fields
-    update_data = task_update.model_dump(exclude_unset=True)
-
-    if not update_data:
-        return Task(**parse_task_row(existing))
-
-    # Validate notifications if provided
-    if "notifications" in update_data:
-        # Get old webhook URL to check if it changed
-        old_webhook_url = existing.get("webhook_url")
-
-        # Validate and extract notification fields
-        try:
-            validated_notifications, extracted = await prepare_notifications(
-                update_data["notifications"], old_webhook_url=old_webhook_url
-            )
-        except TaskNotificationError as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-
-        update_data["notifications"] = validated_notifications
-        update_data["notification_channels"] = extracted.notification_channels
-        update_data["notification_email"] = extracted.notification_email
-        update_data["webhook_url"] = extracted.webhook_url
-
-        # Only update webhook_secret if it was generated (URL changed)
-        if extracted.webhook_secret is not None:
-            update_data["webhook_secret"] = extracted.webhook_secret
-
-    # Build dynamic UPDATE query — track updated fields for rollback
-    set_clauses = []
-    params = []
-    updated_fields = []  # Track field names for rollback on transition failure
-    param_num = 1
-
-    for field, value in update_data.items():
-        # Skip state field - it's handled via TaskService below for scheduler sync
-        if field == "state":
-            continue
-
-        if field == "notifications":
-            set_clauses.append(f"{field} = ${param_num}")
-            params.append(json.dumps(value))
-        else:
-            set_clauses.append(f"{field} = ${param_num}")
-            params.append(value)
-        updated_fields.append(field)
-        param_num += 1
-
-    # If only state is being updated, set_clauses will be empty
-    if set_clauses:
-        params.append(task_id)
-        params.append(user.id)
-
-        query = f"""
-            UPDATE tasks
-            SET {", ".join(set_clauses)}
-            WHERE id = ${param_num} AND user_id = ${param_num + 1}
-            RETURNING *
-        """
-
-        row = await db.fetch_one(query, *params)
-    else:
-        # Only state (or nothing) changed, fetch the row to return
-        row = existing
-
-    if not row:
+    try:
+        result = await TaskService(db).update(task_id, user.id, task_update)
+    except TaskNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found") from exc
+    except InvalidTransitionError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to update task",
-        )
-
-    # Handle state transitions if state changed
-    if "state" in update_data and update_data["state"] != existing["state"]:
-        current_state = TaskState(existing["state"])
-        new_state = TaskState(update_data["state"])
-
-        # Validate and execute transition using TaskService
-        # This handles DB update + scheduler side effects (pause/resume/remove)
-        try:
-            task_service = TaskService(db=db)
-            await task_service.transition(
-                task_id=task_id,
-                from_state=current_state,
-                to_state=new_state,
-                user_id=user.id,
-                task_name=row["name"],
-                next_run=datetime.now(UTC) + timedelta(minutes=1),
-            )
-
-            logger.info(
-                f"Task {task_id} state transition: {current_state.value} → {new_state.value}"
-            )
-
-        except (InvalidTransitionError, Exception) as e:
-            # Rollback ALL fields updated in Phase 1, not just state
-            is_invalid = isinstance(e, InvalidTransitionError)
-            logger.error(
-                f"{'Invalid state transition' if is_invalid else 'Failed to transition task state'} "
-                f"for task {task_id}: {str(e)}. Rolling back."
-            )
-
-            # Build dynamic rollback restoring all Phase 1 fields + state
-            rollback_clauses = ["state = $1"]
-            rollback_params: list = [existing["state"]]
-            rp = 2
-            for field in updated_fields:
-                rollback_clauses.append(f"{field} = ${rp}")
-                rollback_params.append(existing[field])
-                rp += 1
-            rollback_params.append(task_id)
-
-            await db.execute(
-                f"UPDATE tasks SET {', '.join(rollback_clauses)} WHERE id = ${rp}",
-                *rollback_params,
-            )
-
-            if is_invalid:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid state transition: {str(e)}",
-                ) from e
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to change task state: {str(e)}. Task update rolled back.",
-            ) from e
-
-    # Re-fetch to get the latest state (avoids returning stale data after transitions)
-    repo = TaskRepository(db)
-    fresh_row = await repo.find_by_id_with_execution(task_id)
-    if not fresh_row:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
-
-    return parse_task_with_execution(fresh_row)
+            detail=f"Invalid state transition: {exc}",
+        ) from exc
+    except TaskPersistenceError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except TaskNotificationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except TaskTransitionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
+    if result.includes_execution:
+        return parse_task_with_execution(result.row)
+    return Task(**parse_task_row(result.row))
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)

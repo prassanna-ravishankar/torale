@@ -6,8 +6,13 @@ from uuid import uuid4
 
 import pytest
 
-from webwhen.tasks import TaskState
-from webwhen.tasks.service import InvalidTransitionError, TaskService
+from webwhen.tasks import TaskCreate, TaskState, TaskUpdate
+from webwhen.tasks.service import (
+    InvalidTransitionError,
+    TaskScheduleError,
+    TaskService,
+    TaskTransitionError,
+)
 
 
 @pytest.fixture
@@ -28,6 +33,57 @@ def task_data():
 
 
 class TestTaskService:
+    @pytest.mark.asyncio
+    async def test_create_compensates_when_schedule_creation_fails(self, mock_db_conn):
+        service = TaskService(db=mock_db_conn)
+        service.repository = MagicMock()
+        service.repository.count_active_by_user = AsyncMock(return_value=0)
+        task_id = uuid4()
+        service.repository.create_task = AsyncMock(return_value={"id": task_id})
+        service.repository.delete_by_id = AsyncMock(return_value=True)
+        service.create_schedule_for_new_task = AsyncMock(side_effect=RuntimeError("offline"))
+
+        with pytest.raises(TaskScheduleError, match="offline"):
+            await service.create(
+                TaskCreate(name="New watch", search_query="something happened"),
+                uuid4(),
+                max_active_tasks=5,
+                next_run=datetime.now(UTC),
+            )
+
+        service.repository.delete_by_id.assert_awaited_once_with(task_id)
+
+    @pytest.mark.asyncio
+    async def test_update_restores_changed_fields_when_transition_fails(self, mock_db_conn):
+        service = TaskService(db=mock_db_conn)
+        service.repository = MagicMock()
+        task_id = uuid4()
+        user_id = uuid4()
+        service.repository.find_owned = AsyncMock(
+            return_value={
+                "id": task_id,
+                "name": "Old name",
+                "state": "active",
+                "webhook_url": None,
+            }
+        )
+        service.repository.update_owned_fields = AsyncMock(
+            return_value={"id": task_id, "name": "New name", "state": "active"}
+        )
+        service.repository.restore_fields = AsyncMock()
+        service.transition = AsyncMock(side_effect=RuntimeError("scheduler unavailable"))
+
+        with pytest.raises(TaskTransitionError, match="rolled back"):
+            await service.update(
+                task_id,
+                user_id,
+                TaskUpdate(name="New name", state=TaskState.PAUSED),
+            )
+
+        service.repository.restore_fields.assert_awaited_once_with(
+            task_id, {"state": "active", "name": "Old name"}
+        )
+
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "from_state,to_state,job_method,job_return",

@@ -45,6 +45,7 @@ class TaskData(TypedDict, total=False):
     user_id: UUID
     name: str
     state: str
+    next_run: datetime | None
     search_query: str | None
     condition_description: str | None
     notifications: list[dict]

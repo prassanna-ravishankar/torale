@@ -74,6 +74,12 @@ class TaskRepository(BaseRepository):
             return await self.db.fetch_all(str(query), user_id, state.value)
         return await self.db.fetch_all(str(query), user_id)
 
+    async def count_active_by_user(self, user_id: UUID) -> int:
+        """Count active tasks owned by a user."""
+        return await self.db.fetch_val(
+            "SELECT COUNT(*) FROM tasks WHERE user_id = $1 AND state = 'active'", user_id
+        )
+
     async def find_by_id_with_execution(self, task_id: UUID) -> dict | None:
         """Find task by ID with latest execution embedded.
 
@@ -122,6 +128,42 @@ class TaskRepository(BaseRepository):
             user_id,
         )
         return row is not None
+
+    async def delete_by_id(self, task_id: UUID) -> bool:
+        """Delete by ID for compensating a failed create workflow."""
+        result = await self.db.execute("DELETE FROM tasks WHERE id = $1", task_id)
+        return result != "DELETE 0"
+
+    async def update_owned_fields(
+        self, task_id: UUID, user_id: UUID, data: TaskData
+    ) -> dict | None:
+        """Update supplied task fields while enforcing ownership."""
+        if not data:
+            return await self.find_owned(task_id, user_id)
+
+        values = dict(data)
+        if "notifications" in values:
+            values["notifications"] = json.dumps(values["notifications"])
+        assignments = [f"{field} = ${index}" for index, field in enumerate(values, start=1)]
+        params = list(values.values()) + [task_id, user_id]
+        return await self.db.fetch_one(
+            f"""
+            UPDATE tasks SET {", ".join(assignments)}
+            WHERE id = ${len(params) - 1} AND user_id = ${len(params)}
+            RETURNING *
+            """,
+            *params,
+        )
+
+    async def restore_fields(self, task_id: UUID, values: TaskData) -> None:
+        """Restore known values after a scheduler-coordinated update fails."""
+        if not values:
+            return
+        assignments = [f"{field} = ${index}" for index, field in enumerate(values, start=1)]
+        params = list(values.values()) + [task_id]
+        await self.db.execute(
+            f"UPDATE tasks SET {', '.join(assignments)} WHERE id = ${len(params)}", *params
+        )
 
     async def update_task(self, task_id: UUID, data: TaskData) -> dict:
         """Update task fields.
