@@ -6,7 +6,6 @@ export default function SignInRoutePage() {
       routing="path"
       path="/sign-in"
       signUpUrl="/sign-up"
-      forceRedirectUrl="/dashboard"
       fallbackRedirectUrl="/dashboard"
     />
   )

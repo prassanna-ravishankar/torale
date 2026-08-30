@@ -6,7 +6,9 @@ from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
+from starlette.requests import Request
 
+from webwhen.api.routers.public_tasks import get_public_task_by_id
 from webwhen.api.routers.tasks import (
     ForkTaskRequest,
     VisibilityUpdateRequest,
@@ -139,17 +141,16 @@ class TestPublicTaskAccess:
 
         mock_db.fetch_one.return_value = mock_task_row
 
-        # Call with no user (OptionalUser = None) - should succeed for public tasks
-        result = await get_task(task_id, None, mock_db)
+        request = Request({"type": "http", "method": "GET", "path": "/", "headers": []})
+        result = await get_public_task_by_id(request, task_id, mock_db)
 
         # Verify public task is accessible
         assert result.id == task_id
         assert result.name == "Public Task"
         assert result.is_public is True
         # Verify sensitive fields are scrubbed for public viewers
-        assert result.notification_email is None
-        assert result.webhook_url is None
         assert result.notifications == []
+        assert "user_id" not in result.model_dump()
 
     @pytest.mark.asyncio
     async def test_get_private_task_unauthenticated(self, mock_db):
@@ -164,7 +165,8 @@ class TestPublicTaskAccess:
         }
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_task(task_id, None, mock_db)
+            request = Request({"type": "http", "method": "GET", "path": "/", "headers": []})
+            await get_public_task_by_id(request, task_id, mock_db)
 
         assert exc_info.value.status_code == 404
 

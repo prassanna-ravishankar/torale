@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,7 +10,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Loader2, Mail, Plus, Trash2 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { useApi } from '@/hooks/useApi';
 import { getErrorMessage } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +19,7 @@ import { StatusBadge } from '@/components/torale';
 import styles from './Settings.module.css';
 
 export const EmailManagementSection: React.FC = () => {
+  const api = useApi();
   const { user } = useAuth();
   const clerkEmail = user?.email;
 
@@ -28,11 +29,7 @@ export const EmailManagementSection: React.FC = () => {
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [emailToDelete, setEmailToDelete] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadVerifiedEmails();
-  }, []);
-
-  const loadVerifiedEmails = async () => {
+  const loadVerifiedEmails = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await api.getVerifiedEmails();
@@ -43,7 +40,11 @@ export const EmailManagementSection: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [api]);
+
+  useEffect(() => {
+    void loadVerifiedEmails();
+  }, [loadVerifiedEmails]);
 
   const handleEmailVerified = (email: string) => {
     setVerifiedEmails((prev) => [...prev, email]);

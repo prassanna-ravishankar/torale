@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { publicWatchPath } from '@/lib/watchRoutes'
 import { PUBLIC_ROUTES } from '../lib/publicRoutes'
 import { fetchPublicTasksList } from '../lib/api/public'
 import { siteUrl } from '../lib/api/origin'
@@ -41,7 +42,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   )
   for (const task of tasks) {
     enumerated.push({
-      url: siteUrl(`/tasks/${task.id}`),
+      url: siteUrl(publicWatchPath(task.id)),
       lastModified: task.updated_at ? new Date(task.updated_at) : lastModified,
       priority: 0.6,
     })

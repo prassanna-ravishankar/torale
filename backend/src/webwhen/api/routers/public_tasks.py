@@ -5,18 +5,18 @@ from email.utils import format_datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
-from webwhen.access import OptionalUser
 from webwhen.api.rate_limiter import limiter
-from webwhen.api.routers.tasks import get_task
 from webwhen.api.utils.task_parsers import (
     fetch_feed_executions,
     parse_task_with_execution,
 )
 from webwhen.core.config import settings
 from webwhen.core.database import Database, get_db
+from webwhen.core.views import increment_view
 from webwhen.tasks import FeedExecution, Task
+from webwhen.tasks.repository import TaskRepository
 from webwhen.utils.jsonb import parse_jsonb
 
 # Register atom namespace once at module level (avoids per-request global mutation)
@@ -28,13 +28,15 @@ router = APIRouter(prefix="/public", tags=["public"])
 class PublicTask(Task):
     """Task model with user_id stripped for public responses."""
 
-    model_config = ConfigDict(from_attributes=True, fields={"user_id": {"exclude": True}})
+    model_config = ConfigDict(from_attributes=True)
+    user_id: UUID = Field(exclude=True)
 
 
 class PublicFeedExecution(FeedExecution):
     """Feed execution with task_user_id stripped for public responses."""
 
-    model_config = ConfigDict(from_attributes=True, fields={"task_user_id": {"exclude": True}})
+    model_config = ConfigDict(from_attributes=True)
+    task_user_id: UUID = Field(exclude=True)
 
 
 class PublicTasksResponse(BaseModel):
@@ -50,7 +52,6 @@ class PublicTasksResponse(BaseModel):
 @limiter.limit("10/minute")
 async def list_public_tasks(
     request: Request,
-    user: OptionalUser,
     offset: int = Query(0, ge=0, description="Number of tasks to skip"),
     limit: int = Query(20, ge=1, le=100, description="Number of tasks to return"),
     sort_by: str = Query("recent", enum=["recent", "popular"], description="Sort order"),
@@ -99,15 +100,16 @@ async def list_public_tasks(
     # Parse tasks using shared utility
     tasks = [parse_task_with_execution(row) for row in rows]
 
-    # Scrub sensitive fields for public viewers (non-owners)
-    scrubbed_tasks = []
-    for task in tasks:
-        is_owner = user is not None and task.user_id == user.id
-        if not is_owner:
-            task = task.model_copy(
+    # Public routes always return the same scrubbed representation, even if a
+    # browser happens to send an Authorization header.
+    scrubbed_tasks = [
+        PublicTask.model_validate(
+            task.model_copy(
                 update={"notification_email": None, "webhook_url": None, "notifications": []}
             )
-        scrubbed_tasks.append(PublicTask.model_validate(task))
+        )
+        for task in tasks
+    ]
 
     return PublicTasksResponse(
         tasks=scrubbed_tasks,
@@ -139,14 +141,20 @@ async def get_public_feed(
 async def get_public_task_by_id(
     request: Request,
     task_id: UUID,
-    user: OptionalUser,
     db: Database = Depends(get_db),
 ):
     """
     Get a public task by UUID (NO AUTH REQUIRED).
     """
-    # Delegates to the shared get_task logic (handles owner vs public access)
-    task = await get_task(task_id, user, db)
+    repo = TaskRepository(db)
+    row = await repo.find_by_id_with_execution(task_id)
+    if not row or not row["is_public"]:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+
+    increment_view(task_id)
+    task = parse_task_with_execution(row).model_copy(
+        update={"notification_email": None, "webhook_url": None, "notifications": []}
+    )
     return PublicTask.model_validate(task)
 
 

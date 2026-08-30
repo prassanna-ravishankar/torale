@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { getErrorMessage } from '@/lib/utils'
-import { api } from '@/lib/api'
+import { useApi } from '@/hooks/useApi';
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
 import { UserCard } from './cards/UserCard'
@@ -32,6 +32,7 @@ import { SectionLabel, Card, StatusBadge } from '@/components/torale'
 import type { UserData, UsersDataResponse } from './types'
 
 export function UsersTable() {
+  const api = useApi()
   const { user: currentUser } = useAuth()
   const [data, setData] = useState<UsersDataResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -50,11 +51,7 @@ export function UsersTable() {
   const [isBulkUpdating, setIsBulkUpdating] = useState(false)
   const [showBulkRoleDropdown, setShowBulkRoleDropdown] = useState(false)
 
-  useEffect(() => {
-    loadUsers()
-  }, [])
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true)
       const usersData = await api.getAdminUsers<UsersDataResponse>()
@@ -65,7 +62,11 @@ export function UsersTable() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [api])
+
+  useEffect(() => {
+    void loadUsers()
+  }, [loadUsers])
 
   const handleDeactivate = async (userId: string, email: string) => {
     if (!confirm(`Are you sure you want to deactivate user ${email}? This will free up a seat.`)) {
@@ -82,7 +83,7 @@ export function UsersTable() {
   }
 
   const handleEditRole = (user: UserData) => {
-    if (currentUser && user.clerk_user_id === currentUser.id) {
+    if (currentUser && user.clerk_user_id === currentUser.clerkId) {
       toast.error('You cannot change your own role')
       return
     }
@@ -123,7 +124,7 @@ export function UsersTable() {
     if (!data) return
 
     const selectableUsers = data.users.filter(
-      u => !currentUser || u.clerk_user_id !== currentUser.id
+      u => !currentUser || u.clerk_user_id !== currentUser.clerkId
     )
 
     if (selectedUserIds.size === selectableUsers.length) {
@@ -201,7 +202,7 @@ export function UsersTable() {
   if (!data) return null
 
   const selectableUsers = data.users.filter(
-    u => !currentUser || u.clerk_user_id !== currentUser.id
+    u => !currentUser || u.clerk_user_id !== currentUser.clerkId
   )
   const allSelected = selectedUserIds.size === selectableUsers.length && selectableUsers.length > 0
   const capacityPercentage = Math.round((data.capacity.used / data.capacity.total) * 100)
@@ -316,7 +317,7 @@ export function UsersTable() {
                 </tr>
               ) : (
                 data.users.map((user) => {
-                  const isCurrentUser = currentUser && user.clerk_user_id === currentUser.id
+                  const isCurrentUser = currentUser && user.clerk_user_id === currentUser.clerkId
                   return (
                     <tr key={user.id} className="border-b border-ink-7 hover:bg-ink-8 transition-colors">
                       <td className="p-3">
@@ -397,7 +398,7 @@ export function UsersTable() {
               <UserCard
                 key={user.id}
                 user={user}
-                currentUserClerkId={currentUser?.id}
+                currentUserClerkId={currentUser?.clerkId}
                 onDeactivate={handleDeactivate}
                 onEditRole={handleEditRole}
               />

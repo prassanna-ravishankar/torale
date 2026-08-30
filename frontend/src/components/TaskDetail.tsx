@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 
-import api from '@/lib/api'
+import { useApi } from '@/hooks/useApi'
+import { ApiError } from '@/lib/api'
 import type { Task, TaskExecution } from '@/types'
 import { AppShell } from '@/components/app/AppShell'
 import { TaskEditDialog } from '@/components/TaskEditDialog'
@@ -16,6 +17,7 @@ import { WebwhenMark } from '@/components/WebwhenMark'
 import landingStyles from '@/components/landing/Landing.module.css'
 import styles from '@/components/watch/Watch.module.css'
 import { cn, formatTimeAgo, formatTimeUntil } from '@/lib/utils'
+import { ownerWatchPath } from '@/lib/watchRoutes'
 
 interface TaskDetailProps {
   taskId: string
@@ -40,6 +42,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   onDeleted,
   currentUserId,
 }) => {
+  const api = useApi()
   const router = useRouter()
   const searchParams = useSearchParams()
   const isJustCreated = searchParams?.get('justCreated') === 'true'
@@ -47,28 +50,51 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   const [task, setTask] = useState<Task | null>(null)
   const [executions, setExecutions] = useState<TaskExecution[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [taskError, setTaskError] = useState<ApiError | null>(null)
+  const [historyError, setHistoryError] = useState<ApiError | null>(null)
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
   const loadData = useCallback(
     async (skipLoadingState = false) => {
-      if (!skipLoadingState) setIsLoading(true)
-      try {
-        const [taskData, executionsData] = await Promise.all([
-          api.getTask(taskId),
-          api.getTaskExecutions(taskId),
-        ])
-        setTask(taskData)
-        setExecutions(executionsData)
-      } catch (error) {
-        console.error('Failed to load watch:', error)
-        toast.error("Couldn't load this watch")
-      } finally {
-        if (!skipLoadingState) setIsLoading(false)
+      if (!skipLoadingState) {
+        setIsLoading(true)
+        setIsHistoryLoading(true)
       }
+
+      const taskRequest = api.getTask(taskId)
+        .then(taskData => {
+          setTask(taskData)
+          setTaskError(null)
+        })
+        .catch(error => {
+          console.error('Failed to load watch:', error)
+          setTask(null)
+          setTaskError(
+            error instanceof ApiError ? error : new ApiError(null, "We couldn't reach webwhen."),
+          )
+        })
+
+      const historyRequest = api.getTaskExecutions(taskId)
+        .then(executionsData => {
+          setExecutions(executionsData)
+          setHistoryError(null)
+        })
+        .catch(error => {
+          console.error('Failed to load watch history:', error)
+          setHistoryError(
+            error instanceof ApiError ? error : new ApiError(null, "We couldn't reach webwhen."),
+          )
+        })
+        .finally(() => setIsHistoryLoading(false))
+
+      await taskRequest
+      if (!skipLoadingState) setIsLoading(false)
+      await historyRequest
     },
-    [taskId],
+    [api, taskId],
   )
 
   useEffect(() => {
@@ -84,6 +110,20 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
     const interval = setInterval(() => loadData(true), 3000)
     return () => clearInterval(interval)
   }, [isJustCreated, task, executions, loadData])
+
+  const retryHistory = async () => {
+    setIsHistoryLoading(true)
+    try {
+      setExecutions(await api.getTaskExecutions(taskId))
+      setHistoryError(null)
+    } catch (error) {
+      setHistoryError(
+        error instanceof ApiError ? error : new ApiError(null, "We couldn't reach webwhen."),
+      )
+    } finally {
+      setIsHistoryLoading(false)
+    }
+  }
 
   const handleRunNow = async () => {
     setIsExecuting(true)
@@ -162,21 +202,53 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
 
   // === Render ============================================================
 
-  if (isLoading || !task) {
+  if (isLoading) {
     return (
       <AppShell crumbs={[{ label: 'Watches', href: '/dashboard' }, { label: 'watch' }]}>
-        <div className={styles.loading}>{isLoading ? 'loading watch…' : 'watch not found'}</div>
-        {!isLoading && (
-          <div style={{ textAlign: 'center', marginTop: 16 }}>
-            <button
-              type="button"
-              className={cn(landingStyles.btn, landingStyles.btnSecondary)}
-              onClick={onBack}
-            >
-              back to watches
-            </button>
+        <div className={styles.loading}>loading watch…</div>
+      </AppShell>
+    )
+  }
+
+  if (!task) {
+    const status = taskError?.status
+    const title = status === 404
+      ? 'watch not found'
+      : status === 403
+        ? 'you don’t have access to this watch'
+        : status === 401
+          ? 'your session has expired'
+          : 'this watch couldn’t load'
+    const canRetry = status !== 404 && status !== 403 && status !== 401
+
+    return (
+      <AppShell crumbs={[{ label: 'Watches', href: '/dashboard' }, { label: 'watch' }]}>
+        <section className={styles.errorState} aria-live="polite">
+          <h1>{title}</h1>
+          <p>
+            {status === 404
+              ? 'It may have been deleted, made private, or the link may be incorrect.'
+              : status === 401
+                ? 'Sign in again to continue to your watches.'
+                : taskError?.detail || 'Please try again in a moment.'}
+          </p>
+          <div className={styles.errorActions}>
+            {canRetry && (
+              <button type="button" className={cn(landingStyles.btn, landingStyles.btnPrimary)} onClick={() => void loadData()}>
+                try again
+              </button>
+            )}
+            {status === 401 ? (
+              <button type="button" className={cn(landingStyles.btn, landingStyles.btnPrimary)} onClick={() => router.push(`/sign-in?redirect_url=${encodeURIComponent(ownerWatchPath(taskId))}`)}>
+                sign in again
+              </button>
+            ) : (
+              <button type="button" className={cn(landingStyles.btn, landingStyles.btnSecondary)} onClick={onBack}>
+                back to watches
+              </button>
+            )}
           </div>
-        )}
+        </section>
       </AppShell>
     )
   }
@@ -229,7 +301,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
         try {
           const forked = await api.forkTask(taskId)
           toast.success('copied to your watches')
-          router.push(`/dashboard/tasks/${forked.id}?justCreated=true`)
+          router.push(`${ownerWatchPath(forked.id)}?justCreated=true`)
         } catch (error) {
           console.error('Failed to fork watch:', error)
           toast.error("Couldn't copy the watch")
@@ -299,7 +371,18 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       )}
 
       <h2 className={styles.sectionH}>recent runs</h2>
-      <RunTimeline executions={executions} />
+      {isHistoryLoading && !historyError && (
+        <div className={styles.historyLoading}>loading recent runs…</div>
+      )}
+      {historyError && (
+        <div className={styles.historyError} role="status">
+          <span>recent runs couldn’t load</span>
+          <button type="button" onClick={() => void retryHistory()} disabled={isHistoryLoading}>
+            {isHistoryLoading ? 'trying…' : 'try again'}
+          </button>
+        </div>
+      )}
+      {!isHistoryLoading && <RunTimeline executions={executions} />}
 
       <TaskEditDialog
         task={task}

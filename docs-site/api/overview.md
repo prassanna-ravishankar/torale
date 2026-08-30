@@ -45,7 +45,7 @@ Generate API keys at [webwhen.ai/settings/api-keys](https://webwhen.ai/settings/
 ```
 POST   /api/v1/tasks                       # Create a watch
 GET    /api/v1/tasks                       # List your watches
-GET    /api/v1/tasks/{id}                  # Get a watch (public or owned)
+GET    /api/v1/tasks/{id}                  # Get an owned or public watch (auth required)
 PUT    /api/v1/tasks/{id}                  # Update a watch
 DELETE /api/v1/tasks/{id}                  # Delete a watch
 PATCH  /api/v1/tasks/{id}/visibility       # Toggle public/private
@@ -67,6 +67,10 @@ GET    /api/v1/notifications/sends         # Notification send history
 GET    /api/v1/public/tasks                        # Discover public watches
 GET    /api/v1/public/tasks/id/{task_id}           # Get a public watch by UUID
 ```
+
+Public endpoints always return a scrubbed representation. Supplying an
+`Authorization` header does not expose owner-only fields; use the authenticated
+`/api/v1/tasks/{id}` route for the owner view.
 
 ### Authentication and user management
 

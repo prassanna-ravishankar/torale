@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getErrorMessage } from '@/lib/utils'
-import { api } from '@/lib/api'
+import { useApi } from '@/hooks/useApi';
 import { AlertTriangle, Loader2, CheckCircle2, Search, User, Clock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { SectionLabel, Card } from '@/components/torale'
@@ -17,15 +17,12 @@ interface ErrorExecution {
 }
 
 export function ErrorsList() {
+  const api = useApi()
   const [errors, setErrors] = useState<ErrorExecution[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadErrors()
-  }, [])
-
-  const loadErrors = async () => {
+  const loadErrors = useCallback(async () => {
     try {
       setLoading(true)
       const data = await api.getAdminErrors<{ errors: ErrorExecution[] }>({ limit: 50 })
@@ -36,7 +33,11 @@ export function ErrorsList() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [api])
+
+  useEffect(() => {
+    void loadErrors()
+  }, [loadErrors])
 
   if (loading) {
     return (

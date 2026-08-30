@@ -1,7 +1,8 @@
-import { api } from '@/lib/api'
+import { useApi } from '@/hooks/useApi';
 import { useAuth } from '@/contexts/AuthContext'
 
 export function useWelcomeFlow() {
+  const api = useApi()
   const { refreshUser } = useAuth()
 
   const handleWelcomeComplete = async () => {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import api from '@/lib/api';
+import { useApi } from '@/hooks/useApi';
 import type { AvailableToolkit, UserConnection } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { ReconnectButton } from './ReconnectButton';
@@ -22,6 +22,7 @@ interface DegradedEntry {
 export const ConnectorDegradationBanner: React.FC<ConnectorDegradationBannerProps> = ({
   attachedSlugs,
 }) => {
+  const api = useApi();
   const { user } = useAuth();
   const enabled = connectorsEnabled(user);
   const [degraded, setDegraded] = useState<DegradedEntry[]>([]);
@@ -68,7 +69,7 @@ export const ConnectorDegradationBanner: React.FC<ConnectorDegradationBannerProp
     return () => {
       cancelled = true;
     };
-  }, [attachedSlugs, enabled]);
+  }, [api, attachedSlugs, enabled]);
 
   if (!loaded || degraded.length === 0) return null;
 

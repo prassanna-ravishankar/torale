@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 import { AuthProvider } from '@/contexts/AuthContext'
 import { NoAuthProvider } from '@/contexts/NoAuthProvider'
-import { AuthedApiBootstrap } from './AuthedApiBootstrap'
+import { AuthReadyBoundary } from './AuthReadyBoundary'
 
 // The (app) route group is the only place (alongside (auth)) where Clerk
 // mounts. Marketing routes live outside this subtree and never load Clerk JS,
@@ -19,14 +19,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   if (process.env.NEXT_PUBLIC_WEBWHEN_NOAUTH === '1') {
     return (
       <NoAuthProvider>
-        <AuthedApiBootstrap>{children}</AuthedApiBootstrap>
+        <AuthReadyBoundary>{children}</AuthReadyBoundary>
       </NoAuthProvider>
     )
   }
   return (
     <ClerkProvider waitlistUrl="/waitlist">
       <AuthProvider>
-        <AuthedApiBootstrap>{children}</AuthedApiBootstrap>
+        <AuthReadyBoundary>{children}</AuthReadyBoundary>
       </AuthProvider>
     </ClerkProvider>
   )

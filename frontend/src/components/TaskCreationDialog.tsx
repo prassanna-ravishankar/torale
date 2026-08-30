@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ConnectorPickerSection } from "@/components/connectors/ConnectorPickerSection";
 import type { Task } from "@/types";
-import api from "@/lib/api";
+import { useApi } from "@/hooks/useApi";
 import { toast } from "sonner";
 import { cn, getErrorMessage } from "@/lib/utils";
 import styles from "./composer/Composer.module.css";
@@ -25,6 +25,7 @@ export const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
   onOpenChange,
   onTaskCreated,
 }) => {
+  const api = useApi();
   const [condition, setCondition] = useState("");
   const [attachedConnectors, setAttachedConnectors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);

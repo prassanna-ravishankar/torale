@@ -10,7 +10,7 @@ from asyncpg.exceptions import UniqueViolationError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
-from webwhen.access import CurrentUser, OptionalUser
+from webwhen.access import CurrentUser
 from webwhen.api.rate_limiter import get_user_or_ip, limiter
 from webwhen.api.utils.task_parsers import (
     fetch_feed_executions,
@@ -378,12 +378,12 @@ async def start_task_execution(
 
 
 @router.get("/{task_id}", response_model=Task)
-async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get_db)):
+async def get_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
     """
-    Get a task by ID. Supports both authenticated and unauthenticated access.
+    Get a task by ID for an authenticated user.
 
     - If user is authenticated and owns the task: full task details
-    - If task is public: read-only access for anyone
+    - If task is public: read-only access for authenticated non-owners
     - Otherwise: 404
     """
     repo = TaskRepository(db)
@@ -396,7 +396,7 @@ async def get_task(task_id: UUID, user: OptionalUser, db: Database = Depends(get
         )
 
     # Check permissions: owner has full access, others only if public
-    is_owner = user is not None and row["user_id"] == user.id
+    is_owner = row["user_id"] == user.id
     is_public = row["is_public"]
 
     if not is_owner and not is_public:
@@ -840,14 +840,14 @@ async def _fetch_task_executions(
 
 @router.get("/{task_id}/executions", response_model=list[TaskExecution])
 async def get_task_executions(
-    task_id: UUID, user: OptionalUser, limit: int = 100, db: Database = Depends(get_db)
+    task_id: UUID, user: CurrentUser, limit: int = 100, db: Database = Depends(get_db)
 ):
     return await _fetch_task_executions(db, task_id, user, limit)
 
 
 @router.get("/{task_id}/notifications", response_model=list[TaskExecution])
 async def get_task_notifications(
-    task_id: UUID, user: OptionalUser, limit: int = 100, db: Database = Depends(get_db)
+    task_id: UUID, user: CurrentUser, limit: int = 100, db: Database = Depends(get_db)
 ):
     """
     Get task executions where the condition was met (notifications).

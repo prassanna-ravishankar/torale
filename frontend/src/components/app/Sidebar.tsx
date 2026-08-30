@@ -2,6 +2,7 @@
 
 import { lazy, Suspense } from 'react'
 import Link from 'next/link'
+import { ownerWatchPath } from '@/lib/watchRoutes'
 import { usePathname } from 'next/navigation'
 import { Eye, Bell, Archive, Shield, Settings, Plug } from 'lucide-react'
 
@@ -59,7 +60,7 @@ interface RecentWatchProps {
 
 function RecentWatch({ watch, onClick }: RecentWatchProps) {
   const pathname = usePathname() || ''
-  const isActive = pathname === `/dashboard/tasks/${watch.id}`
+  const isActive = pathname === ownerWatchPath(watch.id)
   const status =
     watch.last_execution?.notification != null
       ? 'triggered'
@@ -70,7 +71,7 @@ function RecentWatch({ watch, onClick }: RecentWatchProps) {
           : 'active'
   return (
     <Link
-      href={`/dashboard/tasks/${watch.id}`}
+      href={ownerWatchPath(watch.id)}
       onClick={onClick}
       className={cn(styles.watch, isActive && styles.active)}
     >

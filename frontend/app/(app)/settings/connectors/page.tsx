@@ -2,16 +2,15 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import { Loader2 } from 'lucide-react'
 import { AppShell } from '@/components/app/AppShell'
 import { ConnectorsPage } from '@/route-views/ConnectorsPage'
 import { useAuth } from '@/contexts/AuthContext'
 import { connectorsEnabled } from '@/components/connectors/connectorsFlag'
 
 export default function ConnectorsRoutePage() {
-  const { isLoaded, user } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
-  const allowed = isLoaded ? connectorsEnabled(user) : null
+  const allowed = connectorsEnabled(user)
 
   useEffect(() => {
     if (allowed === false) {
@@ -19,13 +18,7 @@ export default function ConnectorsRoutePage() {
     }
   }, [allowed, router])
 
-  if (!isLoaded || allowed === false) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
+  if (!allowed) return null
 
   return (
     <AppShell

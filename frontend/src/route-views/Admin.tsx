@@ -8,7 +8,7 @@ import { ExecutionsTable } from '@/components/admin/ExecutionsTable'
 import { ErrorsList } from '@/components/admin/ErrorsList'
 import { UsersTable } from '@/components/admin/UsersTable'
 import { WaitlistTable } from '@/components/admin/WaitlistTable'
-import { Shield, BarChart3, Search, Activity, AlertTriangle, Users, UserPlus, Loader2 } from 'lucide-react'
+import { Shield, BarChart3, Search, Activity, AlertTriangle, Users, UserPlus } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
 type AdminTab = 'overview' | 'tasks' | 'executions' | 'errors' | 'users' | 'waitlist'
@@ -23,7 +23,7 @@ const tabs: { id: AdminTab; label: string; icon: typeof Shield }[] = [
 ]
 
 export function Admin() {
-  const { user, isLoaded } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
   const [taskIdToExpand, setTaskIdToExpand] = useState<string | null>(null)
@@ -36,19 +36,10 @@ export function Admin() {
   const isAdmin = user?.publicMetadata?.role === 'admin'
 
   useEffect(() => {
-    if (isLoaded && user && !isAdmin) {
+    if (user && !isAdmin) {
       router.replace('/')
     }
-  }, [isLoaded, user, isAdmin, router])
-
-  // Wait for user to load
-  if (!isLoaded || !user) {
-    return (
-      <div className="min-h-screen bg-ink-8 flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-ink-4" />
-      </div>
-    )
-  }
+  }, [user, isAdmin, router])
 
   if (!isAdmin) {
     return null

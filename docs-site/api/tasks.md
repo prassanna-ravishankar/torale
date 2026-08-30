@@ -149,10 +149,10 @@ curl -X GET "https://api.webwhen.ai/api/v1/tasks?state=active" \
 
 ### Get a watch
 
-Get details for a specific watch. Supports authenticated and unauthenticated access.
+Get details for a specific watch. This endpoint requires authentication.
 
 - Owner: full watch details
-- Public watch, non-owner: read-only, sensitive fields (email, webhook, notifications) scrubbed
+- Public watch, authenticated non-owner: read-only, sensitive fields scrubbed
 - Private watch, non-owner: 404
 
 **Endpoint:** `GET /api/v1/tasks/{id}`
@@ -160,6 +160,10 @@ Get details for a specific watch. Supports authenticated and unauthenticated acc
 **Response:** `200 OK`
 
 Returns a Task object (same schema as the create response). Includes embedded `last_execution` when available.
+
+For anonymous access, use `GET /api/v1/public/tasks/id/{id}`. That endpoint
+only returns public watches and always strips owner identity and notification
+configuration, even when the request includes credentials.
 
 ### Update a watch
 

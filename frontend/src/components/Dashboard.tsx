@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
-import api from '@/lib/api'
+import { useApi } from '@/hooks/useApi';
 import type { Task } from '@/types'
 import { AppShell } from '@/components/app/AppShell'
 import { TaskCreationDialog } from '@/components/TaskCreationDialog'
@@ -35,7 +35,8 @@ interface DashboardProps {
  * counts + Recent section. Topbar shows "Watches" crumb + "New watch →" CTA.
  */
 export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
-  const { user, isLoaded } = useAuth()
+  const api = useApi()
+  const { user } = useAuth()
   const { handleWelcomeComplete } = useWelcomeFlow()
   const searchParams = useSearchParams()
   const initialFilter = (searchParams?.get('filter') as 'triggered' | 'all' | null) ?? 'all'
@@ -57,24 +58,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTaskClick }) => {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [api])
 
   useEffect(() => {
-    // On the first render after Clerk redirects back from sign-in, the API
-    // client may not have its token getter yet. Waiting for the backend user
-    // also makes this effect rerun once authentication setup is complete.
-    if (!isLoaded || !user) return
-
-    loadTasks()
-  }, [isLoaded, user, loadTasks])
+    void loadTasks()
+  }, [loadTasks])
 
   useEffect(() => {
-    if (isLoaded && user && user.has_seen_welcome === false) {
+    if (user?.has_seen_welcome === false) {
       setShowWelcome(true)
-    } else if (isLoaded && user && user.has_seen_welcome === true) {
+    } else if (user?.has_seen_welcome === true) {
       setShowWelcome(false)
     }
-  }, [user, isLoaded])
+  }, [user])
 
   const onWelcomeComplete = async () => {
     await handleWelcomeComplete()

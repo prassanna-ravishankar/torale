@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { publicWatchPath } from '@/lib/watchRoutes'
 import ReactMarkdown from 'react-markdown'
 import rehypeSanitize from 'rehype-sanitize'
 
@@ -60,7 +61,7 @@ function FeedEntry({ execution }: { execution: PublicFeedExecution }) {
 
   return (
     <Link
-      href={`/tasks/${execution.task_id}`}
+      href={publicWatchPath(execution.task_id)}
       className={styles.entry}
       aria-label={`Open watch ${execution.task_name}`}
     >
@@ -111,7 +112,7 @@ export default async function ExplorePage() {
     itemListElement: feed.slice(0, 20).map((ex, idx) => ({
       '@type': 'ListItem',
       position: idx + 1,
-      url: `/tasks/${ex.task_id}`,
+      url: publicWatchPath(ex.task_id),
       name: ex.task_name,
     })),
   }

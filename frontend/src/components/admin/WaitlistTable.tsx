@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api } from '@/lib/api'
+import { useApi } from '@/hooks/useApi';
 import { toast } from 'sonner'
 import { WaitlistEntryCard } from './cards/WaitlistEntryCard'
 import { Loader2, Users, Copy, Trash2, CheckCircle2, Clock, UserCheck } from 'lucide-react'
@@ -21,6 +21,7 @@ interface WaitlistStats {
 }
 
 export function WaitlistTable() {
+  const api = useApi()
   const [entries, setEntries] = useState<WaitlistEntry[]>([])
   const [stats, setStats] = useState<WaitlistStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -37,7 +38,7 @@ export function WaitlistTable() {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter])
+  }, [api, statusFilter])
 
   const loadStats = useCallback(async () => {
     try {
@@ -46,7 +47,7 @@ export function WaitlistTable() {
     } catch (error) {
       console.error('Failed to load stats:', error)
     }
-  }, [])
+  }, [api])
 
   useEffect(() => {
     loadWaitlist()

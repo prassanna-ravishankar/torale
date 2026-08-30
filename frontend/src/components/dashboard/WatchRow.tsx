@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { ownerWatchPath } from '@/lib/watchRoutes'
 import { MoreHorizontal } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -61,7 +62,7 @@ export const WatchRow: React.FC<WatchRowProps> = ({ watch, onMore }) => {
   const nextCheck = watch.next_run
 
   return (
-    <Link href={`/dashboard/tasks/${watch.id}`} className={styles.row}>
+    <Link href={ownerWatchPath(watch.id)} className={styles.row}>
       <span className={cn(styles.dot, styles[status])} aria-hidden />
       <div className={styles.text}>
         <p className={styles.q}>{watch.condition_description || watch.name}</p>

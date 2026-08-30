@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Loader2, Plus, Trash2, Copy, CheckCircle2, ShieldAlert } from 'lucide-react';
-import { api } from '@/lib/api';
+import { useApi } from '@/hooks/useApi';
 import { getErrorMessage } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,6 +26,7 @@ import styles from './Settings.module.css';
 import modalStyles from '@/components/ui/modal/Modal.module.css';
 
 export const ApiKeyManagementSection: React.FC = () => {
+  const api = useApi();
   const { user } = useAuth();
   const userRole = user?.publicMetadata?.role as string | undefined;
   const isDeveloper = userRole === 'developer' || userRole === 'admin';
@@ -41,15 +42,7 @@ export const ApiKeyManagementSection: React.FC = () => {
   const [keyToCopy, setKeyToCopy] = useState<string | null>(null);
   const [keyToRevoke, setKeyToRevoke] = useState<ApiKey | null>(null);
 
-  useEffect(() => {
-    if (isDeveloper) {
-      loadApiKeys();
-    } else {
-      setIsLoading(false);
-    }
-  }, [isDeveloper]);
-
-  const loadApiKeys = async () => {
+  const loadApiKeys = useCallback(async () => {
     setIsLoading(true);
     try {
       const keys = await api.getApiKeys();
@@ -60,7 +53,15 @@ export const ApiKeyManagementSection: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [api]);
+
+  useEffect(() => {
+    if (isDeveloper) {
+      void loadApiKeys();
+    } else {
+      setIsLoading(false);
+    }
+  }, [isDeveloper, loadApiKeys]);
 
   const handleCreateClick = () => {
     setNewKeyName('');

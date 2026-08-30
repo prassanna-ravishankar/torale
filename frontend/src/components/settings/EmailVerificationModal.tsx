@@ -11,7 +11,7 @@ import {
   InputOTPSlot,
 } from '@/components/ui/input-otp';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { api } from '@/lib/api';
+import { useApi } from '@/hooks/useApi';
 import { getErrorMessage } from '@/lib/utils';
 import { toast } from 'sonner';
 import settingsStyles from './Settings.module.css';
@@ -30,6 +30,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
   onOpenChange,
   onVerified,
 }) => {
+  const api = useApi();
   const [step, setStep] = useState<Step>('enter_email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
