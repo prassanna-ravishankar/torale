@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiError, createApiClient } from './api'
 
@@ -9,6 +9,23 @@ const jsonResponse = (body: unknown, status = 200) =>
   })
 
 describe('ApiClient authentication', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('keeps the browser receiver when using the default fetch implementation', async () => {
+    const browserFetch = vi.fn(function (this: typeof globalThis) {
+      if (this !== globalThis) throw new TypeError('Illegal invocation')
+      return Promise.resolve(jsonResponse({ id: 'watch-id' }))
+    })
+    vi.stubGlobal('fetch', browserFetch)
+
+    const client = createApiClient({ authMode: 'noauth' })
+
+    await expect(client.getTask('watch-id')).resolves.toMatchObject({ id: 'watch-id' })
+    expect(browserFetch.mock.contexts[0]).toBe(globalThis)
+  })
+
   it('does not send an authenticated request until Clerk returns a token', async () => {
     const fetchImpl = vi.fn()
     const client = createApiClient({

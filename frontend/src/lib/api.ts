@@ -58,10 +58,11 @@ export class ApiClient {
   private readonly tokenGetter?: TokenGetter
   private readonly fetchImpl: typeof globalThis.fetch
 
-  constructor({ authMode, getToken, fetchImpl = globalThis.fetch }: ApiClientOptions) {
+  constructor({ authMode, getToken, fetchImpl }: ApiClientOptions) {
     this.authMode = authMode
     this.tokenGetter = getToken
-    this.fetchImpl = fetchImpl
+    // Browser fetch is a host method and must retain its Window receiver.
+    this.fetchImpl = fetchImpl ?? globalThis.fetch.bind(globalThis)
   }
 
   // Read API URL from build-time env var
