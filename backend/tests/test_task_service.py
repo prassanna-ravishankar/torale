@@ -1,13 +1,15 @@
 """Tests for TaskService - state transition and orchestration logic."""
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 from uuid import uuid4
 
 import pytest
 
 from webwhen.tasks import TaskCreate, TaskState, TaskUpdate
+from webwhen.tasks.repository import TaskRepository
 from webwhen.tasks.service import (
+    ActiveTaskLimitError,
     InvalidTransitionError,
     TaskScheduleError,
     TaskService,
@@ -32,7 +34,72 @@ def task_data():
     }
 
 
+@pytest.fixture
+def service_and_repository(mock_db_conn):
+    service = TaskService(db=mock_db_conn)
+    repository = create_autospec(TaskRepository, instance=True)
+    service.repository = repository
+    return service, repository
+
+
 class TestTaskService:
+    @pytest.mark.asyncio
+    async def test_create_paused_watch_skips_limit_and_schedule(self, service_and_repository):
+        service, repository = service_and_repository
+        task_id = uuid4()
+        repository.create_task.return_value = {"id": task_id, "state": "paused"}
+        service.create_schedule_for_new_task = AsyncMock()
+
+        result = await service.create(
+            TaskCreate(
+                name="Paused watch",
+                search_query="something happened",
+                state=TaskState.PAUSED,
+            ),
+            uuid4(),
+            max_active_tasks=0,
+            next_run=datetime.now(UTC),
+        )
+
+        assert result["id"] == task_id
+        repository.count_active_by_user.assert_not_awaited()
+        service.create_schedule_for_new_task.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_create_rejects_active_watch_before_persistence(self, service_and_repository):
+        service, repository = service_and_repository
+        repository.count_active_by_user.return_value = 3
+        service.create_schedule_for_new_task = AsyncMock()
+
+        with pytest.raises(ActiveTaskLimitError, match="Maximum of 3 active tasks"):
+            await service.create(
+                TaskCreate(name="Active watch", search_query="something happened"),
+                uuid4(),
+                max_active_tasks=3,
+                next_run=datetime.now(UTC),
+            )
+
+        repository.create_task.assert_not_awaited()
+        service.create_schedule_for_new_task.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_empty_update_returns_existing_row_without_write(self, service_and_repository):
+        service, repository = service_and_repository
+        task_id = uuid4()
+        user_id = uuid4()
+        repository.find_owned.return_value = {
+            "id": task_id,
+            "user_id": user_id,
+            "name": "Unchanged",
+            "state": "paused",
+        }
+
+        result = await service.update(task_id, user_id, TaskUpdate())
+
+        assert result.row["name"] == "Unchanged"
+        assert result.includes_execution is False
+        repository.update_owned_fields.assert_not_awaited()
+
     @pytest.mark.asyncio
     async def test_create_compensates_when_schedule_creation_fails(self, mock_db_conn):
         service = TaskService(db=mock_db_conn)
