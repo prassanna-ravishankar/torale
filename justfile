@@ -111,26 +111,6 @@ test:
     @echo "Running agent unit and protocol tests..."
     cd torale-agent && uv run pytest tests/ -v
 
-# Run the live SDK suite against an explicitly isolated no-auth API
-test-sdk-live:
-    #!/usr/bin/env bash
-    set -e
-    if [ "${WEBWHEN_SDK_TEST_ISOLATED:-}" != "1" ]; then
-        echo "Set WEBWHEN_SDK_TEST_ISOLATED=1 only for an isolated disposable API/database."
-        exit 1
-    fi
-    if [ "${WEBWHEN_NOAUTH:-}" != "1" ]; then
-        echo "Set WEBWHEN_NOAUTH=1 and start the isolated API before running live SDK tests."
-        exit 1
-    fi
-    api_url="${WEBWHEN_API_URL:-http://localhost:8000}"
-    if ! curl --silent --show-error --max-time 3 --output /dev/null "${api_url}/health"; then
-        echo "The isolated API is not reachable at ${api_url}."
-        exit 1
-    fi
-    cd backend
-    uv run --all-extras pytest tests/test_sdk_integration.py -m integration -v
-
 # Run tests with coverage
 test-cov:
     @echo "Running tests with coverage..."

@@ -3,8 +3,9 @@
 import React, { ReactNode, useMemo, useEffect, useCallback, useState } from 'react'
 import { useAuth as useClerkAuth, useUser } from '@clerk/nextjs'
 import { AuthContext, AuthContextType, AuthUser } from './AuthContext'
-import { ApiError, createApiClient, type UserRead } from '@/lib/api'
+import { createApiClient, type UserRead } from '@/lib/api'
 import { initPostHog, resetPostHog } from '@/lib/posthog'
+import { fetchBackendUser, getAuthErrorMessage, resolveAuthState } from './authBootstrap'
 
 interface ClerkAuthProviderProps {
   children: ReactNode
@@ -30,13 +31,6 @@ const createAuthUser = (
   publicMetadata: clerkUser.publicMetadata as AuthUser['publicMetadata'],
 })
 
-const errorMessage = (error: unknown): string => {
-  if (error instanceof ApiError && error.status === 401) {
-    return 'Your session could not be verified. Please sign in again.'
-  }
-  return 'We could not finish loading your account. Please try again.'
-}
-
 export const ClerkAuthProvider: React.FC<ClerkAuthProviderProps> = ({ children }) => {
   const { isLoaded: clerkIsLoaded, userId, getToken: clerkGetToken, signOut } = useClerkAuth()
   const { user: clerkUser } = useUser()
@@ -53,20 +47,13 @@ export const ClerkAuthProvider: React.FC<ClerkAuthProviderProps> = ({ children }
   const loadBackendUser = useCallback(async () => {
     if (!clerkUser) return
     try {
-      let userData: UserRead
-      try {
-        userData = await api.getCurrentUser()
-      } catch (error) {
-        if (!(error instanceof ApiError) || error.status !== 404) throw error
-        const synced = await api.syncUser()
-        userData = synced.user
-      }
+      const userData = await fetchBackendUser(api)
       setBackendUser(createAuthUser(userData, clerkUser))
       setBootstrapError(null)
     } catch (error) {
       console.error('Failed to load backend user:', error)
       setBackendUser(null)
-      setBootstrapError(errorMessage(error))
+      setBootstrapError(getAuthErrorMessage(error))
     }
   }, [api, clerkUser])
 
@@ -93,17 +80,9 @@ export const ClerkAuthProvider: React.FC<ClerkAuthProviderProps> = ({ children }
     setAttempt(value => value + 1)
   }, [])
 
-  const resolvedUser = backendUser?.clerkId === userId ? backendUser : null
-
-  const status: AuthContextType['status'] = !clerkIsLoaded
-    ? 'loading'
-    : !userId
-      ? 'unauthenticated'
-      : bootstrapError
-        ? 'error'
-        : resolvedUser
-          ? 'authenticated'
-          : 'loading'
+  const { status, user: resolvedUser } = resolveAuthState(
+    clerkIsLoaded, userId, backendUser, bootstrapError,
+  )
 
   const authValue: AuthContextType = useMemo(
     () => ({
