@@ -11,9 +11,36 @@ from webwhen.api.routers.admin import (
     AdminTaskStateUpdateRequest,
     admin_update_task_state,
     reset_task_history,
+    router,
 )
 from webwhen.tasks import TaskState
 from webwhen.tasks.service import InvalidTransitionError, TaskService
+
+
+def test_admin_router_preserves_routes():
+    """Domain router composition must not change the admin HTTP contract."""
+    actual_routes = {
+        (method, route.path) for route in router.routes for method in route.methods or set()
+    }
+    assert actual_routes == {
+        ("GET", "/admin/stats"),
+        ("GET", "/admin/queries"),
+        ("GET", "/admin/executions"),
+        ("GET", "/admin/scheduler/jobs"),
+        ("GET", "/admin/errors"),
+        ("GET", "/admin/users"),
+        ("PATCH", "/admin/users/{user_id}/deactivate"),
+        ("PATCH", "/admin/users/{user_id}/role"),
+        ("PATCH", "/admin/users/roles"),
+        ("GET", "/admin/waitlist"),
+        ("GET", "/admin/waitlist/stats"),
+        ("PATCH", "/admin/waitlist/{entry_id}"),
+        ("DELETE", "/admin/waitlist/{entry_id}"),
+        ("POST", "/admin/tasks/{task_id}/execute"),
+        ("PATCH", "/admin/tasks/{task_id}/state"),
+        ("DELETE", "/admin/tasks/{task_id}/reset"),
+        ("POST", "/admin/connectors/reset"),
+    }
 
 
 @pytest.fixture
@@ -257,7 +284,7 @@ class TestAdminUpdateTaskState:
         with patch.object(TaskService, "transition") as mock_transition:
             mock_transition.return_value = {"success": True, "schedule_action": "created"}
 
-            with patch("webwhen.api.routers.admin.datetime") as mock_dt:
+            with patch("webwhen.api.routers.admin_routes.tasks.datetime") as mock_dt:
                 mock_dt.now.return_value = mock_now
 
                 await admin_update_task_state(
