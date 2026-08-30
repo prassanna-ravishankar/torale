@@ -103,9 +103,9 @@ async def list_users(
 
                 offset += limit
 
-        except Exception as e:
-            logger.error(f"Failed to batch-fetch users from Clerk: {e}")
-            clerk_warnings.append(f"Clerk role fetch failed: {e}. Roles may be incomplete.")
+        except Exception:
+            logger.exception("Failed to batch-fetch users from Clerk")
+            clerk_warnings.append("Clerk role fetch failed. Roles may be incomplete.")
 
     users = []
     for row in rows:
@@ -177,8 +177,9 @@ async def deactivate_user(
             current_state = TaskState(task_row["state"])
             await task_service.pause(task_id=task_row["id"], current_state=current_state)
             paused_count += 1
-        except Exception as e:
-            failed_tasks.append({"task_id": str(task_row["id"]), "error": str(e)})
+        except Exception:
+            logger.exception("Failed to pause task %s while deactivating user", task_row["id"])
+            failed_tasks.append({"task_id": str(task_row["id"]), "error": "Failed to pause task"})
 
     await db.execute(
         "UPDATE users SET is_active = false, updated_at = NOW() WHERE id = $1",
@@ -269,11 +270,12 @@ async def update_user_role(
             "role": role,
         }
 
-    except Exception as e:
+    except Exception as exc:
+        logger.exception("Failed to update Clerk role for user %s", user_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update user role: {str(e)}",
-        ) from e
+            detail="Failed to update user role",
+        ) from exc
 
 
 @router.patch("/users/roles")
@@ -328,12 +330,12 @@ async def bulk_update_user_roles(
                     user_id=clerk_ids_to_fetch, limit=100
                 )
                 clerk_users_map = {user.id: user for user in clerk_users_response.data}
-            except Exception as e:
-                logger.error(f"Clerk batch fetch failed: {e}")
+            except Exception as exc:
+                logger.exception("Clerk batch user fetch failed")
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail=f"Failed to fetch users from Clerk: {e}",
-                ) from e
+                    detail="Failed to fetch users from Clerk",
+                ) from exc
 
     update_tasks = []
     task_metadata = []
@@ -369,17 +371,25 @@ async def bulk_update_user_roles(
             update_tasks.append(update_coro)
             task_metadata.append({"user_id": user_id})
 
-        except Exception as e:
+        except Exception:
+            logger.exception("Failed to prepare role update for user %s", user_id)
             failed_count += 1
-            errors.append({"user_id": user_id, "error": str(e)})
+            errors.append({"user_id": user_id, "error": "Failed to prepare role update"})
 
     if update_tasks:
         results = await asyncio.gather(*update_tasks, return_exceptions=True)
 
         for i, result in enumerate(results):
             if isinstance(result, Exception):
+                logger.error(
+                    "Failed to update Clerk role for user %s",
+                    task_metadata[i]["user_id"],
+                    exc_info=(type(result), result, result.__traceback__),
+                )
                 failed_count += 1
-                errors.append({"user_id": task_metadata[i]["user_id"], "error": str(result)})
+                errors.append(
+                    {"user_id": task_metadata[i]["user_id"], "error": "Failed to update role"}
+                )
             else:
                 updated_count += 1
 
