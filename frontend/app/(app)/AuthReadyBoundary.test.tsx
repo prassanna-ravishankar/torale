@@ -1,19 +1,31 @@
+// @vitest-environment jsdom
+
 import React from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AuthContext, type AuthContextType } from '@/contexts/AuthContext'
 import { createApiClient } from '@/lib/api'
 import { AuthReadyBoundary } from './AuthReadyBoundary'
 
-const replace = vi.fn()
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ replace, push: vi.fn() }),
-  usePathname: () => '/dashboard/tasks/watch-id',
-  useSearchParams: () => new URLSearchParams(),
+const navigation = vi.hoisted(() => ({
+  replace: vi.fn(),
+  push: vi.fn(),
+  pathname: '/dashboard/tasks/watch/id',
+  search: 'tab=history&filter=sent',
 }))
 
-const value = (status: AuthContextType['status']): AuthContextType => ({
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: navigation.replace, push: navigation.push }),
+  usePathname: () => navigation.pathname,
+  useSearchParams: () => new URLSearchParams(navigation.search),
+}))
+
+const value = (
+  status: AuthContextType['status'],
+  overrides: Partial<AuthContextType> = {},
+): AuthContextType => ({
   status,
   user: status === 'authenticated' ? {
     databaseId: 'database-id',
@@ -24,29 +36,60 @@ const value = (status: AuthContextType['status']): AuthContextType => ({
   error: status === 'error' ? 'Account bootstrap failed' : null,
   getToken: async () => null,
   retryAuth: vi.fn(),
+  ...overrides,
 })
 
+const renderBoundary = (context: AuthContextType) => render(
+  <AuthContext.Provider value={context}>
+    <AuthReadyBoundary><div>private watch</div></AuthReadyBoundary>
+  </AuthContext.Provider>,
+)
+
 describe('AuthReadyBoundary', () => {
-  beforeEach(() => replace.mockClear())
+  beforeEach(() => {
+    navigation.replace.mockReset()
+    navigation.push.mockReset()
+  })
+
+  afterEach(cleanup)
 
   it('keeps route children unmounted while backend auth is loading', () => {
-    const html = renderToStaticMarkup(React.createElement(
-      AuthContext.Provider,
-      { value: value('loading') },
-      React.createElement(AuthReadyBoundary, null, React.createElement('div', null, 'private watch')),
-    ))
+    renderBoundary(value('loading'))
 
-    expect(html).not.toContain('private watch')
-    expect(html).toContain('Loading your watches…')
+    expect(screen.queryByText('private watch')).toBeNull()
+    expect(screen.getByText('Loading your watches…')).toBeTruthy()
   })
 
   it('mounts route children only after authentication completes', () => {
-    const html = renderToStaticMarkup(React.createElement(
-      AuthContext.Provider,
-      { value: value('authenticated') },
-      React.createElement(AuthReadyBoundary, null, React.createElement('div', null, 'private watch')),
-    ))
+    renderBoundary(value('authenticated'))
 
-    expect(html).toContain('private watch')
+    expect(screen.getByText('private watch')).toBeTruthy()
+  })
+
+  it('redirects signed-out users and preserves the complete return URL', async () => {
+    renderBoundary(value('unauthenticated'))
+
+    await waitFor(() => expect(navigation.replace).toHaveBeenCalledWith(
+      '/sign-in?redirect_url=%2Fdashboard%2Ftasks%2Fwatch%2Fid%3Ftab%3Dhistory%26filter%3Dsent',
+    ))
+    expect(screen.queryByText('private watch')).toBeNull()
+    expect(screen.getByText('Taking you to sign in…')).toBeTruthy()
+  })
+
+  it('exposes working retry and sign-out actions for bootstrap errors', async () => {
+    const retryAuth = vi.fn()
+    const signOut = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    renderBoundary(value('error', { retryAuth, signOut }))
+
+    expect(screen.getByRole('heading', { name: 'We couldn’t load your account' })).toBeTruthy()
+    expect(screen.getByText('Account bootstrap failed')).toBeTruthy()
+    expect(screen.queryByText('private watch')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    await user.click(screen.getByRole('button', { name: 'Sign out' }))
+
+    expect(retryAuth).toHaveBeenCalledOnce()
+    expect(signOut).toHaveBeenCalledOnce()
   })
 })
