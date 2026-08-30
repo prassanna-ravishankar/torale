@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import api from '@/lib/api';
+import { useApi } from '@/hooks/useApi';
 
 interface ReconnectButtonProps {
   toolkitSlug: string;
@@ -19,6 +19,7 @@ export const ReconnectButton: React.FC<ReconnectButtonProps> = ({
   size = 'sm',
   className,
 }) => {
+  const api = useApi();
   const [isWorking, setIsWorking] = useState(false);
 
   const handleClick = async () => {

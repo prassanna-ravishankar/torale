@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Loader2,
   Copy,
@@ -8,7 +8,7 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { useApi } from '@/hooks/useApi';
 import { CollapsibleSection, Switch, StatusBadge } from '@/components/torale';
 import { getErrorMessage } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ import type { WebhookConfig } from '@/types';
 import styles from './Settings.module.css';
 
 export const WebhookConfigSection: React.FC = () => {
+  const api = useApi();
   const [config, setConfig] = useState<WebhookConfig>({ url: null, secret: null, enabled: false });
   const [webhookUrl, setWebhookUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -25,11 +26,7 @@ export const WebhookConfigSection: React.FC = () => {
   const [copiedSecret, setCopiedSecret] = useState(false);
   const [isDocOpen, setIsDocOpen] = useState(false);
 
-  useEffect(() => {
-    loadWebhookConfig();
-  }, []);
-
-  const loadWebhookConfig = async () => {
+  const loadWebhookConfig = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await api.getWebhookConfig();
@@ -41,7 +38,11 @@ export const WebhookConfigSection: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [api]);
+
+  useEffect(() => {
+    void loadWebhookConfig();
+  }, [loadWebhookConfig]);
 
   const handleSave = async () => {
     if (!webhookUrl) {

@@ -4,9 +4,7 @@ import type {
   TaskCreatePayload,
   TaskExecution,
   TaskTemplate,
-  User,
   UserConnection,
-  UserWithNotifications,
   WebhookConfig,
   WebhookDelivery,
   NotificationSend,
@@ -14,13 +12,57 @@ import type {
   CreateApiKeyResponse,
   FeedExecution,
 } from '@/types'
+import { watchRssPath } from '@/lib/watchRoutes'
 
-interface ApiError {
+interface ApiErrorBody {
   detail: string
 }
 
-class ApiClient {
-  private tokenGetter: (() => Promise<string | null>) | null = null
+export interface UserRead {
+  id: string
+  clerk_user_id: string
+  email: string
+  first_name: string | null
+  username: string | null
+  is_active: boolean
+  has_seen_welcome: boolean
+  created_at: string
+}
+
+export interface SyncUserResponse {
+  user: UserRead
+  created: boolean
+}
+
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number | null,
+    public readonly detail: string
+  ) {
+    super(detail)
+    this.name = 'ApiError'
+  }
+}
+
+export type TokenGetter = (options?: { skipCache?: boolean }) => Promise<string | null>
+export type ApiAuthMode = 'clerk' | 'noauth'
+
+interface ApiClientOptions {
+  authMode: ApiAuthMode
+  getToken?: TokenGetter
+  fetchImpl?: typeof globalThis.fetch
+}
+
+export class ApiClient {
+  private readonly authMode: ApiAuthMode
+  private readonly tokenGetter?: TokenGetter
+  private readonly fetchImpl: typeof globalThis.fetch
+
+  constructor({ authMode, getToken, fetchImpl = globalThis.fetch }: ApiClientOptions) {
+    this.authMode = authMode
+    this.tokenGetter = getToken
+    this.fetchImpl = fetchImpl
+  }
 
   // Read API URL from build-time env var
   private get baseUrl(): string {
@@ -47,19 +89,13 @@ class ApiClient {
 
   /** Build the RSS feed URL for a public task. */
   getTaskRssUrl(taskId: string): string {
-    return `${this.baseUrl}/tasks/${taskId}/rss`
-  }
-
-  // Set the token getter function (called from components with Clerk's getToken)
-  setTokenGetter(getter: () => Promise<string | null>) {
-    this.tokenGetter = getter
+    return `${this.baseUrl}${watchRssPath(taskId)}`
   }
 
   private async getAuthHeaders(): Promise<HeadersInit> {
-    let token: string | null = null
-
-    if (this.tokenGetter) {
-      token = await this.tokenGetter()
+    const token = this.tokenGetter ? await this.tokenGetter() : null
+    if (this.authMode === 'clerk' && !token) {
+      throw new ApiError(401, 'Your session is not ready. Please sign in again.')
     }
 
     return {
@@ -68,31 +104,52 @@ class ApiClient {
     }
   }
 
+  private async fetchRequest(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+    const response = await this.fetchImpl(input, init)
+    const headers = new Headers(init.headers)
+    if (response.status !== 401 || !headers.has('Authorization') || !this.tokenGetter) {
+      return response
+    }
+
+    const freshToken = await this.tokenGetter({ skipCache: true })
+    if (!freshToken) return response
+
+    headers.set('Authorization', `Bearer ${freshToken}`)
+    return this.fetchImpl(input, { ...init, headers })
+  }
+
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-      const error: ApiError = await response.json().catch(() => ({
+      const error: ApiErrorBody = await response.json().catch(() => ({
         detail: 'An error occurred',
       }))
-      throw new Error(error.detail || `HTTP error! status: ${response.status}`)
+      throw new ApiError(response.status, error.detail || `HTTP error! status: ${response.status}`)
     }
     return response.json()
   }
 
+  private async handleEmptyResponse(response: Response): Promise<void> {
+    if (!response.ok) await this.handleResponse(response)
+  }
+
   // Sync user with backend on first login
-  async syncUser(): Promise<User> {
-    const response = await fetch(`${this.baseUrl}/auth/sync-user`, {
+  async syncUser(): Promise<SyncUserResponse> {
+    const response = await this.fetchRequest(`${this.baseUrl}/auth/sync-user`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }
 
-  async getCurrentUser(): Promise<User> {
-    return this.getUserWithNotifications()
+  async getCurrentUser(): Promise<UserRead> {
+    const response = await this.fetchRequest(`${this.baseUrl}/auth/me`, {
+      headers: await this.getAuthHeaders(),
+    })
+    return this.handleResponse(response)
   }
 
   async markWelcomeSeen(): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/auth/mark-welcome-seen`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/auth/mark-welcome-seen`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
     })
@@ -101,21 +158,21 @@ class ApiClient {
 
   // Task endpoints
   async getTasks(): Promise<Task[]> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/tasks/`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }
 
   async getTask(id: string): Promise<Task> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${id}`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/tasks/${id}`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }
 
   async createTask(task: TaskCreatePayload): Promise<Task> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/tasks/`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify(task),
@@ -124,7 +181,7 @@ class ApiClient {
   }
 
   async updateTask(id: string, task: Partial<Task>): Promise<Task> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${id}`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/tasks/${id}`, {
       method: 'PUT',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify(task),
@@ -133,13 +190,11 @@ class ApiClient {
   }
 
   async deleteTask(id: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${id}`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/tasks/${id}`, {
       method: 'DELETE',
       headers: await this.getAuthHeaders(),
     })
-    if (!response.ok) {
-      throw new Error(`Failed to delete task: ${response.status}`)
-    }
+    return this.handleEmptyResponse(response)
   }
 
   async executeTask(id: string, suppressNotifications: boolean = false): Promise<TaskExecution> {
@@ -147,7 +202,7 @@ class ApiClient {
       suppress_notifications: suppressNotifications || undefined,
     })
 
-    const response = await fetch(url, {
+    const response = await this.fetchRequest(url, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
     })
@@ -156,14 +211,14 @@ class ApiClient {
 
   // Task execution endpoints
   async getTaskExecutions(taskId: string): Promise<TaskExecution[]> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/executions`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/tasks/${taskId}/executions`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }
 
   async getTaskNotifications(taskId: string): Promise<TaskExecution[]> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/notifications`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/tasks/${taskId}/notifications`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
@@ -172,18 +227,18 @@ class ApiClient {
   // Template endpoints
   async getTemplates(category?: string): Promise<TaskTemplate[]> {
     const url = this.buildUrl('/api/v1/templates/', { category })
-    const response = await fetch(url)
+    const response = await this.fetchRequest(url)
     return this.handleResponse(response)
   }
 
   async getTemplate(id: string): Promise<TaskTemplate> {
-    const response = await fetch(`${this.baseUrl}/api/v1/templates/${id}`)
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/templates/${id}`)
     return this.handleResponse(response)
   }
 
   // Admin endpoints (callers provide expected response type via generic parameter)
   async getAdminStats<T = Record<string, unknown>>(): Promise<T> {
-    const response = await fetch(`${this.baseUrl}/admin/stats`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/admin/stats`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse<T>(response)
@@ -194,7 +249,7 @@ class ApiClient {
       limit: params?.limit,
       active_only: params?.active_only,
     })
-    const response = await fetch(url, {
+    const response = await this.fetchRequest(url, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse<T>(response)
@@ -206,7 +261,7 @@ class ApiClient {
       status: params?.status,
       task_id: params?.task_id,
     })
-    const response = await fetch(url, {
+    const response = await this.fetchRequest(url, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse<T>(response)
@@ -214,21 +269,21 @@ class ApiClient {
 
   async getAdminErrors<T = Record<string, unknown>>(params?: { limit?: number }): Promise<T> {
     const url = this.buildUrl('/admin/errors', { limit: params?.limit })
-    const response = await fetch(url, {
+    const response = await this.fetchRequest(url, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse<T>(response)
   }
 
   async getAdminUsers<T = Record<string, unknown>>(): Promise<T> {
-    const response = await fetch(`${this.baseUrl}/admin/users`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/admin/users`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse<T>(response)
   }
 
   async deactivateUser<T = Record<string, unknown>>(userId: string): Promise<T> {
-    const response = await fetch(`${this.baseUrl}/admin/users/${userId}/deactivate`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/admin/users/${userId}/deactivate`, {
       method: 'PATCH',
       headers: await this.getAuthHeaders(),
     })
@@ -236,7 +291,7 @@ class ApiClient {
   }
 
   async updateUserRole(userId: string, role: string | null): Promise<{ status: string; user_id: string; role: string | null }> {
-    const response = await fetch(`${this.baseUrl}/admin/users/${userId}/role`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/admin/users/${userId}/role`, {
       method: 'PATCH',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify({ role }),
@@ -245,7 +300,7 @@ class ApiClient {
   }
 
   async bulkUpdateUserRoles(userIds: string[], role: string | null): Promise<{ updated: number; failed: number; errors: unknown[] }> {
-    const response = await fetch(`${this.baseUrl}/admin/users/roles`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/admin/users/roles`, {
       method: 'PATCH',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify({ user_ids: userIds, role }),
@@ -260,7 +315,7 @@ class ApiClient {
     const url = this.buildUrl(`/admin/tasks/${taskId}/execute`, {
       suppress_notifications: suppressNotifications,
     })
-    const response = await fetch(url, {
+    const response = await this.fetchRequest(url, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
     })
@@ -278,7 +333,7 @@ class ApiClient {
     taskId: string,
     state: 'active' | 'paused' | 'completed'
   ): Promise<{ id: string; state: string; previous_state: string; message: string }> {
-    const response = await fetch(`${this.baseUrl}/admin/tasks/${taskId}/state`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/admin/tasks/${taskId}/state`, {
       method: 'PATCH',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify({ state }),
@@ -291,7 +346,7 @@ class ApiClient {
     days: number = 1
   ): Promise<{ status: string; task_id: string; executions_deleted: number; days: number }> {
     const url = this.buildUrl(`/admin/tasks/${taskId}/reset`, { days })
-    const response = await fetch(url, {
+    const response = await this.fetchRequest(url, {
       method: 'DELETE',
       headers: await this.getAuthHeaders(),
     })
@@ -301,21 +356,21 @@ class ApiClient {
   // Waitlist endpoints
   async getWaitlist<T = Record<string, unknown>>(statusFilter?: string): Promise<T> {
     const url = this.buildUrl('/admin/waitlist', { status_filter: statusFilter })
-    const response = await fetch(url, {
+    const response = await this.fetchRequest(url, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse<T>(response)
   }
 
   async getWaitlistStats<T = Record<string, unknown>>(): Promise<T> {
-    const response = await fetch(`${this.baseUrl}/admin/waitlist/stats`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/admin/waitlist/stats`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse<T>(response)
   }
 
   async updateWaitlistEntry<T = Record<string, unknown>>(entryId: string, data: { status?: string; notes?: string }): Promise<T> {
-    const response = await fetch(`${this.baseUrl}/admin/waitlist/${entryId}`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/admin/waitlist/${entryId}`, {
       method: 'PATCH',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify(data),
@@ -324,18 +379,16 @@ class ApiClient {
   }
 
   async deleteWaitlistEntry(entryId: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/admin/waitlist/${entryId}`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/admin/waitlist/${entryId}`, {
       method: 'DELETE',
       headers: await this.getAuthHeaders(),
     })
-    if (!response.ok) {
-      throw new Error(`Failed to delete waitlist entry: ${response.status}`)
-    }
+    return this.handleEmptyResponse(response)
   }
 
   // Email Verification endpoints
   async sendVerificationCode(email: string): Promise<{ message: string; expires_at: string }> {
-    const response = await fetch(`${this.baseUrl}/api/v1/email-verification/send`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/email-verification/send`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify({ email }),
@@ -344,7 +397,7 @@ class ApiClient {
   }
 
   async verifyEmailCode(email: string, code: string): Promise<{ message: string; email: string }> {
-    const response = await fetch(`${this.baseUrl}/api/v1/email-verification/verify`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/email-verification/verify`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify({ email, code }),
@@ -353,7 +406,7 @@ class ApiClient {
   }
 
   async getVerifiedEmails(): Promise<{ verified_emails: string[] }> {
-    const response = await fetch(`${this.baseUrl}/api/v1/email-verification/verified-emails`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/email-verification/verified-emails`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
@@ -361,7 +414,7 @@ class ApiClient {
 
   async removeVerifiedEmail(email: string): Promise<{ message: string }> {
     const encodedEmail = encodeURIComponent(email)
-    const response = await fetch(`${this.baseUrl}/api/v1/email-verification/verified-emails/${encodedEmail}`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/email-verification/verified-emails/${encodedEmail}`, {
       method: 'DELETE',
       headers: await this.getAuthHeaders(),
     })
@@ -370,14 +423,14 @@ class ApiClient {
 
   // Webhook endpoints
   async getWebhookConfig(): Promise<WebhookConfig> {
-    const response = await fetch(`${this.baseUrl}/api/v1/webhooks/config`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/webhooks/config`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }
 
   async updateWebhookConfig(url: string, enabled: boolean = true): Promise<WebhookConfig> {
-    const response = await fetch(`${this.baseUrl}/api/v1/webhooks/config`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/webhooks/config`, {
       method: 'PUT',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify({ webhook_url: url, enabled }),
@@ -386,7 +439,7 @@ class ApiClient {
   }
 
   async testWebhook(url: string, secret: string): Promise<{ success: boolean; message: string }> {
-    const response = await fetch(`${this.baseUrl}/api/v1/webhooks/test`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/webhooks/test`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify({ webhook_url: url, webhook_secret: secret }),
@@ -404,7 +457,7 @@ class ApiClient {
       limit: params?.limit,
       offset: params?.offset,
     })
-    const response = await fetch(url, {
+    const response = await this.fetchRequest(url, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
@@ -423,15 +476,7 @@ class ApiClient {
       limit: params?.limit,
       offset: params?.offset,
     })
-    const response = await fetch(url, {
-      headers: await this.getAuthHeaders(),
-    })
-    return this.handleResponse(response)
-  }
-
-  // Get user with notification settings
-  async getUserWithNotifications(): Promise<UserWithNotifications> {
-    const response = await fetch(`${this.baseUrl}/auth/me`, {
+    const response = await this.fetchRequest(url, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
@@ -439,7 +484,7 @@ class ApiClient {
 
   // API Key Management endpoints
   async createApiKey(name: string): Promise<CreateApiKeyResponse> {
-    const response = await fetch(`${this.baseUrl}/auth/api-keys`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/auth/api-keys`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify({ name }),
@@ -448,14 +493,14 @@ class ApiClient {
   }
 
   async getApiKeys(): Promise<ApiKey[]> {
-    const response = await fetch(`${this.baseUrl}/auth/api-keys`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/auth/api-keys`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }
 
   async revokeApiKey(keyId: string): Promise<{ status: string }> {
-    const response = await fetch(`${this.baseUrl}/auth/api-keys/${keyId}`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/auth/api-keys/${keyId}`, {
       method: 'DELETE',
       headers: await this.getAuthHeaders(),
     })
@@ -467,7 +512,7 @@ class ApiClient {
     taskId: string,
     isPublic: boolean
   ): Promise<{ is_public: boolean }> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/visibility`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/tasks/${taskId}/visibility`, {
       method: 'PATCH',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify({ is_public: isPublic }),
@@ -477,7 +522,7 @@ class ApiClient {
 
   // Task forking
   async forkTask(taskId: string, name?: string): Promise<Task> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tasks/${taskId}/fork`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/tasks/${taskId}/fork`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
       body: JSON.stringify({ name }),
@@ -485,33 +530,9 @@ class ApiClient {
     return this.handleResponse(response)
   }
 
-  // Public task discovery
-  async getPublicTasks(params?: {
-    offset?: number
-    limit?: number
-    sort_by?: 'recent' | 'popular'
-  }): Promise<{ tasks: Task[]; total: number; offset: number; limit: number }> {
-    const url = this.buildUrl('/api/v1/public/tasks', {
-      offset: params?.offset,
-      limit: params?.limit,
-      sort_by: params?.sort_by,
-    })
-    const response = await fetch(url, {
-      headers: await this.getAuthHeaders(),
-    })
-    return this.handleResponse(response)
-  }
-
-  async getPublicTaskById(taskId: string): Promise<Task> {
-    const response = await fetch(`${this.baseUrl}/api/v1/public/tasks/id/${taskId}`, {
-      headers: await this.getAuthHeaders(),
-    })
-    return this.handleResponse(response)
-  }
-
   // Connector endpoints
   async getConnections(): Promise<UserConnection[]> {
-    const response = await fetch(`${this.baseUrl}/api/v1/connectors`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/connectors`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
@@ -520,35 +541,29 @@ class ApiClient {
   // Feed endpoints
   async getFeed(limit: number = 50): Promise<FeedExecution[]> {
     const url = this.buildUrl('/api/v1/tasks/feed', { limit })
-    const response = await fetch(url, {
+    const response = await this.fetchRequest(url, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }
 
-  async getPublicFeed(limit: number = 50): Promise<FeedExecution[]> {
-    const url = this.buildUrl('/api/v1/public/feed', { limit })
-    const response = await fetch(url)
-    return this.handleResponse(response)
-  }
-
   // Connector endpoints
   async getAvailableToolkits(): Promise<AvailableToolkit[]> {
-    const response = await fetch(`${this.baseUrl}/api/v1/connectors/available`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/connectors/available`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }
 
   async getUserConnections(): Promise<UserConnection[]> {
-    const response = await fetch(`${this.baseUrl}/api/v1/connectors`, {
+    const response = await this.fetchRequest(`${this.baseUrl}/api/v1/connectors`, {
       headers: await this.getAuthHeaders(),
     })
     return this.handleResponse(response)
   }
 
   async connectToolkit(toolkitSlug: string): Promise<{ redirect_url: string | null }> {
-    const response = await fetch(
+    const response = await this.fetchRequest(
       `${this.baseUrl}/api/v1/connectors/${toolkitSlug}/connect`,
       {
         method: 'POST',
@@ -559,18 +574,15 @@ class ApiClient {
   }
 
   async disconnectToolkit(toolkitSlug: string): Promise<void> {
-    const response = await fetch(
+    const response = await this.fetchRequest(
       `${this.baseUrl}/api/v1/connectors/${toolkitSlug}`,
       {
         method: 'DELETE',
         headers: await this.getAuthHeaders(),
       }
     )
-    if (!response.ok) {
-      throw new Error(`Failed to disconnect: ${response.status}`)
-    }
+    return this.handleEmptyResponse(response)
   }
 }
 
-export const api = new ApiClient()
-export default api
+export const createApiClient = (options: ApiClientOptions): ApiClient => new ApiClient(options)

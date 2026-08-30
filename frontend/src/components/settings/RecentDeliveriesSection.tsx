@@ -1,23 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { useApi } from '@/hooks/useApi';
 import type { WebhookDelivery, NotificationSend } from '@/types';
 import { StatusBadge, type StatusVariant } from '@/components/torale';
 import { formatTimeAgo } from '@/lib/utils';
 import styles from './Settings.module.css';
 
 export const RecentDeliveriesSection: React.FC = () => {
+  const api = useApi();
   const [activeTab, setActiveTab] = useState<'emails' | 'webhooks'>('emails');
   const [emailSends, setEmailSends] = useState<NotificationSend[]>([]);
   const [webhookDeliveries, setWebhookDeliveries] = useState<WebhookDelivery[]>([]);
   const [isLoadingEmails, setIsLoadingEmails] = useState(true);
   const [isLoadingWebhooks, setIsLoadingWebhooks] = useState(true);
 
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     setIsLoadingEmails(true);
     try {
       const emailResponse = await api.getNotificationSends({
@@ -40,7 +37,11 @@ export const RecentDeliveriesSection: React.FC = () => {
     } finally {
       setIsLoadingWebhooks(false);
     }
-  };
+  }, [api]);
+
+  useEffect(() => {
+    void loadHistory();
+  }, [loadHistory]);
 
   const getStatusVariant = (status: string): StatusVariant => {
     switch (status) {

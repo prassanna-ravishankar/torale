@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Security
+from fastapi import Depends, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from webwhen.core.database import Database, get_db
@@ -28,29 +28,8 @@ async def get_current_user(
     return await provider.get_current_user(credentials, db)
 
 
-async def get_current_user_optional(
-    credentials: HTTPAuthorizationCredentials | None = Security(security_optional),
-    db: Database = Depends(get_db),
-) -> User | None:
-    """
-    Get current user if authenticated, otherwise return None.
-    Used for endpoints that work both authenticated and unauthenticated.
-    """
-    provider = get_auth_provider()
-    try:
-        return await provider.get_current_user(credentials, db)
-    except HTTPException:
-        # If auth fails (invalid token, etc.) or no credentials provided for production provider,
-        # return None.
-        # Note: NoAuthProvider always returns a user, so it won't raise HTTPException usually.
-        return None
-
-
 # Type alias for production routes - requires authentication
 CurrentUser = Annotated[User, Depends(get_current_user)]
-
-# Type alias for optional auth
-OptionalUser = Annotated[User | None, Depends(get_current_user_optional)]
 
 
 async def require_admin(

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api } from '@/lib/api'
+import { useApi } from '@/hooks/useApi';
 import { formatDistanceToNow } from 'date-fns'
 import { formatDuration, getErrorMessage } from '@/lib/utils'
 import { ExecutionCard } from './cards/ExecutionCard'
@@ -13,6 +13,7 @@ interface ExecutionsTableProps {
 }
 
 export function ExecutionsTable({ onTaskClick }: ExecutionsTableProps = {}) {
+  const api = useApi()
   const [executions, setExecutions] = useState<ExecutionData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -34,7 +35,7 @@ export function ExecutionsTable({ onTaskClick }: ExecutionsTableProps = {}) {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter])
+  }, [api, statusFilter])
 
   useEffect(() => {
     loadExecutions()

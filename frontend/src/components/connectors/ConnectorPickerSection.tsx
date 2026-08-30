@@ -16,7 +16,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn, getErrorMessage } from "@/lib/utils";
-import api from "@/lib/api";
+import { useApi } from "@/hooks/useApi";
 // Mirror of backend ConnectionStatus StrEnum (backend/src/torale/connectors/client.py); keep in sync.
 import type { ConnectionStatus, UserConnection } from "@/types";
 
@@ -45,6 +45,7 @@ export const ConnectorPickerSection: React.FC<ConnectorPickerSectionProps> = ({
   onChange,
   disabled,
 }) => {
+  const api = useApi();
   const [connections, setConnections] = useState<UserConnection[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -65,7 +66,7 @@ export const ConnectorPickerSection: React.FC<ConnectorPickerSectionProps> = ({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [api]);
 
   const selectedCount = selected.length;
   const title = selectedCount > 0

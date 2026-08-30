@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getErrorMessage } from '@/lib/utils'
-import { api } from '@/lib/api'
+import { useApi } from '@/hooks/useApi';
 import { Users, ListChecks, Activity, TrendingUp, Loader2, Search, Zap } from 'lucide-react'
 import { SectionLabel, Card } from '@/components/torale'
 
@@ -28,15 +28,12 @@ interface PlatformStats {
 }
 
 export function OverviewStats() {
+  const api = useApi()
   const [stats, setStats] = useState<PlatformStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadStats()
-  }, [])
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       setLoading(true)
       const data = await api.getAdminStats<PlatformStats>()
@@ -47,7 +44,11 @@ export function OverviewStats() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [api])
+
+  useEffect(() => {
+    void loadStats()
+  }, [loadStats])
 
   if (loading) {
     return (

@@ -20,7 +20,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { LANDING_EXAMPLES, type LandingSnapshot, type LandingExampleSnapshot } from '@/data/landingExamples';
 import fallbackJson from '@/data/landingExamples.fallback.json';
 import { hostOf, paraphraseTool, trimEvidence } from '@/utils/landingExamples';
-import { api } from '@/lib/api';
+import { publicApi } from '@/lib/publicApi';
 
 const FALLBACK = fallbackJson as LandingSnapshot;
 
@@ -119,7 +119,7 @@ export function LandingExamplesProvider({ children }: { children: ReactNode }) {
     // NEXT_PUBLIC_API_BASE_URL — which on staging points at api-staging
     // (0 public tasks) and would clobber the prod-baked count to 0 on
     // first interaction. The count chip stays baked-fresh per deploy.
-    api
+    publicApi
       .getPublicFeed(100)
       .then((feed) => {
         if (cancelled || !Array.isArray(feed)) return;

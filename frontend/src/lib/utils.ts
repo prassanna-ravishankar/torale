@@ -4,7 +4,7 @@ import type { TaskState } from "@/types"
 
 /** Build the public share URL for a task. */
 export function getTaskShareUrl(taskId: string): string {
-  return `${window.location.origin}/tasks/${taskId}`
+  return `${window.location.origin}${publicWatchPath(taskId)}`
 }
 
 export function cn(...inputs: ClassValue[]) {
@@ -124,3 +124,4 @@ export function formatTimeAgo(dateString: string): string {
   if (diffMins <= MINS_IN_WEEK) return `${Math.floor(diffMins / MINS_IN_DAY)}d ago`;
   return date.toLocaleDateString();
 }
+import { publicWatchPath } from '@/lib/watchRoutes'

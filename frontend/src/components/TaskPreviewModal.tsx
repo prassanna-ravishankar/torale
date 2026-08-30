@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { SearchPreview } from '@/components/SearchPreview';
 import { Loader2, Edit, ExternalLink } from 'lucide-react';
-import { api } from '@/lib/api';
+import { useApi } from '@/hooks/useApi';
 import { toast } from 'sonner';
 import type { Task, TaskExecution } from '@/types';
 import { getResultDisplayText } from '@/types';
@@ -31,6 +31,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
   onEdit,
   onViewHistory,
 }) => {
+  const api = useApi();
   const [isLoading, setIsLoading] = useState(false);
   const [execution, setExecution] = useState<TaskExecution | null>(null);
   const [error, setError] = useState<string>('');
@@ -105,7 +106,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
       cancelledRef.current = true;
       clearTimeout(timeoutId);
     };
-  }, [open, task.id]);
+  }, [api, open, task.id]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -20,7 +20,6 @@ export default function SignUpRoutePage() {
         routing="path"
         path="/sign-up"
         signInUrl="/sign-in"
-        forceRedirectUrl="/dashboard"
         fallbackRedirectUrl="/dashboard"
       />
     </CapacityGate>

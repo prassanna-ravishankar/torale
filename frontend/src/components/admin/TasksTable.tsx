@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { formatShortDateTime, getErrorMessage } from '@/lib/utils'
-import { api } from '@/lib/api'
+import { useApi } from '@/hooks/useApi';
 import { TaskCard } from './cards/TaskCard'
 import { TaskDetailPanel } from './TaskDetailPanel'
 import { Loader2, Search, Zap } from 'lucide-react'
@@ -13,6 +13,7 @@ interface TasksTableProps {
 }
 
 export function TasksTable({ initialExpandedTaskId }: TasksTableProps = {}) {
+  const api = useApi()
   const [tasks, setTasks] = useState<TaskData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +31,7 @@ export function TasksTable({ initialExpandedTaskId }: TasksTableProps = {}) {
     } finally {
       setLoading(false)
     }
-  }, [activeOnly])
+  }, [activeOnly, api])
 
   useEffect(() => {
     loadTasks()

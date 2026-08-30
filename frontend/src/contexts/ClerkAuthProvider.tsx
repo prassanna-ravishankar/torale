@@ -2,113 +2,121 @@
 
 import React, { ReactNode, useMemo, useEffect, useCallback, useState } from 'react'
 import { useAuth as useClerkAuth, useUser } from '@clerk/nextjs'
-import { AuthContext, AuthContextType, User } from './AuthContext'
+import { AuthContext, AuthContextType, AuthUser } from './AuthContext'
+import { ApiError, createApiClient, type UserRead } from '@/lib/api'
 import { initPostHog, resetPostHog } from '@/lib/posthog'
 
 interface ClerkAuthProviderProps {
   children: ReactNode
 }
 
-/**
- * Helper to construct a User object from backend data and Clerk user.
- */
-const createUserFromData = (
-  backendData: { id: string | null; email: string; username: string | null; has_seen_welcome?: boolean },
-  clerkUser: { firstName?: string | null; lastName?: string | null; imageUrl?: string; publicMetadata?: Record<string, unknown> }
-): User => ({
-  id: backendData.id,
-  email: backendData.email,
-  username: backendData.username,
-  has_seen_welcome: backendData.has_seen_welcome,
-  firstName: clerkUser.firstName || undefined,
+const createAuthUser = (
+  backendUser: UserRead,
+  clerkUser: {
+    firstName?: string | null
+    lastName?: string | null
+    imageUrl?: string
+    publicMetadata?: Record<string, unknown>
+  }
+): AuthUser => ({
+  databaseId: backendUser.id,
+  clerkId: backendUser.clerk_user_id,
+  email: backendUser.email,
+  username: backendUser.username,
+  has_seen_welcome: backendUser.has_seen_welcome,
+  firstName: clerkUser.firstName || backendUser.first_name || undefined,
   lastName: clerkUser.lastName || undefined,
   imageUrl: clerkUser.imageUrl,
-  publicMetadata: clerkUser.publicMetadata as { role?: string;[key: string]: unknown } | undefined,
+  publicMetadata: clerkUser.publicMetadata as AuthUser['publicMetadata'],
 })
 
-/**
- * Reads Clerk state via @clerk/nextjs hooks and exposes the AuthContext shape
- * to existing consumers. <ClerkProvider> itself is mounted by the
- * (app)/(auth) route-group layout — this wrapper is only the state bridge.
- */
+const errorMessage = (error: unknown): string => {
+  if (error instanceof ApiError && error.status === 401) {
+    return 'Your session could not be verified. Please sign in again.'
+  }
+  return 'We could not finish loading your account. Please try again.'
+}
+
 export const ClerkAuthProvider: React.FC<ClerkAuthProviderProps> = ({ children }) => {
   const { isLoaded: clerkIsLoaded, userId, getToken: clerkGetToken, signOut } = useClerkAuth()
   const { user: clerkUser } = useUser()
-  const [backendUser, setBackendUser] = useState<User | null>(null)
-  const isFetchingRef = React.useRef(false)
+  const [backendUser, setBackendUser] = useState<AuthUser | null>(null)
+  const [bootstrapError, setBootstrapError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
 
-  useEffect(() => {
-    if (!clerkUser || isFetchingRef.current) return
+  const getToken = useCallback(
+    async (options?: { skipCache?: boolean }) => clerkGetToken(options),
+    [clerkGetToken]
+  )
+  const api = useMemo(() => createApiClient({ authMode: 'clerk', getToken }), [getToken])
 
-    const fetchBackendUser = async () => {
-      isFetchingRef.current = true
-      try {
-        const { api } = await import('@/lib/api')
-        const userData = await api.getCurrentUser()
-        setBackendUser(createUserFromData(userData, clerkUser))
-      } catch (error) {
-        console.warn('User not found in backend, syncing automatically...', error)
-        try {
-          const { api } = await import('@/lib/api')
-          await api.syncUser()
-          const userData = await api.getCurrentUser()
-          setBackendUser(createUserFromData(userData, clerkUser))
-        } catch (syncError) {
-          console.error('Failed to sync user:', syncError)
-          setBackendUser(createUserFromData({
-            id: null,
-            email: clerkUser.primaryEmailAddress?.emailAddress || '',
-            username: null,
-          }, clerkUser))
-        }
-      } finally {
-        isFetchingRef.current = false
-      }
-    }
-
-    fetchBackendUser()
-  }, [clerkUser])
-
-  const user: User | null = backendUser
-
-  useEffect(() => {
-    if (user?.id) {
-      initPostHog(user.id)
-    } else if (!user) {
-      resetPostHog()
-    }
-  }, [user])
-
-  const getToken = useCallback(async () => {
+  const loadBackendUser = useCallback(async () => {
+    if (!clerkUser) return
     try {
-      return await clerkGetToken()
+      let userData: UserRead
+      try {
+        userData = await api.getCurrentUser()
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 404) throw error
+        const synced = await api.syncUser()
+        userData = synced.user
+      }
+      setBackendUser(createAuthUser(userData, clerkUser))
+      setBootstrapError(null)
     } catch (error) {
-      console.error('Failed to get Clerk token:', error)
-      return null
+      console.error('Failed to load backend user:', error)
+      setBackendUser(null)
+      setBootstrapError(errorMessage(error))
     }
-  }, [clerkGetToken])
+  }, [api, clerkUser])
+
+  useEffect(() => {
+    if (!clerkIsLoaded || !userId || !clerkUser) {
+      setBackendUser(null)
+      setBootstrapError(null)
+      return
+    }
+    void loadBackendUser()
+  }, [attempt, clerkIsLoaded, clerkUser, loadBackendUser, userId])
+
+  useEffect(() => {
+    if (backendUser) initPostHog(backendUser.databaseId)
+    else if (clerkIsLoaded && !userId) resetPostHog()
+  }, [backendUser, clerkIsLoaded, userId])
 
   const refreshUser = useCallback(async () => {
-    if (!clerkUser) return
-    const { api } = await import('@/lib/api')
-    const userData = await api.getCurrentUser()
-    setBackendUser(createUserFromData(userData, clerkUser))
-  }, [clerkUser])
+    await loadBackendUser()
+  }, [loadBackendUser])
 
-  const handleSignOut = useCallback(async () => {
-    await signOut()
-  }, [signOut])
+  const retryAuth = useCallback(() => {
+    setBootstrapError(null)
+    setAttempt(value => value + 1)
+  }, [])
+
+  const resolvedUser = backendUser?.clerkId === userId ? backendUser : null
+
+  const status: AuthContextType['status'] = !clerkIsLoaded
+    ? 'loading'
+    : !userId
+      ? 'unauthenticated'
+      : bootstrapError
+        ? 'error'
+        : resolvedUser
+          ? 'authenticated'
+          : 'loading'
 
   const authValue: AuthContextType = useMemo(
     () => ({
-      isLoaded: clerkIsLoaded,
-      isAuthenticated: !!userId,
-      user,
-      getToken,
+      status,
+      user: resolvedUser,
+      api,
+      error: bootstrapError,
+      getToken: () => getToken(),
       refreshUser,
-      signOut: handleSignOut,
+      retryAuth,
+      signOut,
     }),
-    [clerkIsLoaded, userId, user, getToken, refreshUser, handleSignOut]
+    [api, bootstrapError, getToken, refreshUser, resolvedUser, retryAuth, signOut, status]
   )
 
   return <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>

@@ -1,69 +1,64 @@
 'use client'
 
 import React, { ReactNode, useState, useCallback, useMemo, useEffect } from 'react'
-import { AuthContext, AuthContextType, User } from './AuthContext'
-import { api } from '@/lib/api'
-import { initPostHog, resetPostHog } from '@/lib/posthog'
+import { AuthContext, AuthContextType, AuthUser } from './AuthContext'
+import { createApiClient } from '@/lib/api'
+import { initPostHog } from '@/lib/posthog'
 
 interface NoAuthProviderProps {
   children: ReactNode
 }
 
-// Must match backend NOAUTH_TEST_USER_ID in clerk_auth.py
 const NOAUTH_TEST_USER_ID = '00000000-0000-0000-0000-000000000001'
+const NOAUTH_CLERK_USER_ID = 'test_user_noauth'
 
-const INITIAL_MOCK_USER: User = {
-  id: NOAUTH_TEST_USER_ID,
+const INITIAL_MOCK_USER: AuthUser = {
+  databaseId: NOAUTH_TEST_USER_ID,
+  clerkId: NOAUTH_CLERK_USER_ID,
   email: 'dev@torale.local',
   firstName: 'Dev',
   lastName: 'User',
 }
 
 export const NoAuthProvider: React.FC<NoAuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User>(INITIAL_MOCK_USER)
+  const api = useMemo(() => createApiClient({ authMode: 'noauth' }), [])
+  const [user, setUser] = useState<AuthUser>(INITIAL_MOCK_USER)
 
-  // Initialize PostHog with mock user (or re-identify if already initialized)
-  useEffect(() => {
-    if (user?.id) {
-      initPostHog(user.id)
-    } else if (!user) {
-      resetPostHog()
-    }
-  }, [user])
+  useEffect(() => initPostHog(user.databaseId), [user.databaseId])
 
   const refreshUser = useCallback(async () => {
     try {
       const backendUser = await api.getCurrentUser()
       setUser({
-        id: backendUser.id,
+        databaseId: backendUser.id,
+        clerkId: backendUser.clerk_user_id,
         email: backendUser.email,
-        firstName: 'Dev',
+        firstName: backendUser.first_name || 'Dev',
         lastName: 'User',
-        username: backendUser.username || undefined,
+        username: backendUser.username,
         has_seen_welcome: backendUser.has_seen_welcome,
       })
     } catch (error) {
       console.error('Failed to refresh user in noauth mode:', error)
     }
-  }, [])
+  }, [api])
 
-  // Hydrate user from backend on mount (gets has_seen_welcome, etc.)
   useEffect(() => {
-    refreshUser()
+    void refreshUser()
   }, [refreshUser])
 
   const authValue: AuthContextType = useMemo(
     () => ({
-      isLoaded: true,
-      isAuthenticated: true,
+      status: 'authenticated',
       user,
-      getToken: async () => null, // No token in dev mode
+      api,
+      error: null,
+      getToken: async () => null,
       refreshUser,
-      signOut: async () => {
-        console.log('Sign out called in no-auth mode (no-op)')
-      },
+      retryAuth: () => void refreshUser(),
+      signOut: async () => undefined,
     }),
-    [user, refreshUser]
+    [api, refreshUser, user]
   )
 
   return <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>

@@ -263,16 +263,6 @@ export interface NotificationSend {
 }
 
 /**
- * User with verified emails (for settings page)
- */
-export interface UserWithNotifications extends User {
-  verified_notification_emails: string[];
-  webhook_url: string | null;
-  webhook_secret: string | null;
-  webhook_enabled: boolean;
-}
-
-/**
  * API Key for SDK authentication
  */
 export interface ApiKey {
@@ -292,4 +282,3 @@ export interface CreateApiKeyResponse {
   key: string; // Full key shown only once
   key_info: ApiKey;
 }
-

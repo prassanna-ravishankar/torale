@@ -6,7 +6,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { useApi } from "@/hooks/useApi";
 import { cn, getErrorMessage, getTaskShareUrl } from "@/lib/utils";
 import type { Task } from "@/types";
 import { Switch } from "@/components/torale";
@@ -30,6 +30,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   task,
   onSuccess,
 }) => {
+  const api = useApi();
   const [name, setName] = useState("");
   const [condition, setCondition] = useState("");
   const [attachedConnectors, setAttachedConnectors] = useState<string[]>([]);

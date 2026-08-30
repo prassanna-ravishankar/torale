@@ -14,7 +14,8 @@ URLs still address watches as `tasks` (`/api/v1/tasks/{task_id}/executions`). Th
 
 Base URL: `https://api.webwhen.ai/api/v1/tasks/{task_id}/executions`
 
-Supports both authenticated and unauthenticated access (for public watches).
+Requires authentication. Owners receive full execution history; an
+authenticated non-owner may read a public watch's scrubbed history.
 
 ## Endpoints
 
@@ -71,7 +72,7 @@ curl -X GET "https://api.webwhen.ai/api/v1/tasks/550e8400.../executions?limit=10
 
 **Access control:**
 - Watch owner: full access
-- Public watch: anyone can view executions (no auth required)
+- Public watch: authenticated non-owners can view scrubbed executions
 - Private watch, non-owner: 404
 
 ## Execution object schema

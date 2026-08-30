@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { ownerWatchPath, publicWatchPath, watchRssPath } from '@/lib/watchRoutes'
 import { notFound } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import rehypeSanitize from 'rehype-sanitize'
@@ -47,7 +48,7 @@ export async function generateMetadata({
   // template (`%s · webwhen`) appends the brand suffix automatically.
   const title = task.name || task.condition_description
   const description = task.condition_description
-  const canonical = `/tasks/${task.id}`
+  const canonical = publicWatchPath(task.id)
   return {
     title,
     description,
@@ -149,7 +150,7 @@ function buildJsonLd(task: PublicTask, origin: string) {
     dateModified,
     mainEntityOfPage: {
       '@type': 'WebPage',
-      '@id': `${origin}/tasks/${task.id}`,
+      '@id': `${origin}${publicWatchPath(task.id)}`,
     },
     author: { '@type': 'Organization', name: 'webwhen' },
     publisher: { '@type': 'Organization', name: 'webwhen' },
@@ -184,7 +185,7 @@ export default async function PublicTaskPage({
         rel="alternate"
         type="application/rss+xml"
         title={`${task.name || 'watch'} — RSS feed`}
-        href={apiUrl(`/tasks/${task.id}/rss`)}
+        href={apiUrl(watchRssPath(task.id))}
       />
 
       <header className={watchStyles.detailHead}>
@@ -216,7 +217,7 @@ export default async function PublicTaskPage({
                 visitors without a Clerk session land on /sign-in. Avoids
                 conditional rendering so the page stays cacheable. */}
             <span>
-              <Link href={`/dashboard/tasks/${task.id}`}>open in dashboard →</Link>
+              <Link href={ownerWatchPath(task.id)}>open in dashboard →</Link>
             </span>
           </div>
         </div>

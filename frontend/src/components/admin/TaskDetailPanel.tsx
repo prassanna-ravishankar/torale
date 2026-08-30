@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { formatShortDateTime, getErrorMessage } from '@/lib/utils'
-import { api } from '@/lib/api'
+import { useApi } from '@/hooks/useApi';
 import { Loader2, Clock, Zap, AlertTriangle, FileText, Play, Pause, RotateCcw } from 'lucide-react'
 import { SectionLabel, StatusBadge } from '@/components/torale'
 import { toast } from 'sonner'
@@ -46,6 +46,7 @@ function formatShortTimestamp(iso: string | null): string {
 }
 
 export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
+  const api = useApi()
   const [executions, setExecutions] = useState<ExecutionData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -164,7 +165,7 @@ export function TaskDetailPanel({ task, onTaskUpdate }: TaskDetailPanelProps) {
     }
     load()
     return () => { cancelled = true }
-  }, [task.id, retryCount])
+  }, [api, task.id, retryCount])
 
   return (
     <div className="bg-ink-8 border-t border-ink-6 p-4 space-y-4 overflow-hidden">

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, Plug } from 'lucide-react';
 import { toast } from 'sonner';
-import api from '@/lib/api';
+import { useApi } from '@/hooks/useApi';
 import type { AvailableToolkit, UserConnection } from '@/types';
 import { EmptyState } from '@/components/torale';
 import { SettingsTabs } from '@/components/settings/SettingsTabs';
@@ -12,6 +12,7 @@ const POLL_INTERVAL_MS = 10_000;
 const POLL_WINDOW_MS = 10 * 60_000;
 
 export const ConnectorsPage: React.FC = () => {
+  const api = useApi();
   const [toolkits, setToolkits] = useState<AvailableToolkit[]>([]);
   const [connections, setConnections] = useState<UserConnection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,7 +37,7 @@ export const ConnectorsPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [api]);
 
   useEffect(() => {
     void refresh();
