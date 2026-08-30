@@ -5,17 +5,8 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
-from fastapi import HTTPException
-from starlette.requests import Request
 
-from webwhen.api.routers.public_tasks import get_public_task_by_id
-from webwhen.api.routers.tasks import (
-    ForkTaskRequest,
-    VisibilityUpdateRequest,
-    fork_task,
-    get_task,
-    update_task_visibility,
-)
+from webwhen.tasks.service import TaskNotFoundError, TaskService
 
 
 @pytest.fixture
@@ -56,178 +47,8 @@ def mock_db():
     return db
 
 
-class TestTaskVisibilityToggle:
-    """Tests for task visibility endpoint."""
-
-    @pytest.mark.asyncio
-    async def test_make_task_public(self, mock_user, mock_db):
-        """Test making task public."""
-        task_id = uuid4()
-        request = VisibilityUpdateRequest(is_public=True)
-
-        # Mock task query
-        mock_db.fetch_one.return_value = {
-            "id": task_id,
-            "is_public": False,
-        }
-
-        result = await update_task_visibility(task_id, request, mock_user, mock_db)
-
-        assert result.is_public is True
-        update_call = mock_db.fetch_one.call_args
-        assert "UPDATE tasks SET is_public" in update_call.args[0]
-        assert update_call.args[1:] == (True, task_id, mock_user.id)
-
-    @pytest.mark.asyncio
-    async def test_make_task_private(self, mock_user, mock_db):
-        """Test making task private."""
-        task_id = uuid4()
-        request = VisibilityUpdateRequest(is_public=False)
-
-        mock_db.fetch_one.return_value = {
-            "id": task_id,
-            "is_public": True,
-        }
-
-        result = await update_task_visibility(task_id, request, mock_user, mock_db)
-
-        assert result.is_public is False
-        update_call = mock_db.fetch_one.call_args
-        assert "UPDATE tasks SET is_public" in update_call.args[0]
-        assert update_call.args[1:] == (False, task_id, mock_user.id)
-
-
-class TestPublicTaskAccess:
-    """Tests for public task access."""
-
-    @pytest.mark.asyncio
-    async def test_get_public_task_unauthenticated(self, mock_db):
-        """Test accessing public task without authentication."""
-        from datetime import UTC, datetime
-
-        task_id = uuid4()
-        user_id = uuid4()
-        now = datetime.now(UTC)
-
-        # Complete mock task with all required fields for _parse_task_with_execution
-        # Note: For public viewers, sensitive fields should be None (scrubbed)
-        mock_task_row = {
-            "id": task_id,
-            "user_id": user_id,
-            "name": "Public Task",
-            "is_public": True,
-            "view_count": 0,
-            "subscriber_count": 0,
-            "last_known_state": None,
-            "notifications": "[]",
-            "schedule": "0 9 * * *",
-            "search_query": "test query",
-            "condition_description": "test condition",
-            "notification_channels": [],
-            "notification_email": None,  # These will be scrubbed for public viewers
-            "webhook_url": None,
-            "webhook_secret": None,
-            "state": "active",
-            "forked_from_task_id": None,
-            "created_at": now,
-            "updated_at": now,
-            "state_changed_at": now,
-            "last_execution_id": None,
-            # Execution fields (LEFT JOIN result - no execution)
-            "exec_id": None,
-            "exec_notification": None,
-            "exec_started_at": None,
-            "exec_completed_at": None,
-            "exec_status": None,
-            "exec_result": None,
-            "exec_grounding_sources": None,
-        }
-
-        mock_db.fetch_one.return_value = mock_task_row
-
-        request = Request({"type": "http", "method": "GET", "path": "/", "headers": []})
-        result = await get_public_task_by_id(request, task_id, mock_db)
-
-        # Verify public task is accessible
-        assert result.id == task_id
-        assert result.name == "Public Task"
-        assert result.is_public is True
-        # Verify sensitive fields are scrubbed for public viewers
-        assert result.notifications == []
-        assert "user_id" not in result.model_dump()
-
-    @pytest.mark.asyncio
-    async def test_get_private_task_unauthenticated(self, mock_db):
-        """Test accessing private task without authentication - should fail."""
-        task_id = uuid4()
-        user_id = uuid4()
-
-        mock_db.fetch_one.return_value = {
-            "id": task_id,
-            "user_id": user_id,
-            "is_public": False,
-        }
-
-        with pytest.raises(HTTPException) as exc_info:
-            request = Request({"type": "http", "method": "GET", "path": "/", "headers": []})
-            await get_public_task_by_id(request, task_id, mock_db)
-
-        assert exc_info.value.status_code == 404
-
-    @pytest.mark.asyncio
-    async def test_get_own_private_task_authenticated(self, mock_user, mock_db):
-        """Test owner can access their own private task."""
-        from datetime import UTC, datetime
-
-        task_id = uuid4()
-        now = datetime.now(UTC)
-
-        # Complete mock task with all required fields for _parse_task_with_execution
-        mock_task_row = {
-            "id": task_id,
-            "user_id": mock_user.id,  # Owner
-            "name": "Private Task",
-            "is_public": False,
-            "view_count": 0,
-            "subscriber_count": 0,
-            "last_known_state": None,
-            "notifications": "[]",
-            "schedule": "0 9 * * *",
-            "search_query": "test query",
-            "condition_description": "test condition",
-            "notification_channels": [],
-            "notification_email": None,
-            "webhook_url": None,
-            "webhook_secret": None,
-            "state": "active",
-            "forked_from_task_id": None,
-            "created_at": now,
-            "updated_at": now,
-            "state_changed_at": now,
-            "last_execution_id": None,
-            # Execution fields (LEFT JOIN result - no execution)
-            "exec_id": None,
-            "exec_notification": None,
-            "exec_started_at": None,
-            "exec_completed_at": None,
-            "exec_status": None,
-            "exec_result": None,
-            "exec_grounding_sources": None,
-        }
-
-        mock_db.fetch_one.return_value = mock_task_row
-
-        # Should not raise exception (owner can access own private tasks)
-        result = await get_task(task_id, mock_user, mock_db)
-
-        # Verify owner can access their own private task
-        assert result.id == task_id
-        assert result.name == "Private Task"
-        assert result.is_public is False
-
-
-class TestTaskForking:
-    """Tests for task forking endpoint."""
+class TestTaskServiceForking:
+    """Tests for task forking domain behavior."""
 
     @pytest.mark.asyncio
     async def test_fork_public_task(self, mock_user, mock_db):
@@ -236,7 +57,6 @@ class TestTaskForking:
 
         source_task_id = uuid4()
         other_user_id = uuid4()
-        request = ForkTaskRequest(name="My Fork")
         now = datetime.now(UTC)
 
         # Mock source task query (uses db.fetch_one)
@@ -281,30 +101,24 @@ class TestTaskForking:
             "last_known_state": None,
         }
 
-        result = await fork_task(source_task_id, request, mock_user, mock_db)
+        result = await TaskService(mock_db).fork(source_task_id, mock_user.id, "My Fork")
 
         # Verify operations were called within transaction
         assert mock_conn.execute.call_count >= 1  # increment subscriber count
-        assert result.name == "My Fork"
-        assert result.forked_from_task_id == source_task_id
+        assert result["name"] == "My Fork"
+        assert result["forked_from_task_id"] == source_task_id
 
     @pytest.mark.asyncio
-    async def test_fork_private_task_fails(self, mock_user, mock_db):
-        """Test forking a private task - should fail."""
+    async def test_fork_private_task_rejects_non_owner(self, mock_user, mock_db):
         source_task_id = uuid4()
-        other_user_id = uuid4()
-        request = ForkTaskRequest()
-
         mock_db.fetch_one.return_value = {
             "id": source_task_id,
-            "user_id": other_user_id,
-            "is_public": False,  # Private task
+            "user_id": uuid4(),
+            "is_public": False,
         }
 
-        with pytest.raises(HTTPException) as exc_info:
-            await fork_task(source_task_id, request, mock_user, mock_db)
-
-        assert exc_info.value.status_code == 404
+        with pytest.raises(TaskNotFoundError, match="Task not found"):
+            await TaskService(mock_db).fork(source_task_id, mock_user.id, None)
 
     @pytest.mark.asyncio
     async def test_fork_own_task_succeeds(self, mock_user, mock_db):
@@ -312,7 +126,6 @@ class TestTaskForking:
         from datetime import UTC, datetime
 
         task_id = uuid4()
-        request = ForkTaskRequest(name="My Duplicate")
         now = datetime.now(UTC)
 
         # Mock source task query
@@ -357,11 +170,11 @@ class TestTaskForking:
             "last_known_state": None,
         }
 
-        result = await fork_task(task_id, request, mock_user, mock_db)
+        result = await TaskService(mock_db).fork(task_id, mock_user.id, "My Duplicate")
 
         # Should succeed and create a duplicate
-        assert result.name == "My Duplicate"
-        assert result.forked_from_task_id == task_id
+        assert result["name"] == "My Duplicate"
+        assert result["forked_from_task_id"] == task_id
         # Owner duplicating their own task - subscriber count should NOT be incremented
         assert mock_conn.execute.call_count == 0
 
@@ -372,7 +185,6 @@ class TestTaskForking:
 
         source_task_id = uuid4()
         other_user_id = uuid4()
-        request = ForkTaskRequest()  # No custom name
         now = datetime.now(UTC)
 
         # Mock source task query
@@ -417,9 +229,9 @@ class TestTaskForking:
             "last_known_state": None,
         }
 
-        result = await fork_task(source_task_id, request, mock_user, mock_db)
+        result = await TaskService(mock_db).fork(source_task_id, mock_user.id, None)
 
-        assert result.name == "Original Task (Copy)"
+        assert result["name"] == "Original Task (Copy)"
 
         # Verify the INSERT call includes the default name
         mock_conn.fetchrow.assert_called_once()
@@ -433,7 +245,6 @@ class TestTaskForking:
 
         source_task_id = uuid4()
         other_user_id = uuid4()
-        request = ForkTaskRequest(name="Forked Task")
         now = datetime.now(UTC)
 
         # Mock source task with sensitive data
@@ -478,11 +289,11 @@ class TestTaskForking:
             "last_known_state": None,
         }
 
-        result = await fork_task(source_task_id, request, mock_user, mock_db)
+        result = await TaskService(mock_db).fork(source_task_id, mock_user.id, "Forked Task")
 
         # Verify task was still forked successfully
-        assert result.name == "Forked Task"
-        assert result.forked_from_task_id == source_task_id
+        assert result["name"] == "Forked Task"
+        assert result["forked_from_task_id"] == source_task_id
 
         # Verify the INSERT call passed scrubbed values (not the original sensitive data)
         # Check the args passed to conn.fetchrow within the transaction

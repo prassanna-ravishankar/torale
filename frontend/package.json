@@ -13,7 +13,11 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
-    "test": "vitest run && tsx lib/seo/jsonLd.test.ts && bash scripts/check-public-env-parity.test.sh"
+    "test": "npm run test:unit && npm run test:seo && npm run test:env",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:seo": "tsx lib/seo/jsonLd.test.ts",
+    "test:env": "bash scripts/check-public-env-parity.test.sh"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.18.0",
@@ -70,6 +74,9 @@
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^15.5.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.6",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
@@ -79,6 +86,7 @@
     "eslint-config-next": "^15.5.0",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.12",
+    "jsdom": "^27.0.1",
     "postcss": "^8.4.45",
     "tailwindcss": "^3.4.11",
     "tsx": "^4.22.3",

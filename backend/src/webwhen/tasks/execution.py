@@ -47,7 +47,7 @@ async def start_task_execution(
     suppress_notifications: bool = False,
     force: bool = False,
     *,
-    scheduler_factory: Callable = get_scheduler,
+    scheduler_factory: Callable | None = None,
 ) -> dict:
     """Create an execution record and enqueue agent execution."""
     running = await db.fetch_one(
@@ -80,7 +80,7 @@ async def start_task_execution(
             running["started_at"],
         )
 
-    scheduler = scheduler_factory()
+    scheduler = (scheduler_factory or get_scheduler)()
     job_id = f"task-{task_id}"
     existing_job = await asyncio.to_thread(scheduler.get_job, job_id)
     if existing_job:

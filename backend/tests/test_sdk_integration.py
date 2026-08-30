@@ -8,14 +8,10 @@ Prerequisites:
 - WEBWHEN_NOAUTH=1 environment variable set
 
 Run with:
-    # Run all tests (will auto-skip if API not available)
-    pytest tests/test_sdk_integration.py -v
+    WEBWHEN_SDK_TEST_ISOLATED=1 WEBWHEN_NOAUTH=1 just test-sdk-live
 
-    # Run specific test class
-    pytest tests/test_sdk_integration.py::TestSDKBasicOperations -v
-
-Note: These tests automatically skip if the API server isn't running (similar to
-      test_gemini_integration.py). They're safe to run in CI.
+Safety: this suite is excluded from default pytest runs. Run it only against an
+isolated disposable API/database with `WEBWHEN_SDK_TEST_ISOLATED=1 just test-sdk-live`.
 """
 
 import os
@@ -28,6 +24,7 @@ from webwhen.sdk import Webwhen
 from webwhen.sdk.exceptions import NotFoundError, ValidationError
 
 # NOTE: These tests create tasks which create APScheduler jobs.
+pytestmark = pytest.mark.integration
 
 
 def check_api_available() -> bool:
@@ -38,23 +35,22 @@ def check_api_available() -> bool:
         httpx.get(f"{api_url}/api/v1/tasks", timeout=2.0, follow_redirects=True)
         # Any HTTP response (even 401/403) means API is running
         return True
-    except (httpx.ConnectError, httpx.TimeoutException):
+    except httpx.RequestError:
         return False
-    except Exception:
-        # Other errors (like auth errors) mean API is running
-        return True
 
 
 @pytest.fixture
 def sdk_client():
     """Create SDK client with proper cleanup."""
+    if os.getenv("WEBWHEN_SDK_TEST_ISOLATED") != "1":
+        pytest.fail("live SDK tests require an explicitly isolated API/database")
+
+    if os.getenv("WEBWHEN_NOAUTH") != "1":
+        pytest.fail("live SDK tests require WEBWHEN_NOAUTH=1")
+
     # Check if API is available
     if not check_api_available():
-        pytest.skip("API server not available (start with `just dev`)")
-
-    # Use WEBWHEN_NOAUTH=1 for local testing
-    if not os.getenv("WEBWHEN_NOAUTH"):
-        pytest.skip("WEBWHEN_NOAUTH not set (required for integration tests)")
+        pytest.fail("API server not available (start with `just dev`)")
 
     client = Webwhen()
     yield client
@@ -426,23 +422,6 @@ class TestSDKEdgeCases:
 
         # Cleanup
         sdk_client.tasks.delete(task.id)
-
-    def test_list_tasks_when_empty(self, sdk_client):
-        """Test listing tasks when no tasks exist (cleanup all first)."""
-        # Get all tasks
-        all_tasks = sdk_client.tasks.list()
-
-        # Delete all tasks
-        for task in all_tasks:
-            try:
-                sdk_client.tasks.delete(task.id)
-            except NotFoundError:
-                pass
-
-        # List should return empty list, not error
-        tasks = sdk_client.tasks.list()
-        assert isinstance(tasks, list)
-        assert len(tasks) == 0
 
 
 class TestSDKWebhooks:

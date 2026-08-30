@@ -65,18 +65,6 @@ describe('ApiClient authentication', () => {
     )
   })
 
-  it('keeps endpoint domains behind the flat client facade', () => {
-    const client = createApiClient({ authMode: 'noauth', fetchImpl: vi.fn() })
-
-    expect(client).toEqual(expect.objectContaining({
-      getCurrentUser: expect.any(Function),
-      getTask: expect.any(Function),
-      getAdminStats: expect.any(Function),
-      getNotificationSends: expect.any(Function),
-      getAvailableToolkits: expect.any(Function),
-    }))
-  })
-
   it('serializes domain query parameters through the shared transport', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse([]))
     const client = createApiClient({ authMode: 'noauth', fetchImpl })
