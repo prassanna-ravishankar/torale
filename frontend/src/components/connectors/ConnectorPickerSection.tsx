@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { useApi } from "@/hooks/useApi";
-// Mirror of backend ConnectionStatus StrEnum (backend/src/torale/connectors/client.py); keep in sync.
+// ConnectionStatus drift is guarded by backend/tests/test_frontend_contract.py.
 import type { ConnectionStatus, UserConnection } from "@/types";
 
 /**

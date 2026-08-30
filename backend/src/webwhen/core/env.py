@@ -39,7 +39,8 @@ def getenv(name: str, default: str | None = None) -> str | None:
             _warned.add(legacy_name)
             warnings.warn(
                 f"Environment variable {legacy_name!r} is deprecated, use {name!r} instead. "
-                "The torale-prefixed env vars will be removed in a future release.",
+                "The torale-prefixed env vars are scheduled for removal after 2026-11-30; "
+                "see webwhen issue #364.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -70,7 +71,8 @@ def warn_legacy_config_path(path) -> None:
     _warned.add(key)
     warnings.warn(
         f"Reading from legacy config path {path}. "
-        "Move it to ~/.webwhen/config.json — the .torale path will stop being read in a future release.",
+        "Move it to ~/.webwhen/config.json — the .torale path is scheduled to stop being "
+        "read after 2026-11-30; see webwhen issue #364.",
         DeprecationWarning,
         stacklevel=2,
     )

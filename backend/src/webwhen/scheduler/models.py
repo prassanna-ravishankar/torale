@@ -57,7 +57,7 @@ class ToolAnnotations(BaseModel):
 class ActivityStep(BaseModel):
     """A single step the agent took during monitoring.
 
-    SYNC: Keep in sync with torale-agent/models.py:ActivityStep
+    The agent wire contract is enforced by torale-agent/tests/test_backend_contract.py.
     """
 
     tool: str = Field(description="Tool name (e.g. perplexity_search, NOTION_SEARCH_NOTION_PAGE)")
@@ -75,7 +75,7 @@ class ActivityStep(BaseModel):
 class MonitoringResponse(BaseModel):
     """Response from monitoring check.
 
-    SYNC: Keep in sync with torale-agent/models.py:MonitoringResponse
+    The agent wire contract is enforced by torale-agent/tests/test_backend_contract.py.
     """
 
     evidence: str = Field(description="Internal reasoning and audit trail (not user-facing)")

@@ -346,7 +346,7 @@ routes = [
     Route("/health", health, methods=["GET"]),
     Route("/ready", health, methods=["GET"]),
     *create_agent_card_routes(agent_card),
-    # TODO(2026-09): remove v0.3 compatibility after one stable release window.
+    # Remove by 2026-09-30: https://github.com/prassanna-ravishankar/webwhen/issues/363
     *create_jsonrpc_routes(request_handler, rpc_url="/", enable_v0_3_compat=True),
 ]
 
