@@ -62,7 +62,8 @@ def __getattr__(name: str):
             _warned.add(name)
             warnings.warn(
                 f"'torale.{name}' is deprecated, use '{module_path}.{new_name}' instead. "
-                "The 'torale' package will be removed in a future release.",
+                "The 'torale' package is scheduled for removal after 2026-11-30; "
+                "see webwhen issue #364.",
                 DeprecationWarning,
                 stacklevel=2,
             )

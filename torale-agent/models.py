@@ -70,7 +70,7 @@ class FetchResult(BaseModel):
 class ActivityStep(BaseModel):
     """A single step the agent took during monitoring.
 
-    SYNC: Keep in sync with backend/src/webwhen/scheduler/models.py:ActivityStep
+    The backend wire contract is enforced by tests/test_backend_contract.py.
     """
 
     tool: str = Field(
@@ -90,7 +90,7 @@ class ActivityStep(BaseModel):
 class MonitoringResponse(BaseModel):
     """Response from monitoring check.
 
-    SYNC: Keep in sync with backend/src/webwhen/scheduler/models.py:MonitoringResponse
+    The backend wire contract is enforced by tests/test_backend_contract.py.
     """
 
     evidence: str = Field(

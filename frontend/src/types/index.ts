@@ -67,7 +67,7 @@ export interface TaskCreatePayload {
   attached_connector_slugs?: string[];
 }
 
-/** Mirror of backend ConnectionStatus StrEnum (backend/src/torale/connectors/client.py); keep in sync. */
+/** Mirrored from the backend and guarded by backend/tests/test_frontend_contract.py. */
 export type ConnectionStatus =
   | "INITIALIZING"
   | "INITIATED"

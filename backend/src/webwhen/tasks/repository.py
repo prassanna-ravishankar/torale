@@ -74,6 +74,12 @@ class TaskRepository(BaseRepository):
             return await self.db.fetch_all(str(query), user_id, state.value)
         return await self.db.fetch_all(str(query), user_id)
 
+    async def count_active_by_user(self, user_id: UUID) -> int:
+        """Count active tasks owned by a user."""
+        return await self.db.fetch_val(
+            "SELECT COUNT(*) FROM tasks WHERE user_id = $1 AND state = 'active'", user_id
+        )
+
     async def find_by_id_with_execution(self, task_id: UUID) -> dict | None:
         """Find task by ID with latest execution embedded.
 
@@ -87,6 +93,77 @@ class TaskRepository(BaseRepository):
         query = query.where(self.tasks.id == Parameter("$1"))
 
         return await self.db.fetch_one(str(query), task_id)
+
+    async def find_access_record(self, task_id: UUID) -> dict | None:
+        """Return only the fields needed to decide owner/public access."""
+        return await self.db.fetch_one(
+            "SELECT id, user_id, is_public FROM tasks WHERE id = $1", task_id
+        )
+
+    async def find_owned(self, task_id: UUID, user_id: UUID) -> dict | None:
+        """Find a task only when it belongs to the given user."""
+        return await self.db.fetch_one(
+            "SELECT * FROM tasks WHERE id = $1 AND user_id = $2", task_id, user_id
+        )
+
+    async def set_owned_visibility(self, task_id: UUID, user_id: UUID, is_public: bool) -> bool:
+        """Set visibility iff the task is owned by the user."""
+        row = await self.db.fetch_one(
+            """
+            UPDATE tasks SET is_public = $1
+            WHERE id = $2 AND user_id = $3
+            RETURNING id
+            """,
+            is_public,
+            task_id,
+            user_id,
+        )
+        return row is not None
+
+    async def delete_owned(self, task_id: UUID, user_id: UUID) -> bool:
+        """Delete a task iff it is owned by the user."""
+        row = await self.db.fetch_one(
+            "DELETE FROM tasks WHERE id = $1 AND user_id = $2 RETURNING id",
+            task_id,
+            user_id,
+        )
+        return row is not None
+
+    async def delete_by_id(self, task_id: UUID) -> bool:
+        """Delete by ID for compensating a failed create workflow."""
+        result = await self.db.execute("DELETE FROM tasks WHERE id = $1", task_id)
+        return result != "DELETE 0"
+
+    async def update_owned_fields(
+        self, task_id: UUID, user_id: UUID, data: TaskData
+    ) -> dict | None:
+        """Update supplied task fields while enforcing ownership."""
+        if not data:
+            return await self.find_owned(task_id, user_id)
+
+        values = dict(data)
+        if "notifications" in values:
+            values["notifications"] = json.dumps(values["notifications"])
+        assignments = [f"{field} = ${index}" for index, field in enumerate(values, start=1)]
+        params = list(values.values()) + [task_id, user_id]
+        return await self.db.fetch_one(
+            f"""
+            UPDATE tasks SET {", ".join(assignments)}
+            WHERE id = ${len(params) - 1} AND user_id = ${len(params)}
+            RETURNING *
+            """,
+            *params,
+        )
+
+    async def restore_fields(self, task_id: UUID, values: TaskData) -> None:
+        """Restore known values after a scheduler-coordinated update fails."""
+        if not values:
+            return
+        assignments = [f"{field} = ${index}" for index, field in enumerate(values, start=1)]
+        params = list(values.values()) + [task_id]
+        await self.db.execute(
+            f"UPDATE tasks SET {', '.join(assignments)} WHERE id = ${len(params)}", *params
+        )
 
     async def update_task(self, task_id: UUID, data: TaskData) -> dict:
         """Update task fields.
@@ -228,6 +305,24 @@ class TaskExecutionRepository(BaseRepository):
     def __init__(self, db: Database):
         super().__init__(db)
         self.executions = tables.task_executions
+
+    async def find_recent(
+        self, task_id: UUID, limit: int, *, notifications_only: bool = False
+    ) -> list[dict]:
+        """Return recent executions, optionally only those which notified."""
+        notification_filter = " AND notification IS NOT NULL" if notifications_only else ""
+        return await self.db.fetch_all(
+            f"""
+            SELECT id, task_id, status, started_at, completed_at,
+                   result, error_message, notification, grounding_sources, created_at
+            FROM task_executions
+            WHERE task_id = $1{notification_filter}
+            ORDER BY started_at DESC
+            LIMIT $2
+            """,
+            task_id,
+            limit,
+        )
 
     async def create_execution(self, task_id: UUID, status: str = "pending") -> dict:
         """Create a new task execution.

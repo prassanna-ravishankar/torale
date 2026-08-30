@@ -12,6 +12,8 @@ on:
     paths:
       - 'backend/**'
       - 'torale-agent/**'
+      # Backend tests enforce the mirrored ConnectionStatus union in this file.
+      - 'frontend/src/types/index.ts'
       - '.github/workflows/backend-pr.yml'
 
 jobs:
