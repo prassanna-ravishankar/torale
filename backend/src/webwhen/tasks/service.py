@@ -7,12 +7,14 @@ This service consolidates:
 """
 
 import asyncio
+import json
 import logging
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.triggers.date import DateTrigger
+from asyncpg.exceptions import UniqueViolationError
 
 from webwhen.core.database import Database
 from webwhen.scheduler import JOB_FUNC_REF
@@ -26,6 +28,14 @@ class InvalidTransitionError(Exception):
     """Raised when attempting an invalid state transition."""
 
 
+class TaskNotFoundError(LookupError):
+    """Raised when a task is missing or inaccessible to an operation."""
+
+
+class ForkNameConflictError(RuntimeError):
+    """Raised when an automatically generated fork name remains non-unique."""
+
+
 class TaskService:
     """Unified service for Task domain operations.
 
@@ -34,6 +44,77 @@ class TaskService:
 
     def __init__(self, db: Database):
         self.db = db
+
+    async def fork(self, task_id: UUID, user_id: UUID, requested_name: str | None) -> dict:
+        """Copy an accessible task, atomically tracking public subscriptions."""
+        source_row = await self.db.fetch_one("SELECT * FROM tasks WHERE id = $1", task_id)
+        if not source_row:
+            raise TaskNotFoundError("Task not found")
+        source = dict(source_row)
+        is_owner = source["user_id"] == user_id
+        if not is_owner and not source["is_public"]:
+            raise TaskNotFoundError("Task not found")
+
+        if is_owner:
+            notification_values = (
+                source["notifications"],
+                source["notification_channels"],
+                source["notification_email"],
+                source["webhook_url"],
+                source["webhook_secret"],
+            )
+        else:
+            notification_values = (json.dumps([]), [], None, None, None)
+
+        base_name = requested_name or f"{source['name']} (Copy)"
+        for attempt in range(3):
+            fork_name = (
+                base_name
+                if requested_name or attempt == 0
+                else f"{source['name']} (Copy {attempt + 1})"
+            )
+            try:
+                async with self.db.acquire() as conn:
+                    async with conn.transaction():
+                        if not is_owner:
+                            await conn.execute(
+                                "UPDATE tasks SET subscriber_count = subscriber_count + 1 WHERE id = $1",
+                                task_id,
+                            )
+                        row = await conn.fetchrow(
+                            """
+                            INSERT INTO tasks (
+                                user_id, name, state, search_query, condition_description,
+                                notifications, notification_channels, notification_email,
+                                webhook_url, webhook_secret, forked_from_task_id, is_public
+                            )
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                            RETURNING *
+                            """,
+                            user_id,
+                            fork_name,
+                            TaskState.PAUSED.value,
+                            source["search_query"],
+                            source["condition_description"],
+                            *notification_values,
+                            task_id,
+                            False,
+                        )
+                if row:
+                    return dict(row)
+                raise RuntimeError("Failed to fork task")
+            except UniqueViolationError as exc:
+                if attempt == 2:
+                    raise ForkNameConflictError(
+                        "Failed to generate unique task name after multiple attempts. "
+                        "Please provide a custom name."
+                    ) from exc
+                logger.warning(
+                    "Task name collision on attempt %s, retrying with incremented name",
+                    attempt + 1,
+                )
+
+        raise RuntimeError("Failed to fork task")
 
     async def transition(
         self,

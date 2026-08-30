@@ -74,7 +74,9 @@ class TestTaskVisibilityToggle:
         result = await update_task_visibility(task_id, request, mock_user, mock_db)
 
         assert result.is_public is True
-        mock_db.execute.assert_called()
+        update_call = mock_db.fetch_one.call_args
+        assert "UPDATE tasks SET is_public" in update_call.args[0]
+        assert update_call.args[1:] == (True, task_id, mock_user.id)
 
     @pytest.mark.asyncio
     async def test_make_task_private(self, mock_user, mock_db):
@@ -90,7 +92,9 @@ class TestTaskVisibilityToggle:
         result = await update_task_visibility(task_id, request, mock_user, mock_db)
 
         assert result.is_public is False
-        mock_db.execute.assert_called()
+        update_call = mock_db.fetch_one.call_args
+        assert "UPDATE tasks SET is_public" in update_call.args[0]
+        assert update_call.args[1:] == (False, task_id, mock_user.id)
 
 
 class TestPublicTaskAccess:

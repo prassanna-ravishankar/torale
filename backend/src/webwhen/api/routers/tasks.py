@@ -1,12 +1,9 @@
-import asyncio
 import json
 import logging
-import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from apscheduler.jobstores.base import JobLookupError
-from asyncpg.exceptions import UniqueViolationError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
@@ -21,8 +18,6 @@ from webwhen.api.utils.task_parsers import (
 from webwhen.core.config import settings
 from webwhen.core.database import Database, get_db
 from webwhen.core.views import increment_view
-from webwhen.notifications import NotificationValidationError, validate_notification
-from webwhen.scheduler.job import execute_task_job_manual
 from webwhen.scheduler.scheduler import get_scheduler
 from webwhen.tasks import (
     FeedExecution,
@@ -30,11 +25,23 @@ from webwhen.tasks import (
     TaskCreate,
     TaskExecution,
     TaskState,
-    TaskStatus,
     TaskUpdate,
 )
-from webwhen.tasks.repository import TaskRepository
-from webwhen.tasks.service import InvalidTransitionError, TaskService
+from webwhen.tasks.execution import (
+    ExecutionAlreadyRunningError,
+    ExecutionCreationError,
+)
+from webwhen.tasks.execution import (
+    start_task_execution as _start_task_execution,
+)
+from webwhen.tasks.notifications import TaskNotificationError, prepare_notifications
+from webwhen.tasks.repository import TaskExecutionRepository, TaskRepository
+from webwhen.tasks.service import (
+    ForkNameConflictError,
+    InvalidTransitionError,
+    TaskNotFoundError,
+    TaskService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,88 +50,13 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 async def _check_task_access(db: Database, task_id: UUID, user) -> tuple[dict, bool]:
     """Verify task exists and user has access (owner or public). Returns (task row, is_owner)."""
-    row = await db.fetch_one("SELECT id, user_id, is_public FROM tasks WHERE id = $1", task_id)
+    row = await TaskRepository(db).find_access_record(task_id)
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     is_owner = user is not None and row["user_id"] == user.id
     if not is_owner and not row["is_public"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     return dict(row), is_owner
-
-
-async def _validate_and_extract_notifications(
-    notifications: list,
-    old_webhook_url: str | None = None,
-) -> tuple[list[dict], dict[str, any]]:
-    """
-    Validate notifications and extract fields for database storage.
-
-    Args:
-        notifications: List of notification dicts or Pydantic models
-        old_webhook_url: Previous webhook URL (for updates). If provided and URL hasn't changed,
-                        webhook_secret will be None to preserve existing secret.
-
-    Returns:
-        Tuple of (validated_notifications, extracted_fields) where extracted_fields contains:
-        - notification_channels: list of channel types
-        - notification_email: email address or None
-        - webhook_url: webhook URL or None
-        - webhook_secret: webhook secret or None (None means keep existing)
-
-    Raises:
-        HTTPException: If validation fails or duplicate types found
-    """
-    # Validate each notification
-    validated_notifications = []
-    for notif in notifications:
-        # Convert to dict if it's a Pydantic model
-        notif_dict = notif.model_dump() if hasattr(notif, "model_dump") else notif
-        try:
-            validated = await validate_notification(notif_dict)
-            validated_notifications.append(validated)
-        except NotificationValidationError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid notification: {str(e)}"
-            ) from e
-
-    # Validate no duplicate notification types (supports 1 email + 1 webhook max)
-    notification_types = [n.get("type") for n in validated_notifications]
-    if len(notification_types) != len(set(notification_types)):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Multiple notifications of the same type are not supported. Please provide at most one email and one webhook notification.",
-        )
-
-    # Extract notification channels and webhook config for database
-    notification_channels = []
-    notification_email = None
-    webhook_url = None
-    webhook_secret = None
-
-    for notif in validated_notifications:
-        notif_type = notif.get("type")
-        if notif_type == "email":
-            notification_channels.append("email")
-            notification_email = notif.get("address")
-        elif notif_type == "webhook":
-            notification_channels.append("webhook")
-            webhook_url = notif.get("url")
-            # Only generate new secret if URL changed or it's a new webhook
-            if old_webhook_url is None or old_webhook_url != webhook_url:
-                webhook_secret = secrets.token_urlsafe(32)
-            # else: webhook_secret stays None to preserve existing secret
-
-    if not notification_channels:
-        notification_channels = ["email"]
-
-    extracted = {
-        "notification_channels": notification_channels,
-        "notification_email": notification_email,
-        "webhook_url": webhook_url,
-        "webhook_secret": webhook_secret,
-    }
-
-    return validated_notifications, extracted
 
 
 @router.post("/", response_model=Task)
@@ -148,9 +80,10 @@ async def create_task(
             )
 
     # Validate notifications and extract fields for database
-    validated_notifications, extracted = await _validate_and_extract_notifications(
-        task.notifications
-    )
+    try:
+        validated_notifications, extracted = await prepare_notifications(task.notifications)
+    except TaskNotificationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     final_condition = task.condition_description or task.search_query
     initial_next_run = datetime.now(UTC) + timedelta(minutes=1)
@@ -176,10 +109,10 @@ async def create_task(
         task.search_query,
         final_condition,
         json.dumps(validated_notifications),
-        extracted["notification_channels"],
-        extracted["notification_email"],
-        extracted["webhook_url"],
-        extracted["webhook_secret"],
+        extracted.notification_channels,
+        extracted.notification_email,
+        extracted.webhook_url,
+        extracted.webhook_secret,
         task.context,
         task.attached_connector_slugs,
     )
@@ -254,35 +187,6 @@ async def get_user_feed(
     )
 
 
-async def _safe_execute_task_job_manual(
-    task_id: str,
-    execution_id: str,
-    user_id: str,
-    task_name: str,
-    suppress_notifications: bool = False,
-    retry_count: int = 0,
-) -> None:
-    """Wrapper to ensure background task errors are logged.
-
-    FastAPI's BackgroundTasks silently swallows exceptions, so we need
-    explicit logging to maintain visibility into failures.
-    """
-    try:
-        await execute_task_job_manual(
-            task_id=task_id,
-            execution_id=execution_id,
-            user_id=user_id,
-            task_name=task_name,
-            suppress_notifications=suppress_notifications,
-            retry_count=retry_count,
-        )
-    except Exception as exc:
-        logger.error(
-            f"Background task execution failed for task {task_id}, execution {execution_id}: {exc}",
-            exc_info=True,
-        )
-
-
 async def start_task_execution(
     task_id: str,
     task_name: str,
@@ -292,89 +196,24 @@ async def start_task_execution(
     suppress_notifications: bool = False,
     force: bool = False,
 ) -> dict:
-    """Create execution record and launch agent-based execution in background."""
-    # Check for running or pending executions to prevent concurrent execution
-    running_execution = await db.fetch_one(
-        "SELECT id, status, started_at FROM task_executions WHERE task_id = $1 AND status IN ($2, $3)",
-        UUID(task_id),
-        TaskStatus.RUNNING.value,
-        TaskStatus.PENDING.value,
-    )
-
-    if running_execution and not force:
+    """HTTP-compatible adapter for manual execution orchestration."""
+    try:
+        return await _start_task_execution(
+            task_id=task_id,
+            task_name=task_name,
+            user_id=user_id,
+            db=db,
+            background_tasks=background_tasks,
+            suppress_notifications=suppress_notifications,
+            force=force,
+        )
+    except ExecutionAlreadyRunningError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Task is already running or pending. Use force=true to override.",
-        )
-
-    if running_execution:
-        # Force override: mark stuck execution as cancelled
-        stuck_id = running_execution["id"]
-        await db.execute(
-            """
-            UPDATE task_executions
-            SET status = $1,
-                error_message = $2,
-                internal_error = $3,
-                completed_at = $4
-            WHERE id = $5
-            """,
-            TaskStatus.CANCELLED.value,
-            "Execution cancelled by manual force run",
-            "Force override triggered from admin/manual execution",
-            datetime.now(UTC),
-            stuck_id,
-        )
-        logger.warning(
-            f"Force-cancelling stuck execution {stuck_id} for task {task_id} "
-            f"(was in status '{running_execution['status']}' since {running_execution['started_at']})"
-        )
-
-    # Cancel any pending retry jobs before starting manual execution
-    scheduler = get_scheduler()
-    job_id = f"task-{task_id}"
-    existing_job = await asyncio.to_thread(scheduler.get_job, job_id)
-    if existing_job:
-        await asyncio.to_thread(scheduler.remove_job, job_id)
-        logger.info(f"Cancelled pending retry job for task {task_id} (manual run triggered)")
-
-    # Inherit retry count from last execution (if it exists)
-    last_execution = await db.fetch_one(
-        """SELECT retry_count FROM task_executions
-           WHERE task_id = $1
-           ORDER BY started_at DESC LIMIT 1""",
-        UUID(task_id),
-    )
-    retry_count = last_execution["retry_count"] if last_execution else 0
-
-    execution_query = """
-        INSERT INTO task_executions (task_id, status)
-        VALUES ($1, $2)
-        RETURNING id, task_id, status, started_at, completed_at, result, error_message, created_at
-    """
-
-    execution_row = await db.fetch_one(execution_query, UUID(task_id), TaskStatus.PENDING.value)
-
-    if not execution_row:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to create execution record",
-        )
-
-    background_tasks.add_task(
-        _safe_execute_task_job_manual,
-        task_id=task_id,
-        execution_id=str(execution_row["id"]),
-        user_id=user_id,
-        task_name=task_name,
-        suppress_notifications=suppress_notifications,
-        retry_count=retry_count,
-    )
-    logger.info(
-        f"Started execution {execution_row['id']} for task {task_id} (retry_count={retry_count})"
-    )
-
-    return dict(execution_row)
+        ) from exc
+    except ExecutionCreationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.get("/{task_id}", response_model=Task)
@@ -438,27 +277,11 @@ async def update_task_visibility(
     """
     Toggle task visibility between public and private.
     """
-    # Verify task belongs to user
-    task_query = """
-        SELECT id, is_public
-        FROM tasks
-        WHERE id = $1 AND user_id = $2
-    """
-
-    task = await db.fetch_one(task_query, task_id, user.id)
-
-    if not task:
+    if not await TaskRepository(db).set_owned_visibility(task_id, user.id, request.is_public):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",
         )
-
-    # Update is_public
-    await db.execute(
-        "UPDATE tasks SET is_public = $1 WHERE id = $2",
-        request.is_public,
-        task_id,
-    )
 
     return VisibilityUpdateResponse(is_public=request.is_public)
 
@@ -484,112 +307,15 @@ async def fork_task(
     - Tracks original task via forked_from_task_id
     - User can optionally provide a new name
     """
-    # Fetch full source task (need all columns for forking)
-    source_row = await db.fetch_one("SELECT * FROM tasks WHERE id = $1", task_id)
-    if not source_row:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
-    source = dict(source_row)
-    is_owner = user is not None and source["user_id"] == user.id
-    if not is_owner and not source["is_public"]:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
-
-    # Determine base name and notification fields (scrub sensitive data for non-owners)
-    base_fork_name = request.name if request.name else f"{source['name']} (Copy)"
-    if is_owner:
-        notifications = source["notifications"]
-        notification_email = source["notification_email"]
-        webhook_url = source["webhook_url"]
-        webhook_secret = source["webhook_secret"]
-        notification_channels = source["notification_channels"]
-    else:
-        notifications = json.dumps([])
-        notification_email = None
-        webhook_url = None
-        webhook_secret = None
-        notification_channels = []
-
-    # Retry loop to handle race condition on task name uniqueness
-    # Try up to 3 times with incremented counter to handle name collisions
-    max_retries = 3
-    forked_row = None
-
-    for attempt in range(max_retries):
-        try:
-            # Generate name with counter suffix if retry is needed
-            if request.name:
-                # User provided custom name - use it directly
-                fork_name = base_fork_name
-            else:
-                # Auto-generated name - add counter on retry attempts
-                fork_name = (
-                    base_fork_name if attempt == 0 else f"{source['name']} (Copy {attempt + 1})"
-                )
-
-            # Wrap fork operations in transaction for atomicity
-            # If either the subscriber count increment or task creation fails, both are rolled back
-            async with db.acquire() as conn:
-                async with conn.transaction():
-                    # Increment subscriber count on original task only if forked by another user
-                    if not is_owner:
-                        await conn.execute(
-                            "UPDATE tasks SET subscriber_count = subscriber_count + 1 WHERE id = $1",
-                            task_id,
-                        )
-
-                    # Create forked task (in PAUSED state, not public, next_run=NULL)
-                    fork_query = """
-                        INSERT INTO tasks (
-                            user_id, name, state,
-                            search_query, condition_description, notifications,
-                            notification_channels, notification_email, webhook_url, webhook_secret,
-                            forked_from_task_id, is_public
-                        )
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-                        RETURNING *
-                    """
-
-                    forked_row = await conn.fetchrow(
-                        fork_query,
-                        user.id,
-                        fork_name,
-                        TaskState.PAUSED.value,
-                        source["search_query"],
-                        source["condition_description"],
-                        notifications,
-                        notification_channels,
-                        notification_email,
-                        webhook_url,
-                        webhook_secret,
-                        task_id,
-                        False,  # Forked tasks start as private
-                    )
-
-            # Success - break out of retry loop
-            break
-
-        except UniqueViolationError as e:
-            # Name collision - retry with incremented counter
-            if attempt < max_retries - 1:
-                logger.warning(
-                    f"Task name collision on attempt {attempt + 1}, retrying with incremented name..."
-                )
-                continue
-            # Out of retries
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Failed to generate unique task name after multiple attempts. Please provide a custom name.",
-            ) from e
-        except Exception:
-            # Other database errors - don't retry
-            raise
-
-    if not forked_row:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to fork task",
-        )
-
-    return Task(**parse_task_row(forked_row))
+    try:
+        row = await TaskService(db).fork(task_id, user.id, request.name)
+    except TaskNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ForkNameConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return Task(**parse_task_row(row))
 
 
 @router.put("/{task_id}", response_model=Task)
@@ -597,13 +323,7 @@ async def update_task(
     task_id: UUID, task_update: TaskUpdate, user: CurrentUser, db: Database = Depends(get_db)
 ):
     # First verify the task belongs to the user
-    existing_query = """
-        SELECT *
-        FROM tasks
-        WHERE id = $1 AND user_id = $2
-    """
-
-    existing = await db.fetch_one(existing_query, task_id, user.id)
+    existing = await TaskRepository(db).find_owned(task_id, user.id)
 
     if not existing:
         raise HTTPException(
@@ -623,18 +343,21 @@ async def update_task(
         old_webhook_url = existing.get("webhook_url")
 
         # Validate and extract notification fields
-        validated_notifications, extracted = await _validate_and_extract_notifications(
-            update_data["notifications"], old_webhook_url=old_webhook_url
-        )
+        try:
+            validated_notifications, extracted = await prepare_notifications(
+                update_data["notifications"], old_webhook_url=old_webhook_url
+            )
+        except TaskNotificationError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
         update_data["notifications"] = validated_notifications
-        update_data["notification_channels"] = extracted["notification_channels"]
-        update_data["notification_email"] = extracted["notification_email"]
-        update_data["webhook_url"] = extracted["webhook_url"]
+        update_data["notification_channels"] = extracted.notification_channels
+        update_data["notification_email"] = extracted.notification_email
+        update_data["webhook_url"] = extracted.webhook_url
 
         # Only update webhook_secret if it was generated (URL changed)
-        if extracted["webhook_secret"] is not None:
-            update_data["webhook_secret"] = extracted["webhook_secret"]
+        if extracted.webhook_secret is not None:
+            update_data["webhook_secret"] = extracted.webhook_secret
 
     # Build dynamic UPDATE query — track updated fields for rollback
     set_clauses = []
@@ -746,13 +469,7 @@ async def update_task(
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(task_id: UUID, user: CurrentUser, db: Database = Depends(get_db)):
     # Delete from DB first (verifies ownership before touching scheduler)
-    row = await db.fetch_one(
-        "DELETE FROM tasks WHERE id = $1 AND user_id = $2 RETURNING id",
-        task_id,
-        user.id,
-    )
-
-    if not row:
+    if not await TaskRepository(db).delete_owned(task_id, user.id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",
@@ -782,12 +499,7 @@ async def execute_task(
 ):
     """Execute a task manually (Run Now)."""
     # Verify task exists and belongs to user
-    task_query = """
-        SELECT id, name FROM tasks
-        WHERE id = $1 AND user_id = $2
-    """
-
-    task = await db.fetch_one(task_query, task_id, user.id)
+    task = await TaskRepository(db).find_owned(task_id, user.id)
 
     if not task:
         raise HTTPException(
@@ -815,21 +527,9 @@ async def _fetch_task_executions(
     """Fetch task executions with access control. Optionally filter to notifications only."""
     _, is_owner = await _check_task_access(db, task_id, user)
 
-    where = "WHERE task_id = $1"
-    if notifications_only:
-        where += " AND notification IS NOT NULL"
-
-    query = f"""
-        SELECT id, task_id, status, started_at, completed_at,
-               result, error_message, notification, grounding_sources,
-               created_at
-        FROM task_executions
-        {where}
-        ORDER BY started_at DESC
-        LIMIT $2
-    """
-
-    rows = await db.fetch_all(query, task_id, limit)
+    rows = await TaskExecutionRepository(db).find_recent(
+        task_id, limit, notifications_only=notifications_only
+    )
 
     executions = [TaskExecution(**parse_execution_row(row)) for row in rows]
     if not is_owner:
