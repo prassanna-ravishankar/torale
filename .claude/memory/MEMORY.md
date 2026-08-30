@@ -6,4 +6,5 @@
 - [project_execution_id_reuse_legacy.md](project_execution_id_reuse_legacy.md) - Pre-PR#207 rows have inflated durations and stale errors; don't backfill, they age out
 - [project_notification_links.md](project_notification_links.md) - Notification CTAs are owner links; public `/tasks/:id` returns 404 for private watches
 - [project_watch_lifecycle.md](project_watch_lifecycle.md) - Watches are user-controlled; suppress agent auto-completion and guard rescheduling races
+- [project_auth_deeplink_race.md](project_auth_deeplink_race.md) - Owner deep links must wait for backend auth readiness before fetching private watches
 - [project_search_retrieval.md](project_search_retrieval.md) - Search is independent from the reasoning model; Perplexity/Parallel replaced Gemini native grounding based on evals

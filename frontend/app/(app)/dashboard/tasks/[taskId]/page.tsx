@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext'
 export default function OwnerTaskDetailPage() {
   const router = useRouter()
   const params = useParams<{ taskId: string }>()
-  const { user } = useAuth()
+  const { isLoaded, user } = useAuth()
 
   const taskId = params?.taskId
   if (!taskId) {
@@ -20,12 +20,19 @@ export default function OwnerTaskDetailPage() {
     return null
   }
 
+  // A cold deep-link (for example, from a notification email) can render this
+  // page before AuthedApiBootstrap's effect has installed the Clerk token
+  // getter. Waiting for the backend user mirrors Dashboard's loading gate and
+  // prevents the initial anonymous 404 from becoming a permanent not-found
+  // state. Navigating from the dashboard already has this user ready.
+  if (!isLoaded || !user?.id) return null
+
   return (
     <TaskDetail
       taskId={taskId}
       onBack={() => router.push('/dashboard')}
       onDeleted={() => router.push('/dashboard')}
-      currentUserId={user?.id ?? undefined}
+      currentUserId={user.id}
     />
   )
 }
