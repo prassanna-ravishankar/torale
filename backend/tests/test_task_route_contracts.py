@@ -105,6 +105,8 @@ def test_authenticated_task_access_contract(route_client, is_owner, is_public, e
         assert body["id"] == str(task_id)
         if not is_owner:
             assert body["notifications"] == []
+            assert "notification_email" not in body
+            assert "webhook_url" not in body
             increment_view.assert_called_once_with(task_id)
 
 

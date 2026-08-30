@@ -35,26 +35,22 @@ def check_api_available() -> bool:
         httpx.get(f"{api_url}/api/v1/tasks", timeout=2.0, follow_redirects=True)
         # Any HTTP response (even 401/403) means API is running
         return True
-    except (httpx.ConnectError, httpx.TimeoutException):
+    except httpx.RequestError:
         return False
-    except Exception:
-        # Other errors (like auth errors) mean API is running
-        return True
 
 
 @pytest.fixture
 def sdk_client():
     """Create SDK client with proper cleanup."""
     if os.getenv("WEBWHEN_SDK_TEST_ISOLATED") != "1":
-        pytest.skip("live SDK tests require an explicitly isolated API/database")
+        pytest.fail("live SDK tests require an explicitly isolated API/database")
+
+    if os.getenv("WEBWHEN_NOAUTH") != "1":
+        pytest.fail("live SDK tests require WEBWHEN_NOAUTH=1")
 
     # Check if API is available
     if not check_api_available():
-        pytest.skip("API server not available (start with `just dev`)")
-
-    # Use WEBWHEN_NOAUTH=1 for local testing
-    if not os.getenv("WEBWHEN_NOAUTH"):
-        pytest.skip("WEBWHEN_NOAUTH not set (required for integration tests)")
+        pytest.fail("API server not available (start with `just dev`)")
 
     client = Webwhen()
     yield client
