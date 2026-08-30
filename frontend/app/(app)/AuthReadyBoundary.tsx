@@ -5,6 +5,7 @@ import { useEffect } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 import { useAuth } from '@/contexts/AuthContext'
+import { getSignInRedirect } from '@/lib/authRedirect'
 import styles from './AuthReadyBoundary.module.css'
 
 export function AuthReadyBoundary({ children }: { children: ReactNode }) {
@@ -15,9 +16,7 @@ export function AuthReadyBoundary({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (status !== 'unauthenticated') return
-    const query = searchParams.toString()
-    const returnPath = query ? `${pathname}?${query}` : pathname
-    router.replace(`/sign-in?redirect_url=${encodeURIComponent(returnPath)}`)
+    router.replace(getSignInRedirect(pathname, searchParams.toString()))
   }, [pathname, router, searchParams, status])
 
   if (status === 'authenticated') return <>{children}</>
