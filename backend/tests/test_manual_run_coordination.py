@@ -64,7 +64,7 @@ class TestManualRunCoordination:
 
         background_tasks = BackgroundTasks()
 
-        with patch("webwhen.scheduler.scheduler.get_scheduler", return_value=scheduler_mock):
+        with patch("webwhen.tasks.execution.get_scheduler", return_value=scheduler_mock):
             result = await start_task_execution(
                 task_id=TASK_ID,
                 task_name=TASK_NAME,
@@ -73,11 +73,9 @@ class TestManualRunCoordination:
                 background_tasks=background_tasks,
             )
 
-        # Verify execution was created (main behavior)
         assert result["status"] == "pending"
-
-        # Note: Due to asyncio.to_thread, scheduler method calls happen in thread pool
-        # We verify the overall behavior works rather than specific method calls
+        scheduler_mock.get_job.assert_called_once_with(f"task-{TASK_ID}")
+        scheduler_mock.remove_job.assert_called_once_with(f"task-{TASK_ID}")
 
     @pytest.mark.asyncio
     async def test_succeeds_when_no_pending_job(self):
@@ -95,7 +93,7 @@ class TestManualRunCoordination:
 
         background_tasks = BackgroundTasks()
 
-        with patch("webwhen.scheduler.scheduler.get_scheduler", return_value=scheduler_mock):
+        with patch("webwhen.tasks.execution.get_scheduler", return_value=scheduler_mock):
             result = await start_task_execution(
                 task_id=TASK_ID,
                 task_name=TASK_NAME,
@@ -105,6 +103,7 @@ class TestManualRunCoordination:
             )
 
         # Verify no removal attempt when no job exists
+        scheduler_mock.get_job.assert_called_once_with(f"task-{TASK_ID}")
         scheduler_mock.remove_job.assert_not_called()
 
         # Verify execution was created
@@ -129,7 +128,7 @@ class TestManualRunCoordination:
 
         background_tasks = BackgroundTasks()
 
-        with patch("webwhen.scheduler.scheduler.get_scheduler", return_value=scheduler_mock):
+        with patch("webwhen.tasks.execution.get_scheduler", return_value=scheduler_mock):
             # First manual run succeeds
             result1 = await start_task_execution(
                 task_id=TASK_ID,
@@ -169,7 +168,7 @@ class TestManualRunCoordination:
 
         background_tasks_mock = MagicMock(spec=BackgroundTasks)
 
-        with patch("webwhen.scheduler.scheduler.get_scheduler", return_value=scheduler_mock):
+        with patch("webwhen.tasks.execution.get_scheduler", return_value=scheduler_mock):
             await start_task_execution(
                 task_id=TASK_ID,
                 task_name=TASK_NAME,
@@ -205,7 +204,7 @@ class TestManualRunCoordination:
 
         background_tasks = BackgroundTasks()
 
-        with patch("webwhen.scheduler.scheduler.get_scheduler", return_value=scheduler_mock):
+        with patch("webwhen.tasks.execution.get_scheduler", return_value=scheduler_mock):
             result = await start_task_execution(
                 task_id=TASK_ID,
                 task_name=TASK_NAME,
