@@ -111,10 +111,6 @@ ignore = [
 testpaths = ["tests"]
 asyncio_mode = "auto"
 norecursedirs = ["src", ".git", ".venv", "node_modules", "dist", "build"]
-addopts = "-m 'not integration'"
-markers = [
-    "integration: opt-in tests that require isolated live services",
-]
 
 [dependency-groups]
 dev = [
