@@ -346,8 +346,7 @@ routes = [
     Route("/health", health, methods=["GET"]),
     Route("/ready", health, methods=["GET"]),
     *create_agent_card_routes(agent_card),
-    # Remove by 2026-09-30: https://github.com/prassanna-ravishankar/webwhen/issues/363
-    *create_jsonrpc_routes(request_handler, rpc_url="/", enable_v0_3_compat=True),
+    *create_jsonrpc_routes(request_handler, rpc_url="/"),
 ]
 
 app = Starlette(routes=routes, lifespan=lifespan)

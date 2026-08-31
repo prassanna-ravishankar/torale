@@ -10,7 +10,7 @@ from http import HTTPStatus
 import httpx
 from a2a.client import ClientConfig, create_client
 from a2a.client.errors import A2AClientError
-from a2a.helpers import get_data_parts, get_text_parts, new_text_message
+from a2a.helpers import get_data_parts, new_text_message
 from a2a.types import (
     Role,
     SendMessageConfiguration,
@@ -276,13 +276,8 @@ def _apply_stream_event(task: Task | None, event: StreamResponse) -> Task | None
 
 
 def _parse_agent_response(task: Task) -> dict:
-    """Parse A2A Task into monitoring result shape.
-
-    Prefers structured data. A narrow JSON text fallback remains while the
-    server's temporary A2A v0.3 compatibility route is enabled.
-    """
+    """Parse a structured A2A data artifact into the monitoring result shape."""
     artifacts = task.artifacts or []
-    text_content = ""
 
     for artifact in artifacts:
         for data in get_data_parts(artifact.parts):
@@ -291,15 +286,5 @@ def _parse_agent_response(task: Task) -> dict:
                 if isinstance(data, dict) and "result" in data and len(data) == 1:
                     return data["result"]
                 return data
-        text_content += "".join(get_text_parts(artifact.parts))
 
-    if not text_content:
-        raise RuntimeError(f"Agent returned empty response (artifacts={len(artifacts)})")
-
-    # Legacy fallback: parse text as JSON
-    try:
-        return json.loads(text_content)
-    except (json.JSONDecodeError, TypeError):
-        pass
-
-    raise RuntimeError(f"Agent returned non-JSON text response: {text_content[:200]}")
+    raise RuntimeError(f"Agent returned no structured data (artifacts={len(artifacts)})")
