@@ -17,8 +17,8 @@
   shared MCP `httpx.AsyncClient` or manually close MCP transports.
 - Pydantic AI 2 defaults to `end_strategy="graceful"`; webwhen explicitly uses
   `"early"` to preserve the previous monitoring semantics.
-- The temporary A2A v0.3-compatible JSON-RPC route is scheduled for removal by
-  2026-09-30 in issue #363. New code must use 1.x APIs only.
+- The temporary A2A v0.3-compatible JSON-RPC route and text-response fallback
+  were removed on 2026-08-31. The boundary accepts A2A 1.x structured data only.
 - `AGENT_URL` is the URL advertised in the agent card. Helm sets it per tier;
   docker-compose must do the same for `agent-free` and `agent-paid`.
 - Agent lint, typecheck, import, unit tests, and real in-process protocol tests

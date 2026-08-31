@@ -15,7 +15,7 @@ from a2a.types import Role, StreamResponse, TaskState
 from google.protobuf.json_format import MessageToDict
 from pydantic import ValidationError
 
-from tests.conftest import data_artifact, make_a2a_task, task_stream_event, text_artifact
+from tests.conftest import data_artifact, make_a2a_task, task_stream_event
 from webwhen.scheduler.agent import (
     AgentUpstreamHTTPError,
     _apply_stream_event,
@@ -106,19 +106,10 @@ class TestParseAgentResponse:
         task = make_a2a_task(artifacts=[data_artifact({"result": VALID_RESPONSE})])
         assert _parse_agent_response(task) == VALID_RESPONSE
 
-    def test_json_text_compatibility(self):
-        task = make_a2a_task(artifacts=[text_artifact(json.dumps(VALID_RESPONSE))])
-        assert _parse_agent_response(task) == VALID_RESPONSE
-
     @pytest.mark.parametrize("artifacts", [[], None])
-    def test_empty_response_raises(self, artifacts):
-        with pytest.raises(RuntimeError, match="empty response"):
+    def test_missing_structured_response_raises(self, artifacts):
+        with pytest.raises(RuntimeError, match="no structured data"):
             _parse_agent_response(make_a2a_task(artifacts=artifacts))
-
-    def test_python_repr_is_no_longer_accepted(self):
-        task = make_a2a_task(artifacts=[text_artifact("{'evidence': 'legacy'}")])
-        with pytest.raises(RuntimeError, match="non-JSON"):
-            _parse_agent_response(task)
 
     def test_invalid_application_shape_fails_validation(self):
         task = make_a2a_task(artifacts=[data_artifact({"confidence": 150})])

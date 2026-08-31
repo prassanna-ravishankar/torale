@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from a2a.helpers import new_data_artifact, new_text_artifact
+from a2a.helpers import new_data_artifact
 from a2a.types import (
     StreamResponse,
     Task,
@@ -32,11 +32,6 @@ def make_a2a_task(
         status=TaskStatus(state=status_state),
         artifacts=artifacts,
     )
-
-
-def text_artifact(text):
-    """Create an artifact with a single TextPart."""
-    return new_text_artifact(name="result", text=text, artifact_id="art-1")
 
 
 def data_artifact(data):

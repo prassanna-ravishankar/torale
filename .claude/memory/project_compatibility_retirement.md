@@ -6,8 +6,6 @@ type: project
 
 # Compatibility retirement windows
 
-- Remove the agent server's A2A v0.3 compatibility route by **2026-09-30**.
-  Tracking: [#363](https://github.com/prassanna-ravishankar/webwhen/issues/363).
 - Remove the `torale`/`torale.sdk` import shims, `TORALE_*` environment
   fallbacks, and `~/.torale/config.json` fallback after **2026-11-30**, in the
   next SDK major release. Tracking:
